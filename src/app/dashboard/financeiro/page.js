@@ -157,7 +157,7 @@ export default function Financeiro() {
 
   return (
     <>
-      <main className="flex-1 px-8 py-8 overflow-auto">
+      <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
 
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -238,7 +238,8 @@ export default function Financeiro() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        {/* Container da tabela: ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -249,17 +250,17 @@ export default function Financeiro() {
               <p className="text-gray-500 text-sm">Nenhum pagamento encontrado.</p>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="min-w-full"> {/* ALTERADO de w-full para min-w-full */}
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Cliente</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Plano</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Valor</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Vencimento</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Pagamento</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Método</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Status</th>
-                  <th className="px-6 py-4" />
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cliente</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Plano</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Valor</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Vencimento</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Pagamento</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Método</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Status</th>
+                  <th className="px-6 py-4 whitespace-nowrap"></th> {/* ADICIONADO whitespace-nowrap */}
                 </tr>
               </thead>
               <tbody>
@@ -267,42 +268,42 @@ export default function Financeiro() {
                   const vencida = p.status === 'Pendente' && new Date(p.data_vencimento) < new Date()
                   return (
                     <tr key={p.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3 min-w-0"> {/* ADICIONADO min-w-0 */}
                           <div className="w-8 h-8 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-xs flex-shrink-0">
                             {p.clientes?.nome?.charAt(0).toUpperCase() || '?'}
                           </div>
-                          <span className="text-sm text-white">{p.clientes?.nome || '—'}</span>
+                          <span className="text-sm text-white truncate">{p.clientes?.nome || '—'}</span> {/* ADICIONADO truncate */}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">{p.planos?.nome || '—'}</td>
-                      <td className="px-6 py-4 text-sm font-semibold text-white">{fmt(p.valor)}</td>
-                      <td className="px-6 py-4">
+                      <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap truncate">{p.planos?.nome || '—'}</td> {/* ADICIONADO truncate */}
+                      <td className="px-6 py-4 text-sm font-semibold text-white whitespace-nowrap">{fmt(p.valor)}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`text-sm ${vencida ? 'text-red-400 font-medium' : 'text-gray-400'}`}>
                           {p.data_vencimento ? new Date(p.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">
+                      <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">
                         {p.data_pagamento ? new Date(p.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-400">{p.metodo_pagamento || '—'}</td>
-                      <td className="px-6 py-4">
-                        <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium w-fit ${corStatus(p.status)}`}>
+                      <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{p.metodo_pagamento || '—'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium w-fit ${corStatus(p.status)} flex-shrink-0`}> {/* ADICIONADO flex-shrink-0 */}
                           {iconStatus(p.status)}
                           {p.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1 flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
                           <button
                             onClick={() => abrirModal(p)}
-                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors"
+                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
                           >
                             <Pencil size={12} className="text-gray-400" />
                           </button>
                           <button
                             onClick={() => setConfirmDelete(p.id)}
-                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                            className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors flex-shrink-0"
                           >
                             <Trash2 size={12} className="text-gray-400" />
                           </button>
@@ -342,7 +343,7 @@ export default function Financeiro() {
                     {clientes.map(c => <option key={c.id} value={c.id}>{c.nome}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Plano</label>
                   <select
                     value={form.plano_id}
@@ -353,7 +354,7 @@ export default function Financeiro() {
                     {planos.map(p => <option key={p.id} value={p.id}>{p.nome}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Valor (R$) *</label>
                   <input
                     type="number"
@@ -363,7 +364,7 @@ export default function Financeiro() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Data de Vencimento *</label>
                   <input
                     type="date"
@@ -372,7 +373,7 @@ export default function Financeiro() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Data de Pagamento</label>
                   <input
                     type="date"
@@ -381,7 +382,7 @@ export default function Financeiro() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Método de Pagamento</label>
                   <select
                     value={form.metodo_pagamento}
@@ -392,7 +393,7 @@ export default function Financeiro() {
                     {metodos.map(m => <option key={m}>{m}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
                   <select
                     value={form.status}
