@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
 import { Menu, X } from 'lucide-react'
-import './globals.css'
+// REMOVIDA A LINHA: import './globals.css'
 
 export default function DashboardLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
