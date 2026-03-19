@@ -109,7 +109,7 @@ export default function Clientes() {
 
   return (
     <>
-      <main className="flex-1 px-8 py-8 overflow-auto">
+      <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
 
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -168,7 +168,8 @@ export default function Clientes() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        {/* Container da tabela: ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -185,81 +186,81 @@ export default function Clientes() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Cliente</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Contato</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Localização</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Plano</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Status</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Cadastro</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4"></th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cliente</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Contato</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Localização</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Plano</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Status</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cadastro</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Ações</th> {/* ADICIONADO whitespace-nowrap */}
                 </tr>
               </thead>
               <tbody>
                 {clientesFiltrados.map((cliente) => (
                   <tr key={cliente.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-sm flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-sm flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
                           {cliente.nome?.charAt(0).toUpperCase() || '?'}
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">{cliente.nome}</p>
-                          <p className="text-xs text-gray-500">{cliente.cpf_cnpj || '—'}</p>
+                        <div className="min-w-0"> {/* ADICIONADO min-w-0 */}
+                          <p className="text-sm font-medium text-white truncate">{cliente.nome}</p> {/* ADICIONADO truncate */}
+                          <p className="text-xs text-gray-500 truncate">{cliente.cpf_cnpj || '—'}</p> {/* ADICIONADO truncate */}
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-1">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
+                      <div className="space-y-1 min-w-0"> {/* ADICIONADO min-w-0 */}
                         {cliente.email && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <Mail size={11} />{cliente.email}
+                          <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate"> {/* ADICIONADO truncate */}
+                            <Mail size={11} className="flex-shrink-0" />{cliente.email} {/* ADICIONADO flex-shrink-0 */}
                           </div>
                         )}
                         {cliente.telefone && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                            <Phone size={11} />{cliente.telefone}
+                          <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate"> {/* ADICIONADO truncate */}
+                            <Phone size={11} className="flex-shrink-0" />{cliente.telefone} {/* ADICIONADO flex-shrink-0 */}
                           </div>
                         )}
-                      </div>
+                      </div> {/* CORRIGIDO: Era </div> */}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       {(cliente.cidade || cliente.estado) ? (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400">
-                          <MapPin size={11} />
+                        <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate"> {/* ADICIONADO truncate */}
+                          <MapPin size={11} className="flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
                           {[cliente.cidade, cliente.estado].filter(Boolean).join(' / ')}
                         </div>
                       ) : <span className="text-gray-600 text-xs">—</span>}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       {cliente.planos ? (
-                        <div className="flex items-center gap-1.5 text-xs text-purple-400">
-                          <CreditCard size={11} />{cliente.planos.nome}
+                        <div className="flex items-center gap-1.5 text-xs text-purple-400 truncate"> {/* ADICIONADO truncate */}
+                          <CreditCard size={11} className="flex-shrink-0" />{cliente.planos.nome} {/* ADICIONADO flex-shrink-0 */}
                         </div>
                       ) : <span className="text-gray-600 text-xs">—</span>}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusCores[cliente.status] || 'bg-gray-400/10 text-gray-400'}`}>
                         {cliente.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-xs text-gray-500">
+                    <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       {new Date(cliente.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       <div className="flex gap-1">
                         <button
                           onClick={() => abrirModal(cliente)}
-                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors"
+                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0" {/* ADICIONADO flex-shrink-0 */}
                         >
                           <Pencil size={12} className="text-gray-400" />
                         </button>
                         <button
                           onClick={() => setConfirmDelete(cliente.id)}
-                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors flex-shrink-0" {/* ADICIONADO flex-shrink-0 */}
                         >
                           <Trash2 size={12} className="text-gray-400" />
                         </button>
-                      </div>
+                      </div> {/* CORRIGIDO: Era </div> */}
                     </td>
                   </tr>
                 ))}
@@ -293,7 +294,7 @@ export default function Clientes() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">CPF / CNPJ</label>
                   <input
                     type="text"
@@ -303,7 +304,7 @@ export default function Clientes() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Telefone</label>
                   <input
                     type="text"
@@ -333,7 +334,7 @@ export default function Clientes() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Cidade</label>
                   <input
                     type="text"
@@ -343,7 +344,7 @@ export default function Clientes() {
                     className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
                   />
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Estado</label>
                   <select
                     value={form.estado}
@@ -354,7 +355,7 @@ export default function Clientes() {
                     {estadosBR.map((e) => <option key={e}>{e}</option>)}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Plano</label>
                   <select
                     value={form.plano_id}
@@ -367,7 +368,7 @@ export default function Clientes() {
                     ))}
                   </select>
                 </div>
-                <div>
+                <div className="col-span-2 sm:col-span-1"> {/* Ajuste para mobile: 1 coluna, depois 2 */}
                   <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
                   <select
                     value={form.status}
