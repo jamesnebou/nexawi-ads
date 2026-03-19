@@ -121,7 +121,7 @@ export default function Configuracoes() {
   }
 
   return (
-    <main className="flex-1 px-8 py-8 overflow-auto">
+    <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-white">Configurações</h1>
