@@ -5,11 +5,6 @@ import Sidebar from '@/components/Sidebar'
 import { Menu, X } from 'lucide-react'
 import './globals.css'
 
-// Removida a exportação de metadata daqui, pois ela deve estar no layout raiz (app/layout.js)
-// ou ser um objeto simples no layout aninhado, mas não com export const metadata = ...
-// Se você quiser metadata específica para o dashboard, pode definir um objeto simples aqui.
-// Por enquanto, vamos remover para evitar conflitos se já estiver no app/layout.js.
-
 export default function DashboardLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
@@ -35,7 +30,7 @@ export default function DashboardLayout({ children }) {
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-60 bg-gray-900 border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-          md:relative md:translate-x-0 md:flex`} {/* AQUI ESTAVA O ERRO: REMOVIDA A CHAVE EXTRA '}' */}
+          md:relative md:translate-x-0 md:flex`}
       >
         <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </aside>
