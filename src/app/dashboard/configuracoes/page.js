@@ -144,12 +144,13 @@ export default function Configuracoes() {
         )}
       </div>
 
-      <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 w-fit">
+      {/* Container das abas: ADICIONADO overflow-x-auto e pb-2, REMOVIDO w-fit */}
+      <div className="flex gap-1 mb-6 bg-gray-900 border border-gray-800 rounded-xl p-1 overflow-x-auto pb-2">
         {abas.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setAbaAtiva(id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${ // ADICIONADO whitespace-nowrap
               abaAtiva === id ? 'bg-gray-800 text-white' : 'text-gray-500 hover:text-gray-300'
             }`}
           >
