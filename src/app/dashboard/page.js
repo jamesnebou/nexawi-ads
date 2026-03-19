@@ -149,16 +149,16 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="flex-1 px-8 py-8 overflow-auto">
+    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto"> {/* Ajuste de padding */}
 
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Visão Geral</h1>
-        <p className="text-gray-400 text-sm mt-1">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1> {/* Ajuste de tamanho de título */}
+        <p className="text-gray-400 text-xs sm:text-sm mt-1"> {/* Ajuste de tamanho de texto */}
           {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"> {/* Ajuste de grid para métricas */}
         {[
           { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
           { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
@@ -167,12 +167,12 @@ export default function Dashboard() {
         ].map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className={`${card.bg} border rounded-2xl p-5`}>
+            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}> {/* Ajuste de padding do card */}
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-gray-500">{card.label}</p>
                 <Icon size={18} className={card.cor} />
               </div>
-              <p className={`text-2xl font-bold ${card.cor}`}>{card.valor}</p>
+              <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p> {/* Ajuste de tamanho de valor */}
               <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
             </div>
           )
@@ -182,13 +182,13 @@ export default function Dashboard() {
       {(metricas.vencidoTotal > 0 || metricas.pendenteTotal > 0) && (
         <div className="flex gap-3 mb-8 flex-wrap">
           {metricas.vencidoTotal > 0 && (
-            <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-2.5">
+            <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
               <AlertTriangle size={15} className="text-red-400" />
               <span className="text-xs text-red-400 font-medium">{fmt(metricas.vencidoTotal)} em pagamentos vencidos</span>
             </div>
           )}
           {metricas.pendenteTotal > 0 && (
-            <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-4 py-2.5">
+            <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
               <Clock size={15} className="text-yellow-400" />
               <span className="text-xs text-yellow-400 font-medium">{fmt(metricas.pendenteTotal)} a receber</span>
             </div>
@@ -196,9 +196,9 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-1">Leads Capturados</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"> {/* Ajuste de grid para gráficos principais */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados</h2> {/* Ajuste de tamanho de título */}
           <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={leadsporDia}>
@@ -217,8 +217,8 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-1">Receita Mensal</h2>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2> {/* Ajuste de tamanho de título */}
           <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={receitaPorMes}>
@@ -234,9 +234,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-1">Clientes por Status</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6"> {/* Ajuste de grid para gráficos e listas menores */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2> {/* Ajuste de tamanho de título */}
           <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
           {clientesPorStatus.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
@@ -267,8 +267,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-1">Top Hotspots</h2>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots</h2> {/* Ajuste de tamanho de título */}
           <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
           {leadsPorHotspot.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
@@ -285,8 +285,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-          <h2 className="text-sm font-semibold text-white mb-1">Últimos Pagamentos</h2>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2> {/* Ajuste de tamanho de título */}
           <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
           {pagamentosRecentes.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
@@ -314,8 +314,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h2 className="text-sm font-semibold text-white mb-1">Últimos Leads Capturados</h2>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+        <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2> {/* Ajuste de tamanho de título */}
         <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
         {leadsRecentes.length === 0 ? (
           <div className="flex items-center justify-center py-8 text-gray-600 text-sm">Nenhum lead capturado ainda.</div>
