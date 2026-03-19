@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from '@/lib/auth'
-import Image from 'next/image' // Importe o componente Image do Next.js
+import Image from 'next/image'
 import {
   LayoutDashboard,
   Users,
@@ -26,29 +26,29 @@ const menu = [
   { label: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
 ]
 
-export default function Sidebar() {
+// Adicione 'onClose' como uma prop
+export default function Sidebar({ onClose }) {
   const pathname = usePathname()
   const router = useRouter()
 
   async function handleSignOut() {
     await signOut()
     router.push('/login')
+    onClose() // Fecha o sidebar após sair
   }
 
   return (
-    <aside className="w-60 min-h-screen bg-gray-900 border-r border-gray-800 flex flex-col">
-      <div className="px-6 py-6 border-b border-gray-800 flex items-center justify-center"> {/* Adicionado flex para centralizar */}
-        {/* Aqui você vai colocar sua logo */}
+    // Removida a classe 'w-60' daqui, pois o layout pai já define a largura e a posição
+    <div className="min-h-screen bg-gray-900 flex flex-col">
+      <div className="px-6 py-6 border-b border-gray-800 flex items-center justify-center">
         <Image
-          src="/Nexa-logo.png" // <--- SUBSTITUA ESTE CAMINHO PELA URL DA SUA LOGO
+          src="/Nexa-logo.png"
           alt="Sua Logo"
-          width={140} // Ajuste a largura conforme o tamanho da sua logo
-          height={40} // Ajuste a altura conforme o tamanho da sua logo
-          priority // Opcional: para carregar a logo mais rápido
-          className="object-contain" // Garante que a imagem se ajuste sem cortar
+          width={140}
+          height={40}
+          priority
+          className="object-contain"
         />
-        {/* Se quiser manter um subtítulo, pode adicionar aqui, ou remover */}
-        {/* <p className="text-gray-500 text-xs mt-1">Painel de Controle</p> */}
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1">
@@ -58,7 +58,10 @@ export default function Sidebar() {
           return (
             <button
               key={item.path}
-              onClick={() => router.push(item.path)}
+              onClick={() => {
+                router.push(item.path)
+                onClose() // Fecha o sidebar após navegar para um item
+              }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
                 active
                   ? 'bg-green-500/10 text-green-400'
@@ -81,6 +84,6 @@ export default function Sidebar() {
           Sair
         </button>
       </div>
-    </aside>
+    </div>
   )
 }
