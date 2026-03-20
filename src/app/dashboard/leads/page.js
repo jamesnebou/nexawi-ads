@@ -73,7 +73,7 @@ export default function Leads() {
   })
 
   return (
-    <main className="flex-1 px-8 py-8 overflow-auto">
+    <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
 
       <div className="flex items-center justify-between mb-8">
         <div>
@@ -128,7 +128,7 @@ export default function Leads() {
         </div>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2"> {/* ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -140,53 +140,53 @@ export default function Leads() {
             <p className="text-gray-600 text-xs mt-1">Os leads são capturados automaticamente pelo hotspot.</p>
           </div>
         ) : (
-          <table className="w-full">
+          <table className="min-w-full"> {/* ALTERADO de w-full para min-w-full */}
             <thead>
               <tr className="border-b border-gray-800">
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Lead</th>
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Telefone</th>
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">CPF</th>
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Hotspot</th>
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">LGPD</th>
-                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Capturado em</th>
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Lead</th> {/* ADICIONADO whitespace-nowrap */}
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Telefone</th> {/* ADICIONADO whitespace-nowrap */}
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">CPF</th> {/* ADICIONADO whitespace-nowrap */}
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Hotspot</th> {/* ADICIONADO whitespace-nowrap */}
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">LGPD</th> {/* ADICIONADO whitespace-nowrap */}
+                <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Capturado em</th> {/* ADICIONADO whitespace-nowrap */}
               </tr>
             </thead>
             <tbody>
               {leadsFiltrados.map((lead) => (
                 <tr key={lead.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-orange-400/10 flex items-center justify-center text-orange-400 font-semibold text-sm flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-orange-400/10 flex items-center justify-center text-orange-400 font-semibold text-sm flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
                         {lead.nome?.charAt(0).toUpperCase() || '?'}
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-white">{lead.nome || '—'}</p>
-                        <p className="text-xs text-gray-500">{lead.email || '—'}</p>
+                      <div className="min-w-0"> {/* ADICIONADO min-w-0 */}
+                        <p className="text-sm font-medium text-white truncate">{lead.nome || '—'}</p> {/* ADICIONADO truncate */}
+                        <p className="text-xs text-gray-500 truncate">{lead.email || '—'}</p> {/* ADICIONADO truncate */}
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-400">{lead.telefone || '—'}</td>
-                  <td className="px-6 py-4 text-sm text-gray-400">{lead.cpf || '—'}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5 text-sm text-gray-400">
-                      <Wifi size={13} className="text-blue-400" />
-                      {nomeHotspot(lead.hotspot_id)}
+                  <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{lead.telefone || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
+                  <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{lead.cpf || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
+                  <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
+                    <div className="flex items-center gap-1.5 text-sm text-gray-400 min-w-0"> {/* ADICIONADO min-w-0 */}
+                      <Wifi size={13} className="text-blue-400 flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
+                      <span className="truncate">{nomeHotspot(lead.hotspot_id)}</span> {/* ADICIONADO truncate */}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                     {lead.aceite_lgpd ? (
-                      <span className="flex items-center gap-1.5 text-xs text-green-400">
-                        <Shield size={13} />
-                        Aceito
+                      <span className="flex items-center gap-1.5 text-xs text-green-400 w-fit"> {/* ADICIONADO w-fit */}
+                        <Shield size={13} className="flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
+                        <span className="truncate">Aceito</span> {/* ADICIONADO truncate */}
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1.5 text-xs text-red-400">
-                        <ShieldOff size={13} />
-                        Não aceito
+                      <span className="flex items-center gap-1.5 text-xs text-red-400 w-fit"> {/* ADICIONADO w-fit */}
+                        <ShieldOff size={13} className="flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
+                        <span className="truncate">Não aceito</span> {/* ADICIONADO truncate */}
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500">
+                  <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                     {new Date(lead.created_at).toLocaleDateString('pt-BR')}
                   </td>
                 </tr>
