@@ -101,8 +101,9 @@ export default function Anuncios() {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      {/* Ajuste para o cabeçalho da página */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"> {/* Alterado para flex-col em mobile, flex-row em sm+ */}
+        <div className="mb-4 sm:mb-0"> {/* Adicionado margem inferior em mobile */}
           <h1 className="text-2xl font-bold text-white">Anúncios</h1>
           <p className="text-gray-400 text-sm mt-1">Gerencie os anúncios exibidos no portal de captação</p>
         </div>
@@ -133,7 +134,7 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full"> {/* ADICIONADO w-full */}
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
              {anuncio.imagem_url ? (
   <img
     src={anuncio.imagem_url}
@@ -165,22 +166,23 @@ export default function Anuncios() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <MapPin size={11} className="flex-shrink-0" />
-                    <span className="truncate">{anuncio.hotspots?.nome || '—'}</span>
+                    <span>{anuncio.hotspots?.nome || '—'}</span> {/* REMOVIDO truncate */}
                   </span>
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <Clock size={11} className="flex-shrink-0" />
-                    <span className="truncate">{anuncio.duracao_segundos}s</span>
+                    <span>{anuncio.duracao_segundos}s</span> {/* REMOVIDO truncate */}
                   </span>
                   {anuncio.url_destino && (
                     <a href={anuncio.url_destino} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0">
                       <ExternalLink size={11} className="flex-shrink-0" />
-                      <span className="truncate">CTA</span>
+                      <span>CTA</span> {/* REMOVIDO truncate */}
                     </a>
                   )}
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0 sm:ml-auto"> {/* ALTERADO para flex-col em mobile, flex-row em sm+ */}
+              {/* Botões de ação lado a lado em todas as telas */}
+              <div className="flex flex-row gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0"> {/* ALTERADO para flex-row e adicionado flex-shrink-0 */}
                 <button
                   onClick={() => toggleAtivo(anuncio)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
