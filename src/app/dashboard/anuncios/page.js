@@ -25,6 +25,8 @@ export default function Anuncios() {
     duracao_segundos: 15,
     ativo: true,
   })
+  const [selectedFile, setSelectedFile] = useState(null) // Novo estado para o arquivo selecionado
+  const [uploading, setUploading] = useState(false) // Novo estado para o status de upload
 
   useEffect(() => {
     buscarDados()
@@ -65,22 +67,67 @@ export default function Anuncios() {
         ativo: true,
       })
     }
+    setSelectedFile(null) // Resetar arquivo selecionado ao abrir o modal
     setModalAberto(true)
   }
 
   function fecharModal() {
     setModalAberto(false)
     setAnuncioEditando(null)
+    setSelectedFile(null) // Resetar arquivo selecionado ao fechar o modal
   }
 
   async function salvar() {
     if (!form.titulo.trim() || !form.hotspot_id) return
+
     setSalvando(true)
+    setUploading(true) // Iniciar indicador de upload
+
+    let imageUrlToSave = form.imagem_url // Começa com a URL existente
+
+    if (selectedFile) {
+      const fileExtension = selectedFile.name.split('.').pop()
+      const filePath = `anuncios/${Date.now()}.${fileExtension}` // Caminho único para o arquivo
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('anuncios') // Nome do bucket no Supabase Storage
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false, // Define se deve sobrescrever um arquivo com o mesmo nome
+        })
+
+      if (uploadError) {
+        console.error('Erro ao fazer upload da imagem:', uploadError)
+        alert('Erro ao fazer upload da imagem. Por favor, tente novamente.')
+        setSalvando(false)
+        setUploading(false)
+        return
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('anuncios')
+        .getPublicUrl(filePath)
+
+      imageUrlToSave = publicUrlData.publicUrl
+    }
+
+    setUploading(false) // Finalizar indicador de upload
+
+    // Agora salva no banco de dados com a URL da imagem (potencialmente nova)
+    const dataToSave = { ...form, imagem_url: imageUrlToSave }
 
     if (anuncioEditando) {
-      await supabase.from('anuncios').update(form).eq('id', anuncioEditando.id)
+      const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
+      if (updateError) {
+        console.error('Erro ao atualizar anúncio:', updateError)
+        alert('Erro ao atualizar anúncio. Por favor, tente novamente.')
+      }
     } else {
-      await supabase.from('anuncios').insert([form])
+      const { error: insertError } = await supabase.from('anuncios').insert([dataToSave])
+      if (insertError) {
+        console.error('Erro ao criar anúncio:', insertError)
+        alert('Erro ao criar anúncio. Por favor, tente novamente.')
+      }
     }
 
     setSalvando(false)
@@ -95,6 +142,7 @@ export default function Anuncios() {
 
   async function excluir(id) {
     if (!confirm('Tem certeza que deseja excluir este anúncio?')) return
+    // Opcional: Adicionar lógica para excluir a imagem do storage também
     await supabase.from('anuncios').delete().eq('id', id)
     buscarDados()
   }
@@ -102,8 +150,8 @@ export default function Anuncios() {
   return (
     <>
       {/* Ajuste para o cabeçalho da página */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6"> {/* Alterado para flex-col em mobile, flex-row em sm+ */}
-        <div className="mb-4 sm:mb-0"> {/* Adicionado margem inferior em mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pl-4 sm:pl-6 md:pl-8">
+        <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl font-bold text-white">Anúncios</h1>
           <p className="text-gray-400 text-sm mt-1">Gerencie os anúncios exibidos no portal de captação</p>
         </div>
@@ -166,23 +214,23 @@ export default function Anuncios() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <MapPin size={11} className="flex-shrink-0" />
-                    <span>{anuncio.hotspots?.nome || '—'}</span> {/* REMOVIDO truncate */}
+                    <span>{anuncio.hotspots?.nome || '—'}</span>
                   </span>
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <Clock size={11} className="flex-shrink-0" />
-                    <span>{anuncio.duracao_segundos}s</span> {/* REMOVIDO truncate */}
+                    <span>{anuncio.duracao_segundos}s</span>
                   </span>
                   {anuncio.url_destino && (
                     <a href={anuncio.url_destino} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0">
                       <ExternalLink size={11} className="flex-shrink-0" />
-                      <span>CTA</span> {/* REMOVIDO truncate */}
+                      <span>CTA</span>
                     </a>
                   )}
                 </div>
               </div>
 
               {/* Botões de ação lado a lado em todas as telas */}
-              <div className="flex flex-row gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0"> {/* ALTERADO para flex-row e adicionado flex-shrink-0 */}
+              <div className="flex flex-row flex-wrap gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0">
                 <button
                   onClick={() => toggleAtivo(anuncio)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
@@ -254,15 +302,29 @@ export default function Anuncios() {
                 />
               </div>
 
+              {/* NOVO CAMPO DE UPLOAD DE ARQUIVO */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">URL da imagem</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Imagem do anúncio</label>
                 <input
-                  type="url"
-                  placeholder="https://..."
-                  value={form.imagem_url}
-                  onChange={(e) => setForm({ ...form, imagem_url: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setSelectedFile(e.target.files[0])}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-500 file:text-black hover:file:bg-green-400"
                 />
+                {(selectedFile || form.imagem_url) && (
+                  <div className="mt-3 flex items-center gap-3">
+                    <p className="text-xs text-gray-400">Pré-visualização:</p>
+                    <img
+                      src={selectedFile ? URL.createObjectURL(selectedFile) : form.imagem_url}
+                      alt="Pré-visualização"
+                      className="w-24 h-16 object-cover rounded-lg border border-gray-700"
+                    />
+                    {selectedFile && (
+                      <p className="text-xs text-gray-500 truncate flex-1">{selectedFile.name}</p>
+                    )}
+                  </div>
+                )}
+                <p className="text-xs text-gray-600 mt-1">Selecione uma imagem para o anúncio. Tamanho recomendado: 1200x675px.</p>
               </div>
 
               <div>
@@ -283,7 +345,7 @@ export default function Anuncios() {
                   min={5}
                   max={60}
                   value={form.duracao_segundos}
-                  onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, duracao_duracao_segundos: parseInt(e.target.value) })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 />
                 <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
@@ -309,10 +371,10 @@ export default function Anuncios() {
               </button>
               <button
                 onClick={salvar}
-                disabled={salvando || !form.titulo.trim() || !form.hotspot_id}
+                disabled={salvando || uploading || !form.titulo.trim() || !form.hotspot_id}
                 className="flex-1 py-3 rounded-xl font-semibold text-sm text-black bg-green-500 hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {salvando ? (
+                {(salvando || uploading) ? (
                   <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
                   anuncioEditando ? 'Salvar alterações' : 'Criar anúncio'
