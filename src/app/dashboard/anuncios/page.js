@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { MapPin, Clock, ExternalLink } from 'lucide-react' // Importações corrigidas
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -99,7 +100,7 @@ export default function Anuncios() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <> {/* Fragmento React para envolver múltiplos elementos */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Anúncios</h1>
@@ -107,7 +108,7 @@ export default function Anuncios() {
         </div>
         <button
           onClick={() => abrirModal()}
-          className="bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+          className="bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors flex-shrink-0"
         >
           + Novo Anúncio
         </button>
@@ -132,7 +133,7 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center gap-4">
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center gap-4 overflow-x-auto pb-2">
              {anuncio.imagem_url ? (
   <img
     src={anuncio.imagem_url}
@@ -153,37 +154,48 @@ export default function Anuncios() {
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-white font-semibold text-sm truncate">{anuncio.titulo}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                  <h3 className="text-white font-semibold text-sm truncate whitespace-nowrap">{anuncio.titulo}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 whitespace-nowrap ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                     {anuncio.ativo ? 'Ativo' : 'Inativo'}
                   </span>
                 </div>
                 {anuncio.descricao && (
-                  <p className="text-gray-500 text-xs truncate mb-1">{anuncio.descricao}</p>
+                  <p className="text-gray-500 text-xs truncate mb-1 whitespace-nowrap">{anuncio.descricao}</p>
                 )}
-                <div className="flex items-center gap-3 text-xs text-gray-600">
-                  <span>📡 {anuncio.hotspots?.nome || '—'}</span>
-                  <span>⏱ {anuncio.duracao_segundos}s</span>
-                  {anuncio.url_destino && <span>🔗 Com CTA</span>}
+                <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <MapPin size={11} className="flex-shrink-0" />
+                    <span className="truncate">{anuncio.hotspots?.nome || '—'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <Clock size={11} className="flex-shrink-0" />
+                    <span className="truncate">{anuncio.duracao_segundos}s</span>
+                  </span>
+                  {anuncio.url_destino && (
+                    <a href={anuncio.url_destino} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0">
+                      <ExternalLink size={11} className="flex-shrink-0" />
+                      <span className="truncate">CTA</span>
+                    </a>
+                  )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
                 <button
                   onClick={() => toggleAtivo(anuncio)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
+                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
                 >
                   {anuncio.ativo ? 'Desativar' : 'Ativar'}
                 </button>
                 <button
                   onClick={() => abrirModal(anuncio)}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors flex-shrink-0"
                 >
                   Editar
                 </button>
                 <button
                   onClick={() => excluir(anuncio.id)}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-400/10 hover:bg-red-400/20 text-red-400 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-400/10 hover:bg-red-400/20 text-red-400 transition-colors flex-shrink-0"
                 >
                   Excluir
                 </button>
@@ -247,7 +259,7 @@ export default function Anuncios() {
                   placeholder="https://..."
                   value={form.imagem_url}
                   onChange={(e) => setForm({ ...form, imagem_url: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 />
               </div>
 
@@ -308,6 +320,6 @@ export default function Anuncios() {
           </div>
         </div>
       )}
-    </div>
+    </>
   )
 }
