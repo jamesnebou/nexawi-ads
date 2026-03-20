@@ -94,7 +94,7 @@ export default function Hotspots() {
 
   return (
     <>
-      <main className="flex-1 px-8 py-8 overflow-auto">
+      <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
 
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -140,7 +140,7 @@ export default function Hotspots() {
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2"> {/* ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
@@ -154,55 +154,55 @@ export default function Hotspots() {
               </button>
             </div>
           ) : (
-            <table className="w-full">
+            <table className="min-w-full"> {/* ALTERADO de w-full para min-w-full */}
               <thead>
                 <tr className="border-b border-gray-800">
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Hotspot</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Cidade</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Parceiro</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Status</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4">Cadastrado em</th>
-                  <th className="text-right text-xs text-gray-500 font-medium px-6 py-4">Ações</th>
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Hotspot</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cidade</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Parceiro</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Status</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cadastrado em</th> {/* ADICIONADO whitespace-nowrap */}
+                  <th className="text-right text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Ações</th> {/* ADICIONADO whitespace-nowrap */}
                 </tr>
               </thead>
               <tbody>
                 {hotspotsFiltrados.map((hotspot) => (
                   <tr key={hotspot.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                    <td className="px-6 py-4">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center flex-shrink-0">
+                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
                           <Wifi size={16} className="text-blue-400" />
                         </div>
-                        <div>
-                          <p className="text-sm font-medium text-white">{hotspot.nome}</p>
-                          <p className="text-xs text-gray-500 flex items-center gap-1">
-                            <MapPin size={10} />
+                        <div className="min-w-0"> {/* ADICIONADO min-w-0 */}
+                          <p className="text-sm font-medium text-white truncate">{hotspot.nome}</p> {/* ADICIONADO truncate */}
+                          <p className="text-xs text-gray-500 flex items-center gap-1 truncate"> {/* ADICIONADO truncate */}
+                            <MapPin size={10} className="flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
                             {hotspot.endereco || '—'}
                           </p>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{hotspot.cidade || '—'}</td>
-                    <td className="px-6 py-4 text-sm text-gray-400">{hotspot.parceiro || '—'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${corStatus(hotspot.status)}`}>
+                    <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{hotspot.cidade || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
+                    <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{hotspot.parceiro || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
+                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${corStatus(hotspot.status)} w-fit`}> {/* ADICIONADO w-fit */}
                         {hotspot.status || 'Ativo'}
                       </span>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
+                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
                       {new Date(hotspot.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
+                      <div className="flex items-center justify-end gap-2 flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
                         <button
                           onClick={() => abrirModal(hotspot)}
-                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors"
+                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
                         >
                           <Pencil size={14} className="text-gray-400" />
                         </button>
                         <button
                           onClick={() => setConfirmDelete(hotspot.id)}
-                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors flex-shrink-0"
                         >
                           <Trash2 size={14} className="text-gray-400" />
                         </button>
@@ -219,7 +219,7 @@ export default function Hotspots() {
       {modalAberto && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+            <div className="flex items-center justify-between p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
               <h2 className="text-base font-semibold text-white">
                 {hotspotSelecionado ? 'Editar Hotspot' : 'Novo Hotspot'}
               </h2>
@@ -229,55 +229,57 @@ export default function Hotspots() {
             </div>
 
             <div className="p-6 space-y-4">
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Nome do Hotspot *</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Hotspot Centro"
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Cidade</label>
-                <input
-                  type="text"
-                  placeholder="Ex: São Paulo"
-                  value={form.cidade}
-                  onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Endereço</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Rua das Flores, 123"
-                  value={form.endereco}
-                  onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Parceiro</label>
-                <input
-                  type="text"
-                  placeholder="Ex: Restaurante XYZ"
-                  value={form.parceiro}
-                  onChange={(e) => setForm({ ...form, parceiro: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm({ ...form, status: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
-                >
-                  {statusOpcoes.map((s) => <option key={s}>{s}</option>)}
-                </select>
+              <div className="grid grid-cols-1 gap-3"> {/* Alterado para grid-cols-1 para melhor responsividade no modal */}
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Nome do Hotspot *</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Hotspot Centro"
+                    value={form.nome}
+                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Cidade</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: São Paulo"
+                    value={form.cidade}
+                    onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Endereço</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Rua das Flores, 123"
+                    value={form.endereco}
+                    onChange={(e) => setForm({ ...form, endereco: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Parceiro</label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Restaurante XYZ"
+                    value={form.parceiro}
+                    onChange={(e) => setForm({ ...form, parceiro: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
+                  <select
+                    value={form.status}
+                    onChange={(e) => setForm({ ...form, status: e.target.value })}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+                  >
+                    {statusOpcoes.map((s) => <option key={s}>{s}</option>)}
+                  </select>
+                </div>
               </div>
             </div>
 
