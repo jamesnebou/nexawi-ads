@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink } from 'lucide-react' // Importações corrigidas
+import { MapPin, Clock, ExternalLink } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -100,7 +100,7 @@ export default function Anuncios() {
   }
 
   return (
-    <> {/* Fragmento React para envolver múltiplos elementos */}
+    <>
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-white">Anúncios</h1>
@@ -133,7 +133,7 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center gap-4 overflow-x-auto pb-2">
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full"> {/* ADICIONADO w-full */}
              {anuncio.imagem_url ? (
   <img
     src={anuncio.imagem_url}
@@ -146,23 +146,23 @@ export default function Anuncios() {
   />
 ) : null}
 <div
-  className="w-20 h-14 bg-gray-800 rounded-xl flex-shrink-0 items-center justify-center text-2xl"
+  className="w-20 h-14 bg-gray-800 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl"
   style={{ display: anuncio.imagem_url ? 'none' : 'flex' }}
 >
   📢
 </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-white font-semibold text-sm truncate whitespace-nowrap">{anuncio.titulo}</h3>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 whitespace-nowrap ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                     {anuncio.ativo ? 'Ativo' : 'Inativo'}
                   </span>
                 </div>
                 {anuncio.descricao && (
-                  <p className="text-gray-500 text-xs truncate mb-1 whitespace-nowrap">{anuncio.descricao}</p>
+                  <p className="text-gray-500 text-xs mb-1">{anuncio.descricao}</p>
                 )}
-                <div className="flex items-center gap-3 text-xs text-gray-600 whitespace-nowrap">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <MapPin size={11} className="flex-shrink-0" />
                     <span className="truncate">{anuncio.hotspots?.nome || '—'}</span>
@@ -180,7 +180,7 @@ export default function Anuncios() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 flex-shrink-0 whitespace-nowrap">
+              <div className="flex flex-col sm:flex-row gap-2 mt-3 sm:mt-0 sm:ml-auto"> {/* ALTERADO para flex-col em mobile, flex-row em sm+ */}
                 <button
                   onClick={() => toggleAtivo(anuncio)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
