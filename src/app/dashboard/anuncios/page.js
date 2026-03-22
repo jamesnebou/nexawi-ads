@@ -1,11 +1,297 @@
-// ... (imports and supabase client) ...
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+// Removido 'Search' do import direto
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
+import dynamic from 'next/dynamic'; // Importa dynamic do Next.js
+
+// Importação dinâmica para o ícone Search, garantindo que ele só seja carregado no cliente
+const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search), { ssr: false });
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+)
 
 export default function Anuncios() {
-  // ... (all state variables) ...
+  const [anuncios, setAnuncios] = useState([])
+  const [hotspots, setHotspots] = useState([]) // Agora conterá todos os hotspots ativos
+  const [clientes, setClientes] = useState([])
+  const [carregando, setCarregando] = useState(true)
+  const [modalAberto, setModalAberto] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+  const [anuncioEditando, setAnuncioEditando] = useState(null)
+  const [form, setForm] = useState({
+    hotspot_id: '',
+    titulo: '',
+    descricao: '',
+    media_url: '',
+    tipo_media: 'imagem',
+    url_destino: '',
+    duracao_segundos: 15,
+    ativo: true,
+  })
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
-  // ... (useEffect and buscarDados) ...
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('todos')
+  const [filterHotspotId, setFilterHotspotId] = useState('')
+  const [filterClientId, setFilterClientId] = useState('')
+  const [filterMediaType, setFilterMediaType] = useState('todos')
 
-  // ... (abrirModal, fecharModal, allActiveHotspotsForModal, salvar, toggleAtivo, excluir) ...
+  const [selectedClientInModal, setSelectedClientInModal] = useState('')
+
+  useEffect(() => {
+    buscarDados()
+  }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType])
+
+  async function buscarDados() {
+    setCarregando(true)
+
+    const { data: clientesData, error: clientesError } = await supabase
+      .from('clientes')
+      .select('id, nome')
+      .order('nome', { ascending: true })
+    if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
+    // Atualiza clientes apenas se houver mudança real para evitar re-renders desnecessários
+    if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
+      setClientes(clientesData || [])
+    }
+
+    // Busca TODOS os hotspots ativos, incluindo o cliente_id para exibição
+    const { data: hotspotsData, error: hotspotsError } = await supabase
+      .from('hotspots')
+      .select('id, nome, status, cliente_id') // Seleciona cliente_id diretamente
+      .eq('status', 'Ativo')
+      .order('nome', { ascending: true })
+    if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
+
+    // Para cada hotspot, anexa as informações do cliente para exibição no card e filtros
+    const hotspotsComClientes = hotspotsData ? hotspotsData.map(hotspot => {
+      const cliente = clientesData?.find(c => c.id === hotspot.cliente_id);
+      return {
+        ...hotspot,
+        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null // Adiciona o objeto cliente se encontrado
+      };
+    }) : [];
+
+    setHotspots(hotspotsComClientes || [])
+
+
+    // AQUI ESTÁ A MUDANÇA PRINCIPAL: Ajusta a string de select para forçar INNER JOIN se houver filtro de cliente
+    let selectString = '*, hotspots(id, nome, cliente_id)'; // Default: LEFT JOIN
+    if (filterClientId) {
+      selectString = '*, hotspots!inner(id, nome, cliente_id)'; // Força INNER JOIN para filtrar por cliente
+    }
+
+    let query = supabase
+      .from('anuncios')
+      .select(selectString) // Usa a string de select dinâmica
+      .order('created_at', { ascending: false })
+
+    if (filterStatus === 'ativo') {
+      query = query.eq('ativo', true)
+    } else if (filterStatus === 'inativo') {
+      query = query.eq('ativo', false)
+    }
+
+    if (filterHotspotId) {
+      query = query.eq('hotspot_id', filterHotspotId)
+    }
+
+    // O filtro de cliente é aplicado aqui, mas o INNER JOIN já garante que apenas os anúncios relevantes sejam considerados
+    if (filterClientId) {
+      console.log('Aplicando filtro de cliente com ID:', filterClientId); // LOG PARA DEPURAR
+      query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
+    }
+
+    if (filterMediaType === 'imagem') {
+      query = query.eq('tipo_media', 'imagem')
+    } else if (filterMediaType === 'video') {
+      query = query.eq('tipo_media', 'video')
+    }
+
+    if (searchTerm) {
+      query = query.or(`titulo.ilike.%${searchTerm}%,descricao.ilike.%${searchTerm}%`)
+    }
+
+    const { data: anunciosData, error: anunciosError } = await query
+    if (anunciosError) {
+      console.error('Erro ao buscar anúncios:', anunciosError)
+      alert('Erro ao carregar anúncios. Por favor, tente novamente.')
+      setCarregando(false)
+      return
+    }
+
+    // Anexa as informações completas do hotspot (com cliente) aos anúncios para exibição
+    const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
+      const hotspotDoAnuncio = hotspotsComClientes.find(h => h.id === anuncio.hotspot_id);
+      return {
+        ...anuncio,
+        hotspots: hotspotDoAnuncio || anuncio.hotspots // Garante que o hotspot tenha a info do cliente
+      };
+    });
+
+    const anunciosComMetricas = await Promise.all(anunciosComHotspotsEClientes.map(async (anuncio) => {
+      const { count: viewsCount, error: viewsError } = await supabase
+        .from('anuncio_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('anuncio_id', anuncio.id)
+
+      const { count: clicksCount, error: clicksError } = await supabase
+        .from('anuncio_clicks')
+        .select('*', { count: 'exact', head: true })
+        .eq('anuncio_id', anuncio.id)
+
+      if (viewsError) console.error('Erro ao buscar views:', viewsError)
+      if (clicksError) console.error('Erro ao buscar clicks:', clicksError)
+
+      return {
+        ...anuncio,
+        views: viewsCount || 0,
+        clicks: clicksCount || 0,
+      }
+    }))
+
+    setAnuncios(anunciosComMetricas || [])
+    setCarregando(false)
+  }
+
+  function abrirModal(anuncio = null) {
+    if (anuncio) {
+      setAnuncioEditando(anuncio)
+      setForm({
+        hotspot_id: anuncio.hotspot_id || '',
+        titulo: anuncio.titulo || '',
+        descricao: anuncio.descricao || '',
+        media_url: anuncio.media_url || '',
+        tipo_media: anuncio.tipo_media || 'imagem',
+        url_destino: anuncio.url_destino || '',
+        duracao_segundos: anuncio.duracao_segundos || 15,
+        ativo: anuncio.ativo ?? true,
+      })
+      // Ao editar, tenta encontrar o cliente do hotspot para pré-selecionar
+      const clienteDoHotspot = hotspots.find(h => h.id === anuncio.hotspot_id)?.clientes?.id;
+      setSelectedClientInModal(clienteDoHotspot || '');
+    } else {
+      setAnuncioEditando(null)
+      setForm({
+        hotspot_id: '',
+        titulo: '',
+        descricao: '',
+        media_url: '',
+        tipo_media: 'imagem',
+        url_destino: '',
+        duracao_segundos: 15,
+        ativo: true,
+      })
+      setSelectedClientInModal(clientes[0]?.id || '') // Define o primeiro cliente como padrão para novo anúncio
+    }
+    setSelectedFile(null)
+    setModalAberto(true)
+  }
+
+  function fecharModal() {
+    setModalAberto(false)
+    setAnuncioEditando(null)
+    setSelectedFile(null)
+    setSelectedClientInModal('')
+  }
+
+  // Esta lista agora contém TODOS os hotspots ativos, sem filtro por cliente
+  const allActiveHotspotsForModal = hotspots;
+
+
+  async function salvar() {
+    if (!form.titulo.trim() || !form.hotspot_id) return
+
+    setSalvando(true)
+    setUploading(true)
+
+    let mediaUrlToSave = form.media_url
+    let mediaTypeToSave = form.tipo_media
+
+    if (selectedFile) {
+      const fileExtension = selectedFile.name.split('.').pop()
+      const isVideo = selectedFile.type.startsWith('video/')
+      const filePath = `anuncios/${Date.now()}.${fileExtension}`
+
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('anuncios')
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      if (uploadError) {
+        console.error('Erro ao fazer upload da mídia:', uploadError)
+        alert('Erro ao fazer upload da mídia. Por favor, tente novamente.')
+        setSalvando(false)
+        setUploading(false)
+        return
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from('anuncios')
+        .getPublicUrl(filePath)
+
+      mediaUrlToSave = publicUrlData.publicUrl
+      mediaTypeToSave = isVideo ? 'video' : 'imagem'
+    }
+
+    setUploading(false)
+
+    const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
+
+    // Lógica para VINCULAR/ATUALIZAR o cliente_id do hotspot selecionado
+    if (selectedClientInModal && form.hotspot_id) {
+      const { error: updateHotspotError } = await supabase
+        .from('hotspots')
+        .update({ cliente_id: selectedClientInModal })
+        .eq('id', form.hotspot_id);
+
+      if (updateHotspotError) {
+        console.error('Erro ao vincular hotspot ao cliente:', updateHotspotError);
+        alert('Erro ao vincular hotspot ao cliente. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
+      }
+    } else if (!selectedClientInModal && form.hotspot_id) {
+      // Se nenhum cliente foi selecionado, mas um hotspot foi, desvincula o hotspot
+      const { error: updateHotspotError } = await supabase
+        .from('hotspots')
+        .update({ cliente_id: null })
+        .eq('id', form.hotspot_id);
+
+      if (updateHotspotError) {
+        console.error('Erro ao desvincular hotspot:', updateHotspotError);
+        alert('Erro ao desvincular hotspot. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
+      }
+    }
+
+
+    if (anuncioEditando) {
+      const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
+      if (updateError) {
+        console.error('Erro ao atualizar anúncio:', updateError)
+        alert('Erro ao atualizar anúncio. Por favor, tente novamente.')
+      }
+    } else {
+      const { error: insertError } = await supabase.from('anuncios').insert([dataToSave])
+      if (insertError) {
+        console.error('Erro ao criar anúncio:', insertError)
+        alert('Erro ao criar anúncio. Por favor, tente novamente.')
+      }
+    }
+
+    setSalvando(false)
+    fecharModal()
+    buscarDados() // Recarrega os dados após salvar
+  }
 
   return (
     <>
@@ -30,7 +316,8 @@ export default function Anuncios() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* Input de Busca */}
             <div className="relative">
-              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+              {/* Usando o componente SearchIcon importado dinamicamente */}
+              <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Buscar por título ou descrição..."
