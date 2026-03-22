@@ -186,12 +186,13 @@ export default function Anuncios() {
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
             <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4 w-full">
+             {/* Mídia na lateral esquerda */}
              <div className="flex-shrink-0 flex items-center justify-center">
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
                         src={anuncio.media_url}
-                        className="w-[108px] h-48 object-cover rounded-xl" // NOVO TAMANHO E PROPORÇÃO para a lista
+                        className="w-[108px] h-48 object-cover rounded-xl"
                         controls={false}
                         muted
                         loop
@@ -207,7 +208,7 @@ export default function Anuncios() {
                     <img
                         src={anuncio.media_url}
                         alt={anuncio.titulo}
-                        className="w-[108px] h-48 object-cover rounded-xl" // NOVO TAMANHO E PROPORÇÃO para a lista
+                        className="w-[108px] h-48 object-cover rounded-xl"
                         onError={(e) => {
                         e.target.style.display = 'none'
                         e.target.nextSibling.style.display = 'flex'
@@ -216,14 +217,15 @@ export default function Anuncios() {
                     )
                 ) : null}
                 <div
-                    className="w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl" // NOVO TAMANHO E ÍCONE para a lista
+                    className="w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl"
                     style={{ display: anuncio.media_url ? 'none' : 'flex' }}
                 >
                     {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
                 </div>
              </div>
 
-              <div className="flex-1 min-w-0 flex flex-col gap-1 text-center sm:text-left">
+              {/* Informações e botões centralizados à direita da mídia */}
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start"> {/* Container para informações e botões */}
                 <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -249,27 +251,28 @@ export default function Anuncios() {
                     </a>
                   )}
                 </div>
-              </div>
 
-              <div className="flex flex-row flex-wrap gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0 justify-center sm:justify-start">
-                <button
-                  onClick={() => toggleAtivo(anuncio)}
-                  className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
-                >
-                  {anuncio.ativo ? 'Desativar' : 'Ativar'}
-                </button>
-                <button
-                  onClick={() => abrirModal(anuncio)}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors flex-shrink-0"
-                >
-                  Editar
-                </button>
-                <button
-                  onClick={() => excluir(anuncio.id)}
-                  className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-400/10 hover:bg-red-400/20 text-red-400 transition-colors flex-shrink-0"
-                >
-                  Excluir
-                </button>
+                {/* Botões de ação movidos para dentro deste container */}
+                <div className="flex flex-row flex-wrap gap-2 mt-3 flex-shrink-0 justify-center sm:justify-start">
+                  <button
+                    onClick={() => toggleAtivo(anuncio)}
+                    className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
+                  >
+                    {anuncio.ativo ? 'Desativar' : 'Ativar'}
+                  </button>
+                  <button
+                    onClick={() => abrirModal(anuncio)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors flex-shrink-0"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => excluir(anuncio.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-400/10 hover:bg-red-400/20 text-red-400 transition-colors flex-shrink-0"
+                  >
+                    Excluir
+                  </button>
+                </div>
               </div>
             </div>
           ))}
@@ -337,7 +340,7 @@ export default function Anuncios() {
                     {selectedFile && selectedFile.type.startsWith('video/') ? (
                       <video
                         src={URL.createObjectURL(selectedFile)}
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700" // NOVO TAMANHO E PROPORÇÃO para o modal
+                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
                         controls={false}
                         muted
                         loop
@@ -349,12 +352,12 @@ export default function Anuncios() {
                       <img
                         src={URL.createObjectURL(selectedFile)}
                         alt="Pré-visualização"
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700" // NOVO TAMANHO E PROPORÇÃO para o modal
+                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
                       />
                     ) : form.media_url && form.tipo_media === 'video' ? (
                       <video
                         src={form.media_url}
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700" // NOVO TAMANHO E PROPORÇÃO para o modal
+                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
                         controls={false}
                         muted
                         loop
@@ -366,7 +369,7 @@ export default function Anuncios() {
                       <img
                         src={form.media_url}
                         alt="Pré-visualização"
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700" // NOVO TAMANHO E PROPORÇÃO para o modal
+                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
                       />
                     ) : null}
                     {selectedFile && (
