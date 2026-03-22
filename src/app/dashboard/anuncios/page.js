@@ -50,7 +50,7 @@ export default function Anuncios() {
       .select('id, nome')
       .order('nome', { ascending: true })
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
-    // NOVO: Atualiza clientes apenas se houver mudan\u00e7a real para evitar re-renders desnecess\u00e1rios
+    // Atualiza clientes apenas se houver mudança real para evitar re-renders desnecessários
     if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
       setClientes(clientesData || [])
     }
@@ -75,11 +75,15 @@ export default function Anuncios() {
     setHotspots(hotspotsComClientes || [])
 
 
-    // A query de anúncios agora busca 'hotspots(id, nome, cliente_id)'
-    // e o cliente será anexado manualmente depois para garantir a exibição.
+    // AQUI ESTÁ A MUDANÇA PRINCIPAL: Ajusta a string de select para forçar INNER JOIN se houver filtro de cliente
+    let selectString = '*, hotspots(id, nome, cliente_id)'; // Default: LEFT JOIN
+    if (filterClientId) {
+      selectString = '*, hotspots!inner(id, nome, cliente_id)'; // Força INNER JOIN para filtrar por cliente
+    }
+
     let query = supabase
       .from('anuncios')
-      .select('*, hotspots(id, nome, cliente_id)') // AQUI: Remove 'clientes(id, nome)' do nested select
+      .select(selectString) // Usa a string de select dinâmica
       .order('created_at', { ascending: false })
 
     if (filterStatus === 'ativo') {
@@ -92,7 +96,7 @@ export default function Anuncios() {
       query = query.eq('hotspot_id', filterHotspotId)
     }
 
-    // AQUI ESTÁ A MUDANÇA PARA DEPURAR O FILTRO DE CLIENTE
+    // O filtro de cliente é aplicado aqui, mas o INNER JOIN já garante que apenas os anúncios relevantes sejam considerados
     if (filterClientId) {
       console.log('Aplicando filtro de cliente com ID:', filterClientId); // LOG PARA DEPURAR
       query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
@@ -352,7 +356,7 @@ export default function Anuncios() {
           <select
             value={filterClientId}
             onChange={(e) => {
-              console.log('Cliente selecionado no dropdown (onChange):', e.target.value); // NOVO LOG AQUI
+              console.log('Cliente selecionado no dropdown (onChange):', e.target.value); // LOG AQUI
               setFilterClientId(e.target.value);
             }}
             className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
@@ -531,10 +535,10 @@ export default function Anuncios() {
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
                 <select
-                  value={filterClientId} // Usando filterClientId aqui para manter a consistência
+                  value={selectedClientInModal} // Usando selectedClientInModal aqui para manter a consistência
                   onChange={(e) => {
                     console.log('Cliente selecionado no dropdown (onChange):', e.target.value); // NOVO LOG AQUI
-                    setFilterClientId(e.target.value);
+                    setSelectedClientInModal(e.target.value);
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
