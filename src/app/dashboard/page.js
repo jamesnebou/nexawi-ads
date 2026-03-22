@@ -2,13 +2,21 @@
 
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { BarChart, PieChart } from '@tremor/react'; // Assumindo que você usa Tremor para gráficos
+// Removidas as importações diretas de BarChart e PieChart
+// import { BarChart, PieChart } from '@tremor/react'; // Assumindo que você usa Tremor para gráficos
 import { MapPin, User, Zap } from 'lucide-react'; // Ícones para os novos cards
+import dynamic from 'next/dynamic'; // Importa dynamic do Next.js
+
+// Importações dinâmicas para os componentes do Tremor
+const BarChart = dynamic(() => import('@tremor/react').then((mod) => mod.BarChart), { ssr: false });
+const PieChart = dynamic(() => import('@tremor/react').then((mod) => mod.PieChart), { ssr: false });
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// ... (o restante do seu código permanece o mesmo) ...
 
 export default function DashboardPage() {
   const [leadsCaptured, setLeadsCaptured] = useState([]);
