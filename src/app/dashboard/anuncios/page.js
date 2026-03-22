@@ -72,9 +72,11 @@ export default function Anuncios() {
     setHotspots(hotspotsComClientes || [])
 
 
+    // ALTERADO: A query de anúncios agora busca 'hotspots(id, nome, cliente_id)'
+    // e o cliente será anexado manualmente depois para garantir a exibição.
     let query = supabase
       .from('anuncios')
-      .select('*, hotspots(id, nome, clientes(id, nome))') // Mantém o join para anúncios
+      .select('*, hotspots(id, nome, cliente_id)') // AQUI: Remove 'clientes(id, nome)' do nested select
       .order('created_at', { ascending: false })
 
     if (filterStatus === 'ativo') {
@@ -87,8 +89,10 @@ export default function Anuncios() {
       query = query.eq('hotspot_id', filterHotspotId)
     }
 
+    // ALTERADO: O filtro por cliente agora usa 'hotspots.cliente_id' diretamente
+    // pois 'hotspots.clientes.id' não estará mais disponível via nested select
     if (filterClientId) {
-      query = query.eq('hotspots.clientes.id', filterClientId)
+      query = query.eq('hotspots.cliente_id', filterClientId)
     }
 
     if (filterMediaType === 'imagem') {
@@ -109,7 +113,16 @@ export default function Anuncios() {
       return
     }
 
-    const anunciosComMetricas = await Promise.all(anunciosData.map(async (anuncio) => {
+    // NOVO: Anexa as informações completas do hotspot (com cliente) aos anúncios para exibição
+    const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
+      const hotspotDoAnuncio = hotspotsComClientes.find(h => h.id === anuncio.hotspot_id);
+      return {
+        ...anuncio,
+        hotspots: hotspotDoAnuncio || anuncio.hotspots // Garante que o hotspot tenha a info do cliente
+      };
+    });
+
+    const anunciosComMetricas = await Promise.all(anunciosComHotspotsEClientes.map(async (anuncio) => {
       const { count: viewsCount, error: viewsError } = await supabase
         .from('anuncio_views')
         .select('*', { count: 'exact', head: true })
@@ -175,11 +188,8 @@ export default function Anuncios() {
     setSelectedClientInModal('')
   }
 
-  // ALTERADO: Esta lista agora contém TODOS os hotspots ativos, sem filtro por cliente
+  // Esta lista agora contém TODOS os hotspots ativos, sem filtro por cliente
   const allActiveHotspotsForModal = hotspots;
-
-  // REMOVIDO: O useEffect que resetava o hotspot_id ao mudar o cliente,
-  // pois agora o hotspot_id pode ser de qualquer hotspot e será vinculado ao salvar.
 
 
   async function salvar() {
@@ -223,8 +233,7 @@ export default function Anuncios() {
 
     const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
 
-    // NOVO: Lógica para VINCULAR/ATUALIZAR o cliente_id do hotspot selecionado
-    // Isso acontece AQUI, no momento de salvar o anúncio.
+    // Lógica para VINCULAR/ATUALIZAR o cliente_id do hotspot selecionado
     if (selectedClientInModal && form.hotspot_id) {
       const { error: updateHotspotError } = await supabase
         .from('hotspots')
@@ -462,6 +471,7 @@ export default function Anuncios() {
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-start">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <User size={11} className="flex-shrink-0" />
+                    {/* AQUI: Exibe o nome do cliente do hotspot, que agora deve estar anexado */}
                     <span>Cliente: {anuncio.hotspots?.clientes?.nome || 'N/A'}</span>
                   </span>
                   <span className="flex items-center gap-1.5 flex-shrink-0">
