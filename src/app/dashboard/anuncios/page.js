@@ -465,8 +465,8 @@ export default function Anuncios() {
       )}
 
       {modalAberto && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"> {/* REMOVIDO: overflow-y-auto daqui */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]"> {/* NOVO: max-h-[90vh] para limitar a altura do modal */}
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0">
               <h2 className="text-white font-bold text-lg">
                 {anuncioEditando ? 'Editar Anúncio' : 'Novo Anúncio'}
@@ -474,7 +474,8 @@ export default function Anuncios() {
               <button onClick={fecharModal} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto"> {/* AQUI o conteúdo interno do modal vai rolar */}
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+              {/* Campo de seleção de Cliente */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
                 <select
@@ -492,6 +493,7 @@ export default function Anuncios() {
                 </select>
               </div>
 
+              {/* Campo de seleção de Hotspot */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
@@ -506,6 +508,7 @@ export default function Anuncios() {
                 </select>
               </div>
 
+              {/* Campo de Título do anúncio */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Título do anúncio</label>
                 <input
@@ -517,6 +520,7 @@ export default function Anuncios() {
                 />
               </div>
 
+              {/* Campo de Descrição */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Descrição</label>
                 <textarea
@@ -528,6 +532,7 @@ export default function Anuncios() {
                 />
               </div>
 
+              {/* Campo de Mídia do anúncio */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Mídia do anúncio (Imagem ou Vídeo)</label>
                 <input
@@ -582,6 +587,7 @@ export default function Anuncios() {
                 <p className="text-xs text-gray-600 mt-1">Selecione uma imagem ou vídeo para o anúncio. Imagem: 1080x1920px. Vídeo: MP4, WebM.</p>
               </div>
 
+              {/* Campo de URL de destino (CTA) */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">URL de destino (CTA)</label>
                 <input
@@ -593,6 +599,7 @@ export default function Anuncios() {
                 />
               </div>
 
+              {/* Campo de Duração obrigatória */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Duração obrigatória (segundos)</label>
                 <select
@@ -609,6 +616,7 @@ export default function Anuncios() {
                 <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
               </div>
 
+              {/* Checkbox Anúncio ativo */}
               <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-800 rounded-xl border border-gray-700">
                 <input
                   type="checkbox"
