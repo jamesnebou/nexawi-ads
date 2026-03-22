@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink } from 'lucide-react'
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react' // Importamos VideoIcon
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,13 +20,14 @@ export default function Anuncios() {
     hotspot_id: '',
     titulo: '',
     descricao: '',
-    imagem_url: '',
+    media_url: '', // Alterado de imagem_url para media_url
+    tipo_media: 'imagem', // Novo campo para indicar se é imagem ou vídeo
     url_destino: '',
     duracao_segundos: 15,
     ativo: true,
   })
-  const [selectedFile, setSelectedFile] = useState(null) // Novo estado para o arquivo selecionado
-  const [uploading, setUploading] = useState(false) // Novo estado para o status de upload
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
 
   useEffect(() => {
     buscarDados()
@@ -50,7 +51,8 @@ export default function Anuncios() {
         hotspot_id: anuncio.hotspot_id || '',
         titulo: anuncio.titulo || '',
         descricao: anuncio.descricao || '',
-        imagem_url: anuncio.imagem_url || '',
+        media_url: anuncio.media_url || '', // Usando media_url
+        tipo_media: anuncio.tipo_media || 'imagem', // Usando tipo_media
         url_destino: anuncio.url_destino || '',
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
@@ -61,44 +63,47 @@ export default function Anuncios() {
         hotspot_id: hotspots[0]?.id || '',
         titulo: '',
         descricao: '',
-        imagem_url: '',
+        media_url: '',
+        tipo_media: 'imagem', // Padrão para imagem ao criar novo
         url_destino: '',
         duracao_segundos: 15,
         ativo: true,
       })
     }
-    setSelectedFile(null) // Resetar arquivo selecionado ao abrir o modal
+    setSelectedFile(null)
     setModalAberto(true)
   }
 
   function fecharModal() {
     setModalAberto(false)
     setAnuncioEditando(null)
-    setSelectedFile(null) // Resetar arquivo selecionado ao fechar o modal
+    setSelectedFile(null)
   }
 
   async function salvar() {
     if (!form.titulo.trim() || !form.hotspot_id) return
 
     setSalvando(true)
-    setUploading(true) // Iniciar indicador de upload
+    setUploading(true)
 
-    let imageUrlToSave = form.imagem_url // Começa com a URL existente
+    let mediaUrlToSave = form.media_url
+    let mediaTypeToSave = form.tipo_media
 
     if (selectedFile) {
       const fileExtension = selectedFile.name.split('.').pop()
-      const filePath = `anuncios/${Date.now()}.${fileExtension}` // Caminho único para o arquivo
+      const isVideo = selectedFile.type.startsWith('video/')
+      const filePath = `anuncios/${Date.now()}.${fileExtension}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('anuncios') // Nome do bucket no Supabase Storage
+        .from('anuncios')
         .upload(filePath, selectedFile, {
           cacheControl: '3600',
-          upsert: false, // Define se deve sobrescrever um arquivo com o mesmo nome
+          upsert: false,
         })
 
       if (uploadError) {
-        console.error('Erro ao fazer upload da imagem:', uploadError)
-        alert('Erro ao fazer upload da imagem. Por favor, tente novamente.')
+        console.error('Erro ao fazer upload da mídia:', uploadError)
+        alert('Erro ao fazer upload da mídia. Por favor, tente novamente.')
         setSalvando(false)
         setUploading(false)
         return
@@ -108,13 +113,14 @@ export default function Anuncios() {
         .from('anuncios')
         .getPublicUrl(filePath)
 
-      imageUrlToSave = publicUrlData.publicUrl
+      mediaUrlToSave = publicUrlData.publicUrl
+      mediaTypeToSave = isVideo ? 'video' : 'imagem'
     }
 
-    setUploading(false) // Finalizar indicador de upload
+    setUploading(false)
 
-    // Agora salva no banco de dados com a URL da imagem (potencialmente nova)
-    const dataToSave = { ...form, imagem_url: imageUrlToSave }
+    // Agora salva no banco de dados com a URL da mídia e o tipo
+    const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
 
     if (anuncioEditando) {
       const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
@@ -142,7 +148,7 @@ export default function Anuncios() {
 
   async function excluir(id) {
     if (!confirm('Tem certeza que deseja excluir este anúncio?')) return
-    // Opcional: Adicionar lógica para excluir a imagem do storage também
+    // Opcional: Adicionar lógica para excluir a mídia do storage também
     await supabase.from('anuncios').delete().eq('id', id)
     buscarDados()
   }
@@ -183,23 +189,35 @@ export default function Anuncios() {
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
             <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
-             {anuncio.imagem_url ? (
-  <img
-    src={anuncio.imagem_url}
-    alt={anuncio.titulo}
-    className="w-20 h-14 object-cover rounded-xl flex-shrink-0"
-    onError={(e) => {
-      e.target.style.display = 'none'
-      e.target.nextSibling.style.display = 'flex'
-    }}
-  />
-) : null}
-<div
-  className="w-20 h-14 bg-gray-800 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl"
-  style={{ display: anuncio.imagem_url ? 'none' : 'flex' }}
->
-  📢
-</div>
+             {anuncio.media_url ? (
+                anuncio.tipo_media === 'video' ? (
+                  <video
+                    src={anuncio.media_url}
+                    className="w-20 h-14 object-cover rounded-xl flex-shrink-0"
+                    controls={false}
+                    muted
+                    loop
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <img
+                    src={anuncio.media_url}
+                    alt={anuncio.titulo}
+                    className="w-20 h-14 object-cover rounded-xl flex-shrink-0"
+                    onError={(e) => {
+                      e.target.style.display = 'none'
+                      e.target.nextSibling.style.display = 'flex'
+                    }}
+                  />
+                )
+              ) : null}
+              <div
+                className="w-20 h-14 bg-gray-800 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl"
+                style={{ display: anuncio.media_url ? 'none' : 'flex' }}
+              >
+                {anuncio.tipo_media === 'video' ? <VideoIcon size={24} className="text-gray-400" /> : <ImageIcon size={24} className="text-gray-400" />}
+              </div>
 
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -302,29 +320,57 @@ export default function Anuncios() {
                 />
               </div>
 
-              {/* NOVO CAMPO DE UPLOAD DE ARQUIVO */}
+              {/* CAMPO DE UPLOAD DE MÍDIA (IMAGEM/VÍDEO) */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Imagem do anúncio</label>
+                <label className="text-xs text-gray-400 mb-1.5 block">Mídia do anúncio (Imagem ou Vídeo)</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*" // Aceita imagens E vídeos
                   onChange={(e) => setSelectedFile(e.target.files[0])}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-500 file:text-black hover:file:bg-green-400"
                 />
-                {(selectedFile || form.imagem_url) && (
+                {(selectedFile || form.media_url) && (
                   <div className="mt-3 flex items-center gap-3">
                     <p className="text-xs text-gray-400">Pré-visualização:</p>
-                    <img
-                      src={selectedFile ? URL.createObjectURL(selectedFile) : form.imagem_url}
-                      alt="Pré-visualização"
-                      className="w-24 h-16 object-cover rounded-lg border border-gray-700"
-                    />
+                    {selectedFile && selectedFile.type.startsWith('video/') ? (
+                      <video
+                        src={URL.createObjectURL(selectedFile)}
+                        className="w-24 h-16 object-cover rounded-lg border border-gray-700"
+                        controls={false}
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : selectedFile && selectedFile.type.startsWith('image/') ? (
+                      <img
+                        src={URL.createObjectURL(selectedFile)}
+                        alt="Pré-visualização"
+                        className="w-24 h-16 object-cover rounded-lg border border-gray-700"
+                      />
+                    ) : form.media_url && form.tipo_media === 'video' ? (
+                      <video
+                        src={form.media_url}
+                        className="w-24 h-16 object-cover rounded-lg border border-gray-700"
+                        controls={false}
+                        muted
+                        loop
+                        playsInline
+                        preload="metadata"
+                      />
+                    ) : form.media_url && form.tipo_media === 'imagem' ? (
+                      <img
+                        src={form.media_url}
+                        alt="Pré-visualização"
+                        className="w-24 h-16 object-cover rounded-lg border border-gray-700"
+                      />
+                    ) : null}
                     {selectedFile && (
                       <p className="text-xs text-gray-500 truncate flex-1">{selectedFile.name}</p>
                     )}
                   </div>
                 )}
-                <p className="text-xs text-gray-600 mt-1">Selecione uma imagem para o anúncio. Tamanho recomendado: 1200x675px.</p>
+                <p className="text-xs text-gray-600 mt-1">Selecione uma imagem ou vídeo para o anúncio. Imagem: 1200x675px. Vídeo: MP4, WebM.</p>
               </div>
 
               <div>
@@ -345,7 +391,7 @@ export default function Anuncios() {
                   min={5}
                   max={60}
                   value={form.duracao_segundos}
-                  onChange={(e) => setForm({ ...form, duracao_duracao_segundos: parseInt(e.target.value) })}
+                  onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 />
                 <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
