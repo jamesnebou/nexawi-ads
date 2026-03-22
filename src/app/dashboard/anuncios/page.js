@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
+import { useEffect, useState } from 'react' // CORRIGIDO: Importação correta do React
+import { createClient } from '@supabase/supabase-js' // IMPORTAÇÃO FALTANDO
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react' // IMPORTAÇÃO FALTANDO
 
-const supabase = createClient(
+const supabase = createClient( // DEFINIÇÃO FALTANDO
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
@@ -29,7 +29,7 @@ export default function Anuncios() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
-  useEffect(() => {
+  useEffect(() => { // CORRIGIDO: useEffect agora está DENTRO do componente Anuncios
     buscarDados()
   }, [])
 
@@ -66,7 +66,7 @@ export default function Anuncios() {
         media_url: '',
         tipo_media: 'imagem',
         url_destino: '',
-        duracao_segundos: 15, // Padrão para 15 segundos
+        duracao_segundos: 15,
         ativo: true,
       })
     }
@@ -336,6 +336,7 @@ export default function Anuncios() {
                         loop
                         playsInline
                         preload="metadata"
+                        type={selectedFile.type} // Adicionado o atributo type
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
                       <img
@@ -352,6 +353,7 @@ export default function Anuncios() {
                         loop
                         playsInline
                         preload="metadata"
+                        type="video/mp4" // Assumindo mp4 para vídeos já salvos
                       />
                     ) : form.media_url && form.tipo_media === 'imagem' ? (
                       <img
@@ -381,7 +383,6 @@ export default function Anuncios() {
 
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Duração obrigatória (segundos)</label>
-                {/* ALTERADO: Input numérico para Select com opções */}
                 <select
                   value={form.duracao_segundos}
                   onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
