@@ -89,10 +89,10 @@ export default function Anuncios() {
       query = query.eq('hotspot_id', filterHotspotId)
     }
 
-    // ALTERADO: O filtro por cliente agora usa 'hotspots.cliente_id' diretamente
-    // pois 'hotspots.clientes.id' não estará mais disponível via nested select
+    // ALTERADO: Usando 'filter' explicitamente para o filtro de cliente
+    // Isso pode ser mais robusto para filtrar em colunas de tabelas relacionadas.
     if (filterClientId) {
-      query = query.eq('hotspots.cliente_id', filterClientId)
+      query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
     }
 
     if (filterMediaType === 'imagem') {
