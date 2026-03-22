@@ -66,7 +66,7 @@ export default function Anuncios() {
         media_url: '',
         tipo_media: 'imagem',
         url_destino: '',
-        duracao_segundos: 15,
+        duracao_segundos: 15, // Padrão para 15 segundos
         ativo: true,
       })
     }
@@ -270,16 +270,16 @@ export default function Anuncios() {
       )}
 
       {modalAberto && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]"> {/* Adicionado flex-col e max-h-[90vh] */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0"> {/* Adicionado flex-shrink-0 */}
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col">
+            <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0">
               <h2 className="text-white font-bold text-lg">
                 {anuncioEditando ? 'Editar Anúncio' : 'Novo Anúncio'}
               </h2>
               <button onClick={fecharModal} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto"> {/* Adicionado flex-1 e overflow-y-auto */}
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
@@ -381,14 +381,18 @@ export default function Anuncios() {
 
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Duração obrigatória (segundos)</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={60}
+                {/* ALTERADO: Input numérico para Select com opções */}
+                <select
                   value={form.duracao_segundos}
                   onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-                />
+                >
+                  <option value={10}>10 segundos</option>
+                  <option value={15}>15 segundos</option>
+                  <option value={20}>20 segundos</option>
+                  <option value={30}>30 segundos</option>
+                  <option value={40}>40 segundos</option>
+                </select>
                 <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
               </div>
 
@@ -403,7 +407,7 @@ export default function Anuncios() {
               </label>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-gray-800 flex-shrink-0"> {/* Adicionado flex-shrink-0 */}
+            <div className="flex gap-3 p-6 border-t border-gray-800 flex-shrink-0">
               <button
                 onClick={fecharModal}
                 className="flex-1 py-3 rounded-xl font-medium text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 transition-colors"
