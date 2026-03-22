@@ -50,7 +50,10 @@ export default function Anuncios() {
       .select('id, nome')
       .order('nome', { ascending: true })
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
-    setClientes(clientesData || [])
+    // NOVO: Atualiza clientes apenas se houver mudan\u00e7a real para evitar re-renders desnecess\u00e1rios
+    if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
+      setClientes(clientesData || [])
+    }
 
     // Busca TODOS os hotspots ativos, incluindo o cliente_id para exibição
     const { data: hotspotsData, error: hotspotsError } = await supabase
@@ -348,7 +351,10 @@ export default function Anuncios() {
           {/* Filtro por Cliente */}
           <select
             value={filterClientId}
-            onChange={(e) => setFilterClientId(e.target.value)}
+            onChange={(e) => {
+              console.log('Cliente selecionado no dropdown (onChange):', e.target.value); // NOVO LOG AQUI
+              setFilterClientId(e.target.value);
+            }}
             className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
           >
             <option value="">Cliente: Todos</option>
@@ -525,10 +531,10 @@ export default function Anuncios() {
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
                 <select
-                  value={selectedClientInModal}
+                  value={filterClientId} // Usando filterClientId aqui para manter a consistência
                   onChange={(e) => {
-                    setSelectedClientInModal(e.target.value);
-                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' })); // Limpa hotspot ao mudar cliente
+                    console.log('Cliente selecionado no dropdown (onChange):', e.target.value); // NOVO LOG AQUI
+                    setFilterClientId(e.target.value);
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
