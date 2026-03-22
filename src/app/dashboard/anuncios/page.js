@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react' // Importamos VideoIcon
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -20,8 +20,8 @@ export default function Anuncios() {
     hotspot_id: '',
     titulo: '',
     descricao: '',
-    media_url: '', // Alterado de imagem_url para media_url
-    tipo_media: 'imagem', // Novo campo para indicar se é imagem ou vídeo
+    media_url: '',
+    tipo_media: 'imagem',
     url_destino: '',
     duracao_segundos: 15,
     ativo: true,
@@ -51,8 +51,8 @@ export default function Anuncios() {
         hotspot_id: anuncio.hotspot_id || '',
         titulo: anuncio.titulo || '',
         descricao: anuncio.descricao || '',
-        media_url: anuncio.media_url || '', // Usando media_url
-        tipo_media: anuncio.tipo_media || 'imagem', // Usando tipo_media
+        media_url: anuncio.media_url || '',
+        tipo_media: anuncio.tipo_media || 'imagem',
         url_destino: anuncio.url_destino || '',
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
@@ -64,7 +64,7 @@ export default function Anuncios() {
         titulo: '',
         descricao: '',
         media_url: '',
-        tipo_media: 'imagem', // Padrão para imagem ao criar novo
+        tipo_media: 'imagem',
         url_destino: '',
         duracao_segundos: 15,
         ativo: true,
@@ -119,7 +119,6 @@ export default function Anuncios() {
 
     setUploading(false)
 
-    // Agora salva no banco de dados com a URL da mídia e o tipo
     const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
 
     if (anuncioEditando) {
@@ -148,14 +147,12 @@ export default function Anuncios() {
 
   async function excluir(id) {
     if (!confirm('Tem certeza que deseja excluir este anúncio?')) return
-    // Opcional: Adicionar lógica para excluir a mídia do storage também
     await supabase.from('anuncios').delete().eq('id', id)
     buscarDados()
   }
 
   return (
     <>
-      {/* Ajuste para o cabeçalho da página */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 pl-4 sm:pl-6 md:pl-8">
         <div className="mb-4 sm:mb-0">
           <h1 className="text-2xl font-bold text-white">Anúncios</h1>
@@ -247,7 +244,6 @@ export default function Anuncios() {
                 </div>
               </div>
 
-              {/* Botões de ação lado a lado em todas as telas */}
               <div className="flex flex-row flex-wrap gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0">
                 <button
                   onClick={() => toggleAtivo(anuncio)}
@@ -275,15 +271,15 @@ export default function Anuncios() {
 
       {modalAberto && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]"> {/* Adicionado flex-col e max-h-[90vh] */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0"> {/* Adicionado flex-shrink-0 */}
               <h2 className="text-white font-bold text-lg">
                 {anuncioEditando ? 'Editar Anúncio' : 'Novo Anúncio'}
               </h2>
               <button onClick={fecharModal} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto"> {/* Adicionado flex-1 e overflow-y-auto */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
@@ -320,12 +316,11 @@ export default function Anuncios() {
                 />
               </div>
 
-              {/* CAMPO DE UPLOAD DE MÍDIA (IMAGEM/VÍDEO) */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Mídia do anúncio (Imagem ou Vídeo)</label>
                 <input
                   type="file"
-                  accept="image/*,video/*" // Aceita imagens E vídeos
+                  accept="image/*,video/*"
                   onChange={(e) => setSelectedFile(e.target.files[0])}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-500 file:text-black hover:file:bg-green-400"
                 />
@@ -408,7 +403,7 @@ export default function Anuncios() {
               </label>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-gray-800">
+            <div className="flex gap-3 p-6 border-t border-gray-800 flex-shrink-0"> {/* Adicionado flex-shrink-0 */}
               <button
                 onClick={fecharModal}
                 className="flex-1 py-3 rounded-xl font-medium text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 transition-colors"
