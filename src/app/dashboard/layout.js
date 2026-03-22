@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-// REMOVIDO: import Sidebar from '@/components/Sidebar' // Temporariamente removido
+import Sidebar from '@/components/Sidebar'
 import { Menu, X } from 'lucide-react'
 
 export default function DashboardLayout({ children }) {
@@ -25,16 +25,13 @@ export default function DashboardLayout({ children }) {
         />
       )}
 
-      {/* Sidebar (Fixo para Desktop e Mobile Drawer) - AGORA COM UM PLACEHOLDER */}
+      {/* Sidebar (Fixo para Desktop e Mobile Drawer) */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-60 bg-gray-900 border-r border-gray-800 flex-col transition-transform duration-300 ease-in-out
           ${isSidebarOpen ? 'translate-x-0 flex' : '-translate-x-full hidden'}
           md:translate-x-0 md:flex`}
       >
-        {/* PLACEHOLDER TEMPORÁRIO NO LUGAR DO SIDEBAR */}
-        <div className="p-4 text-white text-center">
-          Conteúdo do Sidebar (Placeholder)
-        </div>
+        <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </aside>
 
       {/* Conteúdo Principal */}
