@@ -11,7 +11,7 @@ const supabase = createClient(
 
 export default function Anuncios() {
   const [anuncios, setAnuncios] = useState([])
-  const [hotspots, setHotspots] = useState([])
+  const [hotspots, setHotspots] = useState([]) // Agora conterá todos os hotspots ativos
   const [clientes, setClientes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
@@ -52,18 +52,29 @@ export default function Anuncios() {
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
     setClientes(clientesData || [])
 
+    // Busca TODOS os hotspots ativos, incluindo o cliente_id para exibição
     const { data: hotspotsData, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('id, nome, clientes(id, nome)')
+      .select('id, nome, status, cliente_id') // Seleciona cliente_id diretamente
       .eq('status', 'Ativo')
       .order('nome', { ascending: true })
     if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
-    setHotspots(hotspotsData || [])
+
+    // Para cada hotspot, anexa as informações do cliente para exibição no card e filtros
+    const hotspotsComClientes = hotspotsData ? hotspotsData.map(hotspot => {
+      const cliente = clientesData?.find(c => c.id === hotspot.cliente_id);
+      return {
+        ...hotspot,
+        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null // Adiciona o objeto cliente se encontrado
+      };
+    }) : [];
+
+    setHotspots(hotspotsComClientes || [])
 
 
     let query = supabase
       .from('anuncios')
-      .select('*, hotspots(id, nome, clientes(id, nome))')
+      .select('*, hotspots(id, nome, clientes(id, nome))') // Mantém o join para anúncios
       .order('created_at', { ascending: false })
 
     if (filterStatus === 'ativo') {
@@ -136,7 +147,9 @@ export default function Anuncios() {
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
       })
-      setSelectedClientInModal(anuncio.hotspots?.clientes?.id || '')
+      // Ao editar, tenta encontrar o cliente do hotspot para pré-selecionar
+      const clienteDoHotspot = hotspots.find(h => h.id === anuncio.hotspot_id)?.clientes?.id;
+      setSelectedClientInModal(clienteDoHotspot || '');
     } else {
       setAnuncioEditando(null)
       setForm({
@@ -149,7 +162,7 @@ export default function Anuncios() {
         duracao_segundos: 15,
         ativo: true,
       })
-      setSelectedClientInModal(clientes[0]?.id || '')
+      setSelectedClientInModal(clientes[0]?.id || '') // Define o primeiro cliente como padrão para novo anúncio
     }
     setSelectedFile(null)
     setModalAberto(true)
@@ -162,18 +175,11 @@ export default function Anuncios() {
     setSelectedClientInModal('')
   }
 
-  const filteredHotspotsForModal = hotspots.filter(h =>
-    !selectedClientInModal || h.clientes?.id === selectedClientInModal
-  );
+  // ALTERADO: Esta lista agora contém TODOS os hotspots ativos, sem filtro por cliente
+  const allActiveHotspotsForModal = hotspots;
 
-  useEffect(() => {
-    if (modalAberto && form.hotspot_id) {
-      const currentHotspotValid = filteredHotspotsForModal.some(h => h.id === form.hotspot_id);
-      if (!currentHotspotValid) {
-        setForm(prevForm => ({ ...prevForm, hotspot_id: '' }));
-      }
-    }
-  }, [selectedClientInModal, filteredHotspotsForModal, modalAberto, form.hotspot_id]);
+  // REMOVIDO: O useEffect que resetava o hotspot_id ao mudar o cliente,
+  // pois agora o hotspot_id pode ser de qualquer hotspot e será vinculado ao salvar.
 
 
   async function salvar() {
@@ -217,6 +223,36 @@ export default function Anuncios() {
 
     const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
 
+    // NOVO: Lógica para VINCULAR/ATUALIZAR o cliente_id do hotspot selecionado
+    // Isso acontece AQUI, no momento de salvar o anúncio.
+    if (selectedClientInModal && form.hotspot_id) {
+      const { error: updateHotspotError } = await supabase
+        .from('hotspots')
+        .update({ cliente_id: selectedClientInModal })
+        .eq('id', form.hotspot_id);
+
+      if (updateHotspotError) {
+        console.error('Erro ao vincular hotspot ao cliente:', updateHotspotError);
+        alert('Erro ao vincular hotspot ao cliente. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
+      }
+    } else if (!selectedClientInModal && form.hotspot_id) {
+      // Se nenhum cliente foi selecionado, mas um hotspot foi, desvincula o hotspot
+      const { error: updateHotspotError } = await supabase
+        .from('hotspots')
+        .update({ cliente_id: null })
+        .eq('id', form.hotspot_id);
+
+      if (updateHotspotError) {
+        console.error('Erro ao desvincular hotspot:', updateHotspotError);
+        alert('Erro ao desvincular hotspot. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
+      }
+    }
+
+
     if (anuncioEditando) {
       const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
       if (updateError) {
@@ -233,7 +269,7 @@ export default function Anuncios() {
 
     setSalvando(false)
     fecharModal()
-    buscarDados()
+    buscarDados() // Recarrega os dados para refletir as mudanças no hotspot e anúncios
   }
 
   async function toggleAtivo(anuncio) {
@@ -482,7 +518,7 @@ export default function Anuncios() {
                   value={selectedClientInModal}
                   onChange={(e) => {
                     setSelectedClientInModal(e.target.value);
-                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' }));
+                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' })); // Limpa hotspot ao mudar cliente
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
@@ -493,7 +529,7 @@ export default function Anuncios() {
                 </select>
               </div>
 
-              {/* Campo de seleção de Hotspot */}
+              {/* Campo de seleção de Hotspot - AGORA MOSTRA TODOS OS HOTSPOTS ATIVOS */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
@@ -502,7 +538,7 @@ export default function Anuncios() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
                   <option value="">Selecione um hotspot</option>
-                  {filteredHotspotsForModal.map((h) => (
+                  {allActiveHotspotsForModal.map((h) => ( // Usa a lista de TODOS os hotspots ativos
                     <option key={h.id} value={h.id}>{h.nome}</option>
                   ))}
                 </select>
