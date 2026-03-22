@@ -36,7 +36,6 @@ export default function Anuncios() {
   const [filterClientId, setFilterClientId] = useState('')
   const [filterMediaType, setFilterMediaType] = useState('todos')
 
-  // NOVO: Estado para gerenciar o cliente selecionado no modal (para filtrar hotspots)
   const [selectedClientInModal, setSelectedClientInModal] = useState('')
 
   useEffect(() => {
@@ -46,7 +45,6 @@ export default function Anuncios() {
   async function buscarDados() {
     setCarregando(true)
 
-    // Busca todos os clientes para o filtro de clientes e para o modal
     const { data: clientesData, error: clientesError } = await supabase
       .from('clientes')
       .select('id, nome')
@@ -54,11 +52,10 @@ export default function Anuncios() {
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
     setClientes(clientesData || [])
 
-    // Busca todos os hotspots para o filtro de hotspots e para o modal (com info do cliente)
     const { data: hotspotsData, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('id, nome, clientes(id, nome)') // Garante que o ID e nome do cliente do hotspot sejam selecionados
-      .eq('status', 'Ativo') // Apenas hotspots ativos
+      .select('id, nome, clientes(id, nome)')
+      .eq('status', 'Ativo')
       .order('nome', { ascending: true })
     if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
     setHotspots(hotspotsData || [])
@@ -139,12 +136,11 @@ export default function Anuncios() {
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
       })
-      // NOVO: Define o cliente selecionado no modal ao abrir para edição
       setSelectedClientInModal(anuncio.hotspots?.clientes?.id || '')
     } else {
       setAnuncioEditando(null)
       setForm({
-        hotspot_id: '', // Reseta hotspot_id para novo anúncio
+        hotspot_id: '',
         titulo: '',
         descricao: '',
         media_url: '',
@@ -153,7 +149,6 @@ export default function Anuncios() {
         duracao_segundos: 15,
         ativo: true,
       })
-      // NOVO: Define o primeiro cliente como padrão ou vazio para novo anúncio
       setSelectedClientInModal(clientes[0]?.id || '')
     }
     setSelectedFile(null)
@@ -164,15 +159,13 @@ export default function Anuncios() {
     setModalAberto(false)
     setAnuncioEditando(null)
     setSelectedFile(null)
-    setSelectedClientInModal('') // Reseta a seleção de cliente no modal ao fechar
+    setSelectedClientInModal('')
   }
 
-  // NOVO: Hotspots filtrados para o modal, baseados no cliente selecionado no modal
   const filteredHotspotsForModal = hotspots.filter(h =>
     !selectedClientInModal || h.clientes?.id === selectedClientInModal
   );
 
-  // Efeito para resetar o hotspot_id se o cliente selecionado no modal mudar e o hotspot atual não for mais válido
   useEffect(() => {
     if (modalAberto && form.hotspot_id) {
       const currentHotspotValid = filteredHotspotsForModal.some(h => h.id === form.hotspot_id);
@@ -351,15 +344,13 @@ export default function Anuncios() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mx-4 sm:mx-6 md:mx-8">
           {anuncios.map((anuncio) => (
-            // ALTERADO: Layout do card para flex-row em desktop
             <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full">
-             {/* Mídia na lateral esquerda */}
              <div className="flex-shrink-0 flex items-center justify-center relative">
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
                         src={anuncio.media_url}
-                        className="w-[108px] h-48 object-cover rounded-xl" // Revertido para w-[108px]
+                        className="w-[108px] h-48 object-cover rounded-xl"
                         controls={false}
                         muted
                         loop
@@ -375,7 +366,7 @@ export default function Anuncios() {
                     <img
                         src={anuncio.media_url}
                         alt={anuncio.titulo}
-                        className="w-[108px] h-48 object-cover rounded-xl" // Revertido para w-[108px]
+                        className="w-[108px] h-48 object-cover rounded-xl"
                         onError={(e) => {
                             e.target.classList.add('hidden');
                             e.target.nextSibling.classList.remove('hidden');
@@ -384,14 +375,13 @@ export default function Anuncios() {
                     )
                 ) : null}
                 <div
-                    className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`} // Revertido para w-[108px]
+                    className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`}
                 >
                     {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
                 </div>
              </div>
 
-              {/* Informações e botões centralizados à direita da mídia */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1 items-start w-full"> {/* Alterado para items-start */}
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-start w-full">
                 <div className="flex flex-wrap items-center gap-2 justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -433,7 +423,6 @@ export default function Anuncios() {
                   )}
                 </div>
 
-                {/* Métricas do Anúncio */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-start">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <User size={11} className="flex-shrink-0" />
@@ -449,7 +438,6 @@ export default function Anuncios() {
                   </span>
                 </div>
 
-                {/* Botões de ação */}
                 <div className="flex flex-row flex-wrap gap-2 mt-3 flex-shrink-0 justify-start">
                   <button
                     onClick={() => toggleAtivo(anuncio)}
@@ -477,8 +465,8 @@ export default function Anuncios() {
       )}
 
       {modalAberto && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"> {/* REMOVIDO: overflow-y-auto daqui */}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]"> {/* NOVO: max-h-[90vh] para limitar a altura do modal */}
             <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0">
               <h2 className="text-white font-bold text-lg">
                 {anuncioEditando ? 'Editar Anúncio' : 'Novo Anúncio'}
@@ -486,15 +474,14 @@ export default function Anuncios() {
               <button onClick={fecharModal} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-              {/* NOVO: Seleção de Cliente no Modal */}
+            <div className="p-6 space-y-4 flex-1 overflow-y-auto"> {/* AQUI o conteúdo interno do modal vai rolar */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
                 <select
                   value={selectedClientInModal}
                   onChange={(e) => {
                     setSelectedClientInModal(e.target.value);
-                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' })); // Reseta hotspot ao mudar cliente
+                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' }));
                   }}
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
@@ -513,7 +500,7 @@ export default function Anuncios() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
                   <option value="">Selecione um hotspot</option>
-                  {filteredHotspotsForModal.map((h) => ( // Usa hotspots filtrados
+                  {filteredHotspotsForModal.map((h) => (
                     <option key={h.id} value={h.id}>{h.nome}</option>
                   ))}
                 </select>
