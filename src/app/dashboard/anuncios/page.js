@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-// NOVOS ÍCONES IMPORTADOS
 import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
 
 const supabase = createClient(
@@ -36,13 +35,11 @@ export default function Anuncios() {
 
   async function buscarDados() {
     setCarregando(true)
-    // ALTERADO: Adicionado join com clientes através de hotspots
     const [{ data: anunciosData }, { data: hotspotsData }] = await Promise.all([
       supabase.from('anuncios').select('*, hotspots(nome, clientes(nome))').order('created_at', { ascending: false }),
       supabase.from('hotspots').select('id, nome').eq('status', 'Ativo'),
     ])
 
-    // NOVO: Buscar contagem de visualizações e cliques para cada anúncio
     const anunciosComMetricas = await Promise.all(anunciosData.map(async (anuncio) => {
       const { count: viewsCount, error: viewsError } = await supabase
         .from('anuncio_views')
@@ -212,7 +209,7 @@ export default function Anuncios() {
           {anuncios.map((anuncio) => (
             <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full flex-wrap sm:flex-nowrap">
              {/* Mídia na lateral esquerda */}
-             <div className="flex-shrink-0 flex items-center justify-center relative"> {/* Adicionado relative para posicionamento */}
+             <div className="flex-shrink-0 flex items-center justify-center relative">
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
@@ -225,8 +222,8 @@ export default function Anuncios() {
                         autoplay
                         type="video/mp4"
                         onError={(e) => {
-                            e.target.classList.add('hidden'); // Esconde o vídeo
-                            e.target.nextSibling.classList.remove('hidden'); // Mostra o placeholder
+                            e.target.classList.add('hidden');
+                            e.target.nextSibling.classList.remove('hidden');
                         }}
                     />
                     ) : (
@@ -235,13 +232,12 @@ export default function Anuncios() {
                         alt={anuncio.titulo}
                         className="w-[108px] h-48 object-cover rounded-xl"
                         onError={(e) => {
-                            e.target.classList.add('hidden'); // Esconde a imagem
-                            e.target.nextSibling.classList.remove('hidden'); // Mostra o placeholder
+                            e.target.classList.add('hidden');
+                            e.target.nextSibling.classList.remove('hidden');
                         }}
                     />
                     )
                 ) : null}
-                {/* Placeholder div - inicialmente escondido se media_url existe, mostrado se não há mídia ou se a mídia falhar */}
                 <div
                     className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`}
                 >
@@ -270,14 +266,32 @@ export default function Anuncios() {
                     <span>{anuncio.duracao_segundos}s</span>
                   </span>
                   {anuncio.url_destino && (
-                    <a href={anuncio.url_destino} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0">
+                    // ALTERADO: Lógica para corrigir links do WhatsApp e garantir prefixo HTTPS
+                    <a
+                      href={(() => {
+                        let rawUrl = anuncio.url_destino;
+                        let formattedUrl = rawUrl;
+
+                        if (rawUrl.startsWith('wa.me/')) {
+                            // Garante https:// e corrige barras duplas após wa.me/
+                            formattedUrl = 'https://' + rawUrl.replace('wa.me//', 'wa.me/');
+                        } else if (!(rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
+                            // Para outras URLs, apenas adiciona https:// se estiver faltando
+                            formattedUrl = `https://${rawUrl}`;
+                        }
+                        return formattedUrl;
+                      })()}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0"
+                    >
                       <ExternalLink size={11} className="flex-shrink-0" />
                       <span>CTA</span>
                     </a>
                   )}
                 </div>
 
-                {/* NOVO: Métricas do Anúncio */}
+                {/* Métricas do Anúncio */}
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center sm:justify-start">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <User size={11} className="flex-shrink-0" />
