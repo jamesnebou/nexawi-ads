@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Search } from 'lucide-react' // Adicionado Search icon
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,6 +12,7 @@ const supabase = createClient(
 export default function Anuncios() {
   const [anuncios, setAnuncios] = useState([])
   const [hotspots, setHotspots] = useState([])
+  const [clientes, setClientes] = useState([]) // NOVO: Estado para armazenar clientes para o filtro
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -29,17 +30,71 @@ export default function Anuncios() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
+  // NOVO: Estados para os filtros
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterStatus, setFilterStatus] = useState('todos') // 'todos', 'ativo', 'inativo'
+  const [filterHotspotId, setFilterHotspotId] = useState('') // ID do hotspot selecionado
+  const [filterClientId, setFilterClientId] = useState('') // ID do cliente selecionado
+  const [filterMediaType, setFilterMediaType] = useState('todos') // 'todos', 'imagem', 'video'
+
   useEffect(() => {
+    // Adicionado dependências para os filtros para que a busca seja re-executada ao mudar
     buscarDados()
-  }, [])
+  }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType])
 
   async function buscarDados() {
     setCarregando(true)
-    const [{ data: anunciosData }, { data: hotspotsData }] = await Promise.all([
-      supabase.from('anuncios').select('*, hotspots(nome, clientes(nome))').order('created_at', { ascending: false }),
-      supabase.from('hotspots').select('id, nome').eq('status', 'Ativo'),
-    ])
 
+    // Busca todos os clientes para o filtro de clientes
+    const { data: clientesData, error: clientesError } = await supabase
+      .from('clientes')
+      .select('id, nome')
+      .order('nome', { ascending: true })
+    if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
+    setClientes(clientesData || [])
+
+    // Inicia a query de anúncios
+    let query = supabase
+      .from('anuncios')
+      .select('*, hotspots(id, nome, clientes(id, nome))') // Garante que o ID e nome do cliente sejam selecionados
+      .order('created_at', { ascending: false })
+
+    // Aplica filtros
+    if (filterStatus === 'ativo') {
+      query = query.eq('ativo', true)
+    } else if (filterStatus === 'inativo') {
+      query = query.eq('ativo', false)
+    }
+
+    if (filterHotspotId) {
+      query = query.eq('hotspot_id', filterHotspotId)
+    }
+
+    if (filterClientId) {
+      // Filtra por ID do cliente através do join com hotspots
+      query = query.eq('hotspots.clientes.id', filterClientId)
+    }
+
+    if (filterMediaType === 'imagem') {
+      query = query.eq('tipo_media', 'imagem')
+    } else if (filterMediaType === 'video') {
+      query = query.eq('tipo_media', 'video')
+    }
+
+    if (searchTerm) {
+      // Busca por título ou descrição (case-insensitive)
+      query = query.or(`titulo.ilike.%${searchTerm}%,descricao.ilike.%${searchTerm}%`)
+    }
+
+    const { data: anunciosData, error: anunciosError } = await query
+    if (anunciosError) {
+      console.error('Erro ao buscar anúncios:', anunciosError)
+      alert('Erro ao carregar anúncios. Por favor, tente novamente.')
+      setCarregando(false)
+      return
+    }
+
+    // Busca métricas para cada anúncio (mantido como estava)
     const anunciosComMetricas = await Promise.all(anunciosData.map(async (anuncio) => {
       const { count: viewsCount, error: viewsError } = await supabase
         .from('anuncio_views')
@@ -62,7 +117,7 @@ export default function Anuncios() {
     }))
 
     setAnuncios(anunciosComMetricas || [])
-    setHotspots(hotspotsData || [])
+    setHotspots(anunciosData.map(a => a.hotspots).filter((h, i, a) => h && a.findIndex(t => t.id === h.id) === i) || []) // Extrai hotspots únicos dos anúncios
     setCarregando(false)
   }
 
@@ -188,15 +243,78 @@ export default function Anuncios() {
         </button>
       </div>
 
+      {/* NOVO: Seção de Busca e Filtros */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 mx-4 sm:mx-6 md:mx-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Input de Busca */}
+          <div className="relative">
+            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Buscar por título ou descrição..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-11 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+            />
+          </div>
+
+          {/* Filtro por Status */}
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+          >
+            <option value="todos">Status: Todos</option>
+            <option value="ativo">Status: Ativos</option>
+            <option value="inativo">Status: Inativos</option>
+          </select>
+
+          {/* Filtro por Hotspot */}
+          <select
+            value={filterHotspotId}
+            onChange={(e) => setFilterHotspotId(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+          >
+            <option value="">Hotspot: Todos</option>
+            {hotspots.map((h) => (
+              <option key={h.id} value={h.id}>{h.nome}</option>
+            ))}
+          </select>
+
+          {/* Filtro por Cliente */}
+          <select
+            value={filterClientId}
+            onChange={(e) => setFilterClientId(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+          >
+            <option value="">Cliente: Todos</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>{c.nome}</option>
+            ))}
+          </select>
+
+          {/* Filtro por Tipo de Mídia */}
+          <select
+            value={filterMediaType}
+            onChange={(e) => setFilterMediaType(e.target.value)}
+            className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+          >
+            <option value="todos">Mídia: Todas</option>
+            <option value="imagem">Mídia: Imagem</option>
+            <option value="video">Mídia: Vídeo</option>
+          </select>
+        </div>
+      </div>
+
       {carregando ? (
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : anuncios.length === 0 ? (
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center mx-4 sm:mx-6 md:mx-8">
           <div className="text-4xl mb-3">📢</div>
-          <h3 className="text-white font-semibold mb-1">Nenhum anúncio cadastrado</h3>
-          <p className="text-gray-500 text-sm mb-4">Crie anúncios para exibir no portal de captação de leads</p>
+          <h3 className="text-white font-semibold mb-1">Nenhum anúncio encontrado</h3>
+          <p className="text-gray-500 text-sm mb-4">Ajuste seus filtros ou crie um novo anúncio.</p>
           <button
             onClick={() => abrirModal()}
             className="bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
@@ -205,16 +323,17 @@ export default function Anuncios() {
           </button>
         </div>
       ) : (
-        <div className="grid gap-4">
+        // ALTERADO: Layout em 3 colunas para desktop
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mx-4 sm:mx-6 md:mx-8">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full flex-wrap sm:flex-nowrap">
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col items-center gap-4 w-full">
              {/* Mídia na lateral esquerda */}
-             <div className="flex-shrink-0 flex items-center justify-center relative">
+             <div className="flex-shrink-0 flex items-center justify-center relative w-full">
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
                         src={anuncio.media_url}
-                        className="w-[108px] h-48 object-cover rounded-xl"
+                        className="w-full h-48 object-cover rounded-xl" // Alterado para w-full
                         controls={false}
                         muted
                         loop
@@ -230,7 +349,7 @@ export default function Anuncios() {
                     <img
                         src={anuncio.media_url}
                         alt={anuncio.titulo}
-                        className="w-[108px] h-48 object-cover rounded-xl"
+                        className="w-full h-48 object-cover rounded-xl" // Alterado para w-full
                         onError={(e) => {
                             e.target.classList.add('hidden');
                             e.target.nextSibling.classList.remove('hidden');
@@ -239,14 +358,14 @@ export default function Anuncios() {
                     )
                 ) : null}
                 <div
-                    className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`}
+                    className={`w-full h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`} // Alterado para w-full
                 >
                     {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
                 </div>
              </div>
 
               {/* Informações e botões centralizados à direita da mídia */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full sm:w-auto">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full"> {/* Alterado para flex-col e w-full */}
                 <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -266,17 +385,14 @@ export default function Anuncios() {
                     <span>{anuncio.duracao_segundos}s</span>
                   </span>
                   {anuncio.url_destino && (
-                    // ALTERADO: Lógica para corrigir links do WhatsApp e garantir prefixo HTTPS
                     <a
                       href={(() => {
                         let rawUrl = anuncio.url_destino;
                         let formattedUrl = rawUrl;
 
                         if (rawUrl.startsWith('wa.me/')) {
-                            // Garante https:// e corrige barras duplas após wa.me/
                             formattedUrl = 'https://' + rawUrl.replace('wa.me//', 'wa.me/');
                         } else if (!(rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
-                            // Para outras URLs, apenas adiciona https:// se estiver faltando
                             formattedUrl = `https://${rawUrl}`;
                         }
                         return formattedUrl;
@@ -345,6 +461,16 @@ export default function Anuncios() {
             </div>
 
             <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+              {/* NOVO: Exibe o nome do cliente no modal de edição */}
+              {anuncioEditando && anuncioEditando.hotspots?.clientes?.nome && (
+                <div>
+                  <label className="text-xs text-gray-400 mb-1.5 block">Cliente do Anúncio</label>
+                  <p className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white">
+                    {anuncioEditando.hotspots.clientes.nome}
+                  </p>
+                </div>
+              )}
+
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
