@@ -186,6 +186,7 @@ export default function Anuncios() {
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
             <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+             {/* INÍCIO DA CORREÇÃO PARA EXIBIÇÃO NA LISTA */}
              {anuncio.media_url ? (
                 anuncio.tipo_media === 'video' ? (
                   <video
@@ -195,7 +196,8 @@ export default function Anuncios() {
                     muted
                     loop
                     playsInline
-                    preload="metadata"
+                    preload="metadata" // Manter preload para a lista, sem autoplay
+                    type="video/mp4" // Assumir mp4 para vídeos já salvos na lista
                   />
                 ) : (
                   <img
@@ -215,6 +217,7 @@ export default function Anuncios() {
               >
                 {anuncio.tipo_media === 'video' ? <VideoIcon size={24} className="text-gray-400" /> : <ImageIcon size={24} className="text-gray-400" />}
               </div>
+              {/* FIM DA CORREÇÃO PARA EXIBIÇÃO NA LISTA */}
 
               <div className="flex-1 min-w-0 flex flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-2">
@@ -335,8 +338,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay // Adicionado autoplay
-                        // preload="metadata" // Removido preload
+                        autoplay
                         type={selectedFile.type}
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
@@ -353,8 +355,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay // Adicionado autoplay
-                        // preload="metadata" // Removido preload
+                        autoplay
                         type="video/mp4"
                       />
                     ) : form.media_url && form.tipo_media === 'imagem' ? (
