@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
+// NOVOS ÍCONES IMPORTADOS
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -35,11 +36,35 @@ export default function Anuncios() {
 
   async function buscarDados() {
     setCarregando(true)
+    // ALTERADO: Adicionado join com clientes através de hotspots
     const [{ data: anunciosData }, { data: hotspotsData }] = await Promise.all([
-      supabase.from('anuncios').select('*, hotspots(nome)').order('created_at', { ascending: false }),
+      supabase.from('anuncios').select('*, hotspots(nome, clientes(nome))').order('created_at', { ascending: false }),
       supabase.from('hotspots').select('id, nome').eq('status', 'Ativo'),
     ])
-    setAnuncios(anunciosData || [])
+
+    // NOVO: Buscar contagem de visualizações e cliques para cada anúncio
+    const anunciosComMetricas = await Promise.all(anunciosData.map(async (anuncio) => {
+      const { count: viewsCount, error: viewsError } = await supabase
+        .from('anuncio_views')
+        .select('*', { count: 'exact', head: true })
+        .eq('anuncio_id', anuncio.id)
+
+      const { count: clicksCount, error: clicksError } = await supabase
+        .from('anuncio_clicks')
+        .select('*', { count: 'exact', head: true })
+        .eq('anuncio_id', anuncio.id)
+
+      if (viewsError) console.error('Erro ao buscar views:', viewsError)
+      if (clicksError) console.error('Erro ao buscar clicks:', clicksError)
+
+      return {
+        ...anuncio,
+        views: viewsCount || 0,
+        clicks: clicksCount || 0,
+      }
+    }))
+
+    setAnuncios(anunciosComMetricas || [])
     setHotspots(hotspotsData || [])
     setCarregando(false)
   }
@@ -185,9 +210,9 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full flex-wrap sm:flex-nowrap"> {/* ALTERADO: flex-row, flex-wrap para lateral em mobile */}
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full flex-wrap sm:flex-nowrap">
              {/* Mídia na lateral esquerda */}
-             <div className="flex-shrink-0 flex items-center justify-center">
+             <div className="flex-shrink-0 flex items-center justify-center relative"> {/* Adicionado relative para posicionamento */}
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
@@ -200,8 +225,8 @@ export default function Anuncios() {
                         autoplay
                         type="video/mp4"
                         onError={(e) => {
-                            e.target.style.display = 'none'
-                            e.target.nextSibling.style.display = 'flex'
+                            e.target.classList.add('hidden'); // Esconde o vídeo
+                            e.target.nextSibling.classList.remove('hidden'); // Mostra o placeholder
                         }}
                     />
                     ) : (
@@ -210,22 +235,22 @@ export default function Anuncios() {
                         alt={anuncio.titulo}
                         className="w-[108px] h-48 object-cover rounded-xl"
                         onError={(e) => {
-                        e.target.style.display = 'none'
-                        e.target.nextSibling.style.display = 'flex'
+                            e.target.classList.add('hidden'); // Esconde a imagem
+                            e.target.nextSibling.classList.remove('hidden'); // Mostra o placeholder
                         }}
                     />
                     )
                 ) : null}
+                {/* Placeholder div - inicialmente escondido se media_url existe, mostrado se não há mídia ou se a mídia falhar */}
                 <div
-                    className="w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl"
-                    style={{ display: anuncio.media_url ? 'none' : 'flex' }}
+                    className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`}
                 >
                     {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
                 </div>
              </div>
 
               {/* Informações e botões centralizados à direita da mídia */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full sm:w-auto"> {/* ALTERADO: w-full sm:w-auto para responsividade */}
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full sm:w-auto">
                 <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
@@ -252,7 +277,23 @@ export default function Anuncios() {
                   )}
                 </div>
 
-                {/* Botões de ação movidos para dentro deste container */}
+                {/* NOVO: Métricas do Anúncio */}
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center sm:justify-start">
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <User size={11} className="flex-shrink-0" />
+                    <span>Cliente: {anuncio.hotspots?.clientes?.nome || 'N/A'}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <Eye size={11} className="flex-shrink-0" />
+                    <span>Visualizações: {anuncio.views}</span>
+                  </span>
+                  <span className="flex items-center gap-1.5 flex-shrink-0">
+                    <MousePointerClick size={11} className="flex-shrink-0" />
+                    <span>Cliques: {anuncio.clicks}</span>
+                  </span>
+                </div>
+
+                {/* Botões de ação */}
                 <div className="flex flex-row flex-wrap gap-2 mt-3 flex-shrink-0 justify-center sm:justify-start">
                   <button
                     onClick={() => toggleAtivo(anuncio)}
