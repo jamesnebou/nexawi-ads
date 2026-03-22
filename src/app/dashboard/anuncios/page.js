@@ -185,7 +185,7 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4 w-full">
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full flex-wrap sm:flex-nowrap"> {/* ALTERADO: flex-row, flex-wrap para lateral em mobile */}
              {/* Mídia na lateral esquerda */}
              <div className="flex-shrink-0 flex items-center justify-center">
                 {anuncio.media_url ? (
@@ -225,7 +225,7 @@ export default function Anuncios() {
              </div>
 
               {/* Informações e botões centralizados à direita da mídia */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start"> {/* Container para informações e botões */}
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full sm:w-auto"> {/* ALTERADO: w-full sm:w-auto para responsividade */}
                 <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
