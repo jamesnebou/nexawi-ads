@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react' // CORRIGIDO: Importação correta do React
-import { createClient } from '@supabase/supabase-js' // IMPORTAÇÃO FALTANDO
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react' // IMPORTAÇÃO FALTANDO
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon } from 'lucide-react'
 
-const supabase = createClient( // DEFINIÇÃO FALTANDO
+const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
@@ -29,7 +29,7 @@ export default function Anuncios() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
-  useEffect(() => { // CORRIGIDO: useEffect agora está DENTRO do componente Anuncios
+  useEffect(() => {
     buscarDados()
   }, [])
 
@@ -335,8 +335,9 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        preload="metadata"
-                        type={selectedFile.type} // Adicionado o atributo type
+                        autoplay // Adicionado autoplay
+                        // preload="metadata" // Removido preload
+                        type={selectedFile.type}
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
                       <img
@@ -352,8 +353,9 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        preload="metadata"
-                        type="video/mp4" // Assumindo mp4 para vídeos já salvos
+                        autoplay // Adicionado autoplay
+                        // preload="metadata" // Removido preload
+                        type="video/mp4"
                       />
                     ) : form.media_url && form.tipo_media === 'imagem' ? (
                       <img
