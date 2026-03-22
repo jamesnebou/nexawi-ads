@@ -185,42 +185,48 @@ export default function Anuncios() {
       ) : (
         <div className="grid gap-4">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full">
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col sm:flex-row items-center gap-4 w-full"> {/* items-center para centralizar no mobile */}
              {/* INÍCIO DA CORREÇÃO PARA EXIBIÇÃO NA LISTA */}
-             {anuncio.media_url ? (
-                anuncio.tipo_media === 'video' ? (
-                  <video
-                    src={anuncio.media_url}
-                    className="w-20 h-14 object-cover rounded-xl flex-shrink-0"
-                    controls={false}
-                    muted
-                    loop
-                    playsInline
-                    preload="metadata" // Manter preload para a lista, sem autoplay
-                    type="video/mp4" // Assumir mp4 para vídeos já salvos na lista
-                  />
-                ) : (
-                  <img
-                    src={anuncio.media_url}
-                    alt={anuncio.titulo}
-                    className="w-20 h-14 object-cover rounded-xl flex-shrink-0"
-                    onError={(e) => {
-                      e.target.style.display = 'none'
-                      e.target.nextSibling.style.display = 'flex'
-                    }}
-                  />
-                )
-              ) : null}
-              <div
-                className="w-20 h-14 bg-gray-800 rounded-xl flex-shrink-0 flex items-center justify-center text-2xl"
-                style={{ display: anuncio.media_url ? 'none' : 'flex' }}
-              >
-                {anuncio.tipo_media === 'video' ? <VideoIcon size={24} className="text-gray-400" /> : <ImageIcon size={24} className="text-gray-400" />}
-              </div>
+             <div className="flex-shrink-0 flex items-center justify-center"> {/* Wrapper para centralizar a mídia */}
+                {anuncio.media_url ? (
+                    anuncio.tipo_media === 'video' ? (
+                    <video
+                        src={anuncio.media_url}
+                        className="w-32 h-20 object-cover rounded-xl" // Tamanho maior
+                        controls={false}
+                        muted
+                        loop
+                        playsInline
+                        autoplay // Adicionado autoplay para tentar forçar a pré-visualização
+                        type="video/mp4" // Assumir mp4 para vídeos já salvos na lista
+                        onError={(e) => { // Adicionado onError para vídeo
+                            e.target.style.display = 'none'
+                            e.target.nextSibling.style.display = 'flex'
+                        }}
+                    />
+                    ) : (
+                    <img
+                        src={anuncio.media_url}
+                        alt={anuncio.titulo}
+                        className="w-32 h-20 object-cover rounded-xl" // Tamanho maior
+                        onError={(e) => {
+                        e.target.style.display = 'none'
+                        e.target.nextSibling.style.display = 'flex'
+                        }}
+                    />
+                    )
+                ) : null}
+                <div
+                    className="w-32 h-20 bg-gray-800 rounded-xl flex items-center justify-center text-3xl" // Tamanho maior e ícone maior
+                    style={{ display: anuncio.media_url ? 'none' : 'flex' }}
+                >
+                    {anuncio.tipo_media === 'video' ? <VideoIcon size={32} className="text-gray-400" /> : <ImageIcon size={32} className="text-gray-400" />}
+                </div>
+             </div>
               {/* FIM DA CORREÇÃO PARA EXIBIÇÃO NA LISTA */}
 
-              <div className="flex-1 min-w-0 flex flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-2">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 text-center sm:text-left"> {/* Centralizar texto no mobile */}
+                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start"> {/* Centralizar título e status no mobile */}
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                     {anuncio.ativo ? 'Ativo' : 'Inativo'}
@@ -229,7 +235,7 @@ export default function Anuncios() {
                 {anuncio.descricao && (
                   <p className="text-gray-500 text-xs mb-1">{anuncio.descricao}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-center sm:justify-start"> {/* Centralizar detalhes no mobile */}
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <MapPin size={11} className="flex-shrink-0" />
                     <span>{anuncio.hotspots?.nome || '—'}</span>
@@ -247,7 +253,7 @@ export default function Anuncios() {
                 </div>
               </div>
 
-              <div className="flex flex-row flex-wrap gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0">
+              <div className="flex flex-row flex-wrap gap-2 mt-3 sm:mt-0 sm:ml-auto flex-shrink-0 justify-center sm:justify-start"> {/* Centralizar botões no mobile */}
                 <button
                   onClick={() => toggleAtivo(anuncio)}
                   className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
