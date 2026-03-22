@@ -12,7 +12,8 @@ import {
   DollarSign,
   Settings,
   LogOut,
-  Megaphone
+  Megaphone,
+  BarChart2 // NOVO: Ícone importado para o relatório
   } from 'lucide-react'
 
 const menu = [
@@ -23,6 +24,8 @@ const menu = [
   { label: 'Anúncios', path: '/dashboard/anuncios', icon: Megaphone },
   { label: 'Planos', path: '/dashboard/planos', icon: Package },
   { label: 'Leads', path: '/dashboard/leads', icon: UserPlus },
+  // NOVO: Item de navegação para o Relatório de Acesso
+  { label: 'Relatório de Acesso', path: '/dashboard/relatorios/acesso', icon: BarChart2 },
   { label: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
 ]
 
