@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Search } from 'lucide-react' // Adicionado Search icon
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Search } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,7 +12,7 @@ const supabase = createClient(
 export default function Anuncios() {
   const [anuncios, setAnuncios] = useState([])
   const [hotspots, setHotspots] = useState([])
-  const [clientes, setClientes] = useState([]) // NOVO: Estado para armazenar clientes para o filtro
+  const [clientes, setClientes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
@@ -30,22 +30,23 @@ export default function Anuncios() {
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
-  // NOVO: Estados para os filtros
   const [searchTerm, setSearchTerm] = useState('')
-  const [filterStatus, setFilterStatus] = useState('todos') // 'todos', 'ativo', 'inativo'
-  const [filterHotspotId, setFilterHotspotId] = useState('') // ID do hotspot selecionado
-  const [filterClientId, setFilterClientId] = useState('') // ID do cliente selecionado
-  const [filterMediaType, setFilterMediaType] = useState('todos') // 'todos', 'imagem', 'video'
+  const [filterStatus, setFilterStatus] = useState('todos')
+  const [filterHotspotId, setFilterHotspotId] = useState('')
+  const [filterClientId, setFilterClientId] = useState('')
+  const [filterMediaType, setFilterMediaType] = useState('todos')
+
+  // NOVO: Estado para gerenciar o cliente selecionado no modal (para filtrar hotspots)
+  const [selectedClientInModal, setSelectedClientInModal] = useState('')
 
   useEffect(() => {
-    // Adicionado dependências para os filtros para que a busca seja re-executada ao mudar
     buscarDados()
   }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType])
 
   async function buscarDados() {
     setCarregando(true)
 
-    // Busca todos os clientes para o filtro de clientes
+    // Busca todos os clientes para o filtro de clientes e para o modal
     const { data: clientesData, error: clientesError } = await supabase
       .from('clientes')
       .select('id, nome')
@@ -53,13 +54,21 @@ export default function Anuncios() {
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
     setClientes(clientesData || [])
 
-    // Inicia a query de anúncios
+    // Busca todos os hotspots para o filtro de hotspots e para o modal (com info do cliente)
+    const { data: hotspotsData, error: hotspotsError } = await supabase
+      .from('hotspots')
+      .select('id, nome, clientes(id, nome)') // Garante que o ID e nome do cliente do hotspot sejam selecionados
+      .eq('status', 'Ativo') // Apenas hotspots ativos
+      .order('nome', { ascending: true })
+    if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
+    setHotspots(hotspotsData || [])
+
+
     let query = supabase
       .from('anuncios')
-      .select('*, hotspots(id, nome, clientes(id, nome))') // Garante que o ID e nome do cliente sejam selecionados
+      .select('*, hotspots(id, nome, clientes(id, nome))')
       .order('created_at', { ascending: false })
 
-    // Aplica filtros
     if (filterStatus === 'ativo') {
       query = query.eq('ativo', true)
     } else if (filterStatus === 'inativo') {
@@ -71,7 +80,6 @@ export default function Anuncios() {
     }
 
     if (filterClientId) {
-      // Filtra por ID do cliente através do join com hotspots
       query = query.eq('hotspots.clientes.id', filterClientId)
     }
 
@@ -82,7 +90,6 @@ export default function Anuncios() {
     }
 
     if (searchTerm) {
-      // Busca por título ou descrição (case-insensitive)
       query = query.or(`titulo.ilike.%${searchTerm}%,descricao.ilike.%${searchTerm}%`)
     }
 
@@ -94,7 +101,6 @@ export default function Anuncios() {
       return
     }
 
-    // Busca métricas para cada anúncio (mantido como estava)
     const anunciosComMetricas = await Promise.all(anunciosData.map(async (anuncio) => {
       const { count: viewsCount, error: viewsError } = await supabase
         .from('anuncio_views')
@@ -117,7 +123,6 @@ export default function Anuncios() {
     }))
 
     setAnuncios(anunciosComMetricas || [])
-    setHotspots(anunciosData.map(a => a.hotspots).filter((h, i, a) => h && a.findIndex(t => t.id === h.id) === i) || []) // Extrai hotspots únicos dos anúncios
     setCarregando(false)
   }
 
@@ -134,10 +139,12 @@ export default function Anuncios() {
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
       })
+      // NOVO: Define o cliente selecionado no modal ao abrir para edição
+      setSelectedClientInModal(anuncio.hotspots?.clientes?.id || '')
     } else {
       setAnuncioEditando(null)
       setForm({
-        hotspot_id: hotspots[0]?.id || '',
+        hotspot_id: '', // Reseta hotspot_id para novo anúncio
         titulo: '',
         descricao: '',
         media_url: '',
@@ -146,6 +153,8 @@ export default function Anuncios() {
         duracao_segundos: 15,
         ativo: true,
       })
+      // NOVO: Define o primeiro cliente como padrão ou vazio para novo anúncio
+      setSelectedClientInModal(clientes[0]?.id || '')
     }
     setSelectedFile(null)
     setModalAberto(true)
@@ -155,7 +164,24 @@ export default function Anuncios() {
     setModalAberto(false)
     setAnuncioEditando(null)
     setSelectedFile(null)
+    setSelectedClientInModal('') // Reseta a seleção de cliente no modal ao fechar
   }
+
+  // NOVO: Hotspots filtrados para o modal, baseados no cliente selecionado no modal
+  const filteredHotspotsForModal = hotspots.filter(h =>
+    !selectedClientInModal || h.clientes?.id === selectedClientInModal
+  );
+
+  // Efeito para resetar o hotspot_id se o cliente selecionado no modal mudar e o hotspot atual não for mais válido
+  useEffect(() => {
+    if (modalAberto && form.hotspot_id) {
+      const currentHotspotValid = filteredHotspotsForModal.some(h => h.id === form.hotspot_id);
+      if (!currentHotspotValid) {
+        setForm(prevForm => ({ ...prevForm, hotspot_id: '' }));
+      }
+    }
+  }, [selectedClientInModal, filteredHotspotsForModal, modalAberto, form.hotspot_id]);
+
 
   async function salvar() {
     if (!form.titulo.trim() || !form.hotspot_id) return
@@ -243,7 +269,7 @@ export default function Anuncios() {
         </button>
       </div>
 
-      {/* NOVO: Seção de Busca e Filtros */}
+      {/* Seção de Busca e Filtros */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6 mx-4 sm:mx-6 md:mx-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Input de Busca */}
@@ -323,17 +349,17 @@ export default function Anuncios() {
           </button>
         </div>
       ) : (
-        // ALTERADO: Layout em 3 colunas para desktop
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mx-4 sm:mx-6 md:mx-8">
           {anuncios.map((anuncio) => (
-            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-col items-center gap-4 w-full">
+            // ALTERADO: Layout do card para flex-row em desktop
+            <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full">
              {/* Mídia na lateral esquerda */}
-             <div className="flex-shrink-0 flex items-center justify-center relative w-full">
+             <div className="flex-shrink-0 flex items-center justify-center relative">
                 {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                     <video
                         src={anuncio.media_url}
-                        className="w-full h-48 object-cover rounded-xl" // Alterado para w-full
+                        className="w-[108px] h-48 object-cover rounded-xl" // Revertido para w-[108px]
                         controls={false}
                         muted
                         loop
@@ -349,7 +375,7 @@ export default function Anuncios() {
                     <img
                         src={anuncio.media_url}
                         alt={anuncio.titulo}
-                        className="w-full h-48 object-cover rounded-xl" // Alterado para w-full
+                        className="w-[108px] h-48 object-cover rounded-xl" // Revertido para w-[108px]
                         onError={(e) => {
                             e.target.classList.add('hidden');
                             e.target.nextSibling.classList.remove('hidden');
@@ -358,15 +384,15 @@ export default function Anuncios() {
                     )
                 ) : null}
                 <div
-                    className={`w-full h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`} // Alterado para w-full
+                    className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`} // Revertido para w-[108px]
                 >
                     {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
                 </div>
              </div>
 
               {/* Informações e botões centralizados à direita da mídia */}
-              <div className="flex-1 min-w-0 flex flex-col gap-1 items-center sm:items-start w-full"> {/* Alterado para flex-col e w-full */}
-                <div className="flex flex-wrap items-center gap-2 justify-center sm:justify-start">
+              <div className="flex-1 min-w-0 flex flex-col gap-1 items-start w-full"> {/* Alterado para items-start */}
+                <div className="flex flex-wrap items-center gap-2 justify-start">
                   <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                     {anuncio.ativo ? 'Ativo' : 'Inativo'}
@@ -375,7 +401,7 @@ export default function Anuncios() {
                 {anuncio.descricao && (
                   <p className="text-gray-500 text-xs mb-1">{anuncio.descricao}</p>
                 )}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-center sm:justify-start">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-start">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <MapPin size={11} className="flex-shrink-0" />
                     <span>{anuncio.hotspots?.nome || '—'}</span>
@@ -408,7 +434,7 @@ export default function Anuncios() {
                 </div>
 
                 {/* Métricas do Anúncio */}
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center sm:justify-start">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-start">
                   <span className="flex items-center gap-1.5 flex-shrink-0">
                     <User size={11} className="flex-shrink-0" />
                     <span>Cliente: {anuncio.hotspots?.clientes?.nome || 'N/A'}</span>
@@ -424,7 +450,7 @@ export default function Anuncios() {
                 </div>
 
                 {/* Botões de ação */}
-                <div className="flex flex-row flex-wrap gap-2 mt-3 flex-shrink-0 justify-center sm:justify-start">
+                <div className="flex flex-row flex-wrap gap-2 mt-3 flex-shrink-0 justify-start">
                   <button
                     onClick={() => toggleAtivo(anuncio)}
                     className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
@@ -461,15 +487,23 @@ export default function Anuncios() {
             </div>
 
             <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-              {/* NOVO: Exibe o nome do cliente no modal de edição */}
-              {anuncioEditando && anuncioEditando.hotspots?.clientes?.nome && (
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Cliente do Anúncio</label>
-                  <p className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white">
-                    {anuncioEditando.hotspots.clientes.nome}
-                  </p>
-                </div>
-              )}
+              {/* NOVO: Seleção de Cliente no Modal */}
+              <div>
+                <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
+                <select
+                  value={selectedClientInModal}
+                  onChange={(e) => {
+                    setSelectedClientInModal(e.target.value);
+                    setForm(prevForm => ({ ...prevForm, hotspot_id: '' })); // Reseta hotspot ao mudar cliente
+                  }}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
+                >
+                  <option value="">Selecione um cliente</option>
+                  {clientes.map((c) => (
+                    <option key={c.id} value={c.id}>{c.nome}</option>
+                  ))}
+                </select>
+              </div>
 
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
@@ -479,7 +513,7 @@ export default function Anuncios() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
                   <option value="">Selecione um hotspot</option>
-                  {hotspots.map((h) => (
+                  {filteredHotspotsForModal.map((h) => ( // Usa hotspots filtrados
                     <option key={h.id} value={h.id}>{h.nome}</option>
                   ))}
                 </select>
