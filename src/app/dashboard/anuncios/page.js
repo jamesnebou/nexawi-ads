@@ -72,7 +72,7 @@ export default function Anuncios() {
     setHotspots(hotspotsComClientes || [])
 
 
-    // ALTERADO: A query de anúncios agora busca 'hotspots(id, nome, cliente_id)'
+    // A query de anúncios agora busca 'hotspots(id, nome, cliente_id)'
     // e o cliente será anexado manualmente depois para garantir a exibição.
     let query = supabase
       .from('anuncios')
@@ -89,9 +89,9 @@ export default function Anuncios() {
       query = query.eq('hotspot_id', filterHotspotId)
     }
 
-    // ALTERADO: Usando 'filter' explicitamente para o filtro de cliente
-    // Isso pode ser mais robusto para filtrar em colunas de tabelas relacionadas.
+    // AQUI ESTÁ A MUDANÇA PARA DEPURAR O FILTRO DE CLIENTE
     if (filterClientId) {
+      console.log('Aplicando filtro de cliente com ID:', filterClientId); // LOG PARA DEPURAR
       query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
     }
 
@@ -113,7 +113,7 @@ export default function Anuncios() {
       return
     }
 
-    // NOVO: Anexa as informações completas do hotspot (com cliente) aos anúncios para exibição
+    // Anexa as informações completas do hotspot (com cliente) aos anúncios para exibição
     const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
       const hotspotDoAnuncio = hotspotsComClientes.find(h => h.id === anuncio.hotspot_id);
       return {
