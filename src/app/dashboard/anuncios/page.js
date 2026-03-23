@@ -2,11 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-// Removido 'Search' do import direto
 import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
-import dynamic from 'next/dynamic'; // Importa dynamic do Next.js
+import dynamic from 'next/dynamic';
 
-// Importação dinâmica para o ícone Search, garantindo que ele só seja carregado no cliente
 const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search), { ssr: false });
 
 const supabase = createClient(
@@ -16,7 +14,7 @@ const supabase = createClient(
 
 export default function Anuncios() {
   const [anuncios, setAnuncios] = useState([])
-  const [hotspots, setHotspots] = useState([]) // Agora conterá todos os hotspots ativos
+  const [hotspots, setHotspots] = useState([])
   const [clientes, setClientes] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [modalAberto, setModalAberto] = useState(false)
@@ -55,40 +53,35 @@ export default function Anuncios() {
       .select('id, nome')
       .order('nome', { ascending: true })
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
-    // Atualiza clientes apenas se houver mudança real para evitar re-renders desnecessários
     if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
       setClientes(clientesData || [])
     }
 
-    // Busca TODOS os hotspots ativos, incluindo o cliente_id para exibição
     const { data: hotspotsData, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('id, nome, status, cliente_id') // Seleciona cliente_id diretamente
+      .select('id, nome, status, cliente_id')
       .eq('status', 'Ativo')
       .order('nome', { ascending: true })
     if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
 
-    // Para cada hotspot, anexa as informações do cliente para exibição no card e filtros
     const hotspotsComClientes = hotspotsData ? hotspotsData.map(hotspot => {
       const cliente = clientesData?.find(c => c.id === hotspot.cliente_id);
       return {
         ...hotspot,
-        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null // Adiciona o objeto cliente se encontrado
+        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null
       };
     }) : [];
 
     setHotspots(hotspotsComClientes || [])
 
-
-    // AQUI ESTÁ A MUDANÇA PRINCIPAL: Ajusta a string de select para forçar INNER JOIN se houver filtro de cliente
-    let selectString = '*, hotspots(id, nome, cliente_id)'; // Default: LEFT JOIN
+    let selectString = '*, hotspots(id, nome, cliente_id)';
     if (filterClientId) {
-      selectString = '*, hotspots!inner(id, nome, cliente_id)'; // Força INNER JOIN para filtrar por cliente
+      selectString = '*, hotspots!inner(id, nome, cliente_id)';
     }
 
     let query = supabase
       .from('anuncios')
-      .select(selectString) // Usa a string de select dinâmica
+      .select(selectString)
       .order('created_at', { ascending: false })
 
     if (filterStatus === 'ativo') {
@@ -101,9 +94,8 @@ export default function Anuncios() {
       query = query.eq('hotspot_id', filterHotspotId)
     }
 
-    // O filtro de cliente é aplicado aqui, mas o INNER JOIN já garante que apenas os anúncios relevantes sejam considerados
     if (filterClientId) {
-      console.log('Aplicando filtro de cliente com ID:', filterClientId); // LOG PARA DEPURAR
+      console.log('Aplicando filtro de cliente com ID:', filterClientId);
       query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
     }
 
@@ -125,12 +117,11 @@ export default function Anuncios() {
       return
     }
 
-    // Anexa as informações completas do hotspot (com cliente) aos anúncios para exibição
     const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
       const hotspotDoAnuncio = hotspotsComClientes.find(h => h.id === anuncio.hotspot_id);
       return {
         ...anuncio,
-        hotspots: hotspotDoAnuncio || anuncio.hotspots // Garante que o hotspot tenha a info do cliente
+        hotspots: hotspotDoAnuncio || anuncio.hotspots
       };
     });
 
@@ -172,7 +163,6 @@ export default function Anuncios() {
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
       })
-      // Ao editar, tenta encontrar o cliente do hotspot para pré-selecionar
       const clienteDoHotspot = hotspots.find(h => h.id === anuncio.hotspot_id)?.clientes?.id;
       setSelectedClientInModal(clienteDoHotspot || '');
     } else {
@@ -187,7 +177,7 @@ export default function Anuncios() {
         duracao_segundos: 15,
         ativo: true,
       })
-      setSelectedClientInModal(clientes[0]?.id || '') // Define o primeiro cliente como padrão para novo anúncio
+      setSelectedClientInModal(clientes[0]?.id || '')
     }
     setSelectedFile(null)
     setModalAberto(true)
@@ -200,9 +190,7 @@ export default function Anuncios() {
     setSelectedClientInModal('')
   }
 
-  // Esta lista agora contém TODOS os hotspots ativos, sem filtro por cliente
   const allActiveHotspotsForModal = hotspots;
-
 
   async function salvar() {
     if (!form.titulo.trim() || !form.hotspot_id) return
@@ -245,7 +233,6 @@ export default function Anuncios() {
 
     const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
 
-    // Lógica para VINCULAR/ATUALIZAR o cliente_id do hotspot selecionado
     if (selectedClientInModal && form.hotspot_id) {
       const { error: updateHotspotError } = await supabase
         .from('hotspots')
@@ -259,7 +246,6 @@ export default function Anuncios() {
         return;
       }
     } else if (!selectedClientInModal && form.hotspot_id) {
-      // Se nenhum cliente foi selecionado, mas um hotspot foi, desvincula o hotspot
       const { error: updateHotspotError } = await supabase
         .from('hotspots')
         .update({ cliente_id: null })
@@ -272,7 +258,6 @@ export default function Anuncios() {
         return;
       }
     }
-
 
     if (anuncioEditando) {
       const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
@@ -290,14 +275,47 @@ export default function Anuncios() {
 
     setSalvando(false)
     fecharModal()
-    buscarDados() // Recarrega os dados após salvar
+    buscarDados()
   }
+
+  // Função para alternar o status ativo/inativo do anúncio
+  async function toggleAtivo(anuncio) {
+    const novoStatus = !anuncio.ativo;
+    const { error } = await supabase
+      .from('anuncios')
+      .update({ ativo: novoStatus })
+      .eq('id', anuncio.id);
+
+    if (error) {
+      console.error('Erro ao alternar status do anúncio:', error);
+      alert('Erro ao alternar status do anúncio. Por favor, tente novamente.');
+    } else {
+      buscarDados(); // Recarrega os dados para refletir a mudança
+    }
+  }
+
+  // Função para excluir anúncio
+  async function excluir(id) {
+    if (!window.confirm('Tem certeza que deseja excluir este anúncio?')) {
+      return;
+    }
+    const { error } = await supabase
+      .from('anuncios')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Erro ao excluir anúncio:', error);
+      alert('Erro ao excluir anúncio. Por favor, tente novamente.');
+    } else {
+      buscarDados(); // Recarrega os dados após a exclusão
+    }
+  }
+
 
   return (
     <>
-      {/* NOVO: Wrapper para alinhar todo o conteúdo principal */}
       <div className="px-4 sm:px-6 md:px-8">
-        {/* Header da página - Ajustado para alinhar o botão */}
         <div className="flex items-center justify-between mb-6">
           <div className="mb-4 sm:mb-0">
             <h1 className="text-2xl font-bold text-white">Anúncios</h1>
@@ -311,12 +329,9 @@ export default function Anuncios() {
           </button>
         </div>
 
-        {/* Seção de Busca e Filtros - Removido mx- para que o wrapper cuide do espaçamento */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Input de Busca */}
             <div className="relative">
-              {/* Usando o componente SearchIcon importado dinamicamente */}
               <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
@@ -327,7 +342,6 @@ export default function Anuncios() {
               />
             </div>
 
-            {/* Filtro por Status */}
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
@@ -338,7 +352,6 @@ export default function Anuncios() {
               <option value="inativo">Status: Inativos</option>
             </select>
 
-            {/* Filtro por Hotspot */}
             <select
               value={filterHotspotId}
               onChange={(e) => setFilterHotspotId(e.target.value)}
@@ -350,7 +363,6 @@ export default function Anuncios() {
               ))}
             </select>
 
-            {/* Filtro por Cliente */}
             <select
               value={filterClientId}
               onChange={(e) => {
@@ -365,7 +377,6 @@ export default function Anuncios() {
               ))}
             </select>
 
-            {/* Filtro por Tipo de Mídia */}
             <select
               value={filterMediaType}
               onChange={(e) => setFilterMediaType(e.target.value)}
@@ -383,7 +394,7 @@ export default function Anuncios() {
             <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : anuncios.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center"> {/* Removido mx- */}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
             <div className="text-4xl mb-3">📢</div>
             <h3 className="text-white font-semibold mb-1">Nenhum anúncio encontrado</h3>
             <p className="text-gray-500 text-sm mb-4">Ajuste seus filtros ou crie um novo anúncio.</p>
@@ -395,9 +406,9 @@ export default function Anuncios() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"> {/* Removido mx- */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {anuncios.map((anuncio) => (
-              <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full">
+              <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full shadow-green-glow">
                <div className="flex-shrink-0 flex items-center justify-center relative">
                   {anuncio.media_url ? (
                       anuncio.tipo_media === 'video' ? (
@@ -408,7 +419,7 @@ export default function Anuncios() {
                           muted
                           loop
                           playsInline
-                          autoplay
+                          autoPlay
                           type="video/mp4"
                           onError={(e) => {
                               e.target.classList.add('hidden');
@@ -434,9 +445,8 @@ export default function Anuncios() {
                   </div>
                </div>
 
-                {/* CONTEÚDO DO CARD - CENTRALIZADO */}
-                <div className="flex-1 min-w-0 flex flex-col gap-1 items-center w-full text-center"> {/* items-center e text-center */}
-                  <div className="flex flex-wrap items-center gap-2 justify-center"> {/* justify-center para o título/status */}
+                <div className="flex-1 min-w-0 flex flex-col gap-1 items-center w-full text-center">
+                  <div className="flex flex-wrap items-center gap-2 justify-center">
                     <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
                       {anuncio.ativo ? 'Ativo' : 'Inativo'}
@@ -445,7 +455,7 @@ export default function Anuncios() {
                   {anuncio.descricao && (
                     <p className="text-gray-500 text-xs mb-1">{anuncio.descricao}</p>
                   )}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-center"> {/* justify-center para info */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-center">
                     <span className="flex items-center gap-1.5 flex-shrink-0">
                       <MapPin size={11} className="flex-shrink-0" />
                       <span>{anuncio.hotspots?.nome || '—'}</span>
@@ -477,7 +487,7 @@ export default function Anuncios() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center"> {/* justify-center para métricas */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center">
                     <span className="flex items-center gap-1.5 flex-shrink-0">
                       <User size={11} className="flex-shrink-0" />
                       <span>Cliente: {anuncio.hotspots?.clientes?.nome || 'N/A'}</span>
@@ -492,8 +502,7 @@ export default function Anuncios() {
                     </span>
                   </div>
 
-                  {/* BOTÕES DO CARD - LADO A LADO E CENTRALIZADOS */}
-                  <div className="flex flex-row gap-2 mt-3 flex-shrink-0 justify-center"> {/* Removido flex-wrap, adicionado justify-center */}
+                  <div className="flex flex-row gap-2 mt-3 flex-shrink-0 justify-center">
                     <button
                       onClick={() => toggleAtivo(anuncio)}
                       className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
@@ -518,7 +527,7 @@ export default function Anuncios() {
             ))}
           </div>
         )}
-      </div> {/* Fim do NOVO Wrapper */}
+      </div>
 
       {modalAberto && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
@@ -531,7 +540,6 @@ export default function Anuncios() {
             </div>
 
             <div className="p-6 space-y-4 flex-1 overflow-y-auto">
-              {/* Campo de seleção de Cliente */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
                 <select
@@ -549,7 +557,6 @@ export default function Anuncios() {
                 </select>
               </div>
 
-              {/* Campo de seleção de Hotspot - AGORA MOSTRA TODOS OS HOTSPOTS ATIVOS */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
                 <select
@@ -558,13 +565,12 @@ export default function Anuncios() {
                   className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
                 >
                   <option value="">Selecione um hotspot</option>
-                  {allActiveHotspotsForModal.map((h) => ( // Usa a lista de TODOS os hotspots ativos
+                  {allActiveHotspotsForModal.map((h) => (
                     <option key={h.id} value={h.id}>{h.nome}</option>
                   ))}
                 </select>
               </div>
 
-              {/* Campo de Título do anúncio */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Título do anúncio</label>
                 <input
@@ -576,7 +582,6 @@ export default function Anuncios() {
                 />
               </div>
 
-              {/* Campo de Descrição */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Descrição</label>
                 <textarea
@@ -588,7 +593,6 @@ export default function Anuncios() {
                 />
               </div>
 
-              {/* Campo de Mídia do anúncio */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Mídia do anúncio (Imagem ou Vídeo)</label>
                 <input
@@ -608,7 +612,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay
+                        autoPlay
                         type={selectedFile.type}
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
@@ -625,7 +629,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay
+                        autoPlay
                         type="video/mp4"
                       />
                     ) : form.media_url && form.tipo_media === 'imagem' ? (
@@ -643,7 +647,6 @@ export default function Anuncios() {
                 <p className="text-xs text-gray-600 mt-1">Selecione uma imagem ou vídeo para o anúncio. Imagem: 1080x1920px. Vídeo: MP4, WebM.</p>
               </div>
 
-              {/* Campo de URL de destino (CTA) */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">URL de destino (CTA)</label>
                 <input
@@ -655,7 +658,6 @@ export default function Anuncios() {
                 />
               </div>
 
-              {/* Campo de Duração obrigatória */}
               <div>
                 <label className="text-xs text-gray-400 mb-1.5 block">Duração obrigatória (segundos)</label>
                 <select
@@ -672,7 +674,6 @@ export default function Anuncios() {
                 <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
               </div>
 
-              {/* Checkbox Anúncio ativo */}
               <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-800 rounded-xl border border-gray-700">
                 <input
                   type="checkbox"
