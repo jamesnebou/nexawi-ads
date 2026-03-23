@@ -44,7 +44,7 @@ export default function Portal() {
     const { data, error } = await supabase
       .from('hotspots')
       .select('*')
-      .eq('slug', slug)
+      .eq('id', slug) // <-- ALTERADO AQUI: de 'slug' para 'id'
       .single()
 
     if (error || !data) {
