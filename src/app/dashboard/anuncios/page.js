@@ -408,7 +408,7 @@ export default function Anuncios() {
                           muted
                           loop
                           playsInline
-                          autoplay
+                          autoPlay
                           type="video/mp4"
                           onError={(e) => {
                               e.target.classList.add('hidden');
@@ -608,7 +608,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay
+                        autoPlay
                         type={selectedFile.type}
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
@@ -625,7 +625,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoplay
+                        autoPlay
                         type="video/mp4"
                       />
                     ) : form.media_url && form.tipo_media === 'imagem' ? (
