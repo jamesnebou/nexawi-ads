@@ -608,7 +608,7 @@ export default function Anuncios() {
                         muted
                         loop
                         playsInline
-                        autoPlay
+                        autoplay
                         type={selectedFile.type}
                       />
                     ) : selectedFile && selectedFile.type.startsWith('image/') ? (
