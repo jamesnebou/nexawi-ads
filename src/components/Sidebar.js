@@ -1,4 +1,6 @@
-// src/components/SidebarContent.js
+// src/app/dashboard/sidebar.js
+'use client' // Adicione esta linha se ainda não tiver
+
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react' // Assumindo que você usa next-auth
@@ -17,7 +19,7 @@ const navigation = [
   { label: "Configurações", path: "/dashboard/configuracoes", icon: Settings },
 ];
 
-export default function SidebarContent({ onClose, isCollapsed }) { // Recebe a prop isCollapsed
+export default function Sidebar({ onClose, isCollapsed }) { // Recebe a prop isCollapsed
   const pathname = usePathname()
   const router = useRouter()
 
@@ -70,10 +72,10 @@ export default function SidebarContent({ onClose, isCollapsed }) { // Recebe a p
               }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
                 ${isActive ? "bg-green-500/10 text-green-400" : "text-gray-400 hover:bg-gray-800 hover:text-white"}
-                ${isCollapsed ? 'justify-center' : ''}`} // Centraliza o conteúdo se colapsado
+                ${isCollapsed ? 'justify-center' : ''}`}
             >
               <Icon size={17} />
-              {!isCollapsed && item.label} {/* Esconde o label se colapsado */}
+              {!isCollapsed && item.label}
             </button>
           )
         })}
@@ -84,10 +86,10 @@ export default function SidebarContent({ onClose, isCollapsed }) { // Recebe a p
         <button
           onClick={handleSignOut}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors
-            ${isCollapsed ? 'justify-center' : ''}`} // Centraliza o conteúdo se colapsado
+            ${isCollapsed ? 'justify-center' : ''}`}
         >
           <LogOut size={17} />
-          {!isCollapsed && "Sair"} {/* Esconde o label se colapsado */}
+          {!isCollapsed && "Sair"}
         </button>
       </div>
     </div>
