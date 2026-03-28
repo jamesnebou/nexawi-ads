@@ -38,7 +38,7 @@ export default function Portal() {
   const [erros, setErros] = useState({})
 
   const anunciosMostradosRef = useRef(new Set());
-  const intervaloAnuncioRef = useRef(null); // Para controlar o setInterval
+  const intervaloAnuncioRef = useRef(null);
 
   useEffect(() => {
     buscarHotspot()
@@ -102,7 +102,7 @@ export default function Portal() {
     }
 
     setLeadId(data.id)
-    anunciosMostradosRef.current.clear(); // Reseta o histórico para o novo lead
+    anunciosMostradosRef.current.clear();
     mostrarProximoAnuncio();
   }
 
@@ -111,12 +111,12 @@ export default function Portal() {
 
     if (anunciosDisponiveis.length === 0) {
       if (anuncios.length > 0) {
-        anunciosMostradosRef.current.clear(); // Reseta o histórico para recomeçar o ciclo
+        anunciosMostradosRef.current.clear();
         console.log("Todos os anúncios foram mostrados. Reiniciando o ciclo de anúncios.");
-        mostrarProximoAnuncio(); // Chama a função novamente para selecionar um anúncio do ciclo reiniciado
+        mostrarProximoAnuncio();
         return;
       } else {
-        setEtapa(ETAPAS.ACESSO); // Se não há anúncios cadastrados, vai direto para o acesso
+        setEtapa(ETAPAS.ACESSO);
         return;
       }
     }
@@ -124,7 +124,7 @@ export default function Portal() {
     const aleatorio = anunciosDisponiveis[Math.floor(Math.random() * anunciosDisponiveis.length)];
     setAnuncioAtual(aleatorio);
     setContador(aleatorio.duracao_segundos || 15);
-    setEtapa(ETAPAS.ANUNCIO); // Define a etapa para ANUNCIO para forçar a visualização
+    setEtapa(ETAPAS.ANUNCIO);
 
     anunciosMostradosRef.current.add(aleatorio.id);
 
@@ -140,38 +140,30 @@ export default function Portal() {
     return () => clearTimeout(timer)
   }, [etapa, contador])
 
-  // NOVO useEffect para gerenciar o intervalo de 20 minutos e forçar o anúncio
   useEffect(() => {
-    // Limpa qualquer intervalo existente para evitar múltiplos timers
     if (intervaloAnuncioRef.current) {
       clearInterval(intervaloAnuncioRef.current);
       intervaloAnuncioRef.current = null;
     }
 
     if (etapa === ETAPAS.ACESSO) {
-      // Inicia o intervalo de 20 minutos apenas quando o acesso está liberado
       intervaloAnuncioRef.current = setInterval(() => {
         console.log("20 minutos se passaram. Forçando novo anúncio.");
-        mostrarProximoAnuncio(); // Isso levará o usuário para ETAPAS.ANUNCIO
-      }, 20 * 60 * 1000); // 20 minutos
+        mostrarProximoAnuncio();
+      }, 20 * 60 * 1000); // Lembre-se de ajustar para 20 * 60 * 1000 após os testes
     }
 
-    // Cleanup: limpa o intervalo quando o componente é desmontado ou a etapa muda
     return () => {
       if (intervaloAnuncioRef.current) {
         clearInterval(intervaloAnuncioRef.current);
         intervaloAnuncioRef.current = null;
       }
     };
-  }, [etapa, mostrarProximoAnuncio]); // Depende da etapa e da função mostrarProximoAnuncio
+  }, [etapa, mostrarProximoAnuncio]);
 
-  // Função para lidar com o clique no CTA "Quero saber mais" ou "Não, obrigado"
-  // Esta função agora será chamada pelos botões na ETAPA.CTA
   const handleCtaClick = useCallback(() => {
-    // Aqui você pode adicionar lógica para registrar o clique no anúncio, se necessário
-    setEtapa(ETAPAS.ACESSO); // Libera o acesso novamente
+    setEtapa(ETAPAS.ACESSO);
   }, []);
-
 
   function formatarCPF(v) {
     const n = v.replace(/\D/g, '').slice(0, 11)
@@ -190,164 +182,140 @@ export default function Portal() {
 
   const cor = hotspot?.cor_primaria || '#22c55e'
 
-  if (etapa === ETAPAS.LOADING) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: cor }} />
-      </div>
-    )
-  }
-
-  if (etapa === ETAPAS.ERRO) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-center">
-        <div>
-          <div className="text-4xl mb-4">📡</div>
-          <h1 className="text-white text-xl font-bold mb-2">Hotspot não encontrado</h1>
-          <p className="text-gray-400 text-sm">Verifique se o link está correto.</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
-
       {/* ETAPA 1 — CADASTRO */}
       {etapa === ETAPAS.CADASTRO && (
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            {hotspot?.logo_url ? (
-              <img src={hotspot.logo_url} alt={hotspot.nome} className="h-14 mx-auto mb-4 object-contain" />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl font-bold text-black" style={{ backgroundColor: cor }}>
-                {hotspot?.nome?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <h1 className="text-white text-2xl font-bold">{hotspot?.nome}</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              {hotspot?.mensagem_boas_vindas || 'Faça seu cadastro para acessar o Wi-Fi gratuito'}
+        <div className="w-full max-w-md text-center">
+          <div className="mb-8">
+            <div
+              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
+              style={{ backgroundColor: `${cor}20` }}
+            >
+              👋
+            </div>
+            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi!</h1>
+            <p className="text-gray-400 text-sm">
+              Preencha seus dados para ter acesso à internet em <strong className="text-white">{hotspot?.nome}</strong>.
             </p>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-            {erros.geral && (
-              <div className="bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                {erros.geral}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+            <form onSubmit={(e) => { e.preventDefault(); handleCadastro(); }} className="flex flex-col gap-4">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Nome completo"
+                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.nome ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                />
+                {erros.nome && <p className="text-red-500 text-xs mt-1 text-left">{erros.nome}</p>}
               </div>
-            )}
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Nome completo</label>
-              <input
-                type="text"
-                placeholder="Seu nome"
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.nome ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.nome && <p className="text-red-400 text-xs mt-1">{erros.nome}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">E-mail</label>
-              <input
-                type="email"
-                placeholder="seu@email.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.email ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.email && <p className="text-red-400 text-xs mt-1">{erros.email}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Telefone</label>
-              <input
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={form.telefone}
-                onChange={(e) => setForm({ ...form, telefone: formatarTelefone(e.target.value) })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.telefone ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.telefone && <p className="text-red-400 text-xs mt-1">{erros.telefone}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">CPF</label>
-              <input
-                type="text"
-                placeholder="000.000.000-00"
-                value={form.cpf}
-                onChange={(e) => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.cpf ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.cpf && <p className="text-red-400 text-xs mt-1">{erros.cpf}</p>}
-            </div>
-
-            <div>
-              <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border transition-colors ${erros.aceite_lgpd ? 'border-red-500 bg-red-400/5' : 'border-gray-700 bg-gray-800 hover:border-gray-600'}`}>
+              <div>
+                <input
+                  type="email"
+                  placeholder="E-mail"
+                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.email ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+                {erros.email && <p className="text-red-500 text-xs mt-1 text-left">{erros.email}</p>}
+              </div>
+              <div>
+                <input
+                  type="tel"
+                  placeholder="Telefone"
+                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.telefone ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  value={formatarTelefone(form.telefone)}
+                  onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                />
+                {erros.telefone && <p className="text-red-500 text-xs mt-1 text-left">{erros.telefone}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="CPF"
+                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.cpf ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  value={formatarCPF(form.cpf)}
+                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                />
+                {erros.cpf && <p className="text-red-500 text-xs mt-1 text-left">{erros.cpf}</p>}
+              </div>
+              <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
+                  id="aceite_lgpd"
+                  className="form-checkbox h-4 w-4 text-green-500 rounded border-gray-700 focus:ring-green-500"
                   checked={form.aceite_lgpd}
                   onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
-                  className="mt-0.5 accent-green-500"
                 />
-                <span className="text-xs text-gray-400 leading-relaxed">
-                  Concordo com a coleta e uso dos meus dados conforme a{' '}
-                  <span className="text-green-400 underline cursor-pointer">Política de Privacidade</span>{' '}
-                  e a Lei Geral de Proteção de Dados (LGPD).
-                </span>
-              </label>
-              {erros.aceite_lgpd && <p className="text-red-400 text-xs mt-1">{erros.aceite_lgpd}</p>}
-            </div>
+                <label htmlFor="aceite_lgpd" className="text-gray-400 text-xs">
+                  Eu concordo com a Política de Privacidade e Termos de Uso.
+                </label>
+              </div>
+              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1 text-left">{erros.aceite_lgpd}</p>}
+              {erros.geral && <p className="text-red-500 text-xs mt-1 text-left">{erros.geral}</p>}
 
-            <button
-              onClick={handleCadastro}
-              disabled={salvando}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-              style={{ backgroundColor: cor }}
-            >
-              {salvando ? (
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              ) : (
-                'Continuar e acessar Wi-Fi'
-              )}
-            </button>
+              <button
+                type="submit"
+                disabled={salvando}
+                className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
+                style={{ backgroundColor: cor }}
+              >
+                {salvando ? 'Salvando...' : 'Continuar'}
+              </button>
+            </form>
           </div>
-
-          <p className="text-center text-xs text-gray-600 mt-4">
-            Seus dados são protegidos e não serão compartilhados com terceiros.
-          </p>
         </div>
       )}
 
       {/* ETAPA 2 — ANÚNCIO OBRIGATÓRIO */}
       {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
-        <div className="w-full max-w-lg">
-          <div className="text-center mb-4">
-            <p className="text-gray-400 text-xs uppercase tracking-widest">Mensagem do patrocinador</p>
-          </div>
+        <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black">
+          {/* Mídia do Anúncio (Vídeo ou Imagem) */}
+          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' && (
+            <video
+              key={anuncioAtual.media_url} // Key para forçar re-render se a URL mudar
+              src={anuncioAtual.media_url}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              muted
+              playsInline
+              onEnded={() => setContador(0)} // Opcional: avança se o vídeo terminar
+            />
+          )}
+          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' && (
+            <img
+              key={anuncioAtual.media_url} // Key para forçar re-render se a URL mudar
+              src={anuncioAtual.media_url}
+              alt={anuncioAtual.titulo || 'Anúncio'}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          )}
+          {/* Fallback se não houver mídia */}
+          {!anuncioAtual.media_url && (
+            <div className="absolute inset-0 w-full h-full bg-gray-800 flex items-center justify-center text-gray-400 text-lg">
+              Nenhuma mídia disponível para este anúncio.
+            </div>
+          )}
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            {anuncioAtual.imagem_url && (
-              <div className="w-full aspect-video bg-gray-800">
-                <img
-                  src={anuncioAtual.imagem_url}
-                  alt={anuncioAtual.titulo}
-                  className="w-full h-full object-cover"
-                />
+          {/* Overlay escuro para legibilidade */}
+          <div className="absolute inset-0 bg-black opacity-50 z-10"></div>
+
+          {/* Conteúdo do Anúncio (Contador e Texto) */}
+          <div className="relative z-20 flex flex-col items-center justify-center p-4 text-center">
+            {contador <= 0 && (
+              <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 mb-6 max-w-md">
+                {anuncioAtual.titulo && (
+                  <h2 className="text-white text-2xl font-bold mb-2">{anuncioAtual.titulo}</h2>
+                )}
+                {anuncioAtual.descricao && (
+                  <p className="text-gray-400 text-sm leading-relaxed">{anuncioAtual.descricao}</p>
+                )}
               </div>
             )}
-            <div className="p-6">
-              <h2 className="text-white text-xl font-bold mb-2">{anuncioAtual.titulo}</h2>
-              {anuncioAtual.descricao && (
-                <p className="text-gray-400 text-sm leading-relaxed">{anuncioAtual.descricao}</p>
-              )}
-            </div>
-          </div>
 
-          <div className="mt-6 flex flex-col items-center gap-3">
             {contador > 0 ? (
               <div className="flex flex-col items-center gap-2">
                 <div
@@ -360,7 +328,7 @@ export default function Portal() {
               </div>
             ) : (
               <button
-                onClick={() => setEtapa(ETAPAS.CTA)} // Ao clicar em Continuar, vai para o CTA
+                onClick={() => setEtapa(ETAPAS.CTA)}
                 className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
                 style={{ backgroundColor: cor }}
               >
@@ -392,7 +360,7 @@ export default function Portal() {
                   href={anuncioAtual.url_destino}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={handleCtaClick} // Chama a nova função
+                  onClick={handleCtaClick}
                   className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all block"
                   style={{ backgroundColor: cor }}
                 >
@@ -400,7 +368,7 @@ export default function Portal() {
                 </a>
               )}
               <button
-                onClick={handleCtaClick} // Chama a nova função
+                onClick={handleCtaClick}
                 className="w-full py-3 rounded-xl font-medium text-sm text-gray-500 hover:text-gray-300 transition-colors"
               >
                 Não, obrigado — ir para o Wi-Fi
