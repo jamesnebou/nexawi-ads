@@ -3,8 +3,9 @@
 
 import { useState } from 'react'
 import { X, Menu, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import Sidebar from './dashboard/sidebar' // Importa o seu componente Sidebar
-import './globals.css' // Certifique-se de que seu arquivo de estilos globais está importado
+// CORREÇÃO AQUI: O caminho do import foi ajustado para refletir a localização real do seu Sidebar.js
+import Sidebar from '../components/Sidebar' // Importa o seu componente Sidebar do caminho correto
+import './globals.css'
 
 export default function RootLayout({ children }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -49,7 +50,7 @@ export default function RootLayout({ children }) {
           >
             <Sidebar
               onClose={() => setIsMobileSidebarOpen(false)}
-              isCollapsed={isDesktopSidebarCollapsed} // Passa o estado de colapso para o sidebar
+              isCollapsed={isDesktopSidebarCollapsed}
             />
           </aside>
 
