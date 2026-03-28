@@ -1,322 +1,357 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-// Removidas as importações diretas de BarChart e PieChart
-// import { BarChart, PieChart } from '@tremor/react'; // Assumindo que você usa Tremor para gráficos
-import { MapPin, User, Zap } from 'lucide-react'; // Ícones para os novos cards
-import dynamic from 'next/dynamic'; // Importa dynamic do Next.js
-
-// Importações dinâmicas para os componentes do Tremor
-const BarChart = dynamic(() => import('@tremor/react').then((mod) => mod.BarChart), { ssr: false });
-const PieChart = dynamic(() => import('@tremor/react').then((mod) => mod.PieChart), { ssr: false });
+import { useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
+import {
+  Users, Wifi, UserPlus, DollarSign,
+  TrendingUp, AlertTriangle, Clock, CheckCircle2
+} from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
+)
 
-// ... (o restante do seu código permanece o mesmo) ...
+const CORES = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
-export default function DashboardPage() {
-  const [leadsCaptured, setLeadsCaptured] = useState([]);
-  const [monthlyRevenue, setMonthlyRevenue] = useState([]);
-  const [clientsByStatus, setClientsByStatus] = useState([]);
-  const [topHotspotsData, setTopHotspotsData] = useState([]); // Dados para a nova lista de Top Hotspots
-  const [onlineHotspotsData, setOnlineHotspotsData] = useState([]); // Dados para Pessoas Online
-  const [latestPayments, setLatestPayments] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true)
+  const [metricas, setMetricas] = useState({
+    totalClientes: 0, clientesAtivos: 0,
+    totalHotspots: 0, hotspotsAtivos: 0,
+    totalLeads: 0, leadsHoje: 0,
+    recebidoMes: 0, pendenteTotal: 0, vencidoTotal: 0,
+  })
+  const [leadsporDia, setLeadsPorDia] = useState([])
+  const [receitaPorMes, setReceitaPorMes] = useState([])
+  const [clientesPorStatus, setClientesPorStatus] = useState([])
+  const [leadsPorHotspot, setLeadsPorHotspot] = useState([])
+  const [pagamentosRecentes, setPagamentosRecentes] = useState([])
+  const [leadsRecentes, setLeadsRecentes] = useState([])
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  useEffect(() => { buscarDados() }, [])
 
-  async function fetchDashboardData() {
-    setLoading(true);
+  async function buscarDados() {
+    setLoading(true)
 
-    // --- Fetch Leads Capturados (mantido) ---
-    const { data: leadsData, error: leadsError } = await supabase
-      .from('leads')
-      .select('created_at');
-    if (leadsError) console.error('Erro ao buscar leads:', leadsError);
-    // Processar leadsData para o gráfico de Leads Capturados
-    const leadsLast14Days = leadsData
-      ? leadsData.filter(lead => {
-          const date = new Date(lead.created_at);
-          const fourteenDaysAgo = new Date();
-          fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-          return date >= fourteenDaysAgo;
-        })
-      : [];
-    const leadsByDay = leadsLast14Days.reduce((acc, lead) => {
-      const day = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      acc[day] = (acc[day] || 0) + 1;
-      return acc;
-    }, {});
-    const chartDataLeads = Array.from({ length: 14 }).map((_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (13 - i));
-      const day = date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      return { date: day, leads: leadsByDay[day] || 0 };
-    });
-    setLeadsCaptured(chartDataLeads);
+    const hoje = new Date()
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
+    const hojeStr = hoje.toISOString().slice(0, 10)
 
-    // --- Fetch Receita Mensal (mantido) ---
-    const { data: paymentsData, error: paymentsError } = await supabase
-      .from('pagamentos') // Assumindo tabela 'pagamentos'
-      .select('valor, status, created_at');
-    if (paymentsError) console.error('Erro ao buscar pagamentos para receita:', paymentsError);
+    const [
+      { data: clientes },
+      { data: hotspots },
+      { data: leads },
+      { data: pagamentos },
+      { data: leadsHoje },
+    ] = await Promise.all([
+      supabase.from('clientes').select('status, created_at'),
+      supabase.from('hotspots').select('status'),
+      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, hotspots(nome)').order('created_at', { ascending: false }),
+      supabase.from('pagamentos').select('valor, status, data_vencimento, created_at, clientes(nome)').order('created_at', { ascending: false }),
+      supabase.from('leads').select('id').gte('created_at', hojeStr),
+    ])
 
-    const monthlyRevenueData = paymentsData
-      ? paymentsData.filter(payment => {
-          const date = new Date(payment.created_at);
-          const sixMonthsAgo = new Date();
-          sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-          return date >= sixMonthsAgo;
-        })
-      : [];
+    const recebidoMes = (pagamentos || [])
+      .filter(p => p.status === 'Pago' && p.created_at >= inicioMes)
+      .reduce((acc, p) => acc + Number(p.valor), 0)
+    const pendenteTotal = (pagamentos || [])
+      .filter(p => p.status === 'Pendente')
+      .reduce((acc, p) => acc + Number(p.valor), 0)
+    const vencidoTotal = (pagamentos || [])
+      .filter(p => p.status === 'Vencido')
+      .reduce((acc, p) => acc + Number(p.valor), 0)
 
-    const revenueByMonth = monthlyRevenueData.reduce((acc, payment) => {
-      const monthYear = new Date(payment.created_at).toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
-      if (!acc[monthYear]) {
-        acc[monthYear] = { Pendente: 0, Recebido: 0 };
+    setMetricas({
+      totalClientes: clientes?.length || 0,
+      clientesAtivos: clientes?.filter(c => c.status === 'Ativo').length || 0,
+      totalHotspots: hotspots?.length || 0,
+      hotspotsAtivos: hotspots?.filter(h => h.status === 'Ativo').length || 0,
+      totalLeads: leads?.length || 0,
+      leadsHoje: leadsHoje?.length || 0,
+      recebidoMes, pendenteTotal, vencidoTotal,
+    })
+
+    const ultimos14 = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (13 - i))
+      return d.toISOString().slice(0, 10)
+    })
+    const leadsPorDiaMap = {}
+    ultimos14.forEach(d => leadsPorDiaMap[d] = 0);
+    (leads || []).forEach(l => {
+      const d = l.created_at?.slice(0, 10)
+      if (leadsPorDiaMap[d] !== undefined) leadsPorDiaMap[d]++
+    })
+    setLeadsPorDia(ultimos14.map(d => ({
+      data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      leads: leadsPorDiaMap[d]
+    })))
+
+    const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date()
+      d.setMonth(d.getMonth() - (5 - i))
+      return { ano: d.getFullYear(), mes: d.getMonth(), label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }) }
+    })
+    const receitaMap = {}
+    ultimos6Meses.forEach(m => receitaMap[`${m.ano}-${m.mes}`] = { label: m.label, recebido: 0, pendente: 0 });
+    (pagamentos || []).forEach(p => {
+      const d = new Date(p.created_at)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      if (receitaMap[key]) {
+        if (p.status === 'Pago') receitaMap[key].recebido += Number(p.valor)
+        if (p.status === 'Pendente') receitaMap[key].pendente += Number(p.valor)
       }
-      acc[monthYear][payment.status] += payment.valor;
-      return acc;
-    }, {});
+    })
+    setReceitaPorMes(Object.values(receitaMap))
 
-    const chartDataRevenue = Object.keys(revenueByMonth).map(monthYear => ({
-      name: monthYear,
-      Pendente: revenueByMonth[monthYear].Pendente,
-      Recebido: revenueByMonth[monthYear].Recebido,
-    }));
-    setMonthlyRevenue(chartDataRevenue);
+    const statusMap = {}
+    ;(clientes || []).forEach(c => {
+      statusMap[c.status] = (statusMap[c.status] || 0) + 1
+    })
+    setClientesPorStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value })))
 
-    // --- Fetch Clientes por Status (mantido) ---
-    const { data: clientsData, error: clientsError } = await supabase
-      .from('clientes')
-      .select('ativo'); // Assumindo coluna 'ativo' na tabela 'clientes'
-    if (clientsError) console.error('Erro ao buscar clientes por status:', clientsError);
+    const hotspotMap = {}
+    ;(leads || []).forEach(l => {
+      const nome = l.hotspots?.nome || 'Sem nome'
+      hotspotMap[nome] = (hotspotMap[nome] || 0) + 1
+    })
+    setLeadsPorHotspot(
+      Object.entries(hotspotMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, leads]) => ({ name, leads }))
+    )
 
-    const activeClients = clientsData ? clientsData.filter(c => c.ativo).length : 0;
-    const inactiveClients = clientsData ? clientsData.filter(c => !c.ativo).length : 0;
-    setClientsByStatus([
-      { name: 'Ativo', value: activeClients },
-      { name: 'Inativo', value: inactiveClients },
-    ]);
+    setPagamentosRecentes((pagamentos || []).slice(0, 5))
+    setLeadsRecentes((leads || []).slice(0, 5))
+    setLoading(false)
+  }
 
-    // --- Fetch Últimos Pagamentos (mantido) ---
-    const { data: latestPaymentsData, error: latestPaymentsError } = await supabase
-      .from('pagamentos')
-      .select('id, valor, status, created_at, clientes(nome)') // Assumindo relação com clientes
-      .order('created_at', { ascending: false })
-      .limit(5);
-    if (latestPaymentsError) console.error('Erro ao buscar últimos pagamentos:', latestPaymentsError);
-    setLatestPayments(latestPaymentsData || []);
+  const fmt = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
+  const corStatus = (status) => {
+    if (status === 'Pago') return 'text-green-400'
+    if (status === 'Vencido') return 'text-red-400'
+    return 'text-yellow-400'
+  }
 
-    // --- NOVO: Fetch para Top Hotspots ---
-    const { data: hotspotsFullData, error: hotspotsFullError } = await supabase
-      .from('hotspots')
-      .select('id, nome, clientes(nome)'); // Seleciona o nome do cliente associado
-    if (hotspotsFullError) console.error('Erro ao buscar hotspots completos:', hotspotsFullError);
-
-    // Contar leads por hotspot
-    const { data: allLeadsData, error: allLeadsError } = await supabase
-      .from('leads')
-      .select('hotspot_id');
-    if (allLeadsError) console.error('Erro ao buscar todos os leads:', allLeadsError);
-
-    const leadsCountMap = (allLeadsData || []).reduce((acc, lead) => {
-      acc[lead.hotspot_id] = (acc[lead.hotspot_id] || 0) + 1;
-      return acc;
-    }, {});
-
-    const processedTopHotspots = (hotspotsFullData || []).map(hotspot => ({
-      id: hotspot.id,
-      nome: hotspot.nome,
-      clienteNome: hotspot.clientes ? hotspot.clientes.nome : 'N/A',
-      leadsCount: leadsCountMap[hotspot.id] || 0,
-    }));
-    setTopHotspotsData(processedTopHotspots);
-
-
-    // --- NOVO: Fetch para Pessoas Online por Hotspot ---
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: sessionsData, error: sessionsError } = await supabase
-      .from('hotspot_sessions') // Assumindo tabela 'hotspot_sessions'
-      .select('hotspot_id')
-      .gte('last_active_at', fiveMinutesAgo); // Filtra sessões ativas nos últimos 5 minutos
-    if (sessionsError) console.error('Erro ao buscar sessões online:', sessionsError);
-
-    const onlineUsersMap = (sessionsData || []).reduce((acc, session) => {
-      acc[session.hotspot_id] = (acc[session.hotspot_id] || 0) + 1;
-      return acc;
-    }, {});
-
-    const processedOnlineHotspots = (hotspotsFullData || []).map(hotspot => ({
-      id: hotspot.id,
-      nome: hotspot.nome,
-      onlineCount: onlineUsersMap[hotspot.id] || 0,
-    }));
-    setOnlineHotspotsData(processedOnlineHotspots);
-
-
-    setLoading(false);
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
-    <div className="p-6 bg-gray-950 min-h-screen text-gray-100">
-      <h1 className="text-2xl font-bold text-white mb-6">Visão Geral</h1>
+    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto"> {/* Ajuste de padding */}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+      <div className="mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1> {/* Ajuste de tamanho de título */}
+        <p className="text-gray-400 text-xs sm:text-sm mt-1"> {/* Ajuste de tamanho de texto */}
+          {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"> {/* Ajuste de grid para métricas */}
+        {[
+          { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
+          { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
+          { label: 'Leads Hoje', valor: metricas.leadsHoje, sub: `${metricas.totalLeads} total`, icon: UserPlus, cor: 'text-green-400', bg: 'bg-green-400/5 border-green-400/20' },
+          { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), sub: `${fmt(metricas.pendenteTotal)} pendente`, icon: DollarSign, cor: 'text-yellow-400', bg: 'bg-yellow-400/5 border-yellow-400/20' },
+        ].map((card) => {
+          const Icon = card.icon
+          return (
+            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}> {/* Ajuste de padding do card */}
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500">{card.label}</p>
+                <Icon size={18} className={card.cor} />
+              </div>
+              <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p> {/* Ajuste de tamanho de valor */}
+              <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
+            </div>
+          )
+        })}
+      </div>
+
+      {(metricas.vencidoTotal > 0 || metricas.pendenteTotal > 0) && (
+        <div className="flex gap-3 mb-8 flex-wrap">
+          {metricas.vencidoTotal > 0 && (
+            <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
+              <AlertTriangle size={15} className="text-red-400" />
+              <span className="text-xs text-red-400 font-medium">{fmt(metricas.vencidoTotal)} em pagamentos vencidos</span>
+            </div>
+          )}
+          {metricas.pendenteTotal > 0 && (
+            <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
+              <Clock size={15} className="text-yellow-400" />
+              <span className="text-xs text-yellow-400 font-medium">{fmt(metricas.pendenteTotal)} a receber</span>
+            </div>
+          )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {/* Card: Leads Capturados */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Leads Capturados</h2>
-            <p className="text-gray-500 text-sm mb-4">Últimos 14 dias</p>
-            <BarChart
-              data={leadsCaptured}
-              index="date"
-              categories={['leads']}
-              colors={['green']}
-              yAxisWidth={48}
-              showAnimation={true}
-              className="h-48"
-            />
-          </div>
+      )}
 
-          {/* Card: Receita Mensal */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Receita Mensal</h2>
-            <p className="text-gray-500 text-sm mb-4">Últimos 6 meses</p>
-            <BarChart
-              data={monthlyRevenue}
-              index="name"
-              categories={['Pendente', 'Recebido']}
-              colors={['orange', 'green']}
-              yAxisWidth={48}
-              stack={true}
-              showAnimation={true}
-              className="h-48"
-            />
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"> {/* Ajuste de grid para gráficos principais */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados</h2> {/* Ajuste de tamanho de título */}
+          <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={leadsporDia}>
+              <defs>
+                <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
+              <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} fill="url(#colorLeads)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
 
-          {/* Card: Clientes por Status */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Clientes por Status</h2>
-            <p className="text-gray-500 text-sm mb-4">Distribuição atual</p>
-            <div className="flex items-center justify-center h-48">
-              <PieChart
-                data={clientsByStatus}
-                category="value"
-                index="name"
-                valueFormatter={(number) => `${number}`}
-                colors={['blue', 'green']}
-                className="w-32 h-32"
-              />
-              <div className="ml-8 space-y-2">
-                {clientsByStatus.map((item) => (
-                  <div key={item.name} className="flex items-center text-sm">
-                    <span className={`w-3 h-3 rounded-full mr-2 ${item.name === 'Ativo' ? 'bg-blue-500' : 'bg-green-500'}`}></span>
-                    <span className="text-gray-300">{item.name}:</span>
-                    <span className="ml-2 font-medium text-white">{item.value}</span>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2> {/* Ajuste de tamanho de título */}
+          <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={receitaPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} formatter={(v) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#6b7280' }} />
+              <Bar dataKey="recebido" name="Recebido" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pendente" name="Pendente" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6"> {/* Ajuste de grid para gráficos e listas menores */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2> {/* Ajuste de tamanho de título */}
+          <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
+          {clientesPorStatus.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie data={clientesPorStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" paddingAngle={3}>
+                    {clientesPorStatus.map((_, i) => (
+                      <Cell key={i} fill={CORES[i % CORES.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
+                {clientesPorStatus.map((item, i) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CORES[i % CORES.length] }} />
+                      <span className="text-xs text-gray-400">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-medium text-white">{item.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* NOVO Card: Top Hotspots (substitui o antigo gráfico) */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Top Hotspots</h2>
-            <p className="text-gray-500 text-sm mb-4">Hotspots cadastrados, clientes e leads</p>
-            {topHotspotsData.length === 0 ? (
-              <p className="text-gray-500 text-sm">Nenhum hotspot encontrado.</p>
-            ) : (
-              <ul className="space-y-3">
-                {topHotspotsData.map((hotspot) => (
-                  <li key={hotspot.id} className="flex items-center justify-between text-sm">
-                    <div className="flex flex-col items-start">
-                      <span className="text-gray-300 font-medium">{hotspot.nome}</span>
-                      <span className="text-gray-500 text-xs">Cliente: {hotspot.clienteNome || 'N/A'}</span>
-                    </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-green-400 font-medium flex items-center gap-1">
-                        <User size={14} /> {hotspot.leadsCount} Leads
-                      </span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* NOVO Card: Pessoas Online por Hotspot */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Pessoas Online por Hotspot</h2>
-            <p className="text-gray-500 text-sm mb-4">Últimos 5 minutos</p>
-            {onlineHotspotsData.length === 0 ? (
-              <p className="text-gray-500 text-sm">Nenhuma pessoa online no momento.</p>
-            ) : (
-              <ul className="space-y-3">
-                {onlineHotspotsData.map((hotspot) => (
-                  <li key={hotspot.id} className="flex items-center justify-between text-sm">
-                    <span className="text-gray-300 font-medium">{hotspot.nome}</span>
-                    <span className="text-blue-400 font-medium flex items-center gap-1">
-                      <Zap size={14} /> {hotspot.onlineCount} Online
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Card: Últimos Pagamentos (mantido) */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Últimos Pagamentos</h2>
-            <p className="text-gray-500 text-sm mb-4">5 mais recentes</p>
-            {latestPayments.length === 0 ? (
-              <p className="text-gray-500 text-sm">Nenhum pagamento recente.</p>
-            ) : (
-              <ul className="space-y-4">
-                {latestPayments.map((payment) => (
-                  <li key={payment.id} className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold text-white mr-3">
-                        {payment.clientes?.nome ? payment.clientes.nome.charAt(0).toUpperCase() : 'N/A'}
-                      </div>
-                      <div>
-                        <p className="text-gray-300 font-medium">{payment.clientes?.nome || 'Cliente Desconhecido'}</p>
-                        <p className="text-gray-500 text-xs">{new Date(payment.created_at).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-medium">R$ {payment.valor.toFixed(2).replace('.', ',')}</p>
-                      <p className={`text-xs ${payment.status === 'Pendente' ? 'text-orange-400' : 'text-green-400'}`}>
-                        {payment.status}
-                      </p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-
-          {/* Card: Últimos Leads Capturados (mantido, se houver espaço ou necessidade) */}
-          {/* Você pode ajustar a posição ou remover este card se preferir, dado os novos cards */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-            <h2 className="text-white font-semibold text-lg mb-4">Últimos Leads Capturados</h2>
-            <p className="text-gray-500 text-sm mb-4">5 mais recentes</p>
-            {/* Conteúdo para Últimos Leads Capturados, se você tiver essa funcionalidade */}
-            <p className="text-gray-500 text-sm">Funcionalidade a ser implementada.</p>
-          </div>
+            </>
+          )}
         </div>
-      )}
-    </div>
-  );
+
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots</h2> {/* Ajuste de tamanho de título */}
+          <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
+          {leadsPorHotspot.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={leadsPorHotspot} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} width={80} />
+                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
+                <Bar dataKey="leads" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2> {/* Ajuste de tamanho de título */}
+          <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
+          {pagamentosRecentes.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <div className="space-y-3">
+              {pagamentosRecentes.map((p) => (
+                <div key={p.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-xs flex-shrink-0">
+                      {p.clientes?.nome?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-white truncate">{p.clientes?.nome || '—'}</p>
+                      <p className="text-xs text-gray-500">{new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className="text-xs font-semibold text-white">{fmt(p.valor)}</p>
+                    <p className={`text-xs ${corStatus(p.status)}`}>{p.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
+        <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2> {/* Ajuste de tamanho de título */}
+        <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
+        {leadsRecentes.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-gray-600 text-sm">Nenhum lead capturado ainda.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Lead</th>
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Hotspot</th>
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Capturado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leadsRecentes.map((l) => (
+                  <tr key={l.id} className="border-b border-gray-800 last:border-0">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-orange-400/10 flex items-center justify-center text-orange-400 font-semibold text-xs">
+                          {l.nome?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <p className="text-xs text-white">{l.nome || '—'}</p>
+                          <p className="text-xs text-gray-500">{l.email || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 text-xs text-gray-400">{l.hotspots?.nome || '—'}</td>
+                    <td className="py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString('pt-BR')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
+  )
 }
