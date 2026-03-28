@@ -15,7 +15,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null); // Novo estado para erros
 
-  // Função para buscar a contagem de leads
+  // Função para buscar a contagem de leads tesete
   const fetchLeadsCount = useCallback(async (hotspotsData) => {
     const counts = {}
     for (const hotspot of hotspotsData) {
