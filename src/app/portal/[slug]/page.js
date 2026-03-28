@@ -195,7 +195,7 @@ export default function Portal() {
       <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-center">
         <div>
           <div className="text-4xl mb-4">📡</div>
-          <h1 className="text-white text-2xl font-bold mb-2">Erro ao carregar Hotspot</h1>
+          <h1 className="text-white text-xl font-bold mb-2">Erro ao carregar Hotspot</h1>
           <p className="text-gray-400 text-sm">
             Não foi possível encontrar as informações do hotspot. Verifique o link.
           </p>
@@ -219,78 +219,62 @@ export default function Portal() {
             </div>
             <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi de {hotspot?.nome}!</h1>
             <p className="text-gray-400 text-sm">
-              Preencha seus dados para ter acesso à internet gratuita.
+              Preencha seus dados para acessar a internet.
             </p>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-left">
-            <div className="space-y-4 mb-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+            <div className="flex flex-col gap-4 mb-6">
               <div>
-                <label htmlFor="nome" className="block text-gray-300 text-sm font-medium mb-1">Nome completo</label>
                 <input
                   type="text"
-                  id="nome"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: cor }}
-                  placeholder="Seu nome"
+                  placeholder="Nome completo"
+                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.nome ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 />
-                {erros.nome && <p className="text-red-500 text-xs mt-1">{erros.nome}</p>}
+                {erros.nome && <p className="text-red-500 text-xs text-left mt-1">{erros.nome}</p>}
               </div>
               <div>
-                <label htmlFor="email" className="block text-gray-300 text-sm font-medium mb-1">E-mail</label>
                 <input
                   type="email"
-                  id="email"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: cor }}
-                  placeholder="seu@email.com"
+                  placeholder="E-mail"
+                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.email ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-                {erros.email && <p className="text-red-500 text-xs mt-1">{erros.email}</p>}
+                {erros.email && <p className="text-red-500 text-xs text-left mt-1">{erros.email}</p>}
               </div>
               <div>
-                <label htmlFor="telefone" className="block text-gray-300 text-sm font-medium mb-1">Telefone</label>
                 <input
                   type="tel"
-                  id="telefone"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: cor }}
-                  placeholder="(99) 99999-9999"
+                  placeholder="Telefone (WhatsApp)"
+                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.telefone ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
                   value={formatarTelefone(form.telefone)}
                   onChange={(e) => setForm({ ...form, telefone: e.target.value })}
                 />
-                {erros.telefone && <p className="text-red-500 text-xs mt-1">{erros.telefone}</p>}
+                {erros.telefone && <p className="text-red-500 text-xs text-left mt-1">{erros.telefone}</p>}
               </div>
               <div>
-                <label htmlFor="cpf" className="block text-gray-300 text-sm font-medium mb-1">CPF</label>
                 <input
                   type="text"
-                  id="cpf"
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
-                  style={{ focusRingColor: cor }}
-                  placeholder="999.999.999-99"
+                  placeholder="CPF"
+                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.cpf ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
                   value={formatarCPF(form.cpf)}
                   onChange={(e) => setForm({ ...form, cpf: e.target.value })}
                 />
-                {erros.cpf && <p className="text-red-500 text-xs mt-1">{erros.cpf}</p>}
+                {erros.cpf && <p className="text-red-500 text-xs text-left mt-1">{erros.cpf}</p>}
               </div>
-              <div className="flex items-center">
+              <label className="flex items-center gap-2 text-gray-400 text-xs cursor-pointer">
                 <input
                   type="checkbox"
-                  id="aceite_lgpd"
-                  className="h-4 w-4 text-green-500 rounded border-gray-600 focus:ring-green-500"
-                  style={{ accentColor: cor }}
+                  className={`form-checkbox h-4 w-4 text-${cor.replace('#', '')} rounded border-gray-700 bg-gray-800 focus:ring-${cor.replace('#', '')}`}
                   checked={form.aceite_lgpd}
                   onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
                 />
-                <label htmlFor="aceite_lgpd" className="ml-2 block text-gray-400 text-sm">
-                  Li e aceito os termos de uso e política de privacidade.
-                </label>
-              </div>
-              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1">{erros.aceite_lgpd}</p>}
+                Concordo com a política de privacidade e termos de uso.
+              </label>
+              {erros.aceite_lgpd && <p className="text-red-500 text-xs text-left mt-1">{erros.aceite_lgpd}</p>}
             </div>
 
             {erros.geral && <p className="text-red-500 text-sm text-center mb-4">{erros.geral}</p>}
@@ -319,7 +303,7 @@ export default function Portal() {
               autoPlay
               muted
               playsInline
-              onEnded={() => setContador(0)} // Opcional: avança se o vídeo terminar antes do contador
+              onEnded={() => setContador(0)}
             />
           ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
             <img
@@ -350,7 +334,6 @@ export default function Portal() {
                 <p className="text-gray-200 text-sm font-medium">Aguarde para continuar</p>
               </div>
             ) : (
-              // Este bloco só aparece quando o contador <= 0
               <>
                 {/* Título e descrição visíveis apenas após o contador zerar */}
                 <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 text-center mb-8 max-w-md w-full">
@@ -374,40 +357,65 @@ export default function Portal() {
         </div>
       )}
 
-      {/* ETAPA 3 — CTA DO ANUNCIANTE */}
+      {/* ETAPA 3 — CTA DO ANUNCIANTE (NOVA IMPLEMENTAÇÃO) */}
       {etapa === ETAPAS.CTA && anuncioAtual && (
-        <div className="w-full max-w-md text-center">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-            <div
-              className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              🎁
+        <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black">
+          {/* Mídia do Anúncio (Vídeo ou Imagem) com opacidade de 60% */}
+          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+            <video
+              key={anuncioAtual.media_url}
+              src={anuncioAtual.media_url}
+              className="absolute inset-0 w-full h-full object-cover opacity-60" // Opacidade de 60%
+              autoPlay
+              muted
+              playsInline
+              loop // Opcional: loop para manter o vídeo rodando no fundo
+            />
+          ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+            <img
+              key={anuncioAtual.media_url}
+              src={anuncioAtual.media_url}
+              alt={anuncioAtual.titulo || 'Anúncio'}
+              className="absolute inset-0 w-full h-full object-cover opacity-60" // Opacidade de 60%
+            />
+          ) : (
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-lg opacity-60">
+              Nenhuma mídia disponível para este anúncio.
             </div>
-            <h2 className="text-white text-xl font-bold mb-2">Oferta especial para você!</h2>
-            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              {anuncioAtual.titulo} — clique abaixo para saber mais e aproveitar a oferta.
-            </p>
+          )}
 
-            <div className="flex flex-col gap-3">
-              {anuncioAtual.url_destino && (
-                <a
-                  href={anuncioAtual.url_destino}
-                  target="_blank"
-                  rel="noopener noreferrer"
+          {/* Overlay Escuro sobre a mídia esmaecida */}
+          <div className="absolute inset-0 bg-black opacity-70 z-10"></div> {/* Opacidade um pouco maior para o popup */}
+
+          {/* Popup Centralizado para o CTA */}
+          <div className="relative z-20 w-full max-w-md text-center p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl"> {/* Adicionado sombra */}
+              {/* Ícone de caixinha removido */}
+              <h2 className="text-white text-2xl font-bold mb-2">Oferta especial para você!</h2> {/* Aumentado tamanho da fonte */}
+              <p className="text-gray-300 text-base mb-6 leading-relaxed"> {/* Cor e tamanho ajustados */}
+                {anuncioAtual.titulo} — clique abaixo para saber mais e aproveitar a oferta.
+              </p>
+
+              <div className="flex flex-col gap-3">
+                {anuncioAtual.url_destino && (
+                  <a
+                    href={anuncioAtual.url_destino}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={handleCtaClick}
+                    className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all block shadow-lg" // Aumentado tamanho da fonte e adicionado sombra
+                    style={{ backgroundColor: cor }}
+                  >
+                    Quero saber mais
+                  </a>
+                )}
+                <button
                   onClick={handleCtaClick}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all block"
-                  style={{ backgroundColor: cor }}
+                  className="w-full py-3 rounded-xl font-medium text-base text-gray-400 hover:text-gray-200 transition-colors" // Cor e tamanho ajustados
                 >
-                  Quero saber mais
-                </a>
-              )}
-              <button
-                onClick={handleCtaClick}
-                className="w-full py-3 rounded-xl font-medium text-sm text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                Não, obrigado — ir para o Wi-Fi
-              </button>
+                  Não, obrigado — ir para o Wi-Fi
+                </button>
+              </div>
             </div>
           </div>
         </div>
