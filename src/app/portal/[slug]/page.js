@@ -1,7 +1,7 @@
 // src/app/portal/[slug]/page.js
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react' // Adicionado useRef
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -37,8 +37,8 @@ export default function Portal() {
   })
   const [erros, setErros] = useState({})
 
-  // Novo estado para controlar anúncios já mostrados nesta sessão
-  const anunciosMostradosRef = useRef(new Set()); // Usamos useRef para manter o Set persistente entre re-renders
+  const anunciosMostradosRef = useRef(new Set());
+  const intervaloAnuncioRef = useRef(null); // Para controlar o setInterval
 
   useEffect(() => {
     buscarHotspot()
@@ -102,28 +102,21 @@ export default function Portal() {
     }
 
     setLeadId(data.id)
-    // Ao cadastrar um novo lead, resetamos os anúncios já mostrados para esta nova sessão
-    anunciosMostradosRef.current.clear();
+    anunciosMostradosRef.current.clear(); // Reseta o histórico para o novo lead
     mostrarProximoAnuncio();
   }
 
   const mostrarProximoAnuncio = useCallback(() => {
-    // Filtra os anúncios que ainda não foram mostrados nesta sessão
     const anunciosDisponiveis = anuncios.filter(anuncio => !anunciosMostradosRef.current.has(anuncio.id));
 
     if (anunciosDisponiveis.length === 0) {
-      // Se todos os anúncios já foram mostrados, ou não há anúncios,
-      // podemos resetar o histórico ou ir direto para o acesso.
-      // Para o seu requisito, vamos resetar o histórico e mostrar um anúncio novamente.
       if (anuncios.length > 0) {
         anunciosMostradosRef.current.clear(); // Reseta o histórico para recomeçar o ciclo
         console.log("Todos os anúncios foram mostrados. Reiniciando o ciclo de anúncios.");
-        // Chama a função novamente para selecionar um anúncio do ciclo reiniciado
-        mostrarProximoAnuncio();
+        mostrarProximoAnuncio(); // Chama a função novamente para selecionar um anúncio do ciclo reiniciado
         return;
       } else {
-        // Se não há anúncios cadastrados, vai direto para o acesso
-        setEtapa(ETAPAS.ACESSO);
+        setEtapa(ETAPAS.ACESSO); // Se não há anúncios cadastrados, vai direto para o acesso
         return;
       }
     }
@@ -131,12 +124,11 @@ export default function Portal() {
     const aleatorio = anunciosDisponiveis[Math.floor(Math.random() * anunciosDisponiveis.length)];
     setAnuncioAtual(aleatorio);
     setContador(aleatorio.duracao_segundos || 15);
-    setEtapa(ETAPAS.ANUNCIO);
+    setEtapa(ETAPAS.ANUNCIO); // Define a etapa para ANUNCIO para forçar a visualização
 
-    // Adiciona o ID do anúncio atual ao Set de anúncios já mostrados
     anunciosMostradosRef.current.add(aleatorio.id);
 
-  }, [anuncios]); // Dependência 'anuncios'
+  }, [anuncios]);
 
   useEffect(() => {
     if (etapa !== ETAPAS.ANUNCIO) return
@@ -148,16 +140,38 @@ export default function Portal() {
     return () => clearTimeout(timer)
   }, [etapa, contador])
 
+  // NOVO useEffect para gerenciar o intervalo de 20 minutos e forçar o anúncio
   useEffect(() => {
-    if (etapa !== ETAPAS.ACESSO) return
-    // Esta parte do código faz com que um novo anúncio apareça a cada 20 minutos
-    // se o usuário permanecer na página de acesso.
-    // Se você não quer que isso aconteça, pode remover este useEffect.
-    const intervalo = setInterval(() => {
-      mostrarProximoAnuncio()
-    }, 20 * 60 * 1000)
-    return () => clearInterval(intervalo)
-  }, [etapa, mostrarProximoAnuncio])
+    // Limpa qualquer intervalo existente para evitar múltiplos timers
+    if (intervaloAnuncioRef.current) {
+      clearInterval(intervaloAnuncioRef.current);
+      intervaloAnuncioRef.current = null;
+    }
+
+    if (etapa === ETAPAS.ACESSO) {
+      // Inicia o intervalo de 20 minutos apenas quando o acesso está liberado
+      intervaloAnuncioRef.current = setInterval(() => {
+        console.log("20 minutos se passaram. Forçando novo anúncio.");
+        mostrarProximoAnuncio(); // Isso levará o usuário para ETAPAS.ANUNCIO
+      }, 20 * 60 * 1000); // 20 minutos
+    }
+
+    // Cleanup: limpa o intervalo quando o componente é desmontado ou a etapa muda
+    return () => {
+      if (intervaloAnuncioRef.current) {
+        clearInterval(intervaloAnuncioRef.current);
+        intervaloAnuncioRef.current = null;
+      }
+    };
+  }, [etapa, mostrarProximoAnuncio]); // Depende da etapa e da função mostrarProximoAnuncio
+
+  // Função para lidar com o clique no CTA "Quero saber mais" ou "Não, obrigado"
+  // Esta função agora será chamada pelos botões na ETAPA.CTA
+  const handleCtaClick = useCallback(() => {
+    // Aqui você pode adicionar lógica para registrar o clique no anúncio, se necessário
+    setEtapa(ETAPAS.ACESSO); // Libera o acesso novamente
+  }, []);
+
 
   function formatarCPF(v) {
     const n = v.replace(/\D/g, '').slice(0, 11)
@@ -346,7 +360,7 @@ export default function Portal() {
               </div>
             ) : (
               <button
-                onClick={() => setEtapa(ETAPAS.CTA)}
+                onClick={() => setEtapa(ETAPAS.CTA)} // Ao clicar em Continuar, vai para o CTA
                 className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
                 style={{ backgroundColor: cor }}
               >
@@ -378,7 +392,7 @@ export default function Portal() {
                   href={anuncioAtual.url_destino}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={() => setEtapa(ETAPAS.ACESSO)}
+                  onClick={handleCtaClick} // Chama a nova função
                   className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all block"
                   style={{ backgroundColor: cor }}
                 >
@@ -386,7 +400,7 @@ export default function Portal() {
                 </a>
               )}
               <button
-                onClick={() => setEtapa(ETAPAS.ACESSO)}
+                onClick={handleCtaClick} // Chama a nova função
                 className="w-full py-3 rounded-xl font-medium text-sm text-gray-500 hover:text-gray-300 transition-colors"
               >
                 Não, obrigado — ir para o Wi-Fi
