@@ -43,16 +43,16 @@ export default function Sidebar({ onClose, isCollapsed }) {
             className="object-contain"
           />
         )}
-       {isCollapsed && (
-  <Image
-    src="/minha-logo-icon.png" // Caminho atualizado para a sua nova imagem
-    alt="Logo Icon"
-    width={32}
-    height={32}
-    priority={true}
-    className="object-contain"
-  />
-)}
+        {isCollapsed && (
+          <Image
+            src="/minha-logo-icon.png" // Caminho para a sua nova imagem de ícone
+            alt="Logo Icon"
+            width={32}
+            height={32}
+            priority={true}
+            className="object-contain"
+          />
+        )}
       </div>
 
       {/* Itens de Navegação */}

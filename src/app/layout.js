@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <head>
-        {/* A tag do favicon foi removida daqui. O Next.js vai usar o arquivo favicon.ico na pasta src/app/ */}
+        <link rel="icon" href="/minha-logo-icon.png" /> {/* Favicon */}
         {/* Outras tags meta, title, etc. podem ir aqui se você tiver */}
       </head>
       <body>
@@ -30,16 +30,12 @@ export default function RootLayout({ children }) {
           </button>
 
           {/* Botão para encolher/expandir sidebar no desktop (canto superior esquerdo) */}
-         // src/app/layout.js (apenas a parte do botão para referência)
-// ...
-          {/* Botão para encolher/expandir sidebar no desktop (canto superior esquerdo) */}
           <button
-            className="fixed top-4 left-0 z-50 p-0.5 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors" // Ajustado left-0 e p-0.5
+            className="fixed top-4 left-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors"
             onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
           >
             {isDesktopSidebarCollapsed ? <ChevronsRight size={24} /> : <ChevronsLeft size={24} />}
           </button>
-// ...
 
           {/* Overlay para mobile quando sidebar está aberto */}
           {isMobileSidebarOpen && (
