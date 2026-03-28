@@ -1,4 +1,4 @@
-// src/app/dashboard/page.js
+// src/app/dashboard/page.js iui
 'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs/client'
