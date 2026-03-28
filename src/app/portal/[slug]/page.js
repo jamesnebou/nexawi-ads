@@ -106,6 +106,25 @@ export default function Portal() {
     mostrarProximoAnuncio();
   }
 
+  // Nova função para registrar a visualização do anúncio
+  const registrarVisualizacaoAnuncio = useCallback(async (anuncioId, leadId, hotspotId) => {
+    if (!anuncioId || !leadId || !hotspotId) {
+      console.error("Dados incompletos para registrar visualização de anúncio.");
+      return;
+    }
+    const { error } = await supabase.from('visualizacoes_anuncios').insert([{
+      anuncio_id: anuncioId,
+      lead_id: leadId,
+      hotspot_id: hotspotId,
+    }]);
+    if (error) {
+      console.error("Erro ao registrar visualização de anúncio:", error);
+    } else {
+      console.log(`Visualização do anúncio ${anuncioId} registrada.`);
+    }
+  }, []);
+
+
   const mostrarProximoAnuncio = useCallback(() => {
     const anunciosDisponiveis = anuncios.filter(anuncio => !anunciosMostradosRef.current.has(anuncio.id));
 
@@ -128,7 +147,14 @@ export default function Portal() {
 
     anunciosMostradosRef.current.add(aleatorio.id);
 
-  }, [anuncios]);
+    // Registra a visualização do anúncio aqui
+    if (leadId && hotspot?.id) { // Garante que leadId e hotspot.id estão disponíveis
+      registrarVisualizacaoAnuncio(aleatorio.id, leadId, hotspot.id);
+    }
+
+
+  }, [anuncios, leadId, hotspot?.id, registrarVisualizacaoAnuncio]); // Adicionado dependências
+
 
   useEffect(() => {
     if (etapa !== ETAPAS.ANUNCIO) return
@@ -226,63 +252,72 @@ export default function Portal() {
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
             <div className="flex flex-col gap-4 mb-6">
               <div>
+                <label htmlFor="nome" className="block text-left text-sm font-medium text-gray-300 mb-1">Nome</label>
                 <input
                   type="text"
-                  placeholder="Nome completo"
-                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.nome ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
+                  id="nome"
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Seu nome completo"
                 />
-                {erros.nome && <p className="text-red-500 text-xs text-left mt-1">{erros.nome}</p>}
+                {erros.nome && <p className="text-red-500 text-xs mt-1 text-left">{erros.nome}</p>}
               </div>
               <div>
+                <label htmlFor="email" className="block text-left text-sm font-medium text-gray-300 mb-1">E-mail</label>
                 <input
                   type="email"
-                  placeholder="E-mail"
-                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.email ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
+                  id="email"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="seu@email.com"
                 />
-                {erros.email && <p className="text-red-500 text-xs text-left mt-1">{erros.email}</p>}
+                {erros.email && <p className="text-red-500 text-xs mt-1 text-left">{erros.email}</p>}
               </div>
               <div>
+                <label htmlFor="telefone" className="block text-left text-sm font-medium text-gray-300 mb-1">Telefone</label>
                 <input
                   type="tel"
-                  placeholder="Telefone (WhatsApp)"
-                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.telefone ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
+                  id="telefone"
                   value={formatarTelefone(form.telefone)}
                   onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="(99) 99999-9999"
                 />
-                {erros.telefone && <p className="text-red-500 text-xs text-left mt-1">{erros.telefone}</p>}
+                {erros.telefone && <p className="text-red-500 text-xs mt-1 text-left">{erros.telefone}</p>}
               </div>
               <div>
+                <label htmlFor="cpf" className="block text-left text-sm font-medium text-gray-300 mb-1">CPF</label>
                 <input
                   type="text"
-                  placeholder="CPF"
-                  className={`w-full p-3 rounded-xl bg-gray-800 text-white text-sm border ${erros.cpf ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:ring-2 focus:ring-${cor.replace('#', '')}`}
+                  id="cpf"
                   value={formatarCPF(form.cpf)}
                   onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="999.999.999-99"
                 />
-                {erros.cpf && <p className="text-red-500 text-xs text-left mt-1">{erros.cpf}</p>}
+                {erros.cpf && <p className="text-red-500 text-xs mt-1 text-left">{erros.cpf}</p>}
               </div>
-              <label className="flex items-center gap-2 text-gray-400 text-xs cursor-pointer">
+              <div className="flex items-center mt-2">
                 <input
                   type="checkbox"
-                  className={`form-checkbox h-4 w-4 text-${cor.replace('#', '')} rounded border-gray-700 bg-gray-800 focus:ring-${cor.replace('#', '')}`}
+                  id="aceite_lgpd"
                   checked={form.aceite_lgpd}
                   onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
+                  className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-600 rounded"
                 />
-                Concordo com a política de privacidade e termos de uso.
-              </label>
-              {erros.aceite_lgpd && <p className="text-red-500 text-xs text-left mt-1">{erros.aceite_lgpd}</p>}
+                <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-400 text-left">
+                  Li e aceito a <a href="#" className="text-green-500 hover:underline">política de privacidade</a>.
+                </label>
+              </div>
+              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1 text-left">{erros.aceite_lgpd}</p>}
+              {erros.geral && <p className="text-red-500 text-xs mt-4 text-left">{erros.geral}</p>}
             </div>
-
-            {erros.geral && <p className="text-red-500 text-sm text-center mb-4">{erros.geral}</p>}
-
             <button
               onClick={handleCadastro}
               disabled={salvando}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all shadow-lg"
               style={{ backgroundColor: cor }}
             >
               {salvando ? 'Salvando...' : 'Continuar'}
@@ -291,9 +326,9 @@ export default function Portal() {
         </div>
       )}
 
-      {/* ETAPA 2 — ANUNCIO OBRIGATÓRIO */}
+      {/* ETAPA 2 — ANÚNCIO */}
       {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black">
+        <div className="fixed inset-0 flex flex-col items-center justify-end z-50 bg-black">
           {/* Mídia do Anúncio (Vídeo ou Imagem) */}
           {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
             <video
@@ -303,7 +338,7 @@ export default function Portal() {
               autoPlay
               muted
               playsInline
-              onEnded={() => setContador(0)}
+              onEnded={() => setContador(0)} // Avança se o vídeo terminar antes do contador
             />
           ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
             <img
@@ -334,6 +369,7 @@ export default function Portal() {
                 <p className="text-gray-200 text-sm font-medium">Aguarde para continuar</p>
               </div>
             ) : (
+              // Este bloco só aparece quando o contador <= 0
               <>
                 {/* Título e descrição visíveis apenas após o contador zerar */}
                 <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 text-center mb-8 max-w-md w-full">
@@ -365,18 +401,18 @@ export default function Portal() {
             <video
               key={anuncioAtual.media_url}
               src={anuncioAtual.media_url}
-              className="absolute inset-0 w-full h-full object-cover opacity-60" // Opacidade de 60%
+              className="absolute inset-0 w-full h-full object-cover opacity-60"
               autoPlay
               muted
               playsInline
-              loop // Opcional: loop para manter o vídeo rodando no fundo
+              loop
             />
           ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
             <img
               key={anuncioAtual.media_url}
               src={anuncioAtual.media_url}
               alt={anuncioAtual.titulo || 'Anúncio'}
-              className="absolute inset-0 w-full h-full object-cover opacity-60" // Opacidade de 60%
+              className="absolute inset-0 w-full h-full object-cover opacity-60"
             />
           ) : (
             <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-lg opacity-60">
@@ -385,14 +421,13 @@ export default function Portal() {
           )}
 
           {/* Overlay Escuro sobre a mídia esmaecida */}
-          <div className="absolute inset-0 bg-black opacity-70 z-10"></div> {/* Opacidade um pouco maior para o popup */}
+          <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
 
           {/* Popup Centralizado para o CTA */}
           <div className="relative z-20 w-full max-w-md text-center p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl"> {/* Adicionado sombra */}
-              {/* Ícone de caixinha removido */}
-              <h2 className="text-white text-2xl font-bold mb-2">Oferta especial para você!</h2> {/* Aumentado tamanho da fonte */}
-              <p className="text-gray-300 text-base mb-6 leading-relaxed"> {/* Cor e tamanho ajustados */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
+              <h2 className="text-white text-2xl font-bold mb-2">Oferta especial para você!</h2>
+              <p className="text-gray-300 text-base mb-6 leading-relaxed">
                 {anuncioAtual.titulo} — clique abaixo para saber mais e aproveitar a oferta.
               </p>
 
@@ -403,7 +438,7 @@ export default function Portal() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={handleCtaClick}
-                    className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all block shadow-lg" // Aumentado tamanho da fonte e adicionado sombra
+                    className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all block shadow-lg"
                     style={{ backgroundColor: cor }}
                   >
                     Quero saber mais
@@ -411,7 +446,7 @@ export default function Portal() {
                 )}
                 <button
                   onClick={handleCtaClick}
-                  className="w-full py-3 rounded-xl font-medium text-base text-gray-400 hover:text-gray-200 transition-colors" // Cor e tamanho ajustados
+                  className="w-full py-3 rounded-xl font-medium text-base text-gray-400 hover:text-gray-200 transition-colors"
                 >
                   Não, obrigado — ir para o Wi-Fi
                 </button>
