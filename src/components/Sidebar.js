@@ -1,5 +1,5 @@
-// src/app/dashboard/sidebar.js
-'use client' // Adicione esta linha se ainda não tiver
+// src/components/Sidebar.js
+'use client' // Importante para usar hooks como usePathname, useRouter, useState
 
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'

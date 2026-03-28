@@ -3,9 +3,8 @@
 
 import { useState } from 'react'
 import { X, Menu, ChevronsLeft, ChevronsRight } from 'lucide-react'
-// CORREÇÃO AQUI: O caminho do import foi ajustado para refletir a localização real do seu Sidebar.js
-import Sidebar from '../components/Sidebar' // Importa o seu componente Sidebar do caminho correto
-import './globals.css'
+import Sidebar from '../components/Sidebar' // Caminho CORRIGIDO para o Sidebar
+import './globals.css' // Importa seus estilos globais
 
 export default function RootLayout({ children }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -18,7 +17,7 @@ export default function RootLayout({ children }) {
     <html lang="pt-BR">
       <body>
         <div className="flex min-h-screen bg-gray-950">
-          {/* Botão para abrir/fechar sidebar no MOBILE (canto superior direito) */}
+          {/* Botão para abrir/fechar sidebar no mobile (canto superior direito) */}
           <button
             className="fixed top-4 right-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 md:hidden hover:bg-gray-700 transition-colors"
             onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
@@ -26,7 +25,7 @@ export default function RootLayout({ children }) {
             {isMobileSidebarOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
 
-          {/* Botão para encolher/expandir sidebar no DESKTOP (canto superior esquerdo) */}
+          {/* Botão para encolher/expandir sidebar no desktop (canto superior esquerdo) */}
           <button
             className="fixed top-4 left-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors"
             onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
