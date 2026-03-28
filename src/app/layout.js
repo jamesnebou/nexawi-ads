@@ -3,8 +3,8 @@
 
 import { useState } from 'react'
 import { X, Menu, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import Sidebar from '../components/Sidebar' // Caminho CORRIGIDO para o Sidebar
-import './globals.css' // Importa seus estilos globais
+import Sidebar from '../components/Sidebar'
+import './globals.css'
 
 export default function RootLayout({ children }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -30,12 +30,16 @@ export default function RootLayout({ children }) {
           </button>
 
           {/* Botão para encolher/expandir sidebar no desktop (canto superior esquerdo) */}
+         // src/app/layout.js (apenas a parte do botão para referência)
+// ...
+          {/* Botão para encolher/expandir sidebar no desktop (canto superior esquerdo) */}
           <button
-            className="fixed top-4 left-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors"
+            className="fixed top-4 left-0 z-50 p-0.5 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors" // Ajustado left-0 e p-0.5
             onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
           >
             {isDesktopSidebarCollapsed ? <ChevronsRight size={24} /> : <ChevronsLeft size={24} />}
           </button>
+// ...
 
           {/* Overlay para mobile quando sidebar está aberto */}
           {isMobileSidebarOpen && (
