@@ -150,7 +150,7 @@ export default function Portal() {
       intervaloAnuncioRef.current = setInterval(() => {
         console.log("20 minutos se passaram. Forçando novo anúncio.");
         mostrarProximoAnuncio();
-      }, 20 * 60 * 1000); // Lembre-se de ajustar para 20 * 60 * 1000 após os testes
+      }, 10 * 1000); // Lembre-se de ajustar para 20 * 60 * 1000 após os testes
     }
 
     return () => {
