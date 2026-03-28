@@ -264,6 +264,7 @@ export default function Dashboard() {
           { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), sub: `${fmt(metricas.pendenteTotal)} pendente`, icon: DollarSign, cor: 'text-yellow-400', bg: 'bg-yellow-400/5 border-yellow-400/20' },
           { label: 'Visualizações Hotspot', valor: totalVisualizacoesHotspot, sub: 'Total de acessos ao portal', icon: Eye, cor: 'text-orange-400', bg: 'bg-orange-400/5 border-orange-400/20' },
         ].map((card, index) => {
+          console.log(`Processando card ${index}:`, card.label, card.valor); // Linha de console.log para depuração
           const Icon = card.icon
           return (
             <div key={index} className={`relative p-4 rounded-2xl border ${card.bg}`}>
@@ -278,7 +279,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 lg:col-span-2">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados (Geral)</h2>
           <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
           <ResponsiveContainer width="100%" height={200}>
@@ -299,7 +300,7 @@ export default function Dashboard() {
         </div>
 
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Únicos por Dia</h2>
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Diários</h2>
           <p className="text-xs text-gray-500 mb-5">Hotspot selecionado (últimos 14 dias)</p>
           {selectedHotspotId && leadsUnicosPorDiaHotspot.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
