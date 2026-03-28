@@ -128,26 +128,28 @@ export default function Dashboard() {
     })
     setReceitaPorMes(Object.values(receitaMap))
 
-    const statusMap = {}
-    ;(clientes || []).forEach(c => {
-      statusMap[c.status] = (statusMap[c.status] || 0) + 1
+    const clientesPorStatusMap = {}
+    clientes?.forEach(c => {
+      clientesPorStatusMap[c.status] = (clientesPorStatusMap[c.status] || 0) + 1
     })
-    setClientesPorStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value })))
+    setClientesPorStatus(Object.keys(clientesPorStatusMap).map(status => ({
+      name: status,
+      value: clientesPorStatusMap[status]
+    })))
 
-    const hotspotMapGeral = {}
-    ;(leadsGeral || []).forEach(l => {
-      const nome = l.hotspots?.nome || 'Sem nome'
-      hotspotMapGeral[nome] = (hotspotMapGeral[nome] || 0) + 1
+    const leadsPorHotspotMap = {}
+    leadsGeral?.forEach(l => {
+      if (l.hotspots?.nome) {
+        leadsPorHotspotMap[l.hotspots.nome] = (leadsPorHotspotMap[l.hotspots.nome] || 0) + 1
+      }
     })
-    setLeadsPorHotspotGeral(
-      Object.entries(hotspotMapGeral)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5)
-        .map(([name, leads]) => ({ name, leads }))
-    )
+    setLeadsPorHotspotGeral(Object.keys(leadsPorHotspotMap).map(nome => ({
+      name: nome,
+      leads: leadsPorHotspotMap[nome]
+    })).sort((a, b) => b.leads - a.leads).slice(0, 5))
 
-    setPagamentosRecentes((pagamentos || []).slice(0, 5))
-    setLeadsRecentes((leadsGeral || []).slice(0, 5))
+    setPagamentosRecentes(pagamentos?.slice(0, 5) || [])
+    setLeadsRecentes(leadsGeral?.slice(0, 5) || [])
 
     setLoading(false)
   }, [selectedHotspotId])
@@ -157,11 +159,9 @@ export default function Dashboard() {
   }, [buscarDados])
 
   useEffect(() => {
-    async function fetchLeadsUnicosPorHotspot() {
-      if (!selectedHotspotId) {
-        setLeadsUnicosPorDiaHotspot([])
-        return
-      }
+    if (selectedHotspotId) {
+      const currentHotspot = hotspots.find(h => h.id === selectedHotspotId)
+      setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
 
       const hoje = new Date()
       const ultimos14 = Array.from({ length: 14 }, (_, i) => {
@@ -170,97 +170,100 @@ export default function Dashboard() {
         return d.toISOString().slice(0, 10)
       })
 
-      const { data: leadsHotspot, error } = await supabase
+      supabase
         .from('leads')
-        .select('created_at, cpf')
+        .select('created_at')
         .eq('hotspot_id', selectedHotspotId)
         .gte('created_at', ultimos14[0])
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('Erro ao buscar leads únicos por hotspot:', error)
+            setLeadsUnicosPorDiaHotspot([])
+            return
+          }
 
-      if (error) {
-        console.error('Erro ao buscar leads por hotspot:', error)
-        setLeadsUnicosPorDiaHotspot([])
-        return
-      }
+          const leadsUnicosMap = {}
+          ultimos14.forEach(d => leadsUnicosMap[d] = 0);
 
-      const leadsUnicosPorDiaMap = {}
-      ultimos14.forEach(d => leadsUnicosPorDiaMap[d] = new Set());
+          const uniqueDates = new Set();
+          (data || []).forEach(l => {
+            const d = l.created_at?.slice(0, 10)
+            if (ultimos14.includes(d) && !uniqueDates.has(`${d}-${l.id}`)) { // Considera leads únicos por dia
+              leadsUnicosMap[d]++;
+              uniqueDates.add(`${d}-${l.id}`);
+            }
+          })
 
-      (leadsHotspot || []).forEach(l => {
-        const d = l.created_at?.slice(0, 10)
-        if (leadsUnicosPorDiaMap[d] !== undefined && l.cpf) {
-          leadsUnicosPorDiaMap[d].add(l.cpf)
-        }
-      })
-
-      setLeadsUnicosPorDiaHotspot(ultimos14.map(d => ({
-        data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-        leadsUnicos: leadsUnicosPorDiaMap[d].size
-      })))
+          setLeadsUnicosPorDiaHotspot(ultimos14.map(d => ({
+            data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+            leadsUnicos: leadsUnicosMap[d]
+          })))
+        })
+    } else {
+      setLeadsUnicosPorDiaHotspot([])
     }
-
-    fetchLeadsUnicosPorHotspot()
-  }, [selectedHotspotId])
+  }, [selectedHotspotId, hotspots])
 
   const handleHotspotChange = (e) => {
-    const newSelectedId = e.target.value
-    setSelectedHotspotId(newSelectedId)
-    const currentHotspot = hotspots.find(h => h.id === newSelectedId)
-    setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
+    setSelectedHotspotId(e.target.value)
   }
 
-  const fmt = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+  const fmt = (value) => {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
+  }
 
   const corStatus = (status) => {
-    if (status === 'Pago') return 'text-green-400'
-    if (status === 'Vencido') return 'text-red-400'
-    return 'text-yellow-400'
+    switch (status) {
+      case 'Pago': return 'text-green-400'
+      case 'Pendente': return 'text-yellow-400'
+      case 'Vencido': return 'text-red-400'
+      default: return 'text-gray-400'
+    }
   }
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-950 text-white">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <p className="mt-4 text-gray-400">Carregando dashboard...</p>
+      </main>
     )
   }
 
   return (
-    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto">
-
-      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1>
-          <p className="text-gray-400 text-xs sm:text-sm mt-1">
-            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-          </p>
-        </div>
-        <div className="relative">
+    <main className="flex min-h-screen flex-col p-6 bg-gray-950 text-white">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <label htmlFor="hotspot-select" className="text-sm text-gray-400">
+            Selecionar Hotspot para Análise:
+          </label>
           <select
+            id="hotspot-select"
+            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5"
             value={selectedHotspotId}
             onChange={handleHotspotChange}
-            className="block w-full pl-3 pr-10 py-2 text-base border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
           >
             {hotspots.length === 0 ? (
-              <option value="">Nenhum Hotspot</option>
+              <option value="">Nenhum hotspot encontrado</option>
             ) : (
-              hotspots.map((hotspot) => (
-                <option key={hotspot.id} value={hotspot.id}>
-                  {hotspot.nome}
-                </option>
-              ))
+              <>
+                {hotspots.map((hotspot) => (
+                  <option key={hotspot.id} value={hotspot.id}>
+                    {hotspot.nome}
+                  </option>
+                ))}
+              </>
             )}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-          </div>
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
-          { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
-          { label: 'Leads Hoje', valor: metricas.leadsHoje, sub: `${metricas.totalLeads} total`, icon: UserPlus, cor: 'text-green-400', bg: 'bg-green-400/5 border-green-400/20' },
+          { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-green-400', bg: 'bg-green-400/5 border-green-400/20' },
+          { label: 'Leads Hoje', valor: metricas.leadsHoje, sub: `${metricas.totalLeads} total`, icon: UserPlus, cor: 'text-red-400', bg: 'bg-red-400/5 border-red-400/20' },
           { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), sub: `${fmt(metricas.pendenteTotal)} pendente`, icon: DollarSign, cor: 'text-yellow-400', bg: 'bg-yellow-400/5 border-yellow-400/20' },
           { label: 'Visualizações Hotspot', valor: totalVisualizacoesHotspot, sub: 'Total de acessos ao portal', icon: Eye, cor: 'text-orange-400', bg: 'bg-orange-400/5 border-orange-400/20' },
         ].map((card, index) => {
@@ -272,7 +275,7 @@ export default function Dashboard() {
                 <Icon className={`w-4 h-4 ${card.cor}`} />
               </div>
               <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p>
-              <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
+              <p className="text-xs text-gray-600 mt-1">{card.label}</p> {/* Alterado de card.sub para card.label para corresponder ao exemplo */}
             </div>
           )
         })}
