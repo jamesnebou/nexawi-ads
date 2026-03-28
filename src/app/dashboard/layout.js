@@ -1,41 +1,58 @@
+// src/app/layout.js
 'use client'
 
 import { useState } from 'react'
-import Sidebar from '@/components/Sidebar'
-import { Menu, X } from 'lucide-react'
+import { X, Menu, ChevronsLeft, ChevronsRight } from 'lucide-react' // Importar novos ícones
+import SidebarContent from '../components/SidebarContent' // Ajuste o caminho conforme sua estrutura de pastas
 
-export default function DashboardLayout({ children }) {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+export default function RootLayout({ children }) {
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isDesktopSidebarCollapsed, setIsDesktopSidebarCollapsed] = useState(false) // Novo estado para desktop
+
+  // Classes dinâmicas para largura do sidebar e margem do conteúdo principal
+  const sidebarWidthClass = isDesktopSidebarCollapsed ? 'w-20' : 'w-60' // w-20 para encolhido, w-60 para expandido
+  const mainMarginClass = isDesktopSidebarCollapsed ? 'md:ml-20' : 'md:ml-60' // md:ml-20 para margem quando sidebar encolhido
 
   return (
     <div className="flex min-h-screen bg-gray-950">
-      {/* Botão de Hambúrguer para Mobile (mantido fixo no topo) */}
+      {/* Botão para abrir/fechar sidebar no MOBILE (canto superior direito) */}
       <button
         className="fixed top-4 right-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 md:hidden hover:bg-gray-700 transition-colors"
-        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
       >
-        {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
+        {isMobileSidebarOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
-      {/* Overlay para Mobile quando o Sidebar está aberto */}
-      {isSidebarOpen && (
+      {/* Botão para encolher/expandir sidebar no DESKTOP (canto superior esquerdo) */}
+      <button
+        className="fixed top-4 left-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 hidden md:block hover:bg-gray-700 transition-colors"
+        onClick={() => setIsDesktopSidebarCollapsed(!isDesktopSidebarCollapsed)}
+      >
+        {isDesktopSidebarCollapsed ? <ChevronsRight size={24} /> : <ChevronsLeft size={24} />}
+      </button>
+
+      {/* Overlay para mobile quando sidebar está aberto */}
+      {isMobileSidebarOpen && (
         <div
           className="fixed inset-0 bg-black/50 z-30 md:hidden"
-          onClick={() => setIsSidebarOpen(false)}
+          onClick={() => setIsMobileSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar (Fixo para Desktop e Mobile Drawer) */}
+      {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 w-60 bg-gray-900 border-r border-gray-800 flex-col transition-transform duration-300 ease-in-out
-          ${isSidebarOpen ? 'translate-x-0 flex' : '-translate-x-full hidden'}
-          md:translate-x-0 md:flex`}
+        className={`fixed inset-y-0 left-0 z-40 bg-gray-900 border-r border-gray-800 flex-col transition-all duration-300 ease-in-out
+          ${isMobileSidebarOpen ? "translate-x-0 flex" : "-translate-x-full hidden"}
+          md:translate-x-0 md:flex ${sidebarWidthClass}`}
       >
-        <Sidebar onClose={() => setIsSidebarOpen(false)} />
+        <SidebarContent
+          onClose={() => setIsMobileSidebarOpen(false)}
+          isCollapsed={isDesktopSidebarCollapsed} // Passa o estado de colapso para o conteúdo do sidebar
+        />
       </aside>
 
       {/* Conteúdo Principal */}
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 md:ml-60">
+      <main className={`flex-1 overflow-auto p-4 sm:p-6 md:p-8 ${mainMarginClass}`}>
         {children}
       </main>
     </div>

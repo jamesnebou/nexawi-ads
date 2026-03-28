@@ -1,90 +1,93 @@
-'use client'
-
-import { usePathname, useRouter } from 'next/navigation'
-import { signOut } from '@/lib/auth'
+// src/components/SidebarContent.js
 import Image from 'next/image'
+import { usePathname, useRouter } from 'next/navigation'
+import { signOut } from 'next-auth/react' // Assumindo que você usa next-auth
 import {
-  LayoutDashboard,
-  Users,
-  Wifi,
-  Package,
-  UserPlus,
-  DollarSign,
-  Settings,
-  LogOut,
-  Megaphone,
-  BarChart2 // NOVO: Ícone importado para o relatório
-  } from 'lucide-react'
+  Users, Wifi, UserPlus, DollarSign, Package, Settings, LogOut, LayoutDashboard, BarChart2
+} from 'lucide-react'
 
-const menu = [
-  { label: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
-  { label: 'Clientes', path: '/dashboard/clientes', icon: Users },
-  { label: 'Financeiro', path: '/dashboard/financeiro', icon: DollarSign },
-  { label: 'Hotspots', path: '/dashboard/hotspots', icon: Wifi },
-  { label: 'Anúncios', path: '/dashboard/anuncios', icon: Megaphone },
-  { label: 'Planos', path: '/dashboard/planos', icon: Package },
-  { label: 'Leads', path: '/dashboard/leads', icon: UserPlus },
-  // NOVO: Item de navegação para o Relatório de Acesso
-  { label: 'Relatório de Acesso', path: '/dashboard/relatorios/acesso', icon: BarChart2 },
-  { label: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
-]
+// Definição dos itens de navegação
+const navigation = [
+  { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
+  { label: "Clientes", path: "/dashboard/clientes", icon: Users },
+  { label: "Hotspots", path: "/dashboard/hotspots", icon: Wifi },
+  { label: "Planos", path: "/dashboard/planos", icon: Package },
+  { label: "Leads", path: "/dashboard/leads", icon: UserPlus },
+  { label: "Relatório de Acesso", path: "/dashboard/relatorios/acesso", icon: BarChart2 },
+  { label: "Configurações", path: "/dashboard/configuracoes", icon: Settings },
+];
 
-// Adicione 'onClose' como uma prop
-export default function Sidebar({ onClose }) {
+export default function SidebarContent({ onClose, isCollapsed }) { // Recebe a prop isCollapsed
   const pathname = usePathname()
   const router = useRouter()
 
   async function handleSignOut() {
     await signOut()
-    router.push('/login')
-    onClose() // Fecha o sidebar após sair
+    router.push("/login")
+    onClose()
   }
 
   return (
-    // Removida a classe 'w-60' daqui, pois o layout pai já define a largura e a posição
     <div className="min-h-screen bg-gray-900 flex flex-col">
-      <div className="px-6 py-6 border-b border-gray-800 flex items-center justify-center">
-        <Image
-          src="/Nexa-logo.png"
-          alt="Sua Logo"
-          width={140}
-          height={40}
-          priority
-          className="object-contain"
-        />
+      {/* Área do Logo */}
+      <div className={`px-6 py-6 border-b border-gray-800 flex items-center ${isCollapsed ? 'justify-center' : 'justify-center'}`}>
+        {/* Mostra logo completo ou ícone dependendo do estado de colapso */}
+        {!isCollapsed && (
+          <Image
+            src="/Nexa-logo.png"
+            alt="Sua Logo"
+            width={140}
+            height={40}
+            priority={true}
+            className="object-contain"
+          />
+        )}
+        {isCollapsed && (
+          // Assumindo que você tem uma versão de ícone do seu logo para quando o sidebar está encolhido
+          // Se não tiver, pode usar um texto curto ou apenas o primeiro caractere, ou remover esta parte
+          <Image
+            src="/Nexa-logo-icon.png" // Substitua pelo caminho do seu ícone de logo, se tiver
+            alt="Logo Icon"
+            width={32}
+            height={32}
+            priority={true}
+            className="object-contain"
+          />
+        )}
       </div>
 
+      {/* Itens de Navegação */}
       <nav className="flex-1 px-3 py-4 space-y-1">
-        {menu.map((item) => {
+        {navigation.map(item => {
           const Icon = item.icon
-          const active = pathname === item.path
+          const isActive = pathname === item.path
           return (
             <button
               key={item.path}
               onClick={() => {
                 router.push(item.path)
-                onClose() // Fecha o sidebar após navegar para um item
+                onClose()
               }}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors ${
-                active
-                  ? 'bg-green-500/10 text-green-400'
-                  : 'text-gray-400 hover:bg-gray-800 hover:text-white'
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors
+                ${isActive ? "bg-green-500/10 text-green-400" : "text-gray-400 hover:bg-gray-800 hover:text-white"}
+                ${isCollapsed ? 'justify-center' : ''}`} // Centraliza o conteúdo se colapsado
             >
               <Icon size={17} />
-              {item.label}
+              {!isCollapsed && item.label} {/* Esconde o label se colapsado */}
             </button>
           )
         })}
       </nav>
 
+      {/* Botão Sair */}
       <div className="px-3 py-4 border-t border-gray-800">
         <button
           onClick={handleSignOut}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors
+            ${isCollapsed ? 'justify-center' : ''}`} // Centraliza o conteúdo se colapsado
         >
           <LogOut size={17} />
-          Sair
+          {!isCollapsed && "Sair"} {/* Esconde o label se colapsado */}
         </button>
       </div>
     </div>
