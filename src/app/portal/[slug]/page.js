@@ -153,7 +153,7 @@ export default function Portal() {
       intervaloAnuncioRef.current = setInterval(() => {
         console.log("20 minutos se passaram. Forçando novo anúncio.");
         mostrarProximoAnuncio(); // Isso levará o usuário para ETAPAS.ANUNCIO
-      }, 20 * 60 * 1000); // 20 minutos
+      }, 10 * 1000); // 20 minutos
     }
 
     // Cleanup: limpa o intervalo quando o componente é desmontado ou a etapa muda
