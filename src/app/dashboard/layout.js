@@ -11,7 +11,7 @@ export default function DashboardLayout({ children }) {
     <div className="flex min-h-screen bg-gray-950">
       {/* Botão de Hambúrguer para Mobile (mantido fixo no topo) */}
       <button
-        className="fixed top-4 left-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 md:hidden hover:bg-gray-700 transition-colors"
+        className="fixed top-4 right-4 z-50 p-2 rounded-full bg-gray-800 text-gray-400 md:hidden hover:bg-gray-700 transition-colors"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
       >
         {isSidebarOpen ? <X size={24} /> : <Menu size={24} />}
