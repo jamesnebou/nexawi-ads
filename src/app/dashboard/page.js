@@ -1,7 +1,7 @@
 // src/app/dashboard/page.js
 'use client'
 
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs/client'
 import { useEffect, useState, useCallback } from 'react' // Adicionado useCallback
 import { useRouter } from 'next/navigation'
 
