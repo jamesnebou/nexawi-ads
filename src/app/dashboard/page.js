@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react' // Adicionado useCallback
+import { useEffect, useState, useCallback } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import {
   Users, Wifi, UserPlus, DollarSign,
-  TrendingUp, AlertTriangle, Clock, CheckCircle2, Eye // Adicionado o ícone Eye para visualizações
+  TrendingUp, AlertTriangle, Clock, CheckCircle2, Eye
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
@@ -20,20 +20,20 @@ const CORES = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
-  const [hotspots, setHotspots] = useState([]) // Estado para armazenar a lista de hotspots
-  const [selectedHotspotId, setSelectedHotspotId] = useState('') // Novo estado para o hotspot selecionado
-  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0) // Estado para visualizações do hotspot
+  const [hotspots, setHotspots] = useState([])
+  const [selectedHotspotId, setSelectedHotspotId] = useState('')
+  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0)
   const [metricas, setMetricas] = useState({
     totalClientes: 0, clientesAtivos: 0,
     totalHotspots: 0, hotspotsAtivos: 0,
     totalLeads: 0, leadsHoje: 0,
     recebidoMes: 0, pendenteTotal: 0, vencidoTotal: 0,
   })
-  const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([]) // Renomeado para evitar conflito
-  const [leadsUnicosPorDiaHotspot, setLeadsUnicosPorDiaHotspot] = useState([]) // Novo estado para o gráfico por hotspot
+  const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([])
+  const [leadsUnicosPorDiaHotspot, setLeadsUnicosPorDiaHotspot] = useState([])
   const [receitaPorMes, setReceitaPorMes] = useState([])
   const [clientesPorStatus, setClientesPorStatus] = useState([])
-  const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([]) // Renomeado para evitar conflito
+  const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([])
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
 
@@ -58,48 +58,63 @@ export default function Dashboard() {
     }
   }
 
-  // Função para buscar dados, agora com useCallback para otimização
-  const buscarDados = useCallback(async () => {
+  // Efeito para carregar hotspots iniciais e definir o hotspot padrão
+  useEffect(() => {
+    const loadInitialHotspots = async () => {
+      const { data: allHotspots, error: hotspotsError } = await supabase
+        .from('hotspots')
+        .select('id, nome, visualizacoes')
+        .order('nome', { ascending: true })
+
+      if (hotspotsError) {
+        console.error('Erro ao buscar hotspots iniciais:', hotspotsError)
+      } else {
+        setHotspots(allHotspots || [])
+        if (allHotspots && allHotspots.length > 0 && !selectedHotspotId) {
+          setSelectedHotspotId(allHotspots[0].id)
+        }
+      }
+    }
+    loadInitialHotspots()
+  }, [selectedHotspotId]) // Depende de selectedHotspotId para garantir que o padrão seja definido apenas uma vez
+
+  // Função para buscar todos os dados do dashboard, dependente do hotspot selecionado
+  const buscarDadosDashboard = useCallback(async () => {
+    if (!selectedHotspotId) {
+      setLoading(false)
+      return // Não busca dados se nenhum hotspot estiver selecionado
+    }
+
     setLoading(true)
 
     const hoje = new Date()
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
     const hojeStr = hoje.toISOString().slice(0, 10)
 
-    // Busca inicial de todos os hotspots para o seletor
-    const { data: allHotspots, error: hotspotsError } = await supabase
-      .from('hotspots')
-      .select('id, nome, visualizacoes')
-      .order('nome', { ascending: true })
+    // Atualiza o total de visualizações do hotspot selecionado
+    const currentHotspot = hotspots.find(h => h.id === selectedHotspotId)
+    setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
 
-    if (hotspotsError) {
-      console.error('Erro ao buscar hotspots:', hotspotsError)
-      // Tratar erro de hotspots
-    } else {
-      setHotspots(allHotspots || [])
-      if (allHotspots && allHotspots.length > 0 && !selectedHotspotId) {
-        setSelectedHotspotId(allHotspots[0].id) // Define o primeiro hotspot como padrão se nenhum estiver selecionado
-        setTotalVisualizacoesHotspot(allHotspots[0].visualizacoes || 0)
-      } else if (selectedHotspotId) {
-        const currentHotspot = allHotspots?.find(h => h.id === selectedHotspotId)
-        setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
-      }
-    }
-
-    // Promise.all para buscar os dados gerais da dashboard
+    // Promise.all para buscar os dados
     const [
       { data: clientes },
-      { data: hotspotsData }, // Renomeado para evitar conflito com allHotspots
-      { data: leadsGeral }, // Renomeado para evitar conflito
+      { data: hotspotsData },
+      { data: leadsGeral },
       { data: pagamentos },
       { data: leadsHoje },
+      { data: leadsHotspot, error: leadsHotspotError }, // Busca de leads específicos do hotspot
     ] = await Promise.all([
       supabase.from('clientes').select('status, created_at'),
       supabase.from('hotspots').select('status'),
-      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, cpf, hotspots(nome)').order('created_at', { ascending: false }), // Adicionado 'cpf'
+      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, cpf, hotspots(nome)').order('created_at', { ascending: false }),
       supabase.from('pagamentos').select('valor, status, data_vencimento, created_at, clientes(nome)').order('created_at', { ascending: false }),
       supabase.from('leads').select('id').gte('created_at', hojeStr),
+      supabase.from('leads').select('id, created_at').eq('hotspot_id', selectedHotspotId).gte('created_at', new Date(hoje.setDate(hoje.getDate() - 14)).toISOString().slice(0, 10)),
     ])
+
+    if (leadsHotspotError) {
+      console.error('Erro ao buscar leads do hotspot:', leadsHotspotError)
+    }
 
     const recebidoMes = (pagamentos || [])
       .filter(p => p.status === 'Pago' && p.created_at >= inicioMes)
@@ -118,140 +133,100 @@ export default function Dashboard() {
       hotspotsAtivos: hotspotsData?.filter(h => h.status === 'Ativo').length || 0,
       totalLeads: leadsGeral?.length || 0,
       leadsHoje: leadsHoje?.length || 0,
-      recebidoMes,
-      pendenteTotal,
-      vencidoTotal,
+      recebidoMes, pendenteTotal, vencidoTotal,
     })
 
-    // Gráfico de Leads por Dia (Geral)
-    const leadsPorDiaMap = (leadsGeral || []).reduce((acc, lead) => {
-      const date = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-      acc[date] = (acc[date] || 0) + 1
-      return acc
-    }, {})
-    const ultimos14Dias = Array.from({ length: 14 }, (_, i) => {
+    // Lógica para leadsPorDiaGeral (leads capturados - gráfico geral)
+    const ultimos14 = Array.from({ length: 14 }, (_, i) => {
       const d = new Date()
-      d.setDate(hoje.getDate() - i)
-      return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-    }).reverse()
-    setLeadsPorDiaGeral(ultimos14Dias.map(date => ({
-      data: date,
-      leads: leadsPorDiaMap[date] || 0,
+      d.setDate(d.getDate() - (13 - i))
+      return d.toISOString().slice(0, 10)
+    })
+    const leadsPorDiaMap = {}
+    ultimos14.forEach(d => leadsPorDiaMap[d] = 0);
+    (leadsGeral || []).forEach(l => {
+      const d = l.created_at?.slice(0, 10)
+      if (leadsPorDiaMap[d] !== undefined) leadsPorDiaMap[d]++
+    })
+    setLeadsPorDiaGeral(ultimos14.map(d => ({
+      data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      leads: leadsPorDiaMap[d]
     })))
 
-    // Gráfico de Leads Únicos por Dia (Hotspot Selecionado)
-    if (selectedHotspotId) {
-      const { data: leadsHotspot, error: leadsHotspotError } = await supabase
-        .from('leads')
-        .select('id, created_at')
-        .eq('hotspot_id', selectedHotspotId)
-        .gte('created_at', new Date(hoje.setDate(hoje.getDate() - 14)).toISOString().slice(0, 10)) // Últimos 14 dias
+    // Lógica para leadsUnicosPorDiaHotspot (gráfico por hotspot)
+    const leadsUnicosPorDiaMap = (leadsHotspot || []).reduce((acc, lead) => {
+      const date = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+      acc[date] = (acc[date] || new Set()).add(lead.id)
+      return acc
+    }, {})
+    setLeadsUnicosPorDiaHotspot(ultimos14.map(date => ({
+      data: new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      leadsUnicos: leadsUnicosPorDiaMap[new Date(date + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })]?.size || 0,
+    })))
 
-      if (leadsHotspotError) {
-        console.error('Erro ao buscar leads do hotspot:', leadsHotspotError)
-      } else {
-        const leadsUnicosPorDiaMap = (leadsHotspot || []).reduce((acc, lead) => {
-          const date = new Date(lead.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
-          acc[date] = (acc[date] || new Set()).add(lead.id) // Contar IDs únicos
-          return acc
-        }, {})
-        setLeadsUnicosPorDiaHotspot(ultimos14Dias.map(date => ({
-          data: date,
-          leadsUnicos: (leadsUnicosPorDiaMap[date]?.size || 0),
-        })))
-      }
-    } else {
-      setLeadsUnicosPorDiaHotspot([]) // Limpa o gráfico se nenhum hotspot estiver selecionado
-    }
 
-    // Gráfico de Receita por Mês
+    // Lógica para receitaPorMes
     const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1)
-      return {
-        label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-        startOfMonth: d.toISOString(),
-        endOfMonth: new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString(),
+      const d = new Date()
+      d.setMonth(d.getMonth() - (5 - i))
+      return { ano: d.getFullYear(), mes: d.getMonth(), label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }) }
+    })
+    const receitaMap = {}
+    ultimos6Meses.forEach(m => receitaMap[`${m.ano}-${m.mes}`] = { label: m.label, recebido: 0, pendente: 0 });
+    (pagamentos || []).forEach(p => {
+      const d = new Date(p.created_at)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      if (receitaMap[key]) {
+        if (p.status === 'Pago') receitaMap[key].recebido += Number(p.valor)
+        if (p.status === 'Pendente') receitaMap[key].pendente += Number(p.valor)
       }
-    }).reverse()
+    })
+    setReceitaPorMes(Object.values(receitaMap))
 
-    const receitaPorMesData = await Promise.all(ultimos6Meses.map(async (mes) => {
-      const { data: pagamentosMes, error: pagamentosMesError } = await supabase
-        .from('pagamentos')
-        .select('valor, status')
-        .gte('created_at', mes.startOfMonth)
-        .lte('created_at', mes.endOfMonth)
+    // Lógica para clientesPorStatus
+    const statusMap = {}
+    ;(clientes || []).forEach(c => {
+      statusMap[c.status] = (statusMap[c.status] || 0) + 1
+    })
+    setClientesPorStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value })))
 
-      if (pagamentosMesError) {
-        console.error('Erro ao buscar pagamentos por mês:', pagamentosMesError)
-        return { label: mes.label, recebido: 0, pendente: 0 }
-      }
-
-      const recebido = (pagamentosMes || [])
-        .filter(p => p.status === 'Pago')
-        .reduce((acc, p) => acc + Number(p.valor), 0)
-      const pendente = (pagamentosMes || [])
-        .filter(p => p.status === 'Pendente')
-        .reduce((acc, p) => acc + Number(p.valor), 0)
-
-      return { label: mes.label, recebido, pendente }
-    }))
-    setReceitaPorMes(receitaPorMesData)
-
-    // Clientes por Status
-    const clientesAtivos = clientes?.filter(c => c.status === 'Ativo').length || 0
-    const clientesInativos = clientes?.filter(c => c.status === 'Inativo').length || 0
-    const clientesPendentes = clientes?.filter(c => c.status === 'Pendente').length || 0
-    setClientesPorStatus([
-      { name: 'Ativos', value: clientesAtivos },
-      { name: 'Inativos', value: clientesInativos },
-      { name: 'Pendentes', value: clientesPendentes },
-    ].filter(item => item.value > 0))
-
-    // Leads por Hotspot (Geral)
+    // Lógica para leadsPorHotspotGeral
     const leadsPorHotspotMap = (leadsGeral || []).reduce((acc, lead) => {
       const hotspotName = lead.hotspots?.nome || 'Desconhecido'
       acc[hotspotName] = (acc[hotspotName] || 0) + 1
       return acc
     }, {})
-    const leadsPorHotspotArray = Object.entries(leadsPorHotspotMap)
+    setLeadsPorHotspotGeral(Object.entries(leadsPorHotspotMap)
       .map(([name, leads]) => ({ name, leads }))
       .sort((a, b) => b.leads - a.leads)
-      .slice(0, 5) // Top 5 hotspots
-    setLeadsPorHotspotGeral(leadsPorHotspotArray)
+      .slice(0, 5))
 
-    // Pagamentos Recentes
+    // Lógica para pagamentosRecentes
     setPagamentosRecentes((pagamentos || []).slice(0, 5))
 
-    // Leads Recentes
+    // Lógica para leadsRecentes
     setLeadsRecentes((leadsGeral || []).slice(0, 5))
 
     setLoading(false)
-  }, [selectedHotspotId, hotspots]) // Dependências para useCallback: selectedHotspotId e hotspots
+  }, [selectedHotspotId, hotspots]) // hotspots é uma dependência porque `currentHotspot` a utiliza.
 
-  // useEffect para buscar dados quando o componente monta ou selectedHotspotId muda
+  // Efeito para disparar a busca de dados do dashboard quando o hotspot selecionado ou a lista de hotspots muda
   useEffect(() => {
-    buscarDados()
-  }, [selectedHotspotId, buscarDados]) // Adicionado buscarDados como dependência para garantir que useCallback seja estável
-
-  // useEffect para re-buscar dados quando o hotspot selecionado muda
-  useEffect(() => {
-    if (selectedHotspotId) {
-      buscarDados()
-    }
-  }, [selectedHotspotId, buscarDados])
-
+    buscarDadosDashboard()
+  }, [buscarDadosDashboard])
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-950 text-white">
+    <main className="flex-1 p-4 sm:p-6 md:p-8 bg-gray-950 text-white min-h-screen">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <div className="flex items-center gap-4">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard</h1>
+        <div className="flex items-center gap-3">
+          <label htmlFor="hotspot-select" className="sr-only">Selecionar Hotspot</label>
           <select
+            id="hotspot-select"
+            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-xl py-2 px-3 focus:ring-green-500 focus:border-green-500"
             value={selectedHotspotId}
             onChange={(e) => setSelectedHotspotId(e.target.value)}
-            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2.5"
           >
-            <option value="">Todos os Hotspots</option>
             {hotspots.map((hotspot) => (
               <option key={hotspot.id} value={hotspot.id}>
                 {hotspot.nome}
@@ -262,12 +237,11 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+        <div className="flex items-center justify-center h-96">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
         </div>
       ) : (
         <>
-          {/* Cards de Métricas */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
             {[
               { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
@@ -284,69 +258,51 @@ export default function Dashboard() {
                     <Icon className={`w-4 h-4 ${card.cor}`} />
                   </div>
                   <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p>
-                  <p className="text-sm text-gray-400 mt-1">{card.label}</p>
-                  <p className="text-xs text-gray-500">{card.sub}</p>
+                  <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
                 </div>
               )
             })}
           </div>
 
-          {/* Gráficos */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Gráfico de Leads por Dia (Geral) */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
-              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads por Dia (Geral)</h2>
-              <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
+              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados (Geral)</h2>
+              <p className="text-xs text-gray-500 mb-4">Últimos 14 dias</p>
               <ResponsiveContainer width="100%" height={200}>
-                <AreaChart data={leadsPorDiaGeral}>
-                  <defs>
-                    <linearGradient id="colorLeadsGeral" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <AreaChart data={leadsPorDiaGeral} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
-                  <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} fill="url(#colorLeadsGeral)" />
+                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
+                  <Area type="monotone" dataKey="leads" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.3} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
-            {/* NOVO GRÁFICO: Acessos Únicos por Dia para o Hotspot Selecionado */}
+            {/* Gráfico de Leads Únicos por Dia (Hotspot Selecionado) */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
-              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Únicos por Dia</h2>
-              <p className="text-xs text-gray-500 mb-5">Hotspot: {hotspots.find(h => h.id === selectedHotspotId)?.nome || 'Nenhum selecionado'}</p>
-              {selectedHotspotId && leadsUnicosPorDiaHotspot.length > 0 ? (
-                <ResponsiveContainer width="100%" height={200}>
-                  <AreaChart data={leadsUnicosPorDiaHotspot}>
-                    <defs>
-                      <linearGradient id="colorLeadsUnicos" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
-                    <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                    <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
-                    <Area type="monotone" dataKey="leadsUnicos" stroke="#3b82f6" strokeWidth={2} fill="url(#colorLeadsUnicos)" />
-                  </AreaChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-40 text-gray-600 text-sm">
-                  {selectedHotspotId ? 'Sem dados de acessos únicos para este hotspot.' : 'Selecione um hotspot para ver os dados.'}
-                </div>
-              )}
-            </div>
-
-            {/* Gráfico de Receita Mensal (mantido) */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
-              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2>
-              <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
+              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Únicos por Dia (Hotspot)</h2>
+              <p className="text-xs text-gray-500 mb-4">Últimos 14 dias para o hotspot selecionado</p>
               <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={receitaPorMes}>
+                <AreaChart data={leadsUnicosPorDiaHotspot} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                  <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
+                  <Area type="monotone" dataKey="leadsUnicos" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Gráfico de Receita por Mês */}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+              <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita por Mês</h2>
+              <p className="text-xs text-gray-500 mb-4">Últimos 6 meses</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={receitaPorMes} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
@@ -357,25 +313,22 @@ export default function Dashboard() {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-            {/* Gráfico de Clientes por Status (mantido) */}
+            {/* Gráfico de Clientes por Status */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
               <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2>
               <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
-              <>
-                <ResponsiveContainer width="100%" height={150}>
-                  <PieChart>
-                    <Pie data={clientesPorStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" paddingAngle={3}>
-                      {clientesPorStatus.map((_, i) => (
-                        <Cell key={i} fill={CORES[i % CORES.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} />
-                  </PieChart>
-                </ResponsiveContainer>
-                <div className="space-y-1.5 mt-2">
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie data={clientesPorStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" paddingAngle={3}>
+                    {clientesPorStatus.map((_, i) => (
+                      <Cell key={i} fill={CORES[i % CORES.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
                   {clientesPorStatus.map((item, i) => (
                     <div key={item.name} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -386,10 +339,11 @@ export default function Dashboard() {
                     </div>
                   ))}
                 </div>
-              </>
             </div>
+          </div>
 
-            {/* Gráfico de Top Hotspots GERAL (mantido) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+            {/* Gráfico de Top Hotspots GERAL */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
               <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots (Geral)</h2>
               <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
@@ -404,7 +358,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
 
-            {/* Últimos Pagamentos (mantido) */}
+            {/* Últimos Pagamentos */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
               <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2>
               <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
@@ -430,7 +384,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Últimos Leads Capturados (mantido) */}
+          {/* Últimos Leads Capturados */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
             <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2>
             <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
