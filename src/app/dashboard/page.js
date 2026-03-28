@@ -2,7 +2,7 @@
 'use client'
 
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs/client'
-import { useEffect, useState, useCallback } from 'react' // Adicionado useCallback
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 export default function Dashboard() {
@@ -13,9 +13,8 @@ export default function Dashboard() {
   const [leadsCount, setLeadsCount] = useState({})
   const [anunciosVisualizadosCount, setAnunciosVisualizadosCount] = useState({});
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null); // Novo estado para erros
+  const [error, setError] = useState(null);
 
-  // Função para buscar a contagem de leads tesete
   const fetchLeadsCount = useCallback(async (hotspotsData) => {
     const counts = {}
     for (const hotspot of hotspotsData) {
@@ -31,9 +30,8 @@ export default function Dashboard() {
       }
     }
     setLeadsCount(counts)
-  }, [supabase]); // Dependência: supabase
+  }, [supabase]);
 
-  // Função para buscar a contagem de anúncios visualizados
   const fetchAnunciosVisualizadosCount = useCallback(async (hotspotsData) => {
     const counts = {};
     for (const hotspot of hotspotsData) {
@@ -49,12 +47,11 @@ export default function Dashboard() {
       }
     }
     setAnunciosVisualizadosCount(counts);
-  }, [supabase]); // Dependência: supabase
+  }, [supabase]);
 
-  // Função principal para buscar hotspots e dados relacionados
   const fetchHotspots = useCallback(async (userId) => {
     setLoading(true)
-    setError(null); // Limpa erros anteriores
+    setError(null);
     const { data, error } = await supabase
       .from('hotspots')
       .select('*')
@@ -68,10 +65,10 @@ export default function Dashboard() {
     }
 
     setHotspots(data)
-    await fetchLeadsCount(data) // Usar await para garantir que os dados estejam prontos
-    await fetchAnunciosVisualizadosCount(data); // Usar await
+    await fetchLeadsCount(data)
+    await fetchAnunciosVisualizadosCount(data);
     setLoading(false)
-  }, [supabase, fetchLeadsCount, fetchAnunciosVisualizadosCount]); // Dependências: supabase, fetchLeadsCount, fetchAnunciosVisualizadosCount
+  }, [supabase, fetchLeadsCount, fetchAnunciosVisualizadosCount]);
 
   useEffect(() => {
     async function getUser() {
@@ -84,7 +81,7 @@ export default function Dashboard() {
       }
     }
     getUser()
-  }, [supabase, router, fetchHotspots]) // Dependências: supabase, router, fetchHotspots
+  }, [supabase, router, fetchHotspots])
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -103,11 +100,11 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-gray-950 text-white p-8 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-red-500 mb-4">Erro ao carregar dados</h1>
-          <p className="text-gray-400 mb-6">{error}</p>
+          <h1 className="text-2xl font-bold text-red-500 mb-4">Erro!</h1>
+          <p className="text-gray-400">{error}</p>
           <button
             onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            className="mt-6 px-4 py-2 bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Tentar Novamente
           </button>
@@ -143,7 +140,6 @@ export default function Dashboard() {
                   <span className="text-gray-300">Leads Capturados:</span>
                   <span className="font-semibold text-lg">{leadsCount[hotspot.id] || 0}</span>
                 </div>
-                {/* Card para Anúncios Visualizados */}
                 <div className="flex items-center justify-between bg-gray-800 p-3 rounded-lg">
                   <span className="text-gray-300">Anúncios Visualizados:</span>
                   <span className="font-semibold text-lg">{anunciosVisualizadosCount[hotspot.id] || 0}</span>
