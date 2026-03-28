@@ -44,7 +44,7 @@ export default function Portal() {
     const { data, error } = await supabase
       .from('hotspots')
       .select('*')
-      .eq('id', slug) // <-- ALTERADO AQUI: de 'slug' para 'id'
+      .eq('id', slug) // Busca pelo ID (UUID)
       .single()
 
     if (error || !data) {
@@ -53,6 +53,19 @@ export default function Portal() {
     }
 
     setHotspot(data)
+
+    // --- NOVO CÓDIGO AQUI: Incrementar visualizações ---
+    // Incrementa o contador de visualizações para este hotspot
+    const { error: updateError } = await supabase
+      .from('hotspots')
+      .update({ visualizacoes: (data.visualizacoes || 0) + 1 }) // Garante que visualizacoes é um número
+      .eq('id', data.id)
+
+    if (updateError) {
+      console.error('Erro ao incrementar visualizações do hotspot:', updateError)
+      // Não impede o carregamento da página, apenas loga o erro
+    }
+    // --- FIM DO NOVO CÓDIGO ---
 
     const { data: anunciosData } = await supabase
       .from('anuncios')
@@ -67,7 +80,7 @@ export default function Portal() {
   function validarForm() {
     const novosErros = {}
     if (!form.nome.trim()) novosErros.nome = 'Nome obrigatório'
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) novosErros.email = 'E-mail inválido'
+    if (!form.email.trim() || !/\S+@\S+\.\S/.test(form.email)) novosErros.email = 'E-mail inválido'
     if (!form.telefone.trim() || form.telefone.replace(/\D/g, '').length < 10) novosErros.telefone = 'Telefone inválido'
     if (!form.cpf.trim() || form.cpf.replace(/\D/g, '').length !== 11) novosErros.cpf = 'CPF inválido'
     if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
@@ -168,101 +181,87 @@ export default function Portal() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
 
       {/* ETAPA 1 — CADASTRO */}
       {etapa === ETAPAS.CADASTRO && (
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            {hotspot?.logo_url ? (
-              <img src={hotspot.logo_url} alt={hotspot.nome} className="h-14 mx-auto mb-4 object-contain" />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center text-2xl font-bold text-black" style={{ backgroundColor: cor }}>
-                {hotspot?.nome?.charAt(0).toUpperCase()}
-              </div>
-            )}
-            <h1 className="text-white text-2xl font-bold">{hotspot?.nome}</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              {hotspot?.mensagem_boas_vindas || 'Faça seu cadastro para acessar o Wi-Fi gratuito'}
+            <div
+              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
+              style={{ backgroundColor: `${cor}20` }}
+            >
+              👋
+            </div>
+            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi {hotspot?.nome}!</h1>
+            <p className="text-gray-400 text-sm">
+              Para acessar a internet, por favor, preencha seus dados.
             </p>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 space-y-4">
-            {erros.geral && (
-              <div className="bg-red-400/10 border border-red-400/20 rounded-xl px-4 py-3 text-red-400 text-sm">
-                {erros.geral}
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
+            <div className="space-y-4 mb-6">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Nome completo"
+                  value={form.nome}
+                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
+                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                {erros.nome && <p className="text-red-400 text-xs mt-1">{erros.nome}</p>}
               </div>
-            )}
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Nome completo</label>
-              <input
-                type="text"
-                placeholder="Seu nome"
-                value={form.nome}
-                onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.nome ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.nome && <p className="text-red-400 text-xs mt-1">{erros.nome}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">E-mail</label>
-              <input
-                type="email"
-                placeholder="seu@email.com"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.email ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.email && <p className="text-red-400 text-xs mt-1">{erros.email}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">Telefone</label>
-              <input
-                type="tel"
-                placeholder="(00) 00000-0000"
-                value={form.telefone}
-                onChange={(e) => setForm({ ...form, telefone: formatarTelefone(e.target.value) })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.telefone ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.telefone && <p className="text-red-400 text-xs mt-1">{erros.telefone}</p>}
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 mb-1.5 block">CPF</label>
-              <input
-                type="text"
-                placeholder="000.000.000-00"
-                value={form.cpf}
-                onChange={(e) => setForm({ ...form, cpf: formatarCPF(e.target.value) })}
-                className={`w-full bg-gray-800 border rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none transition-colors ${erros.cpf ? 'border-red-500' : 'border-gray-700 focus:border-green-500'}`}
-              />
-              {erros.cpf && <p className="text-red-400 text-xs mt-1">{erros.cpf}</p>}
-            </div>
-
-            <div>
-              <label className={`flex items-start gap-3 cursor-pointer p-3 rounded-xl border transition-colors ${erros.aceite_lgpd ? 'border-red-500 bg-red-400/5' : 'border-gray-700 bg-gray-800 hover:border-gray-600'}`}>
+              <div>
+                <input
+                  type="email"
+                  placeholder="E-mail"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                {erros.email && <p className="text-red-400 text-xs mt-1">{erros.email}</p>}
+              </div>
+              <div>
+                <input
+                  type="tel"
+                  placeholder="Telefone (WhatsApp)"
+                  value={formatarTelefone(form.telefone)}
+                  onChange={(e) => setForm({ ...form, telefone: e.target.value })}
+                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                {erros.telefone && <p className="text-red-400 text-xs mt-1">{erros.telefone}</p>}
+              </div>
+              <div>
+                <input
+                  type="text"
+                  placeholder="CPF"
+                  value={formatarCPF(form.cpf)}
+                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
+                />
+                {erros.cpf && <p className="text-red-400 text-xs mt-1">{erros.cpf}</p>}
+              </div>
+              <div className="flex items-center">
                 <input
                   type="checkbox"
+                  id="aceite_lgpd"
                   checked={form.aceite_lgpd}
                   onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
-                  className="mt-0.5 accent-green-500"
+                  className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-700 rounded bg-gray-800"
+                  style={{ accentColor: cor }}
                 />
-                <span className="text-xs text-gray-400 leading-relaxed">
-                  Concordo com a coleta e uso dos meus dados conforme a{' '}
-                  <span className="text-green-400 underline cursor-pointer">Política de Privacidade</span>{' '}
-                  e a Lei Geral de Proteção de Dados (LGPD).
-                </span>
-              </label>
+                <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-400">
+                  Li e aceito os termos de uso e política de privacidade.
+                </label>
+              </div>
               {erros.aceite_lgpd && <p className="text-red-400 text-xs mt-1">{erros.aceite_lgpd}</p>}
+              {erros.geral && <p className="text-red-400 text-xs mt-1 text-center">{erros.geral}</p>}
             </div>
 
             <button
               onClick={handleCadastro}
               disabled={salvando}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black flex items-center justify-center transition-all"
               style={{ backgroundColor: cor }}
             >
               {salvando ? (
@@ -296,6 +295,16 @@ export default function Portal() {
                 />
               </div>
             )}
+            {/* Se você tiver suporte a vídeo, pode adicionar uma condição similar aqui */}
+            {/* {anuncioAtual.video_url && (
+              <div className="w-full aspect-video bg-gray-800">
+                <video
+                  src={anuncioAtual.video_url}
+                  controls
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            )} */}
             <div className="p-6">
               <h2 className="text-white text-xl font-bold mb-2">{anuncioAtual.titulo}</h2>
               {anuncioAtual.descricao && (
