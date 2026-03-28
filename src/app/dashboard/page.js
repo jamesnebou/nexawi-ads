@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react' // Adicionado useCallback
 import { createClient } from '@supabase/supabase-js'
 import {
   Users, Wifi, UserPlus, DollarSign,
@@ -20,38 +20,57 @@ const CORES = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(true)
+  const [hotspots, setHotspots] = useState([]) // Estado para armazenar a lista de hotspots
+  const [selectedHotspotId, setSelectedHotspotId] = useState('') // Novo estado para o hotspot selecionado
   const [metricas, setMetricas] = useState({
     totalClientes: 0, clientesAtivos: 0,
     totalHotspots: 0, hotspotsAtivos: 0,
     totalLeads: 0, leadsHoje: 0,
     recebidoMes: 0, pendenteTotal: 0, vencidoTotal: 0,
   })
-  const [leadsporDia, setLeadsPorDia] = useState([])
+  const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([]) // Renomeado para evitar conflito
+  const [leadsUnicosPorDiaHotspot, setLeadsUnicosPorDiaHotspot] = useState([]) // Novo estado para o gráfico por hotspot
   const [receitaPorMes, setReceitaPorMes] = useState([])
   const [clientesPorStatus, setClientesPorStatus] = useState([])
-  const [leadsPorHotspot, setLeadsPorHotspot] = useState([])
+  const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([]) // Renomeado para evitar conflito
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
 
-  useEffect(() => { buscarDados() }, [])
-
-  async function buscarDados() {
+  // Função para buscar dados, agora com useCallback para otimização
+  const buscarDados = useCallback(async () => {
     setLoading(true)
 
     const hoje = new Date()
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
     const hojeStr = hoje.toISOString().slice(0, 10)
 
+    // Busca inicial de todos os hotspots para o seletor
+    const { data: allHotspots, error: hotspotsError } = await supabase
+      .from('hotspots')
+      .select('id, nome')
+      .order('nome', { ascending: true })
+
+    if (hotspotsError) {
+      console.error('Erro ao buscar hotspots:', hotspotsError)
+      // Tratar erro de hotspots
+    } else {
+      setHotspots(allHotspots || [])
+      if (allHotspots && allHotspots.length > 0 && !selectedHotspotId) {
+        setSelectedHotspotId(allHotspots[0].id) // Define o primeiro hotspot como padrão se nenhum estiver selecionado
+      }
+    }
+
+    // Promise.all para buscar os dados gerais da dashboard
     const [
       { data: clientes },
-      { data: hotspots },
-      { data: leads },
+      { data: hotspotsData }, // Renomeado para evitar conflito com allHotspots
+      { data: leadsGeral }, // Renomeado para evitar conflito
       { data: pagamentos },
       { data: leadsHoje },
     ] = await Promise.all([
       supabase.from('clientes').select('status, created_at'),
       supabase.from('hotspots').select('status'),
-      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, hotspots(nome)').order('created_at', { ascending: false }),
+      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, cpf, hotspots(nome)').order('created_at', { ascending: false }), // Adicionado 'cpf'
       supabase.from('pagamentos').select('valor, status, data_vencimento, created_at, clientes(nome)').order('created_at', { ascending: false }),
       supabase.from('leads').select('id').gte('created_at', hojeStr),
     ])
@@ -69,13 +88,14 @@ export default function Dashboard() {
     setMetricas({
       totalClientes: clientes?.length || 0,
       clientesAtivos: clientes?.filter(c => c.status === 'Ativo').length || 0,
-      totalHotspots: hotspots?.length || 0,
-      hotspotsAtivos: hotspots?.filter(h => h.status === 'Ativo').length || 0,
-      totalLeads: leads?.length || 0,
+      totalHotspots: hotspotsData?.length || 0, // Usando hotspotsData
+      hotspotsAtivos: hotspotsData?.filter(h => h.status === 'Ativo').length || 0, // Usando hotspotsData
+      totalLeads: leadsGeral?.length || 0,
       leadsHoje: leadsHoje?.length || 0,
       recebidoMes, pendenteTotal, vencidoTotal,
     })
 
+    // Lógica para leadsPorDiaGeral (leads capturados - gráfico geral)
     const ultimos14 = Array.from({ length: 14 }, (_, i) => {
       const d = new Date()
       d.setDate(d.getDate() - (13 - i))
@@ -83,15 +103,16 @@ export default function Dashboard() {
     })
     const leadsPorDiaMap = {}
     ultimos14.forEach(d => leadsPorDiaMap[d] = 0);
-    (leads || []).forEach(l => {
+    (leadsGeral || []).forEach(l => {
       const d = l.created_at?.slice(0, 10)
       if (leadsPorDiaMap[d] !== undefined) leadsPorDiaMap[d]++
     })
-    setLeadsPorDia(ultimos14.map(d => ({
+    setLeadsPorDiaGeral(ultimos14.map(d => ({
       data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
       leads: leadsPorDiaMap[d]
     })))
 
+    // Lógica para receitaPorMes
     const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
       const d = new Date()
       d.setMonth(d.getMonth() - (5 - i))
@@ -109,28 +130,83 @@ export default function Dashboard() {
     })
     setReceitaPorMes(Object.values(receitaMap))
 
+    // Lógica para clientesPorStatus
     const statusMap = {}
     ;(clientes || []).forEach(c => {
       statusMap[c.status] = (statusMap[c.status] || 0) + 1
     })
     setClientesPorStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value })))
 
-    const hotspotMap = {}
-    ;(leads || []).forEach(l => {
+    // Lógica para leadsPorHotspotGeral (Top Hotspots - gráfico geral)
+    const hotspotMapGeral = {}
+    ;(leadsGeral || []).forEach(l => {
       const nome = l.hotspots?.nome || 'Sem nome'
-      hotspotMap[nome] = (hotspotMap[nome] || 0) + 1
+      hotspotMapGeral[nome] = (hotspotMapGeral[nome] || 0) + 1
     })
-    setLeadsPorHotspot(
-      Object.entries(hotspotMap)
+    setLeadsPorHotspotGeral(
+      Object.entries(hotspotMapGeral)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5)
         .map(([name, leads]) => ({ name, leads }))
     )
 
     setPagamentosRecentes((pagamentos || []).slice(0, 5))
-    setLeadsRecentes((leads || []).slice(0, 5))
+    setLeadsRecentes((leadsGeral || []).slice(0, 5)) // Usando leadsGeral
+
     setLoading(false)
-  }
+  }, [selectedHotspotId]) // Adicionado selectedHotspotId como dependência para re-executar a busca quando ele mudar
+
+  // useEffect para buscar dados quando o componente montar ou selectedHotspotId mudar
+  useEffect(() => {
+    buscarDados()
+  }, [buscarDados]) // Dependência de buscarDados
+
+  // Novo useEffect para buscar leads únicos por dia para o hotspot selecionado
+  useEffect(() => {
+    async function fetchLeadsUnicosPorHotspot() {
+      if (!selectedHotspotId) {
+        setLeadsUnicosPorDiaHotspot([])
+        return
+      }
+
+      const hoje = new Date()
+      const ultimos14 = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (13 - i))
+        return d.toISOString().slice(0, 10)
+      })
+
+      // Busca leads para o hotspot selecionado
+      const { data: leadsHotspot, error } = await supabase
+        .from('leads')
+        .select('created_at, cpf') // Seleciona cpf para identificar leads únicos
+        .eq('hotspot_id', selectedHotspotId)
+        .gte('created_at', ultimos14[0]) // Filtra para os últimos 14 dias
+
+      if (error) {
+        console.error('Erro ao buscar leads por hotspot:', error)
+        setLeadsUnicosPorDiaHotspot([])
+        return
+      }
+
+      const leadsUnicosPorDiaMap = {}
+      ultimos14.forEach(d => leadsUnicosPorDiaMap[d] = new Set()); // Usar Set para contar CPFs únicos
+
+      (leadsHotspot || []).forEach(l => {
+        const d = l.created_at?.slice(0, 10)
+        if (leadsUnicosPorDiaMap[d] !== undefined && l.cpf) {
+          leadsUnicosPorDiaMap[d].add(l.cpf) // Adiciona o CPF ao Set
+        }
+      })
+
+      setLeadsUnicosPorDiaHotspot(ultimos14.map(d => ({
+        data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        leadsUnicos: leadsUnicosPorDiaMap[d].size // Pega o tamanho do Set para o número de CPFs únicos
+      })))
+    }
+
+    fetchLeadsUnicosPorHotspot()
+  }, [selectedHotspotId]) // Re-executa quando o hotspot selecionado muda
 
   const fmt = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 
@@ -149,16 +225,39 @@ export default function Dashboard() {
   }
 
   return (
-    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto"> {/* Ajuste de padding */}
+    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto">
 
       <div className="mb-8">
-        <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1> {/* Ajuste de tamanho de título */}
-        <p className="text-gray-400 text-xs sm:text-sm mt-1"> {/* Ajuste de tamanho de texto */}
+        <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1>
+        <p className="text-gray-400 text-xs sm:text-sm mt-1">
           {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8"> {/* Ajuste de grid para métricas */}
+      {/* Seletor de Hotspot */}
+      <div className="mb-8">
+        <label htmlFor="hotspot-select" className="block text-sm font-medium text-gray-300 mb-2">
+          Selecionar Hotspot para Análise:
+        </label>
+        <select
+          id="hotspot-select"
+          value={selectedHotspotId}
+          onChange={(e) => setSelectedHotspotId(e.target.value)}
+          className="block w-full max-w-xs p-2 border border-gray-700 rounded-md shadow-sm bg-gray-800 text-white focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+        >
+          {hotspots.length === 0 ? (
+            <option value="">Nenhum hotspot disponível</option>
+          ) : (
+            hotspots.map((hotspot) => (
+              <option key={hotspot.id} value={hotspot.id}>
+                {hotspot.nome}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
         {[
           { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
           { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
@@ -167,12 +266,12 @@ export default function Dashboard() {
         ].map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}> {/* Ajuste de padding do card */}
+            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}>
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs text-gray-500">{card.label}</p>
                 <Icon size={18} className={card.cor} />
               </div>
-              <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p> {/* Ajuste de tamanho de valor */}
+              <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p>
               <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
             </div>
           )
@@ -182,13 +281,13 @@ export default function Dashboard() {
       {(metricas.vencidoTotal > 0 || metricas.pendenteTotal > 0) && (
         <div className="flex gap-3 mb-8 flex-wrap">
           {metricas.vencidoTotal > 0 && (
-            <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
+            <div className="flex items-center gap-2 bg-red-400/10 border border-red-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5">
               <AlertTriangle size={15} className="text-red-400" />
               <span className="text-xs text-red-400 font-medium">{fmt(metricas.vencidoTotal)} em pagamentos vencidos</span>
             </div>
           )}
           {metricas.pendenteTotal > 0 && (
-            <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5"> {/* Ajuste de padding */}
+            <div className="flex items-center gap-2 bg-yellow-400/10 border border-yellow-400/20 rounded-xl px-3 py-2 sm:px-4 sm:py-2.5">
               <Clock size={15} className="text-yellow-400" />
               <span className="text-xs text-yellow-400 font-medium">{fmt(metricas.pendenteTotal)} a receber</span>
             </div>
@@ -196,14 +295,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"> {/* Ajuste de grid para gráficos principais */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados</h2> {/* Ajuste de tamanho de título */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        {/* Gráfico de Leads Capturados GERAL (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados (Geral)</h2>
           <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
           <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={leadsporDia}>
+            <AreaChart data={leadsPorDiaGeral}>
               <defs>
-                <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                <linearGradient id="colorLeadsGeral" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
                   <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                 </linearGradient>
@@ -212,13 +312,41 @@ export default function Dashboard() {
               <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
-              <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} fill="url(#colorLeads)" />
+              <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} fill="url(#colorLeadsGeral)" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2> {/* Ajuste de tamanho de título */}
+        {/* NOVO GRÁFICO: Acessos Únicos por Dia para o Hotspot Selecionado */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Únicos por Dia</h2>
+          <p className="text-xs text-gray-500 mb-5">Hotspot: {hotspots.find(h => h.id === selectedHotspotId)?.nome || 'Nenhum selecionado'}</p>
+          {selectedHotspotId && leadsUnicosPorDiaHotspot.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={leadsUnicosPorDiaHotspot}>
+                <defs>
+                  <linearGradient id="colorLeadsUnicos" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
+                <Area type="monotone" dataKey="leadsUnicos" stroke="#3b82f6" strokeWidth={2} fill="url(#colorLeadsUnicos)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">
+              {selectedHotspotId ? 'Sem dados de acessos únicos para este hotspot.' : 'Selecione um hotspot para ver os dados.'}
+            </div>
+          )}
+        </div>
+
+        {/* Gráfico de Receita Mensal (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2>
           <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={receitaPorMes}>
@@ -234,9 +362,10 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6"> {/* Ajuste de grid para gráficos e listas menores */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2> {/* Ajuste de tamanho de título */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        {/* Gráfico de Clientes por Status (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2>
           <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
           {clientesPorStatus.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
@@ -267,26 +396,28 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots</h2> {/* Ajuste de tamanho de título */}
+        {/* Gráfico de Top Hotspots GERAL (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots (Geral)</h2>
           <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
-          {leadsPorHotspot.length === 0 ? (
+          {leadsPorHotspotGeral.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
           ) : (
             <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={leadsPorHotspot} layout="vertical">
+              <BarChart data={leadsPorHotspotGeral} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} width={80} />
-                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
+                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
                 <Bar dataKey="leads" fill="#3b82f6" radius={[0, 4, 4, 0]} />
               </BarChart>
             </ResponsiveContainer>
           )}
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2> {/* Ajuste de tamanho de título */}
+        {/* Últimos Pagamentos (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2>
           <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
           {pagamentosRecentes.length === 0 ? (
             <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
@@ -314,8 +445,9 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6"> {/* Ajuste de padding */}
-        <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2> {/* Ajuste de tamanho de título */}
+      {/* Últimos Leads Capturados (mantido) */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+        <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2>
         <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
         {leadsRecentes.length === 0 ? (
           <div className="flex items-center justify-center py-8 text-gray-600 text-sm">Nenhum lead capturado ainda.</div>
