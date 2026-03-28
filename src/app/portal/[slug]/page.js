@@ -1,6 +1,7 @@
+// src/app/portal/[slug]/page.js
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react' // Adicionado useRef
 import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 
@@ -36,6 +37,9 @@ export default function Portal() {
   })
   const [erros, setErros] = useState({})
 
+  // Novo estado para controlar anúncios já mostrados nesta sessão
+  const anunciosMostradosRef = useRef(new Set()); // Usamos useRef para manter o Set persistente entre re-renders
+
   useEffect(() => {
     buscarHotspot()
   }, [slug])
@@ -44,7 +48,7 @@ export default function Portal() {
     const { data, error } = await supabase
       .from('hotspots')
       .select('*')
-      .eq('id', slug) // <-- ALTERADO AQUI: de 'slug' para 'id'
+      .eq('id', slug)
       .single()
 
     if (error || !data) {
@@ -98,19 +102,41 @@ export default function Portal() {
     }
 
     setLeadId(data.id)
-    mostrarProximoAnuncio()
+    // Ao cadastrar um novo lead, resetamos os anúncios já mostrados para esta nova sessão
+    anunciosMostradosRef.current.clear();
+    mostrarProximoAnuncio();
   }
 
   const mostrarProximoAnuncio = useCallback(() => {
-    if (anuncios.length === 0) {
-      setEtapa(ETAPAS.ACESSO)
-      return
+    // Filtra os anúncios que ainda não foram mostrados nesta sessão
+    const anunciosDisponiveis = anuncios.filter(anuncio => !anunciosMostradosRef.current.has(anuncio.id));
+
+    if (anunciosDisponiveis.length === 0) {
+      // Se todos os anúncios já foram mostrados, ou não há anúncios,
+      // podemos resetar o histórico ou ir direto para o acesso.
+      // Para o seu requisito, vamos resetar o histórico e mostrar um anúncio novamente.
+      if (anuncios.length > 0) {
+        anunciosMostradosRef.current.clear(); // Reseta o histórico para recomeçar o ciclo
+        console.log("Todos os anúncios foram mostrados. Reiniciando o ciclo de anúncios.");
+        // Chama a função novamente para selecionar um anúncio do ciclo reiniciado
+        mostrarProximoAnuncio();
+        return;
+      } else {
+        // Se não há anúncios cadastrados, vai direto para o acesso
+        setEtapa(ETAPAS.ACESSO);
+        return;
+      }
     }
-    const aleatorio = anuncios[Math.floor(Math.random() * anuncios.length)]
-    setAnuncioAtual(aleatorio)
-    setContador(aleatorio.duracao_segundos || 15)
-    setEtapa(ETAPAS.ANUNCIO)
-  }, [anuncios])
+
+    const aleatorio = anunciosDisponiveis[Math.floor(Math.random() * anunciosDisponiveis.length)];
+    setAnuncioAtual(aleatorio);
+    setContador(aleatorio.duracao_segundos || 15);
+    setEtapa(ETAPAS.ANUNCIO);
+
+    // Adiciona o ID do anúncio atual ao Set de anúncios já mostrados
+    anunciosMostradosRef.current.add(aleatorio.id);
+
+  }, [anuncios]); // Dependência 'anuncios'
 
   useEffect(() => {
     if (etapa !== ETAPAS.ANUNCIO) return
@@ -124,6 +150,9 @@ export default function Portal() {
 
   useEffect(() => {
     if (etapa !== ETAPAS.ACESSO) return
+    // Esta parte do código faz com que um novo anúncio apareça a cada 20 minutos
+    // se o usuário permanecer na página de acesso.
+    // Se você não quer que isso aconteça, pode remover este useEffect.
     const intervalo = setInterval(() => {
       mostrarProximoAnuncio()
     }, 20 * 60 * 1000)
