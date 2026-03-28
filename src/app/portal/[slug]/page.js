@@ -150,7 +150,7 @@ export default function Portal() {
       intervaloAnuncioRef.current = setInterval(() => {
         console.log("20 minutos se passaram. Forçando novo anúncio.");
         mostrarProximoAnuncio();
-      }, 10 * 1000); // Lembre-se de ajustar para 20 * 60 * 1000 após os testes
+      }, 10 * 1000); // Mantenho 10 segundos para teste, lembre-se de ajustar para 20 * 60 * 1000
     }
 
     return () => {
@@ -182,8 +182,31 @@ export default function Portal() {
 
   const cor = hotspot?.cor_primaria || '#22c55e'
 
+  if (etapa === ETAPAS.LOADING) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: cor }} />
+      </div>
+    )
+  }
+
+  if (etapa === ETAPAS.ERRO) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-center">
+        <div>
+          <div className="text-4xl mb-4">📡</div>
+          <h1 className="text-white text-2xl font-bold mb-2">Erro ao carregar Hotspot</h1>
+          <p className="text-gray-400 text-sm">
+            Não foi possível encontrar as informações do hotspot. Verifique o link.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
+
       {/* ETAPA 1 — CADASTRO */}
       {etapa === ETAPAS.CADASTRO && (
         <div className="w-full max-w-md text-center">
@@ -194,146 +217,158 @@ export default function Portal() {
             >
               👋
             </div>
-            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi!</h1>
+            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi de {hotspot?.nome}!</h1>
             <p className="text-gray-400 text-sm">
-              Preencha seus dados para ter acesso à internet em <strong className="text-white">{hotspot?.nome}</strong>.
+              Preencha seus dados para ter acesso à internet gratuita.
             </p>
           </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-            <form onSubmit={(e) => { e.preventDefault(); handleCadastro(); }} className="flex flex-col gap-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 text-left">
+            <div className="space-y-4 mb-6">
               <div>
+                <label htmlFor="nome" className="block text-gray-300 text-sm font-medium mb-1">Nome completo</label>
                 <input
                   type="text"
-                  placeholder="Nome completo"
-                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.nome ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  id="nome"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
+                  style={{ focusRingColor: cor }}
+                  placeholder="Seu nome"
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
                 />
-                {erros.nome && <p className="text-red-500 text-xs mt-1 text-left">{erros.nome}</p>}
+                {erros.nome && <p className="text-red-500 text-xs mt-1">{erros.nome}</p>}
               </div>
               <div>
+                <label htmlFor="email" className="block text-gray-300 text-sm font-medium mb-1">E-mail</label>
                 <input
                   type="email"
-                  placeholder="E-mail"
-                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.email ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  id="email"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
+                  style={{ focusRingColor: cor }}
+                  placeholder="seu@email.com"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                 />
-                {erros.email && <p className="text-red-500 text-xs mt-1 text-left">{erros.email}</p>}
+                {erros.email && <p className="text-red-500 text-xs mt-1">{erros.email}</p>}
               </div>
               <div>
+                <label htmlFor="telefone" className="block text-gray-300 text-sm font-medium mb-1">Telefone</label>
                 <input
                   type="tel"
-                  placeholder="Telefone"
-                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.telefone ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  id="telefone"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
+                  style={{ focusRingColor: cor }}
+                  placeholder="(99) 99999-9999"
                   value={formatarTelefone(form.telefone)}
                   onChange={(e) => setForm({ ...form, telefone: e.target.value })}
                 />
-                {erros.telefone && <p className="text-red-500 text-xs mt-1 text-left">{erros.telefone}</p>}
+                {erros.telefone && <p className="text-red-500 text-xs mt-1">{erros.telefone}</p>}
               </div>
               <div>
+                <label htmlFor="cpf" className="block text-gray-300 text-sm font-medium mb-1">CPF</label>
                 <input
                   type="text"
-                  placeholder="CPF"
-                  className={`w-full bg-gray-800 text-white rounded-xl py-3 px-4 text-sm focus:outline-none focus:ring-2 ${erros.cpf ? 'border-red-500 ring-red-500' : 'border-gray-700 focus:border-transparent ring-green-500'}`}
+                  id="cpf"
+                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2"
+                  style={{ focusRingColor: cor }}
+                  placeholder="999.999.999-99"
                   value={formatarCPF(form.cpf)}
                   onChange={(e) => setForm({ ...form, cpf: e.target.value })}
                 />
-                {erros.cpf && <p className="text-red-500 text-xs mt-1 text-left">{erros.cpf}</p>}
+                {erros.cpf && <p className="text-red-500 text-xs mt-1">{erros.cpf}</p>}
               </div>
-              <div className="flex items-center gap-2 mt-2">
+              <div className="flex items-center">
                 <input
                   type="checkbox"
                   id="aceite_lgpd"
-                  className="form-checkbox h-4 w-4 text-green-500 rounded border-gray-700 focus:ring-green-500"
+                  className="h-4 w-4 text-green-500 rounded border-gray-600 focus:ring-green-500"
+                  style={{ accentColor: cor }}
                   checked={form.aceite_lgpd}
                   onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
                 />
-                <label htmlFor="aceite_lgpd" className="text-gray-400 text-xs">
-                  Eu concordo com a Política de Privacidade e Termos de Uso.
+                <label htmlFor="aceite_lgpd" className="ml-2 block text-gray-400 text-sm">
+                  Li e aceito os termos de uso e política de privacidade.
                 </label>
               </div>
-              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1 text-left">{erros.aceite_lgpd}</p>}
-              {erros.geral && <p className="text-red-500 text-xs mt-1 text-left">{erros.geral}</p>}
+              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1">{erros.aceite_lgpd}</p>}
+            </div>
 
-              <button
-                type="submit"
-                disabled={salvando}
-                className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
-                style={{ backgroundColor: cor }}
-              >
-                {salvando ? 'Salvando...' : 'Continuar'}
-              </button>
-            </form>
+            {erros.geral && <p className="text-red-500 text-sm text-center mb-4">{erros.geral}</p>}
+
+            <button
+              onClick={handleCadastro}
+              disabled={salvando}
+              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: cor }}
+            >
+              {salvando ? 'Salvando...' : 'Continuar'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* ETAPA 2 — ANÚNCIO OBRIGATÓRIO */}
+      {/* ETAPA 2 — ANUNCIO OBRIGATÓRIO */}
       {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
         <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black">
           {/* Mídia do Anúncio (Vídeo ou Imagem) */}
-          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' && (
+          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
             <video
-              key={anuncioAtual.media_url} // Key para forçar re-render se a URL mudar
+              key={anuncioAtual.media_url}
               src={anuncioAtual.media_url}
               className="absolute inset-0 w-full h-full object-cover"
               autoPlay
               muted
               playsInline
-              onEnded={() => setContador(0)} // Opcional: avança se o vídeo terminar
+              onEnded={() => setContador(0)} // Opcional: avança se o vídeo terminar antes do contador
             />
-          )}
-          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' && (
+          ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
             <img
-              key={anuncioAtual.media_url} // Key para forçar re-render se a URL mudar
+              key={anuncioAtual.media_url}
               src={anuncioAtual.media_url}
               alt={anuncioAtual.titulo || 'Anúncio'}
               className="absolute inset-0 w-full h-full object-cover"
             />
-          )}
-          {/* Fallback se não houver mídia */}
-          {!anuncioAtual.media_url && (
-            <div className="absolute inset-0 w-full h-full bg-gray-800 flex items-center justify-center text-gray-400 text-lg">
+          ) : (
+            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-lg">
               Nenhuma mídia disponível para este anúncio.
             </div>
           )}
 
-          {/* Overlay escuro para legibilidade */}
+          {/* Overlay Escuro */}
           <div className="absolute inset-0 bg-black opacity-50 z-10"></div>
 
           {/* Conteúdo do Anúncio (Contador e Texto) */}
-          <div className="relative z-20 flex flex-col items-center justify-center p-4 text-center">
-            {contador <= 0 && (
-              <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 mb-6 max-w-md">
-                {anuncioAtual.titulo && (
-                  <h2 className="text-white text-2xl font-bold mb-2">{anuncioAtual.titulo}</h2>
-                )}
-                {anuncioAtual.descricao && (
-                  <p className="text-gray-400 text-sm leading-relaxed">{anuncioAtual.descricao}</p>
-                )}
-              </div>
-            )}
-
+          <div className="relative z-20 flex flex-col items-center justify-end h-full w-full p-6">
             {contador > 0 ? (
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-2 mb-8">
                 <div
-                  className="w-14 h-14 rounded-full border-4 flex items-center justify-center text-xl font-bold text-white"
+                  className="w-16 h-16 rounded-full border-4 flex items-center justify-center text-2xl font-bold text-white shadow-lg"
                   style={{ borderColor: cor }}
                 >
                   {contador}
                 </div>
-                <p className="text-gray-500 text-xs">Aguarde para continuar</p>
+                <p className="text-gray-200 text-sm font-medium">Aguarde para continuar</p>
               </div>
             ) : (
-              <button
-                onClick={() => setEtapa(ETAPAS.CTA)}
-                className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
-                style={{ backgroundColor: cor }}
-              >
-                Continuar
-              </button>
+              // Este bloco só aparece quando o contador <= 0
+              <>
+                {/* Título e descrição visíveis apenas após o contador zerar */}
+                <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 text-center mb-8 max-w-md w-full">
+                  {anuncioAtual.titulo && (
+                    <h2 className="text-white text-2xl font-bold mb-2">{anuncioAtual.titulo}</h2>
+                  )}
+                  {anuncioAtual.descricao && (
+                    <p className="text-gray-300 text-base leading-relaxed">{anuncioAtual.descricao}</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setEtapa(ETAPAS.CTA)}
+                  className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-base text-black transition-all shadow-lg"
+                  style={{ backgroundColor: cor }}
+                >
+                  Continuar
+                </button>
+              </>
             )}
           </div>
         </div>
