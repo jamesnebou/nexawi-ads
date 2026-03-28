@@ -1,409 +1,480 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import {
+  Users, Wifi, UserPlus, DollarSign, Eye // Adicionado o ícone Eye para visualizações
+} from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
+} from 'recharts'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-const ETAPAS = {
-  LOADING: 'loading',
-  CADASTRO: 'cadastro',
-  ANUNCIO: 'anuncio',
-  CTA: 'cta',
-  ACESSO: 'acesso',
-  ERRO: 'erro',
-}
+const CORES = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
-export default function Portal() {
-  const { slug } = useParams()
-  const [etapa, setEtapa] = useState(ETAPAS.LOADING)
-  const [hotspot, setHotspot] = useState(null)
-  const [anuncioAtual, setAnuncioAtual] = useState(null)
-  const [anuncios, setAnuncios] = useState([])
-  const [contador, setContador] = useState(0)
-  const [salvando, setSalvando] = useState(false)
-  const [leadId, setLeadId] = useState(null)
-  const [form, setForm] = useState({
-    nome: '',
-    email: '',
-    telefone: '',
-    cpf: '',
-    aceite_lgpd: false,
+export default function Dashboard() {
+  const [loading, setLoading] = useState(true)
+  const [hotspots, setHotspots] = useState([])
+  const [selectedHotspotId, setSelectedHotspotId] = useState('')
+  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0) // Novo estado para visualizações do hotspot selecionado
+  const [metricas, setMetricas] = useState({
+    totalClientes: 0, clientesAtivos: 0,
+    totalHotspots: 0, hotspotsAtivos: 0,
+    totalLeads: 0, leadsHoje: 0,
+    recebidoMes: 0, pendenteTotal: 0, vencidoTotal: 0,
   })
-  const [erros, setErros] = useState({})
+  const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([])
+  const [leadsUnicosPorDiaHotspot, setLeadsUnicosPorDiaHotspot] = useState([])
+  const [receitaPorMes, setReceitaPorMes] = useState([])
+  const [clientesPorStatus, setClientesPorStatus] = useState([])
+  const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([])
+  const [pagamentosRecentes, setPagamentosRecentes] = useState([])
+  const [leadsRecentes, setLeadsRecentes] = useState([])
 
-  useEffect(() => {
-    buscarHotspot()
-  }, [slug])
+  const buscarDados = useCallback(async () => {
+    setLoading(true)
 
-  async function buscarHotspot() {
-    const { data, error } = await supabase
+    const hoje = new Date()
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
+    const hojeStr = hoje.toISOString().slice(0, 10)
+
+    // Busca inicial de todos os hotspots para o seletor, AGORA INCLUINDO 'visualizacoes'
+    const { data: allHotspots, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('*')
-      .eq('id', slug) // Busca pelo ID (UUID)
-      .single()
+      .select('id, nome, visualizacoes') // Adicionado 'visualizacoes' aqui
+      .order('nome', { ascending: true })
 
-    if (error || !data) {
-      setEtapa(ETAPAS.ERRO)
-      return
+    if (hotspotsError) {
+      console.error('Erro ao buscar hotspots:', hotspotsError)
+      // Tratar erro de hotspots
+    } else {
+      setHotspots(allHotspots || [])
+      if (allHotspots && allHotspots.length > 0 && !selectedHotspotId) {
+        setSelectedHotspotId(allHotspots[0].id) // Define o primeiro hotspot como padrão se nenhum estiver selecionado
+        // Define as visualizações do primeiro hotspot como padrão
+        setTotalVisualizacoesHotspot(allHotspots[0].visualizacoes || 0)
+      } else if (selectedHotspotId) {
+        // Se já tem um hotspot selecionado, atualiza as visualizações dele
+        const currentHotspot = allHotspots?.find(h => h.id === selectedHotspotId)
+        setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
+      }
     }
 
-    setHotspot(data)
+    const [
+      { data: clientes },
+      { data: hotspotsData },
+      { data: leadsGeral },
+      { data: pagamentos },
+      { data: leadsHoje },
+    ] = await Promise.all([
+      supabase.from('clientes').select('status, created_at'),
+      supabase.from('hotspots').select('status'),
+      supabase.from('leads').select('id, nome, email, created_at, hotspot_id, cpf, hotspots(nome)').order('created_at', { ascending: false }),
+      supabase.from('pagamentos').select('valor, status, data_vencimento, created_at, clientes(nome)').order('created_at', { ascending: false }),
+      supabase.from('leads').select('id').gte('created_at', hojeStr),
+    ])
 
-    // --- NOVO CÓDIGO AQUI: Incrementar visualizações ---
-    // Incrementa o contador de visualizações para este hotspot
-    const { error: updateError } = await supabase
-      .from('hotspots')
-      .update({ visualizacoes: (data.visualizacoes || 0) + 1 }) // Garante que visualizacoes é um número
-      .eq('id', data.id)
+    const recebidoMes = (pagamentos || [])
+      .filter(p => p.status === 'Pago' && p.created_at >= inicioMes)
+      .reduce((acc, p) => acc + Number(p.valor), 0)
+    const pendenteTotal = (pagamentos || [])
+      .filter(p => p.status === 'Pendente')
+      .reduce((acc, p) => acc + Number(p.valor), 0)
+    const vencidoTotal = (pagamentos || [])
+      .filter(p => p.status === 'Vencido')
+      .reduce((acc, p) => acc + Number(p.valor), 0)
 
-    if (updateError) {
-      console.error('Erro ao incrementar visualizações do hotspot:', updateError)
-      // Não impede o carregamento da página, apenas loga o erro
-    }
-    // --- FIM DO NOVO CÓDIGO ---
+    setMetricas({
+      totalClientes: clientes?.length || 0,
+      clientesAtivos: clientes?.filter(c => c.status === 'Ativo').length || 0,
+      totalHotspots: hotspotsData?.length || 0,
+      hotspotsAtivos: hotspotsData?.filter(h => h.status === 'Ativo').length || 0,
+      totalLeads: leadsGeral?.length || 0,
+      leadsHoje: leadsHoje?.length || 0,
+      recebidoMes, pendenteTotal, vencidoTotal,
+    })
 
-    const { data: anunciosData } = await supabase
-      .from('anuncios')
-      .select('*')
-      .eq('hotspot_id', data.id)
-      .eq('ativo', true)
+    const ultimos14 = Array.from({ length: 14 }, (_, i) => {
+      const d = new Date()
+      d.setDate(d.getDate() - (13 - i))
+      return d.toISOString().slice(0, 10)
+    })
+    const leadsPorDiaMap = {}
+    ultimos14.forEach(d => leadsPorDiaMap[d] = 0);
+    (leadsGeral || []).forEach(l => {
+      const d = l.created_at?.slice(0, 10)
+      if (leadsPorDiaMap[d] !== undefined) leadsPorDiaMap[d]++
+    })
+    setLeadsPorDiaGeral(ultimos14.map(d => ({
+      data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      leads: leadsPorDiaMap[d]
+    })))
 
-    setAnuncios(anunciosData || [])
-    setEtapa(ETAPAS.CADASTRO)
-  }
+    const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
+      const d = new Date()
+      d.setMonth(d.getMonth() - (5 - i))
+      return { ano: d.getFullYear(), mes: d.getMonth(), label: d.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }) }
+    })
+    const receitaMap = {}
+    ultimos6Meses.forEach(m => receitaMap[`${m.ano}-${m.mes}`] = { label: m.label, recebido: 0, pendente: 0 });
+    (pagamentos || []).forEach(p => {
+      const d = new Date(p.created_at)
+      const key = `${d.getFullYear()}-${d.getMonth()}`
+      if (receitaMap[key]) {
+        if (p.status === 'Pago') receitaMap[key].recebido += Number(p.valor)
+        if (p.status === 'Pendente') receitaMap[key].pendente += Number(p.valor)
+      }
+    })
+    setReceitaPorMes(Object.values(receitaMap))
 
-  function validarForm() {
-    const novosErros = {}
-    if (!form.nome.trim()) novosErros.nome = 'Nome obrigatório'
-    if (!form.email.trim() || !/\S+@\S+\.\S/.test(form.email)) novosErros.email = 'E-mail inválido'
-    if (!form.telefone.trim() || form.telefone.replace(/\D/g, '').length < 10) novosErros.telefone = 'Telefone inválido'
-    if (!form.cpf.trim() || form.cpf.replace(/\D/g, '').length !== 11) novosErros.cpf = 'CPF inválido'
-    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
-    setErros(novosErros)
-    return Object.keys(novosErros).length === 0
-  }
+    const statusMap = {}
+    ;(clientes || []).forEach(c => {
+      statusMap[c.status] = (statusMap[c.status] || 0) + 1
+    })
+    setClientesPorStatus(Object.entries(statusMap).map(([name, value]) => ({ name, value })))
 
-  async function handleCadastro() {
-    if (!validarForm()) return
-    setSalvando(true)
-
-    const { data, error } = await supabase.from('leads').insert([{
-      nome: form.nome,
-      email: form.email,
-      telefone: form.telefone,
-      cpf: form.cpf.replace(/\D/g, ''),
-      hotspot_id: hotspot.id,
-      aceite_lgpd: true,
-      data_aceite_lgpd: new Date().toISOString(),
-      ip: null,
-    }]).select().single()
-
-    setSalvando(false)
-
-    if (error) {
-      setErros({ geral: 'Erro ao salvar cadastro. Tente novamente.' })
-      return
-    }
-
-    setLeadId(data.id)
-    mostrarProximoAnuncio()
-  }
-
-  const mostrarProximoAnuncio = useCallback(() => {
-    if (anuncios.length === 0) {
-      setEtapa(ETAPAS.ACESSO)
-      return
-    }
-    const aleatorio = anuncios[Math.floor(Math.random() * anuncios.length)]
-    setAnuncioAtual(aleatorio)
-    setContador(aleatorio.duracao_segundos || 15)
-    setEtapa(ETAPAS.ANUNCIO)
-  }, [anuncios])
-
-  useEffect(() => {
-    if (etapa !== ETAPAS.ANUNCIO) return
-    if (contador <= 0) {
-      setEtapa(ETAPAS.CTA)
-      return
-    }
-    const timer = setTimeout(() => setContador((c) => c - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [etapa, contador])
-
-  useEffect(() => {
-    if (etapa !== ETAPAS.ACESSO) return
-    const intervalo = setInterval(() => {
-      mostrarProximoAnuncio()
-    }, 20 * 60 * 1000)
-    return () => clearInterval(intervalo)
-  }, [etapa, mostrarProximoAnuncio])
-
-  function formatarCPF(v) {
-    const n = v.replace(/\D/g, '').slice(0, 11)
-    if (n.length <= 3) return n
-    if (n.length <= 6) return `${n.slice(0,3)}.${n.slice(3)}`
-    if (n.length <= 9) return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6)}`
-    return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6,9)}-${n.slice(9)}`
-  }
-
-  function formatarTelefone(v) {
-    const n = v.replace(/\D/g, '').slice(0, 11)
-    if (n.length <= 2) return n
-    if (n.length <= 7) return `(${n.slice(0,2)}) ${n.slice(2)}`
-    return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`
-  }
-
-  const cor = hotspot?.cor_primaria || '#22c55e'
-
-  if (etapa === ETAPAS.LOADING) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: cor }} />
-      </div>
+    const hotspotMapGeral = {}
+    ;(leadsGeral || []).forEach(l => {
+      const nome = l.hotspots?.nome || 'Sem nome'
+      hotspotMapGeral[nome] = (hotspotMapGeral[nome] || 0) + 1
+    })
+    setLeadsPorHotspotGeral(
+      Object.entries(hotspotMapGeral)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([name, leads]) => ({ name, leads }))
     )
+
+    setPagamentosRecentes((pagamentos || []).slice(0, 5))
+    setLeadsRecentes((leadsGeral || []).slice(0, 5))
+
+    setLoading(false)
+  }, [selectedHotspotId])
+
+  useEffect(() => {
+    buscarDados()
+  }, [buscarDados])
+
+  useEffect(() => {
+    async function fetchLeadsUnicosPorHotspot() {
+      if (!selectedHotspotId) {
+        setLeadsUnicosPorDiaHotspot([])
+        return
+      }
+
+      const hoje = new Date()
+      const ultimos14 = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date()
+        d.setDate(d.getDate() - (13 - i))
+        return d.toISOString().slice(0, 10)
+      })
+
+      const { data: leadsHotspot, error } = await supabase
+        .from('leads')
+        .select('created_at, cpf')
+        .eq('hotspot_id', selectedHotspotId)
+        .gte('created_at', ultimos14[0])
+
+      if (error) {
+        console.error('Erro ao buscar leads por hotspot:', error)
+        setLeadsUnicosPorDiaHotspot([])
+        return
+      }
+
+      const leadsUnicosPorDiaMap = {}
+      ultimos14.forEach(d => leadsUnicosPorDiaMap[d] = new Set());
+
+      (leadsHotspot || []).forEach(l => {
+        const d = l.created_at?.slice(0, 10)
+        if (leadsUnicosPorDiaMap[d] !== undefined && l.cpf) {
+          leadsUnicosPorDiaMap[d].add(l.cpf)
+        }
+      })
+
+      setLeadsUnicosPorDiaHotspot(ultimos14.map(d => ({
+        data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+        leadsUnicos: leadsUnicosPorDiaMap[d].size
+      })))
+    }
+
+    fetchLeadsUnicosPorHotspot()
+  }, [selectedHotspotId])
+
+  const handleHotspotChange = (e) => {
+    const newSelectedId = e.target.value
+    setSelectedHotspotId(newSelectedId)
+    // Atualiza as visualizações do hotspot selecionado imediatamente
+    const currentHotspot = hotspots.find(h => h.id === newSelectedId)
+    setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
   }
 
-  if (etapa === ETAPAS.ERRO) {
+  const fmt = (v) => Number(v).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+
+  const corStatus = (status) => {
+    if (status === 'Pago') return 'text-green-400'
+    if (status === 'Vencido') return 'text-red-400'
+    return 'text-yellow-400'
+  }
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-center">
-        <div>
-          <div className="text-4xl mb-4">📡</div>
-          <h1 className="text-white text-xl font-bold mb-2">Hotspot não encontrado</h1>
-          <p className="text-gray-400 text-sm">Verifique se o link está correto.</p>
-        </div>
+      <div className="flex-1 flex items-center justify-center min-h-screen">
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
+    <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8 overflow-auto">
 
-      {/* ETAPA 1 — CADASTRO */}
-      {etapa === ETAPAS.CADASTRO && (
-        <div className="w-full max-w-md">
-          <div className="text-center mb-8">
-            <div
-              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              👋
-            </div>
-            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi {hotspot?.nome}!</h1>
-            <p className="text-gray-400 text-sm">
-              Para acessar a internet, por favor, preencha seus dados.
-            </p>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-            <div className="space-y-4 mb-6">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Nome completo"
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-                {erros.nome && <p className="text-red-400 text-xs mt-1">{erros.nome}</p>}
-              </div>
-              <div>
-                <input
-                  type="email"
-                  placeholder="E-mail"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-                {erros.email && <p className="text-red-400 text-xs mt-1">{erros.email}</p>}
-              </div>
-              <div>
-                <input
-                  type="tel"
-                  placeholder="Telefone (WhatsApp)"
-                  value={formatarTelefone(form.telefone)}
-                  onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-                {erros.telefone && <p className="text-red-400 text-xs mt-1">{erros.telefone}</p>}
-              </div>
-              <div>
-                <input
-                  type="text"
-                  placeholder="CPF"
-                  value={formatarCPF(form.cpf)}
-                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-                  className="w-full p-3 rounded-lg bg-gray-800 text-white border border-gray-700 focus:outline-none focus:ring-1 focus:ring-green-500"
-                />
-                {erros.cpf && <p className="text-red-400 text-xs mt-1">{erros.cpf}</p>}
-              </div>
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="aceite_lgpd"
-                  checked={form.aceite_lgpd}
-                  onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
-                  className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-700 rounded bg-gray-800"
-                  style={{ accentColor: cor }}
-                />
-                <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-400">
-                  Li e aceito os termos de uso e política de privacidade.
-                </label>
-              </div>
-              {erros.aceite_lgpd && <p className="text-red-400 text-xs mt-1">{erros.aceite_lgpd}</p>}
-              {erros.geral && <p className="text-red-400 text-xs mt-1 text-center">{erros.geral}</p>}
-            </div>
-
-            <button
-              onClick={handleCadastro}
-              disabled={salvando}
-              className="w-full py-3.5 rounded-xl font-semibold text-sm text-black flex items-center justify-center transition-all"
-              style={{ backgroundColor: cor }}
-            >
-              {salvando ? (
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-              ) : (
-                'Continuar e acessar Wi-Fi'
-              )}
-            </button>
-          </div>
-
-          <p className="text-center text-xs text-gray-600 mt-4">
-            Seus dados são protegidos e não serão compartilhados com terceiros.
+      <div className="mb-8 flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold text-white">Visão Geral</h1>
+          <p className="text-gray-400 text-xs sm:text-sm mt-1">
+            {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-      )}
-
-      {/* ETAPA 2 — ANÚNCIO OBRIGATÓRIO */}
-      {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
-        <div className="w-full max-w-lg">
-          <div className="text-center mb-4">
-            <p className="text-gray-400 text-xs uppercase tracking-widest">Mensagem do patrocinador</p>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            {anuncioAtual.imagem_url && (
-              <div className="w-full aspect-video bg-gray-800">
-                <img
-                  src={anuncioAtual.imagem_url}
-                  alt={anuncioAtual.titulo}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )}
-            {/* Se você tiver suporte a vídeo, pode adicionar uma condição similar aqui */}
-            {/* {anuncioAtual.video_url && (
-              <div className="w-full aspect-video bg-gray-800">
-                <video
-                  src={anuncioAtual.video_url}
-                  controls
-                  className="w-full h-full object-cover"
-                />
-              </div>
-            )} */}
-            <div className="p-6">
-              <h2 className="text-white text-xl font-bold mb-2">{anuncioAtual.titulo}</h2>
-              {anuncioAtual.descricao && (
-                <p className="text-gray-400 text-sm leading-relaxed">{anuncioAtual.descricao}</p>
-              )}
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-col items-center gap-3">
-            {contador > 0 ? (
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className="w-14 h-14 rounded-full border-4 flex items-center justify-center text-xl font-bold text-white"
-                  style={{ borderColor: cor }}
-                >
-                  {contador}
-                </div>
-                <p className="text-gray-500 text-xs">Aguarde para continuar</p>
-              </div>
+        {/* Seletor de Hotspot */}
+        <div className="relative">
+          <select
+            value={selectedHotspotId}
+            onChange={handleHotspotChange}
+            className="block w-full pl-3 pr-10 py-2 text-base border-gray-700 rounded-md bg-gray-800 text-white focus:outline-none focus:ring-green-500 focus:border-green-500 sm:text-sm"
+          >
+            {hotspots.length === 0 ? (
+              <option value="">Nenhum Hotspot</option>
             ) : (
-              <button
-                onClick={() => setEtapa(ETAPAS.CTA)}
-                className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-sm text-black transition-all"
-                style={{ backgroundColor: cor }}
-              >
-                Continuar
-              </button>
+              hotspots.map((hotspot) => (
+                <option key={hotspot.id} value={hotspot.id}>
+                  {hotspot.nome}
+                </option>
+              ))
             )}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+            <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* ETAPA 3 — CTA DO ANUNCIANTE */}
-      {etapa === ETAPAS.CTA && anuncioAtual && (
-        <div className="w-full max-w-md text-center">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-            <div
-              className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              🎁
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"> {/* Ajuste de grid para 5 colunas */}
+        {[
+          { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
+          { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
+          { label: 'Leads Hoje', valor: metricas.leadsHoje, sub: `${metricas.totalLeads} total`, icon: UserPlus, cor: 'text-green-400', bg: 'bg-green-400/5 border-green-400/20' },
+          { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), sub: `${fmt(metricas.pendenteTotal)} pendente`, icon: DollarSign, cor: 'text-yellow-400', bg: 'bg-yellow-400/5 border-yellow-400/20' },
+          // --- NOVO CARD DE MÉTRICA AQUI ---
+          { label: 'Visualizações Hotspot', valor: totalVisualizacoesHotspot, sub: 'Total de acessos ao portal', icon: Eye, cor: 'text-orange-400', bg: 'bg-orange-400/5 border-orange-400/20' },
+          // --- FIM DO NOVO CARD ---
+        ].map((card) => {
+          const Icon = card.icon
+          return (
+            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-gray-500">{card.label}</p>
+                <Icon size={18} className={card.cor} />
+              </div>
+              <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p>
+              <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
             </div>
-            <h2 className="text-white text-xl font-bold mb-2">Oferta especial para você!</h2>
-            <p className="text-gray-400 text-sm mb-6 leading-relaxed">
-              {anuncioAtual.titulo} — clique abaixo para saber mais e aproveitar a oferta.
-            </p>
+          )
+        })}
+      </div>
 
-            <div className="flex flex-col gap-3">
-              {anuncioAtual.url_destino && (
-                <a
-                  href={anuncioAtual.url_destino}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setEtapa(ETAPAS.ACESSO)}
-                  className="w-full py-3.5 rounded-xl font-semibold text-sm text-black transition-all block"
-                  style={{ backgroundColor: cor }}
-                >
-                  Quero saber mais
-                </a>
-              )}
-              <button
-                onClick={() => setEtapa(ETAPAS.ACESSO)}
-                className="w-full py-3 rounded-xl font-medium text-sm text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                Não, obrigado — ir para o Wi-Fi
-              </button>
-            </div>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Gráfico de Leads Capturados GERAL (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados (Geral)</h2>
+          <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={leadsPorDiaGeral}>
+              <defs>
+                <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#22c55e' }} />
+              <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} fill="url(#colorLeads)" />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
-      )}
 
-      {/* ETAPA 4 — ACESSO LIBERADO */}
-      {etapa === ETAPAS.ACESSO && (
-        <div className="w-full max-w-md text-center">
-          <div className="mb-8">
-            <div
-              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              ✅
+        {/* NOVO GRÁFICO: Acessos Únicos por Dia do Hotspot Selecionado */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Únicos por Dia</h2>
+          <p className="text-xs text-gray-500 mb-5">Hotspot selecionado (últimos 14 dias)</p>
+          {selectedHotspotId && leadsUnicosPorDiaHotspot.length > 0 ? (
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={leadsUnicosPorDiaHotspot}>
+                <defs>
+                  <linearGradient id="colorLeadsUnicos" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+                <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
+                <Area type="monotone" dataKey="leadsUnicos" stroke="#3b82f6" strokeWidth={2} fill="url(#colorLeadsUnicos)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">
+              {selectedHotspotId ? 'Sem dados de acessos únicos para este hotspot.' : 'Selecione um hotspot para ver os dados.'}
             </div>
-            <h1 className="text-white text-2xl font-bold mb-2">Wi-Fi liberado!</h1>
-            <p className="text-gray-400 text-sm">
-              Você já tem acesso à internet. Aproveite sua conexão em <strong className="text-white">{hotspot?.nome}</strong>.
-            </p>
-          </div>
-
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-left">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ backgroundColor: cor }}
-              />
-              <span className="text-sm text-gray-300">Conexão ativa</span>
-            </div>
-          </div>
+          )}
         </div>
-      )}
 
-    </div>
+        {/* Gráfico de Receita Mensal (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2>
+          <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={receitaPorMes}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} formatter={(v) => fmt(v)} />
+              <Legend wrapperStyle={{ fontSize: '11px', color: '#6b7280' }} />
+              <Bar dataKey="recebido" name="Recebido" fill="#22c55e" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pendente" name="Pendente" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+        {/* Gráfico de Clientes por Status (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2>
+          <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
+          {clientesPorStatus.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={150}>
+                <PieChart>
+                  <Pie data={clientesPorStatus} cx="50%" cy="50%" innerRadius={45} outerRadius={65} dataKey="value" paddingAngle={3}>
+                    {clientesPorStatus.map((_, i) => (
+                      <Cell key={i} fill={CORES[i % CORES.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-1.5 mt-2">
+                {clientesPorStatus.map((item, i) => (
+                  <div key={item.name} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CORES[i % CORES.length] }} />
+                      <span className="text-xs text-gray-400">{item.name}</span>
+                    </div>
+                    <span className="text-xs font-medium text-white">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Gráfico de Top Hotspots GERAL (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots (Geral)</h2>
+          <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
+          {leadsPorHotspotGeral.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={leadsPorHotspotGeral} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" horizontal={false} />
+                <XAxis type="number" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <YAxis dataKey="name" type="category" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} width={80} />
+                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
+                <Bar dataKey="leads" fill="#3b82f6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Últimos Pagamentos (mantido) */}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+          <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2>
+          <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
+          {pagamentosRecentes.length === 0 ? (
+            <div className="flex items-center justify-center h-40 text-gray-600 text-sm">Sem dados</div>
+          ) : (
+            <div className="space-y-3">
+              {pagamentosRecentes.map((p) => (
+                <div key={p.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-xs flex-shrink-0">
+                      {p.clientes?.nome?.charAt(0).toUpperCase() || '?'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-white truncate">{p.clientes?.nome || '—'}</p>
+                      <p className="text-xs text-gray-500">{new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0 ml-2">
+                    <p className="text-xs font-semibold text-white">{fmt(p.valor)}</p>
+                    <p className={`text-xs ${corStatus(p.status)}`}>{p.status}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Últimos Leads Capturados (mantido) */}
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+        <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2>
+        <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
+        {leadsRecentes.length === 0 ? (
+          <div className="flex items-center justify-center py-8 text-gray-600 text-sm">Nenhum lead capturado ainda.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-800">
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Lead</th>
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Hotspot</th>
+                  <th className="text-left text-xs text-gray-500 font-medium pb-3">Capturado em</th>
+                </tr>
+              </thead>
+              <tbody>
+                {leadsRecentes.map((l) => (
+                  <tr key={l.id} className="border-b border-gray-800 last:border-0">
+                    <td className="py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-orange-400/10 flex items-center justify-center text-orange-400 font-semibold text-xs">
+                          {l.nome?.charAt(0).toUpperCase() || '?'}
+                        </div>
+                        <div>
+                          <p className="text-xs text-white">{l.nome || '—'}</p>
+                          <p className="text-xs text-gray-500">{l.email || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-3 text-xs text-gray-400">{l.hotspots?.nome || '—'}</td>
+                    <td className="py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString('pt-BR')}&#x20;</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </main>
   )
 }
