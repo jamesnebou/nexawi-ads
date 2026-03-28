@@ -21,7 +21,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [hotspots, setHotspots] = useState([])
   const [selectedHotspotId, setSelectedHotspotId] = useState('')
-  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0) // Novo estado para visualizações do hotspot selecionado
+  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0)
   const [metricas, setMetricas] = useState({
     totalClientes: 0, clientesAtivos: 0,
     totalHotspots: 0, hotspotsAtivos: 0,
@@ -43,23 +43,19 @@ export default function Dashboard() {
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
     const hojeStr = hoje.toISOString().slice(0, 10)
 
-    // Busca inicial de todos os hotspots para o seletor, AGORA INCLUINDO 'visualizacoes'
     const { data: allHotspots, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('id, nome, visualizacoes') // Adicionado 'visualizacoes' aqui
+      .select('id, nome, visualizacoes')
       .order('nome', { ascending: true })
 
     if (hotspotsError) {
       console.error('Erro ao buscar hotspots:', hotspotsError)
-      // Tratar erro de hotspots
     } else {
       setHotspots(allHotspots || [])
       if (allHotspots && allHotspots.length > 0 && !selectedHotspotId) {
-        setSelectedHotspotId(allHotspots[0].id) // Define o primeiro hotspot como padrão se nenhum estiver selecionado
-        // Define as visualizações do primeiro hotspot como padrão
+        setSelectedHotspotId(allHotspots[0].id)
         setTotalVisualizacoesHotspot(allHotspots[0].visualizacoes || 0)
       } else if (selectedHotspotId) {
-        // Se já tem um hotspot selecionado, atualiza as visualizações dele
         const currentHotspot = allHotspots?.find(h => h.id === selectedHotspotId)
         setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
       }
@@ -208,7 +204,6 @@ export default function Dashboard() {
   const handleHotspotChange = (e) => {
     const newSelectedId = e.target.value
     setSelectedHotspotId(newSelectedId)
-    // Atualiza as visualizações do hotspot selecionado imediatamente
     const currentHotspot = hotspots.find(h => h.id === newSelectedId)
     setTotalVisualizacoesHotspot(currentHotspot?.visualizacoes || 0)
   }
@@ -239,7 +234,6 @@ export default function Dashboard() {
             {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        {/* Seletor de Hotspot */}
         <div className="relative">
           <select
             value={selectedHotspotId}
@@ -262,22 +256,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8"> {/* Ajuste de grid para 5 colunas */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
         {[
           { label: 'Clientes Ativos', valor: metricas.clientesAtivos, sub: `${metricas.totalClientes} total`, icon: Users, cor: 'text-blue-400', bg: 'bg-blue-400/5 border-blue-400/20' },
           { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, sub: `${metricas.totalHotspots} total`, icon: Wifi, cor: 'text-purple-400', bg: 'bg-purple-400/5 border-purple-400/20' },
           { label: 'Leads Hoje', valor: metricas.leadsHoje, sub: `${metricas.totalLeads} total`, icon: UserPlus, cor: 'text-green-400', bg: 'bg-green-400/5 border-green-400/20' },
           { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), sub: `${fmt(metricas.pendenteTotal)} pendente`, icon: DollarSign, cor: 'text-yellow-400', bg: 'bg-yellow-400/5 border-yellow-400/20' },
-          // --- NOVO CARD DE MÉTRICA AQUI ---
           { label: 'Visualizações Hotspot', valor: totalVisualizacoesHotspot, sub: 'Total de acessos ao portal', icon: Eye, cor: 'text-orange-400', bg: 'bg-orange-400/5 border-orange-400/20' },
-          // --- FIM DO NOVO CARD ---
-        ].map((card) => {
+        ].map((card, index) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className={`${card.bg} border rounded-2xl p-4 sm:p-5`}>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs text-gray-500">{card.label}</p>
-                <Icon size={18} className={card.cor} />
+            <div key={index} className={`relative p-4 rounded-2xl border ${card.bg}`}>
+              <div className={`absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center ${card.bg}`}>
+                <Icon className={`w-4 h-4 ${card.cor}`} />
               </div>
               <p className={`text-xl sm:text-2xl font-bold ${card.cor}`}>{card.valor}</p>
               <p className="text-xs text-gray-600 mt-1">{card.sub}</p>
@@ -286,9 +277,8 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        {/* Gráfico de Leads Capturados GERAL (mantido) */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 lg:col-span-2">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Leads Capturados (Geral)</h2>
           <p className="text-xs text-gray-500 mb-5">Últimos 14 dias</p>
           <ResponsiveContainer width="100%" height={200}>
@@ -308,7 +298,6 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        {/* NOVO GRÁFICO: Acessos Únicos por Dia do Hotspot Selecionado */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Acessos Únicos por Dia</h2>
           <p className="text-xs text-gray-500 mb-5">Hotspot selecionado (últimos 14 dias)</p>
@@ -324,7 +313,7 @@ export default function Dashboard() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" />
                 <XAxis dataKey="data" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#111827', border: '1px solid #1f2937', borderRadius: '8px', fontSize: '12px' }} labelStyle={{ color: '#9ca3af' }} itemStyle={{ color: '#3b82f6' }} />
                 <Area type="monotone" dataKey="leadsUnicos" stroke="#3b82f6" strokeWidth={2} fill="url(#colorLeadsUnicos)" />
               </AreaChart>
             </ResponsiveContainer>
@@ -335,7 +324,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Gráfico de Receita Mensal (mantido) */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Receita Mensal</h2>
           <p className="text-xs text-gray-500 mb-5">Últimos 6 meses</p>
@@ -354,7 +342,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
-        {/* Gráfico de Clientes por Status (mantido) */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Clientes por Status</h2>
           <p className="text-xs text-gray-500 mb-4">Distribuição atual</p>
@@ -376,7 +363,7 @@ export default function Dashboard() {
                 {clientesPorStatus.map((item, i) => (
                   <div key={item.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CORES[i % CORES.length] }} />
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CORES[i % CORES.length]} } />
                       <span className="text-xs text-gray-400">{item.name}</span>
                     </div>
                     <span className="text-xs font-medium text-white">{item.value}</span>
@@ -387,7 +374,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Gráfico de Top Hotspots GERAL (mantido) */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Top Hotspots (Geral)</h2>
           <p className="text-xs text-gray-500 mb-5">Por leads capturados</p>
@@ -406,7 +392,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Últimos Pagamentos (mantido) */}
         <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
           <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Pagamentos</h2>
           <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
@@ -436,7 +421,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Últimos Leads Capturados (mantido) */}
       <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6">
         <h2 className="text-sm sm:text-base font-semibold text-white mb-1">Últimos Leads Capturados</h2>
         <p className="text-xs text-gray-500 mb-4">5 mais recentes</p>
@@ -467,7 +451,7 @@ export default function Dashboard() {
                       </div>
                     </td>
                     <td className="py-3 text-xs text-gray-400">{l.hotspots?.nome || '—'}</td>
-                    <td className="py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString('pt-BR')}&#x20;</td>
+                    <td className="py-3 text-xs text-gray-500">{new Date(l.created_at).toLocaleString('pt-BR')}</td>
                   </tr>
                 ))}
               </tbody>
