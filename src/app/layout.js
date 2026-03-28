@@ -15,6 +15,10 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="pt-BR">
+      <head>
+        <link rel="icon" href="/minha-logo-icon.png" /> {/* Favicon adicionado */}
+        {/* Outras tags meta, title, etc. podem ir aqui se você tiver */}
+      </head>
       <body>
         <div className="flex min-h-screen bg-gray-950">
           {/* Botão para abrir/fechar sidebar no mobile (canto superior direito) */}

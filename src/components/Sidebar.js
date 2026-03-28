@@ -1,5 +1,5 @@
 // src/components/Sidebar.js
-'use client' // Importante para usar hooks como usePathname, useRouter, useState
+'use client' // Importante para usar hooks como usePathname, useRouter
 
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
@@ -36,7 +36,7 @@ export default function Sidebar({ onClose, isCollapsed }) { // Recebe a prop isC
         {/* Mostra logo completo ou ícone dependendo do estado de colapso */}
         {!isCollapsed && (
           <Image
-            src="/Nexa-logo.png"
+            src="/Nexa-logo.png" // Mantenha este se for o logo completo
             alt="Sua Logo"
             width={140}
             height={40}
@@ -45,10 +45,8 @@ export default function Sidebar({ onClose, isCollapsed }) { // Recebe a prop isC
           />
         )}
         {isCollapsed && (
-          // Assumindo que você tem uma versão de ícone do seu logo para quando o sidebar está encolhido
-          // Se não tiver, pode usar um texto curto ou apenas o primeiro caractere, ou remover esta parte
           <Image
-            src="/Nexa-logo-icon.png" // Substitua pelo caminho do seu ícone de logo, se tiver
+            src="/minha-logo-icon.png" // Caminho atualizado para a sua nova imagem
             alt="Logo Icon"
             width={32}
             height={32}
