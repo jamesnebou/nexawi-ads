@@ -3,8 +3,8 @@
 
 import { useState } from 'react'
 import { X, Menu, ChevronsLeft, ChevronsRight } from 'lucide-react'
-import Sidebar from '../components/Sidebar'
-import './globals.css'
+import Sidebar from '../components/Sidebar' // Caminho CORRIGIDO para o Sidebar
+import './globals.css' // Importa seus estilos globais
 
 export default function RootLayout({ children }) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
@@ -16,7 +16,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="pt-BR">
       <head>
-        <link rel="icon" href="/minha-logo-icon.png" /> {/* Favicon */}
+        {/* A tag do favicon foi removida daqui. O Next.js vai usar o arquivo favicon.ico na pasta src/app/ */}
         {/* Outras tags meta, title, etc. podem ir aqui se você tiver */}
       </head>
       <body>

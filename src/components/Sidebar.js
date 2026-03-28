@@ -1,13 +1,14 @@
 // src/components/Sidebar.js
-'use client'
+'use client' // Importante para usar hooks como usePathname, useRouter
 
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { signOut } from 'next-auth/react'
+import { signOut } from 'next-auth/react' // Assumindo que você usa next-auth
 import {
   Users, Wifi, UserPlus, DollarSign, Package, Settings, LogOut, LayoutDashboard, BarChart2
 } from 'lucide-react'
 
+// Definição dos itens de navegação
 const navigation = [
   { label: "Dashboard", path: "/dashboard", icon: LayoutDashboard },
   { label: "Clientes", path: "/dashboard/clientes", icon: Users },
@@ -18,7 +19,7 @@ const navigation = [
   { label: "Configurações", path: "/dashboard/configuracoes", icon: Settings },
 ];
 
-export default function Sidebar({ onClose, isCollapsed }) {
+export default function Sidebar({ onClose, isCollapsed }) { // Recebe a prop isCollapsed
   const pathname = usePathname()
   const router = useRouter()
 
@@ -45,7 +46,7 @@ export default function Sidebar({ onClose, isCollapsed }) {
         )}
         {isCollapsed && (
           <Image
-            src="/minha-logo-icon.png" // Caminho para a sua nova imagem de ícone
+            src="/minha-logo-icon.png" // Caminho atualizado para a sua nova imagem
             alt="Logo Icon"
             width={32}
             height={32}

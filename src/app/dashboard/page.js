@@ -24,202 +24,129 @@ export default function Dashboard() {
   const [hotspots, setHotspots] = useState([])
   const [selectedHotspotId, setSelectedHotspotId] = useState('')
   const [selectedHotspotName, setSelectedHotspotName] = useState('Nenhum Hotspot') // Novo estado para o nome do hotspot
-  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0)
-  const [onlineUsers, setOnlineUsers] = useState(0) // Novo estado para pessoas online
+  const [totalVisualizacoes, setTotalVisualizacoes] = useState(0)
+  const [onlineUsers, setOnlineUsers] = useState(0)
   const [metricas, setMetricas] = useState({
-    totalClientes: 0, clientesAtivos: 0,
-    totalHotspots: 0, hotspotsAtivos: 0,
-    totalLeads: 0, leadsHoje: 0,
-    recebidoMes: 0, pendenteTotal: 0, vencidoTotal: 0,
+    clientesAtivos: 0,
+    clientesInativos: 0,
+    clientesPendentes: 0,
+    clientesVencidos: 0,
+    receitaTotal: 0,
+    receitaAtiva: 0,
+    pendenteTotal: 0,
+    vencidoTotal: 0,
   })
   const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([])
-  const [leadsUnicosPorDiaHotspot, setLeadsUnicosPorDiaHotspot] = useState([])
   const [receitaPorMes, setReceitaPorMes] = useState([])
   const [clientesPorStatus, setClientesPorStatus] = useState([])
   const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([])
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
 
-  // Função para formatar valores monetários
-  const fmt = (value) => {
-    if (typeof value !== 'number') return 'R$ 0,00'
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL',
-    }).format(value)
-  }
-
-  // Função para determinar a cor do status
+  const fmt = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
   const corStatus = (status) => {
     switch (status) {
-      case 'Pago': return 'text-green-400'
-      case 'Pendente': return 'text-yellow-400'
-      case 'Vencido': return 'text-red-400'
-      case 'Ativo': return 'text-green-400'
-      case 'Inativo': return 'text-red-400'
-      default: return 'text-gray-400'
+      case 'ativo': return 'text-green-400';
+      case 'inativo': return 'text-gray-500';
+      case 'pendente': return 'text-yellow-400';
+      case 'vencido': return 'text-red-400';
+      default: return 'text-gray-400';
     }
   }
 
-  // Função para buscar dados
   const buscarDados = useCallback(async () => {
     setLoading(true)
-
-    const hoje = new Date()
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
-    const hojeStr = hoje.toISOString().slice(0, 10)
-
-    let currentHotspots = hotspots;
-    if (currentHotspots.length === 0) {
-      const { data: allHotspots, error: hotspotsError } = await supabase
+    try {
+      // Hotspots
+      const { data: hotspotsData, error: hotspotsError } = await supabase
         .from('hotspots')
         .select('id, nome, visualizacoes')
         .order('nome', { ascending: true })
 
-      if (hotspotsError) {
-        console.error('Erro ao buscar hotspots:', hotspotsError)
+      if (hotspotsError) throw hotspotsError
+      setHotspots(hotspotsData)
+      if (hotspotsData.length > 0 && !selectedHotspotId) {
+        setSelectedHotspotId(hotspotsData[0].id)
+        setSelectedHotspotName(hotspotsData[0].nome)
+      } else if (selectedHotspotId) {
+        const currentHotspot = hotspotsData.find(h => h.id === selectedHotspotId)
+        if (currentHotspot) setSelectedHotspotName(currentHotspot.nome)
+      }
+
+      // Métricas
+      const { data: metricasData, error: metricasError } = await supabase.rpc('get_dashboard_metrics')
+      if (metricasError) throw metricasError
+      setMetricas(metricasData[0] || {})
+
+      // Leads por Dia (Geral)
+      const { data: leadsDiaData, error: leadsDiaError } = await supabase.rpc('get_leads_by_day_general')
+      if (leadsDiaError) throw leadsDiaError
+      setLeadsPorDiaGeral(leadsDiaData)
+
+      // Receita por Mês
+      const { data: receitaMesData, error: receitaMesError } = await supabase.rpc('get_revenue_by_month')
+      if (receitaMesError) throw receitaMesError
+      setReceitaPorMes(receitaMesData)
+
+      // Clientes por Status
+      const { data: clientesStatusData, error: clientesStatusError } = await supabase.rpc('get_clients_by_status')
+      if (clientesStatusError) throw clientesStatusError
+      setClientesPorStatus(clientesStatusData)
+
+      // Leads por Hotspot (Geral)
+      const { data: leadsHotspotData, error: leadsHotspotError } = await supabase.rpc('get_leads_by_hotspot_general')
+      if (leadsHotspotError) throw leadsHotspotError
+      setLeadsPorHotspotGeral(leadsHotspotData)
+
+      // Últimos Pagamentos
+      const { data: pagamentosData, error: pagamentosError } = await supabase
+        .from('pagamentos')
+        .select('id, valor, status, created_at, clientes(nome)')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (pagamentosError) throw pagamentosError
+      setPagamentosRecentes(pagamentosData)
+
+      // Últimos Leads
+      const { data: leadsData, error: leadsError } = await supabase
+        .from('leads')
+        .select('id, nome, email, created_at, hotspots(nome)')
+        .order('created_at', { ascending: false })
+        .limit(5)
+      if (leadsError) throw leadsError
+      setLeadsRecentes(leadsData)
+
+      // Pessoas Online (para o hotspot selecionado)
+      if (selectedHotspotId) {
+        const { data: onlineData, error: onlineError } = await supabase
+          .from('hotspot_sessions')
+          .select('id')
+          .eq('hotspot_id', selectedHotspotId)
+          .is('end_time', null) // Sessões ativas
+        if (onlineError) throw onlineError
+        setOnlineUsers(onlineData.length)
       } else {
-        currentHotspots = allHotspots || [];
-        setHotspots(currentHotspots);
-        if (currentHotspots.length > 0 && !selectedHotspotId) {
-          setSelectedHotspotId(currentHotspots[0].id);
-          setSelectedHotspotName(currentHotspots[0].nome);
-        }
+        setOnlineUsers(0)
       }
+
+    } catch (error) {
+      console.error('Erro ao buscar dados do dashboard:', error.message)
+      toast.error('Erro ao carregar dados do dashboard.')
+    } finally {
+      setLoading(false)
     }
+  }, [selectedHotspotId])
 
-    // Métricas gerais
-    const { data: clientesData, error: clientesError } = await supabase
-      .from('clientes')
-      .select('id, status')
-    const { data: hotspotsData, error: hotspotsCountError } = await supabase
-      .from('hotspots')
-      .select('id, status')
-    const { data: leadsData, error: leadsError } = await supabase
-      .from('leads')
-      .select('id, created_at, hotspot_id')
-    const { data: pagamentosData, error: pagamentosError } = await supabase
-      .from('pagamentos')
-      .select('id, valor, status, created_at, clientes(nome)')
-
-    if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
-    if (hotspotsCountError) console.error('Erro ao buscar hotspots:', hotspotsCountError)
-    if (leadsError) console.error('Erro ao buscar leads:', leadsError)
-    if (pagamentosError) console.error('Erro ao buscar pagamentos:', pagamentosError)
-
-    const totalClientes = clientesData?.length || 0
-    const clientesAtivos = clientesData?.filter(c => c.status === 'Ativo').length || 0
-    const totalHotspots = hotspotsData?.length || 0
-    const hotspotsAtivos = hotspotsData?.filter(h => h.status === 'Ativo').length || 0
-    const totalLeads = leadsData?.length || 0
-    const leadsHoje = leadsData?.filter(l => l.created_at.startsWith(hojeStr)).length || 0
-
-    const recebidoMes = pagamentosData?.filter(p => p.status === 'Pago' && p.created_at >= inicioMes).reduce((sum, p) => sum + p.valor, 0) || 0
-    const pendenteTotal = pagamentosData?.filter(p => p.status === 'Pendente').reduce((sum, p) => sum + p.valor, 0) || 0
-    const vencidoTotal = pagamentosData?.filter(p => p.status === 'Vencido').reduce((sum, p) => sum + p.valor, 0) || 0
-
-    setMetricas({
-      totalClientes, clientesAtivos,
-      totalHotspots, hotspotsAtivos,
-      totalLeads, leadsHoje,
-      recebidoMes, pendenteTotal, vencidoTotal,
-    })
-
-    // Leads por dia (geral)
-    const leadsPorDiaMap = leadsData?.reduce((acc, lead) => {
-      const date = lead.created_at.slice(0, 10)
-      acc[date] = (acc[date] || 0) + 1
-      return acc
-    }, {})
-    const leadsPorDiaArray = Object.keys(leadsPorDiaMap || {}).map(date => ({
-      date,
-      leads: leadsPorDiaMap[date],
-    })).sort((a, b) => new Date(a.date) - new Date(b.date))
-    setLeadsPorDiaGeral(leadsPorDiaArray)
-
-    // Leads por hotspot (geral)
-    const leadsPorHotspotMap = leadsData?.reduce((acc, lead) => {
-      const hotspot = currentHotspots.find(h => h.id === lead.hotspot_id)
-      if (hotspot) {
-        acc[hotspot.nome] = (acc[hotspot.nome] || 0) + 1
-      }
-      return acc
-    }, {})
-    const leadsPorHotspotArray = Object.keys(leadsPorHotspotMap || {}).map(name => ({
-      name,
-      leads: leadsPorHotspotMap[name],
-    })).sort((a, b) => b.leads - a.leads).slice(0, 5)
-    setLeadsPorHotspotGeral(leadsPorHotspotArray)
-
-    // Receita por mês
-    const receitaPorMesMap = pagamentosData?.filter(p => p.status === 'Pago').reduce((acc, p) => {
-      const month = new Date(p.created_at).toLocaleString('pt-BR', { month: 'short', year: 'numeric' })
-      acc[month] = (acc[month] || 0) + p.valor
-      return acc
-    }, {})
-    const receitaPorMesArray = Object.keys(receitaPorMesMap || {}).map(month => ({
-      month,
-      receita: receitaPorMesMap[month],
-    }))
-    setReceitaPorMes(receitaPorMesArray)
-
-    // Clientes por status
-    const clientesPorStatusMap = clientesData?.reduce((acc, c) => {
-      acc[c.status] = (acc[c.status] || 0) + 1
-      return acc
-    }, {})
-    const clientesPorStatusArray = Object.keys(clientesPorStatusMap || {}).map(status => ({
-      name: status,
-      value: clientesPorStatusMap[status],
-    }))
-    setClientesPorStatus(clientesPorStatusArray)
-
-    // Pagamentos recentes
-    const pagamentosRecentesArray = pagamentosData?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5) || []
-    setPagamentosRecentes(pagamentosRecentesArray)
-
-    // Leads recentes
-    const leadsRecentesArray = leadsData?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5) || []
-    const { data: leadsRecentesComHotspot, error: leadsRecentesError } = await supabase
-      .from('leads')
-      .select('*, hotspots(nome)')
-      .order('created_at', { ascending: false })
-      .limit(5)
-    if (leadsRecentesError) console.error('Erro ao buscar leads recentes com hotspot:', leadsRecentesError)
-    setLeadsRecentes(leadsRecentesComHotspot || [])
-
-    setLoading(false)
-  }, [hotspots, selectedHotspotId]) // Adicionado selectedHotspotId como dependência
-
-  // Efeito para buscar dados iniciais e quando o hotspot selecionado muda
   useEffect(() => {
     buscarDados()
   }, [buscarDados])
 
-  // Efeito para Realtime e Pessoas Online
+  // Realtime para hotspot_sessions
   useEffect(() => {
-    if (!selectedHotspotId) return;
-
-    const fetchOnlineUsers = async () => {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { count, error } = await supabase
-        .from('hotspot_sessions')
-        .select('id', { count: 'exact' })
-        .eq('hotspot_id', selectedHotspotId)
-        .gte('last_active_at', fiveMinutesAgo);
-
-      if (error) {
-        console.error('Erro ao buscar usuários online:', error);
-        setOnlineUsers(0);
-      } else {
-        setOnlineUsers(count || 0);
-      }
-    };
-
-    fetchOnlineUsers(); // Busca inicial de usuários online
+    if (!selectedHotspotId) return
 
     const channel = supabase
-      .channel(`hotspot_sessions_changes_${selectedHotspotId}`)
+      .channel(`hotspot_sessions_channel_${selectedHotspotId}`)
       .on(
         'postgres_changes',
         {
@@ -229,60 +156,62 @@ export default function Dashboard() {
           filter: `hotspot_id=eq.${selectedHotspotId}`
         },
         (payload) => {
-          console.log('Realtime change received!', payload);
-          fetchOnlineUsers(); // Re-fetch users on any change
-
+          console.log('Change received!', payload)
           if (payload.eventType === 'INSERT') {
-            const hotspot = hotspots.find(h => h.id === selectedHotspotId);
-            if (hotspot) {
-              toast.success(`Hotspot "${hotspot.nome}" recebeu um novo acesso!`, {
-                position: 'bottom-right',
-                duration: 4000,
-                style: {
-                  background: '#1f2937',
-                  color: '#fff',
-                  border: '1px solid #22c55e',
-                },
-              });
+            toast.success(`Novo usuário online no hotspot ${selectedHotspotName}!`)
+          }
+          // Re-fetch online users on any change to keep it updated
+          const fetchOnlineUsers = async () => {
+            const { data: onlineData, error: onlineError } = await supabase
+              .from('hotspot_sessions')
+              .select('id')
+              .eq('hotspot_id', selectedHotspotId)
+              .is('end_time', null)
+            if (onlineError) {
+              console.error('Erro ao buscar usuários online em tempo real:', onlineError.message)
+            } else {
+              setOnlineUsers(onlineData.length)
             }
           }
+          fetchOnlineUsers()
         }
       )
-      .subscribe();
+      .subscribe()
 
     return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedHotspotId, hotspots]); // Dependências: selectedHotspotId e hotspots
-
-  // Efeito para atualizar o nome do hotspot selecionado
-  useEffect(() => {
-    const currentHotspot = hotspots.find(h => h.id === selectedHotspotId);
-    setSelectedHotspotName(currentHotspot ? currentHotspot.nome : 'Nenhum Hotspot');
-  }, [selectedHotspotId, hotspots]);
+      supabase.removeChannel(channel)
+    }
+  }, [selectedHotspotId, selectedHotspotName])
 
 
-  const handleHotspotChange = (event) => {
-    const newHotspotId = event.target.value;
-    setSelectedHotspotId(newHotspotId);
-    const selected = hotspots.find(h => h.id === newHotspotId);
-    setSelectedHotspotName(selected ? selected.nome : 'Nenhum Hotspot');
+  const handleHotspotChange = (e) => {
+    const newHotspotId = e.target.value
+    setSelectedHotspotId(newHotspotId)
+    const newHotspotName = hotspots.find(h => h.id === newHotspotId)?.nome || 'Nenhum Hotspot'
+    setSelectedHotspotName(newHotspotName)
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen-minus-header">
+        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    )
   }
 
   return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 p-4 sm:p-6 md:p-8">
-      <Toaster /> {/* Componente para exibir os toasts */}
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-white">Dashboard</h1>
+    <main className="min-h-screen bg-gray-950 text-white p-4 sm:p-6 md:p-8">
+      <Toaster position="top-right" reverseOrder={false} /> {/* Componente Toaster */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 sm:mb-0">Dashboard</h1>
         <div className="flex items-center gap-3">
-          <label htmlFor="hotspot-select" className="sr-only">Selecionar Hotspot</label>
+          <label htmlFor="hotspot-select" className="text-gray-400 text-sm">Hotspot:</label>
           <select
             id="hotspot-select"
             value={selectedHotspotId}
             onChange={handleHotspotChange}
-            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2.5"
+            className="bg-gray-800 border border-gray-700 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"
           >
-            <option value="">Todos os Hotspots</option>
             {hotspots.map((hotspot) => (
               <option key={hotspot.id} value={hotspot.id}>
                 {hotspot.nome}
@@ -293,12 +222,12 @@ export default function Dashboard() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-green-500"></div>
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
             {/* Card Pessoas Online */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
               <div>
@@ -311,50 +240,26 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Card Total de Clientes */}
+            {/* Card Clientes Ativos */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-white">Total de Clientes</h2>
-                  <Users size={20} className="text-blue-400" />
+                  <h2 className="text-sm sm:text-base font-semibold text-white">Clientes Ativos</h2>
+                  <CheckCircle2 size={20} className="text-green-400" />
                 </div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">{metricas.totalClientes}</p>
-                <p className="text-xs text-gray-500 mt-1">{metricas.clientesAtivos} ativos</p>
+                <p className="text-3xl sm:text-4xl font-bold text-white">{metricas.clientesAtivos}</p>
+                <p className="text-xs text-gray-500 mt-1">Total de clientes: {metricas.clientesAtivos + metricas.clientesInativos + metricas.clientesPendentes + metricas.clientesVencidos}</p>
               </div>
             </div>
 
-            {/* Card Total de Hotspots */}
+            {/* Card Receita Ativa */}
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-white">Total de Hotspots</h2>
-                  <Wifi size={20} className="text-purple-400" />
+                  <h2 className="text-sm sm:text-base font-semibold text-white">Receita Ativa</h2>
+                  <TrendingUp size={20} className="text-blue-400" />
                 </div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">{metricas.totalHotspots}</p>
-                <p className="text-xs text-gray-500 mt-1">{metricas.hotspotsAtivos} ativos</p>
-              </div>
-            </div>
-
-            {/* Card Leads Capturados Hoje */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-white">Leads Capturados Hoje</h2>
-                  <UserPlus size={20} className="text-orange-400" />
-                </div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">{metricas.leadsHoje}</p>
-                <p className="text-xs text-gray-500 mt-1">Total: {metricas.totalLeads}</p>
-              </div>
-            </div>
-
-            {/* Card Recebido no Mês */}
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 sm:p-6 flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-sm sm:text-base font-semibold text-white">Recebido no Mês</h2>
-                  <DollarSign size={20} className="text-green-400" />
-                </div>
-                <p className="text-3xl sm:text-4xl font-bold text-white">{fmt(metricas.recebidoMes)}</p>
+                <p className="text-3xl sm:text-4xl font-bold text-white">{fmt(metricas.receitaAtiva)}</p>
                 <p className="text-xs text-gray-500 mt-1">Pendente: {fmt(metricas.pendenteTotal)}</p>
               </div>
             </div>
