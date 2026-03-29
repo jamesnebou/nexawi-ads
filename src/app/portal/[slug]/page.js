@@ -26,13 +26,11 @@ const validatePhoneNumber = (phone) => {
 
 const validateCpf = (cpf) => {
   const cleanedCpf = String(cpf).replace(/\D/g, '');
-  // CORREÇÃO FINAL E DEFINITIVA AQUI: A regex agora está em uma única linha e formatada corretamente
-  if (cleanedCpf.length !== 11 || 
+  // CORREÇÃO FINAL E DEFINITIVA AQUI: Usando construtor RegExp para evitar erro de literal
+  const cpfRepeatedDigitsRegex = new RegExp('^(\\d)\\1{10}$');
 
-
-$
-/test(cleanedCpf)) { // A regex está completamente em uma única linha
-    return false; // Verifica 11 dígitos e CPFs repetidos
+  if (cleanedCpf.length !== 11 || cpfRepeatedDigitsRegex.test(cleanedCpf)) {
+    return false; // Verifica 11 dígitos e CPFs com dígitos repetidos
   }
 
   let sum = 0;
@@ -129,103 +127,75 @@ export default function Portal() {
     }
 
     if (!form.aceite_lgpd) {
-      novosErros.aceite_lgpd = 'Você precisa aceitar os termos da LGPD.';
+      novosErros.aceite_lgpd = 'Você precisa aceitar os termos de privacidade.';
     }
 
     setErros(novosErros);
     return Object.keys(novosErros).length === 0;
   }
-  // --- Fim da Função de Validação do Formulário ---
 
-  // --- Manipulador de Mudança de Input (Aprimorado com máscaras e validação em tempo real) ---
-  const handleChange = (e) => {
+  const handleChange = useCallback((e) => {
     const { name, value, type, checked } = e.target;
 
-    setForm(prevForm => ({
-      ...prevForm,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-
-    // Limpa o erro ao começar a digitar
-    setErros(prevErros => ({
-      ...prevErros,
-      [name]: ''
-    }));
-
-    // Validação em tempo real para telefone e CPF
-    if (name === 'telefone') {
-      const cleanedValue = value.replace(/\D/g, '');
-      if (cleanedValue.length > 0 && !validatePhoneNumber(cleanedValue)) {
-        setErros(prevErros => ({ ...prevErros, telefone: 'Telefone inválido. Deve ter 11 dígitos.' }));
-      } else if (cleanedValue.length === 0) {
-        setErros(prevErros => ({ ...prevErros, telefone: 'Telefone é obrigatório.' }));
-      } else {
-        setErros(prevErros => ({ ...prevErros, telefone: '' }));
+    setForm(prevForm => {
+      let newValue = value;
+      if (name === 'telefone' || name === 'cpf') {
+        newValue = value.replace(/\D/g, '').slice(0, 11); // Limita a 11 dígitos para telefone e CPF
       }
-    }
 
-    if (name === 'cpf') {
-      const cleanedValue = value.replace(/\D/g, '');
-      if (cleanedValue.length > 0 && !validateCpf(cleanedValue)) {
-        setErros(prevErros => ({ ...prevErros, cpf: 'CPF inválido.' }));
-      } else if (cleanedValue.length === 0) {
-        setErros(prevErros => ({ ...prevErros, cpf: 'CPF é obrigatório.' }));
-      } else {
-        setErros(prevErros => ({ ...prevErros, cpf: '' }));
-      }
-    }
+      return {
+        ...prevForm,
+        [name]: type === 'checkbox' ? checked : newValue,
+      };
+    });
 
-    if (name === 'aceite_lgpd' && checked) {
-      setErros(prevErros => ({ ...prevErros, aceite_lgpd: '' }));
-    }
-  };
-  // --- Fim do Manipulador de Mudança de Input ---
+    // Limpa o erro ao digitar ou marcar/desmarcar
+    setErros(prevErros => {
+      const newErros = { ...prevErros };
+      if (name === 'nome' && value.trim()) delete newErros.nome;
+      if (name === 'email' && /\S+@\S+\.\S+/.test(value)) delete newErros.email;
+      if (name === 'telefone' && validatePhoneNumber(value)) delete newErros.telefone;
+      if (name === 'cpf' && validateCpf(value)) delete newErros.cpf;
+      if (name === 'aceite_lgpd' && checked) delete newErros.aceite_lgpd;
+      return newErros;
+    });
+  }, []);
 
   async function handleCadastro() {
-    if (!validarForm()) return
-    setSalvando(true)
+    if (!validarForm()) return;
+    setSalvando(true);
 
-    const { data, error } = await supabase.from('leads').insert([{
-      nome: form.nome,
-      email: form.email,
-      telefone: form.telefone.replace(/\D/g, ''), // Garante que só números sejam salvos
-      cpf: form.cpf.replace(/\D/g, ''), // Garante que só números sejam salvos
-      hotspot_id: hotspot.id,
-      aceite_lgpd: true,
-      data_aceite_lgpd: new Date().toISOString(),
-      ip: null, // O IP deve ser capturado no lado do servidor ou por outra forma
-    }]).select().single()
+    try {
+      const { data, error } = await supabase.from('leads').insert([{
+        nome: form.nome,
+        email: form.email,
+        telefone: form.telefone.replace(/\D/g, ''), // Garante que só números sejam salvos
+        cpf: form.cpf.replace(/\D/g, ''),           // Garante que só números sejam salvos
+        hotspot_id: hotspot.id,
+        aceite_lgpd: true,
+        data_aceite_lgpd: new Date().toISOString(),
+        ip: null, // O IP geralmente é capturado no lado do servidor ou por uma função edge
+      }]).select().single();
 
-    setSalvando(false)
+      setSalvando(false);
 
-    if (error) {
-      console.error("Erro ao salvar cadastro:", error);
-      setErros({ geral: 'Erro ao salvar cadastro. Tente novamente.' })
-      return
+      if (error) {
+        console.error('Erro ao salvar cadastro:', error);
+        setErros({ geral: 'Erro ao salvar cadastro. Tente novamente.' });
+        return;
+      }
+
+      setLeadId(data.id);
+      anunciosMostradosRef.current.clear();
+      mostrarProximoAnuncio(); // Inicia a exibição dos anúncios
+      setEtapa(ETAPAS.ANUNCIO);
+
+    } catch (err) {
+      console.error('Erro inesperado no cadastro:', err);
+      setSalvando(false);
+      setErros({ geral: 'Ocorreu um erro inesperado. Tente novamente.' });
     }
-
-    setLeadId(data.id)
-    anunciosMostradosRef.current.clear();
-    mostrarProximoAnuncio();
   }
-
-  // Nova função para registrar a visualização do anúncio
-  const registrarVisualizacaoAnuncio = useCallback(async (anuncioId, leadId, hotspotId) => {
-    if (!anuncioId || !leadId || !hotspotId) {
-      console.error("Dados incompletos para registrar visualização de anúncio.");
-      return;
-    }
-    const { error } = await supabase.from('visualizacoes_anuncios').insert([{
-      anuncio_id: anuncioId,
-      lead_id: leadId,
-      hotspot_id: hotspotId,
-      data_visualizacao: new Date().toISOString(),
-    }]);
-
-    if (error) {
-      console.error("Erro ao registrar visualização de anúncio:", error);
-    }
-  }, []);
 
   const mostrarProximoAnuncio = useCallback(() => {
     if (anuncios.length === 0) {
@@ -233,196 +203,192 @@ export default function Portal() {
       return;
     }
 
-    const anunciosNaoMostrados = anuncios.filter(
-      (anuncio) => !anunciosMostradosRef.current.has(anuncio.id)
-    );
+    let proximoAnuncio = null;
+    const anunciosNaoMostrados = anuncios.filter(a => !anunciosMostradosRef.current.has(a.id));
 
-    if (anunciosNaoMostrados.length === 0) {
-      setEtapa(ETAPAS.ACESSO);
-      return;
+    if (anunciosNaoMostrados.length > 0) {
+      // Pega o próximo anúncio que ainda não foi mostrado
+      proximoAnuncio = anunciosNaoMostrados[0];
+    } else {
+      // Se todos foram mostrados, reinicia o ciclo
+      anunciosMostradosRef.current.clear();
+      proximoAnuncio = anuncios[0];
     }
 
-    const proximoAnuncio = anunciosNaoMostrados[0]; // Pega o primeiro da lista
-    setAnuncioAtual(proximoAnuncio);
-    anunciosMostradosRef.current.add(proximoAnuncio.id);
-    setEtapa(ETAPAS.ANUNCIO);
-    setContador(proximoAnuncio.tempo_exibicao || 5); // Tempo padrão de 5 segundos
-
-    if (leadId) {
-      registrarVisualizacaoAnuncio(proximoAnuncio.id, leadId, hotspot.id);
+    if (proximoAnuncio) {
+      setAnuncioAtual(proximoAnuncio);
+      anunciosMostradosRef.current.add(proximoAnuncio.id);
+      setContador(proximoAnuncio.tempo_exibicao || 5); // Tempo padrão de 5 segundos
+      setEtapa(ETAPAS.ANUNCIO);
+    } else {
+      setEtapa(ETAPAS.ACESSO); // Se não houver anúncios, vai direto para o acesso
     }
-
-    // Limpa qualquer intervalo anterior
-    if (intervaloAnuncioRef.current) {
-      clearInterval(intervaloAnuncioRef.current);
-    }
-
-    // Inicia o novo intervalo
-    intervaloAnuncioRef.current = setInterval(() => {
-      setContador((prevContador) => {
-        if (prevContador <= 1) {
-          clearInterval(intervaloAnuncioRef.current);
-          setEtapa(ETAPAS.CTA); // Vai para a etapa de CTA após o contador zerar
-          return 0;
-        }
-        return prevContador - 1;
-      });
-    }, 1000);
-  }, [anuncios, leadId, hotspot, registrarVisualizacaoAnuncio]);
+  }, [anuncios]);
 
   const handleCtaClick = useCallback(async () => {
-    // Aqui você pode registrar o clique no CTA se necessário
-    // Por exemplo: supabase.from('cliques_cta').insert(...)
+    // Registra o clique no CTA (se houver leadId e anuncioAtual)
+    if (leadId && anuncioAtual) {
+      await supabase.from('cliques_cta').insert([{
+        lead_id: leadId,
+        anuncio_id: anuncioAtual.id,
+        hotspot_id: hotspot.id,
+        data_clique: new Date().toISOString(),
+      }]);
+    }
+    // Após o clique no CTA ou "Não, obrigado", o usuário deve ir para o Wi-Fi
     setEtapa(ETAPAS.ACESSO);
-  }, []);
+  }, [leadId, anuncioAtual, hotspot]);
 
-  const cor = hotspot?.cor_primaria || '#007bff'; // Cor padrão azul
+
+  useEffect(() => {
+    if (etapa === ETAPAS.ANUNCIO && contador > 0) {
+      intervaloAnuncioRef.current = setInterval(() => {
+        setContador(prev => prev - 1);
+      }, 1000);
+    } else if (etapa === ETAPAS.ANUNCIO && contador === 0) {
+      clearInterval(intervaloAnuncioRef.current);
+      mostrarProximoAnuncio();
+    }
+    return () => clearInterval(intervaloAnuncioRef.current);
+  }, [etapa, contador, mostrarProximoAnuncio]);
+
+  const cor = hotspot?.cor_primaria || '#16A34A'; // Cor padrão verde
+
+  if (etapa === ETAPAS.LOADING) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-950 text-white">
+        Carregando...
+      </div>
+    );
+  }
 
   if (etapa === ETAPAS.ERRO) {
     return (
-      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4">Erro</h1>
-          <p className="text-gray-400">Não foi possível carregar o hotspot. Verifique o link.</p>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-950 text-white p-4 text-center">
+        <h1 className="text-2xl font-bold mb-4">Erro</h1>
+        <p className="text-gray-400">Não foi possível encontrar o hotspot ou houve um erro inesperado.</p>
+        <p className="text-gray-400">Por favor, tente novamente mais tarde ou entre em contato com o suporte.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md">
-
-        {/* ETAPA 1 — LOADING */}
-        {etapa === ETAPAS.LOADING && (
-          <div className="text-center">
-            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-gray-400">Carregando...</p>
-          </div>
-        )}
-
-        {/* ETAPA 2 — CADASTRO */}
+        {/* ETAPA 1 — CADASTRO */}
         {etapa === ETAPAS.CADASTRO && (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-            <div className="text-center mb-6">
-              <h1 className="text-white text-2xl font-bold mb-2">Acesse o Wi-Fi de {hotspot?.nome}</h1>
-              <p className="text-gray-400 text-sm">
-                Preencha seus dados para liberar sua conexão.
-              </p>
+          <div className="text-center">
+            <div
+              className="w-16 h-16 rounded-full mx-auto mb-6 flex items-center justify-center text-3xl"
+              style={{ backgroundColor: `${cor}20` }}
+            >
+              👋
             </div>
+            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi de {hotspot?.nome}!</h1>
+            <p className="text-gray-400 text-sm mb-8">Preencha seus dados para acessar a internet.</p>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleCadastro(); }} className="space-y-4">
-              <div>
-                <label htmlFor="nome" className="block text-sm font-medium text-gray-300 mb-1">Nome</label>
-                <input
-                  type="text"
-                  id="nome"
-                  name="nome"
-                  value={form.nome}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.nome ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-blue-500 focus:ring-blue-500'} focus:outline-none focus:ring-1 transition-colors`}
-                  placeholder="Seu nome completo"
-                  required
-                />
-                {erros.nome && <p className="text-red-500 text-xs mt-1">{erros.nome}</p>}
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 shadow-2xl">
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="nome" className="block text-sm font-medium text-gray-300 mb-1">Nome</label>
+                  <input
+                    type="text"
+                    id="nome"
+                    name="nome"
+                    value={form.nome}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.nome ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-green-500 focus:ring-green-500'} focus:outline-none focus:ring-1 transition-all`}
+                    placeholder="Seu nome completo"
+                    required
+                  />
+                  {erros.nome && <p className="text-red-500 text-xs mt-1">{erros.nome}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">E-mail</label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-green-500 focus:ring-green-500'} focus:outline-none focus:ring-1 transition-all`}
+                    placeholder="seu@email.com"
+                    required
+                  />
+                  {erros.email && <p className="text-red-500 text-xs mt-1">{erros.email}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="telefone" className="block text-sm font-medium text-gray-300 mb-1">Telefone</label>
+                  <input
+                    type="tel"
+                    id="telefone"
+                    name="telefone"
+                    value={form.telefone}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.telefone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-green-500 focus:ring-green-500'} focus:outline-none focus:ring-1 transition-all`}
+                    placeholder="DDD + Número (ex: 11987654321)"
+                    maxLength={11}
+                    required
+                  />
+                  {erros.telefone && <p className="text-red-500 text-xs mt-1">{erros.telefone}</p>}
+                </div>
+
+                <div>
+                  <label htmlFor="cpf" className="block text-sm font-medium text-gray-300 mb-1">CPF</label>
+                  <input
+                    type="text"
+                    id="cpf"
+                    name="cpf"
+                    value={form.cpf}
+                    onChange={handleChange}
+                    className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.cpf ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-green-500 focus:ring-green-500'} focus:outline-none focus:ring-1 transition-all`}
+                    placeholder="Apenas números (ex: 12345678900)"
+                    maxLength={11}
+                    required
+                  />
+                  {erros.cpf && <p className="text-red-500 text-xs mt-1">{erros.cpf}</p>}
+                </div>
+
+                <div className="flex items-center mt-4">
+                  <input
+                    type="checkbox"
+                    id="aceite_lgpd"
+                    name="aceite_lgpd"
+                    checked={form.aceite_lgpd}
+                    onChange={handleChange}
+                    className={`h-4 w-4 rounded border-gray-600 text-green-500 focus:ring-green-500 ${erros.aceite_lgpd ? 'border-red-500' : ''}`}
+                    required
+                  />
+                  <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-300">
+                    Li e aceito a <a href="#" className="text-green-500 hover:underline">política de privacidade</a>.
+                  </label>
+                </div>
+                {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1">{erros.aceite_lgpd}</p>}
+                {erros.geral && <p className="text-red-500 text-sm mt-4">{erros.geral}</p>}
               </div>
-
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.email ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-blue-500 focus:ring-blue-500'} focus:outline-none focus:ring-1 transition-colors`}
-                  placeholder="seu@email.com"
-                  required
-                />
-                {erros.email && <p className="text-red-500 text-xs mt-1">{erros.email}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="telefone" className="block text-sm font-medium text-gray-300 mb-1">Telefone</label>
-                <input
-                  type="tel"
-                  id="telefone"
-                  name="telefone"
-                  value={form.telefone}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.telefone ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-blue-500 focus:ring-blue-500'} focus:outline-none focus:ring-1 transition-colors`}
-                  placeholder="DDD + Número (ex: 11987654321)"
-                  maxLength={11}
-                  required
-                />
-                {erros.telefone && <p className="text-red-500 text-xs mt-1">{erros.telefone}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="cpf" className="block text-sm font-medium text-gray-300 mb-1">CPF</label>
-                <input
-                  type="text"
-                  id="cpf"
-                  name="cpf"
-                  value={form.cpf}
-                  onChange={handleChange}
-                  className={`w-full px-4 py-2.5 rounded-xl bg-gray-800 text-white border ${erros.cpf ? 'border-red-500 focus:ring-red-500' : 'border-gray-700 focus:border-blue-500 focus:ring-blue-500'} focus:outline-none focus:ring-1 transition-colors`}
-                  placeholder="Apenas números (ex: 12345678900)"
-                  maxLength={11}
-                  required
-                />
-                {erros.cpf && <p className="text-red-500 text-xs mt-1">{erros.cpf}</p>}
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="aceite_lgpd"
-                  name="aceite_lgpd"
-                  checked={form.aceite_lgpd}
-                  onChange={handleChange}
-                  className={`h-4 w-4 text-blue-600 rounded border-gray-700 focus:ring-blue-500 ${erros.aceite_lgpd ? 'border-red-500' : ''}`}
-                  required
-                />
-                <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-300">
-                  Eu aceito os termos da <a href="#" className="text-blue-400 hover:underline">LGPD</a>.
-                </label>
-              </div>
-              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1">{erros.aceite_lgpd}</p>}
-
 
               <button
-                type="submit"
+                onClick={handleCadastro}
                 disabled={salvando || Object.keys(erros).some(key => erros[key] !== '') || !form.nome.trim() || !form.email.trim() || !form.telefone.trim() || !form.cpf.trim() || !form.aceite_lgpd}
-                className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="w-full mt-6 py-3.5 rounded-xl font-semibold text-base text-black transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 style={{ backgroundColor: cor }}
               >
                 {salvando ? (
                   <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  'Acessar Wi-Fi'
+                  'Continuar'
                 )}
               </button>
-              {erros.geral && <p className="text-red-500 text-xs mt-2 text-center">{erros.geral}</p>}
-            </form>
+            </div>
           </div>
         )}
 
-        {/* ETAPA 3 — ANÚNCIO / CTA */}
+        {/* ETAPA 2 — ANÚNCIO */}
         {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
-          <div className="relative w-full max-w-md rounded-2xl overflow-hidden shadow-2xl flex flex-col items-center justify-center min-h-[400px]">
-            {/* Mídia de fundo esmaecida */}
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-              <video
-                key={anuncioAtual.media_url}
-                src={anuncioAtual.media_url}
-                className="absolute inset-0 w-full h-full object-cover opacity-60"
-                autoPlay
-                muted
-                playsInline
-                loop
-              />
-            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+          <div className="relative w-full h-[calc(100vh-2rem)] max-w-md mx-auto rounded-2xl overflow-hidden flex flex-col items-center justify-center text-center p-4">
+            {anuncioAtual.tipo_midia === 'imagem' ? (
               <img
                 key={anuncioAtual.media_url}
                 src={anuncioAtual.media_url}
@@ -437,6 +403,11 @@ export default function Portal() {
 
             {/* Overlay Escuro sobre a mídia esmaecida */}
             <div className="absolute inset-0 bg-black opacity-70 z-10" />
+
+            {/* Contador de tempo */}
+            <div className="absolute top-4 right-4 z-20 bg-gray-800 text-white text-sm font-medium px-3 py-1 rounded-full">
+              {contador}s
+            </div>
 
             {/* Popup Centralizado para o CTA */}
             <div className="relative z-20 w-full max-w-md text-center p-4">
