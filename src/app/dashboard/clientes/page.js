@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Users, Plus, Pencil, Trash2, X, Check, Search, Phone, Mail, MapPin, CreditCard } from 'lucide-react'
+import { Users, Plus, Pencil, Trash2, X, Check, Search, Phone, Mail, MapPin, CreditCard, Building, User, Briefcase } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -18,6 +19,65 @@ const statusCores = {
 
 const estadosBR = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO']
 
+// --- Funções de Validação ---
+const validatePhoneNumber = (phone) => {
+  const cleanedPhone = phone.replace(/\D/g, '');
+  return cleanedPhone.length === 11;
+};
+
+const validateCpfCnpj = (doc) => {
+  const cleanedDoc = doc.replace(/\D/g, '');
+
+  if (cleanedDoc.length === 11) {
+    let sum = 0;
+    let remainder;
+    if (cleanedDoc === '00000000000') return false;
+    for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanedDoc.substring(i - 1, i)) * (11 - i);
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cleanedDoc.substring(9, 10))) return false;
+    sum = 0;
+    for (let i = 1; i <= 10; i++) sum = sum + parseInt(cleanedDoc.substring(i - 1, i)) * (12 - i);
+    remainder = (sum * 10) % 11;
+    if ((remainder === 10) || (remainder === 11)) remainder = 0;
+    if (remainder !== parseInt(cleanedDoc.substring(10, 11))) return false;
+    return true;
+  } else if (cleanedDoc.length === 14) {
+    let cnpj = cleanedDoc;
+    if (cnpj === '00000000000000' || cnpj === '11111111111111' || cnpj === '22222222222222' ||
+        cnpj === '33333333333333' || cnpj === '44444444444444' || cnpj === '55555555555555' ||
+        cnpj === '66666666666666' || cnpj === '77777777777777' || cnpj === '88888888888888' ||
+        cnpj === '99999999999999') return false;
+
+    let size = cnpj.length - 2;
+    let numbers = cnpj.substring(0, size);
+    let digits = cnpj.substring(size);
+    let sum = 0;
+    let pos = size - 7;
+    for (let i = size; i >= 1; i--) {
+      sum += parseInt(numbers.charAt(size - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    remainder = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (remainder !== parseInt(digits.charAt(0))) return false;
+
+    size = size + 1;
+    numbers = cnpj.substring(0, size);
+    sum = 0;
+    pos = size - 7;
+    for (let i = size; i >= 1; i--) {
+      sum += parseInt(numbers.charAt(size - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    remainder = sum % 11 < 2 ? 0 : 11 - (sum % 11);
+    if (remainder !== parseInt(digits.charAt(1))) return false;
+
+    return true;
+  }
+  return false;
+};
+// --- Fim das Funções de Validação ---
+
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [planos, setPlanos] = useState([])
@@ -28,9 +88,27 @@ export default function Clientes() {
   const [clienteSelecionado, setClienteSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
+
+  // Estados para mensagens de erro de validação
+  const [nomeEmpresarioError, setNomeEmpresarioError] = useState('');
+  const [nomeEmpresaError, setNomeEmpresaError] = useState('');
+  const [nomeResponsavelError, setNomeResponsavelError] = useState('');
+  const [telefoneError, setTelefoneError] = useState('');
+  const [cpfCnpjError, setCpfCnpjError] = useState('');
+
+  // Estado do formulário com os campos atualizados
   const [form, setForm] = useState({
-    nome: '', email: '', telefone: '', cpf_cnpj: '',
-    endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo'
+    nome: '', // Empresário
+    nome_empresa: '', // Empresa
+    nome_responsavel: '', // Responsável
+    email: '',
+    telefone: '',
+    cpf_cnpj: '',
+    endereco: '',
+    cidade: '',
+    estado: '',
+    plano_id: '',
+    status: 'Ativo'
   })
 
   useEffect(() => { buscarDados() }, [])
@@ -51,6 +129,8 @@ export default function Clientes() {
       setClienteSelecionado(cliente)
       setForm({
         nome: cliente.nome || '',
+        nome_empresa: cliente.nome_empresa || '',
+        nome_responsavel: cliente.nome_responsavel || '',
         email: cliente.email || '',
         telefone: cliente.telefone || '',
         cpf_cnpj: cliente.cpf_cnpj || '',
@@ -62,321 +142,478 @@ export default function Clientes() {
       })
     } else {
       setClienteSelecionado(null)
-      setForm({ nome: '', email: '', telefone: '', cpf_cnpj: '', endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo' })
+      setForm({
+        nome: '', nome_empresa: '', nome_responsavel: '', email: '', telefone: '', cpf_cnpj: '',
+        endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo'
+      })
     }
+    // Limpa todos os erros ao abrir o modal
+    setNomeEmpresarioError('');
+    setNomeEmpresaError('');
+    setNomeResponsavelError('');
+    setTelefoneError('');
+    setCpfCnpjError('');
     setModalAberto(true)
   }
 
   function fecharModal() {
     setModalAberto(false)
     setClienteSelecionado(null)
+    // Limpa todos os erros ao fechar o modal
+    setNomeEmpresarioError('');
+    setNomeEmpresaError('');
+    setNomeResponsavelError('');
+    setTelefoneError('');
+    setCpfCnpjError('');
   }
 
-  async function salvarCliente() {
-    if (!form.nome.trim()) return
-    setSalvando(true)
-    const payload = { ...form, plano_id: form.plano_id || null }
-    if (clienteSelecionado) {
-      await supabase.from('clientes').update(payload).eq('id', clienteSelecionado.id)
-    } else {
-      await supabase.from('clientes').insert([payload])
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let cleanedValue = value;
+
+    // Limpeza e validação em tempo real para telefone e CPF/CNPJ
+    if (name === 'telefone') {
+      cleanedValue = value.replace(/\D/g, ''); // Remove não-dígitos
+      if (cleanedValue.length > 0 && !validatePhoneNumber(cleanedValue)) {
+        setTelefoneError('Telefone inválido (11 dígitos).');
+      } else {
+        setTelefoneError('');
+      }
+    } else if (name === 'cpf_cnpj') {
+      cleanedValue = value.replace(/\D/g, ''); // Remove não-dígitos
+      if (cleanedValue.length > 0 && !validateCpfCnpj(cleanedValue)) {
+        setCpfCnpjError('CPF ou CNPJ inválido.');
+      } else {
+        setCpfCnpjError('');
+      }
+    } else if (name === 'nome') {
+      if (value.trim().length === 0) {
+        setNomeEmpresarioError('Empresário é obrigatório.');
+      } else {
+        setNomeEmpresarioError('');
+      }
+    } else if (name === 'nome_empresa') {
+      if (value.trim().length === 0) {
+        setNomeEmpresaError('Empresa é obrigatória.');
+      } else {
+        setNomeEmpresaError('');
+      }
+    } else if (name === 'nome_responsavel') {
+      if (value.trim().length === 0) {
+        setNomeResponsavelError('Responsável é obrigatório.');
+      } else {
+        setNomeResponsavelError('');
+      }
     }
-    await buscarDados()
-    setSalvando(false)
-    fecharModal()
+
+    setForm(prevForm => ({ ...prevForm, [name]: cleanedValue }));
+  };
+
+  async function salvarCliente() {
+    // Validações finais antes de salvar
+    let isValid = true;
+
+    if (!form.nome.trim()) { setNomeEmpresarioError('Empresário é obrigatório.'); isValid = false; } else { setNomeEmpresarioError(''); }
+    if (!form.nome_empresa.trim()) { setNomeEmpresaError('Empresa é obrigatória.'); isValid = false; } else { setNomeEmpresaError(''); }
+    if (!form.nome_responsavel.trim()) { setNomeResponsavelError('Responsável é obrigatório.'); isValid = false; } else { setNomeResponsavelError(''); }
+    if (!form.telefone.trim() || !validatePhoneNumber(form.telefone)) { setTelefoneError('Telefone inválido (11 dígitos).'); isValid = false; } else { setTelefoneError(''); }
+    if (!form.cpf_cnpj.trim() || !validateCpfCnpj(form.cpf_cnpj)) { setCpfCnpjError('CPF ou CNPJ inválido.'); isValid = false; } else { setCpfCnpjError(''); }
+
+    if (!isValid) {
+      toast.error('Por favor, corrija os erros no formulário.');
+      return;
+    }
+
+    setSalvando(true)
+    try {
+      const payload = { ...form, plano_id: form.plano_id || null }
+      if (clienteSelecionado) {
+        const { error } = await supabase.from('clientes').update(payload).eq('id', clienteSelecionado.id)
+        if (error) throw error;
+        toast.success('Cliente atualizado com sucesso!');
+      } else {
+        const { error } = await supabase.from('clientes').insert([payload])
+        if (error) throw error;
+        toast.success('Cliente cadastrado com sucesso!');
+      }
+      await buscarDados()
+      fecharModal()
+    } catch (error) {
+      console.error('Erro ao salvar cliente:', error)
+      toast.error(`Erro ao salvar cliente: ${error.message}`);
+    } finally {
+      setSalvando(false)
+    }
   }
 
   async function excluirCliente(id) {
-    await supabase.from('clientes').delete().eq('id', id)
-    setConfirmDelete(null)
-    await buscarDados()
+    setSalvando(true)
+    try {
+      const { error } = await supabase.from('clientes').delete().eq('id', id)
+      if (error) throw error;
+      toast.success('Cliente excluído com sucesso!');
+      await buscarDados()
+      setConfirmDelete(null)
+    } catch (error) {
+      console.error('Erro ao excluir cliente:', error)
+      toast.error(`Erro ao excluir cliente: ${error.message}`);
+    } finally {
+      setSalvando(false)
+    }
   }
 
-  const clientesFiltrados = clientes.filter((c) => {
-    const buscaOk =
-      c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      c.email?.toLowerCase().includes(busca.toLowerCase()) ||
-      c.telefone?.includes(busca) ||
-      c.cpf_cnpj?.includes(busca) ||
-      c.cidade?.toLowerCase().includes(busca.toLowerCase())
-    const statusOk = filtroStatus === 'Todos' || c.status === filtroStatus
-    return buscaOk && statusOk
+  const clientesFiltrados = clientes.filter(cliente => {
+    const termoBusca = busca.toLowerCase()
+    const statusCorresponde = filtroStatus === 'Todos' || cliente.status === filtroStatus
+    const buscaCorresponde = (
+      cliente.nome?.toLowerCase().includes(termoBusca) ||
+      cliente.nome_empresa?.toLowerCase().includes(termoBusca) ||
+      cliente.nome_responsavel?.toLowerCase().includes(termoBusca) ||
+      cliente.email?.toLowerCase().includes(termoBusca) ||
+      cliente.telefone?.includes(termoBusca) ||
+      cliente.cpf_cnpj?.includes(termoBusca) ||
+      cliente.cidade?.toLowerCase().includes(termoBusca) ||
+      cliente.planos?.nome?.toLowerCase().includes(termoBusca)
+    )
+    return statusCorresponde && buscaCorresponde
   })
-
-  const totalAtivos = clientes.filter(c => c.status === 'Ativo').length
-  const totalInadimplentes = clientes.filter(c => c.status === 'Inadimplente').length
-  const totalInativos = clientes.filter(c => c.status === 'Inativo').length
 
   return (
     <>
-      <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
-
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Clientes</h1>
-            <p className="text-gray-400 text-sm mt-1">{clientes.length} cliente{clientes.length !== 1 ? 's' : ''} cadastrado{clientes.length !== 1 ? 's' : ''}</p>
-          </div>
+      <Toaster position="bottom-right" reverseOrder={false} />
+      <main className="container mx-auto px-4 py-8 text-white">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold flex items-center gap-3">
+            <Users size={24} className="text-green-500" /> Clientes
+          </h1>
           <button
             onClick={() => abrirModal()}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2.5 rounded-xl transition-all text-sm"
+            className="bg-green-500 hover:bg-green-400 text-black font-semibold py-2 px-4 rounded-xl text-sm transition-colors flex items-center gap-2"
           >
-            <Plus size={16} />
-            Novo Cliente
+            <Plus size={18} /> Novo Cliente
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">Ativos</p>
-            <p className="text-2xl font-bold text-green-400">{totalAtivos}</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">Inadimplentes</p>
-            <p className="text-2xl font-bold text-red-400">{totalInadimplentes}</p>
-          </div>
-          <div className="bg-gray-900 border border-gray-800 rounded-xl p-4">
-            <p className="text-xs text-gray-500 mb-1">Inativos</p>
-            <p className="text-2xl font-bold text-gray-400">{totalInativos}</p>
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Buscar por nome, e-mail, telefone, CPF/CNPJ ou cidade..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-            />
-          </div>
-          <div className="flex gap-2">
-            {['Todos', ...statusOpcoes].map((s) => (
-              <button
-                key={s}
-                onClick={() => setFiltroStatus(s)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  filtroStatus === s
-                    ? 'bg-green-500 text-black'
-                    : 'bg-gray-900 border border-gray-800 text-gray-400 hover:border-gray-600'
-                }`}
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Buscar por empresário, empresa, responsável, email, telefone, CPF/CNPJ..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+              />
+            </div>
+            <div className="relative">
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="w-full md:w-48 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors appearance-none pr-8"
               >
-                {s}
-              </button>
-            ))}
+                <option value="Todos">Todos os Status</option>
+                {statusOpcoes.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Container da tabela: ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2">
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : clientesFiltrados.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Users size={36} className="text-gray-700 mb-3" />
-              <p className="text-gray-500 text-sm">Nenhum cliente encontrado.</p>
-              <button onClick={() => abrirModal()} className="mt-3 text-xs text-green-400 hover:underline">
-                Cadastrar primeiro cliente
-              </button>
-            </div>
-          ) : (
-            <table className="min-w-full"> {/* ALTERADO de w-full para min-w-full */}
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cliente</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Contato</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Localização</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Plano</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Status</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cadastro</th>
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {clientesFiltrados.map((cliente) => (
-                  <tr key={cliente.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-sm flex-shrink-0">
-                          {cliente.nome?.charAt(0).toUpperCase() || '?'}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-white truncate">{cliente.nome}</p>
-                          <p className="text-xs text-gray-500 truncate">{cliente.cpf_cnpj || '—'}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="space-y-1 min-w-0">
-                        {cliente.email && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate">
-                            <Mail size={11} className="flex-shrink-0" />{cliente.email}
+        {loading ? (
+          <div className="text-center py-10 text-gray-400">Carregando clientes...</div>
+        ) : clientesFiltrados.length === 0 ? (
+          <div className="text-center py-10 text-gray-400">Nenhum cliente encontrado.</div>
+        ) : (
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-800">
+                <thead className="bg-gray-800">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Empresário / Empresa
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Contato
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Plano
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                      Ações
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-800">
+                  {clientesFiltrados.map((cliente) => (
+                    <tr key={cliente.id} className="hover:bg-gray-800 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-sm">
+                            {cliente.nome?.charAt(0).toUpperCase() || '?'}
                           </div>
-                        )}
-                        {cliente.telefone && (
-                          <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate">
-                            <Phone size={11} className="flex-shrink-0" />{cliente.telefone}
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-white">{cliente.nome}</div>
+                            <div className="text-xs text-gray-400">{cliente.nome_empresa}</div>
                           </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {(cliente.cidade || cliente.estado) ? (
-                        <div className="flex items-center gap-1.5 text-xs text-gray-400 truncate">
-                          <MapPin size={11} className="flex-shrink-0" />
-                          {[cliente.cidade, cliente.estado].filter(Boolean).join(' / ')}
                         </div>
-                      ) : <span className="text-gray-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {cliente.planos ? (
-                        <div className="flex items-center gap-1.5 text-xs text-purple-400 truncate">
-                          <CreditCard size={11} className="flex-shrink-0" />{cliente.planos.nome}
-                        </div>
-                      ) : <span className="text-gray-600 text-xs">—</span>}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${statusCores[cliente.status] || 'bg-gray-400/10 text-gray-400'}`}>
-                        {cliente.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-gray-500 whitespace-nowrap">
-                      {new Date(cliente.created_at).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex gap-1">
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-300 flex items-center gap-1"><Mail size={14} /> {cliente.email}</div>
+                        <div className="text-sm text-gray-300 flex items-center gap-1"><Phone size={14} /> {cliente.telefone}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {cliente.planos?.nome || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusCores[cliente.status]}`}>
+                          {cliente.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
                           onClick={() => abrirModal(cliente)}
-                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
+                          className="text-green-500 hover:text-green-400 mr-3"
+                          title="Editar"
                         >
-                          <Pencil size={12} className="text-gray-400" />
+                          <Pencil size={18} />
                         </button>
                         <button
                           onClick={() => setConfirmDelete(cliente.id)}
-                          className="w-7 h-7 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors flex-shrink-0"
+                          className="text-red-500 hover:text-red-400"
+                          title="Excluir"
                         >
-                          <Trash2 size={12} className="text-gray-400" />
+                          <Trash2 size={18} />
                         </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </main>
 
       {modalAberto && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-              <h2 className="text-base font-semibold text-white">
-                {clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}
-              </h2>
-              <button onClick={fecharModal} className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors">
-                <X size={16} className="text-gray-400" />
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl">
+            <div className="flex justify-between items-center p-6 border-b border-gray-800">
+              <h2 className="text-xl font-semibold text-white">{clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}</h2>
+              <button onClick={fecharModal} className="text-gray-400 hover:text-white transition-colors">
+                <X size={24} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Nome completo *</label>
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Campo: Empresário */}
+              <div>
+                <label htmlFor="nome" className="block text-sm font-medium text-gray-300 mb-1">Empresário</label>
+                <div className="relative">
+                  <Briefcase size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Ex: João da Silva"
+                    id="nome"
+                    name="nome"
                     value={form.nome}
-                    onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="Nome do empresário"
+                    required
                   />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">CPF / CNPJ</label>
+                {nomeEmpresarioError && <p className="text-red-500 text-xs mt-1">{nomeEmpresarioError}</p>}
+              </div>
+
+              {/* Campo: Empresa */}
+              <div>
+                <label htmlFor="nome_empresa" className="block text-sm font-medium text-gray-300 mb-1">Empresa</label>
+                <div className="relative">
+                  <Building size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="000.000.000-00"
-                    value={form.cpf_cnpj}
-                    onChange={(e) => setForm({ ...form, cpf_cnpj: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    id="nome_empresa"
+                    name="nome_empresa"
+                    value={form.nome_empresa}
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="Nome da empresa"
+                    required
                   />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Telefone</label>
+                {nomeEmpresaError && <p className="text-red-500 text-xs mt-1">{nomeEmpresaError}</p>}
+              </div>
+
+              {/* Campo: Responsável */}
+              <div>
+                <label htmlFor="nome_responsavel" className="block text-sm font-medium text-gray-300 mb-1">Responsável</label>
+                <div className="relative">
+                  <User size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="(11) 99999-9999"
-                    value={form.telefone}
-                    onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    id="nome_responsavel"
+                    name="nome_responsavel"
+                    value={form.nome_responsavel}
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="Nome do responsável pela venda"
+                    required
                   />
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-400 mb-1.5 block">E-mail</label>
+                {nomeResponsavelError && <p className="text-red-500 text-xs mt-1">{nomeResponsavelError}</p>}
+              </div>
+
+              {/* Campo: Email */}
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                <div className="relative">
+                  <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="email"
-                    placeholder="email@exemplo.com"
+                    id="email"
+                    name="email"
                     value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="email@exemplo.com"
                   />
                 </div>
-                <div className="col-span-2">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Endereço</label>
+              </div>
+
+              {/* Campo: Telefone */}
+              <div>
+                <label htmlFor="telefone" className="block text-sm font-medium text-gray-300 mb-1">Telefone</label>
+                <div className="relative">
+                  <Phone size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                   <input
                     type="text"
-                    placeholder="Rua, número, bairro"
+                    id="telefone"
+                    name="telefone"
+                    value={form.telefone}
+                    onChange={handleChange}
+                    maxLength={11}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="DDD + 9 dígitos (ex: 11987654321)"
+                    required
+                  />
+                </div>
+                {telefoneError && <p className="text-red-500 text-xs mt-1">{telefoneError}</p>}
+              </div>
+
+              {/* Campo: CPF/CNPJ */}
+              <div>
+                <label htmlFor="cpf_cnpj" className="block text-sm font-medium text-gray-300 mb-1">CPF/CNPJ</label>
+                <div className="relative">
+                  <CreditCard size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    id="cpf_cnpj"
+                    name="cpf_cnpj"
+                    value={form.cpf_cnpj}
+                    onChange={handleChange}
+                    maxLength={14}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="Somente números"
+                    required
+                  />
+                </div>
+                {cpfCnpjError && <p className="text-red-500 text-xs mt-1">{cpfCnpjError}</p>}
+              </div>
+
+              {/* Campo: Endereço */}
+              <div className="md:col-span-2">
+                <label htmlFor="endereco" className="block text-sm font-medium text-gray-300 mb-1">Endereço</label>
+                <div className="relative">
+                  <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                  <input
+                    type="text"
+                    id="endereco"
+                    name="endereco"
                     value={form.endereco}
-                    onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                    placeholder="Rua, número, bairro"
                   />
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Cidade</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: São Paulo"
-                    value={form.cidade}
-                    onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                  />
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Estado</label>
+              </div>
+
+              {/* Campo: Cidade */}
+              <div>
+                <label htmlFor="cidade" className="block text-sm font-medium text-gray-300 mb-1">Cidade</label>
+                <input
+                  type="text"
+                  id="cidade"
+                  name="cidade"
+                  value={form.cidade}
+                  onChange={handleChange}
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
+                  placeholder="Cidade"
+                />
+              </div>
+
+              {/* Campo: Estado */}
+              <div>
+                <label htmlFor="estado" className="block text-sm font-medium text-gray-300 mb-1">Estado</label>
+                <div className="relative">
                   <select
+                    id="estado"
+                    name="estado"
                     value={form.estado}
-                    onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none pr-8"
                   >
                     <option value="">Selecione</option>
-                    {estadosBR.map((e) => <option key={e}>{e}</option>)}
+                    {estadosBR.map(estado => <option key={estado} value={estado}>{estado}</option>)}
                   </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Plano</label>
+              </div>
+
+              {/* Campo: Plano */}
+              <div>
+                <label htmlFor="plano_id" className="block text-sm font-medium text-gray-300 mb-1">Plano</label>
+                <div className="relative">
                   <select
+                    id="plano_id"
+                    name="plano_id"
                     value={form.plano_id}
-                    onChange={(e) => setForm({ ...form, plano_id: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none pr-8"
                   >
-                    <option value="">Sem plano</option>
-                    {planos.map((p) => (
-                      <option key={p.id} value={p.id}>{p.nome} — R$ {Number(p.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</option>
+                    <option value="">Nenhum</option>
+                    {planos.map(plano => (
+                      <option key={plano.id} value={plano.id}>{plano.nome}</option>
                     ))}
                   </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
                 </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
+              </div>
+
+              {/* Campo: Status */}
+              <div>
+                <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-1">Status</label>
+                <div className="relative">
                   <select
+                    id="status"
+                    name="status"
                     value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+                    onChange={handleChange}
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl py-2 px-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none pr-8"
                   >
-                    {statusOpcoes.map((s) => <option key={s}>{s}</option>)}
+                    {statusOpcoes.map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  </div>
                 </div>
               </div>
             </div>
@@ -390,7 +627,7 @@ export default function Clientes() {
               </button>
               <button
                 onClick={salvarCliente}
-                disabled={salvando || !form.nome.trim()}
+                disabled={salvando || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError || telefoneError || cpfCnpjError || !form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim()}
                 className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
               >
                 {salvando ? (
