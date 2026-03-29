@@ -187,19 +187,19 @@ export default function Clientes() {
         setCpfCnpjError('');
       }
     } else if (name === 'nome') {
-      if (value.trim().length === 0) {
+      if (value.trim() === '') {
         setNomeEmpresarioError('Empresário é obrigatório.');
       } else {
         setNomeEmpresarioError('');
       }
     } else if (name === 'nome_empresa') {
-      if (value.trim().length === 0) {
+      if (value.trim() === '') {
         setNomeEmpresaError('Empresa é obrigatória.');
       } else {
         setNomeEmpresaError('');
       }
     } else if (name === 'nome_responsavel') {
-      if (value.trim().length === 0) {
+      if (value.trim() === '') {
         setNomeResponsavelError('Responsável é obrigatório.');
       } else {
         setNomeResponsavelError('');
@@ -211,206 +211,229 @@ export default function Clientes() {
 
   async function salvarCliente() {
     // Validações finais antes de salvar
-    let isValid = true;
+    let hasError = false;
+    if (!form.nome.trim()) { setNomeEmpresarioError('Empresário é obrigatório.'); hasError = true; } else { setNomeEmpresarioError(''); }
+    if (!form.nome_empresa.trim()) { setNomeEmpresaError('Empresa é obrigatória.'); hasError = true; } else { setNomeEmpresaError(''); }
+    if (!form.nome_responsavel.trim()) { setNomeResponsavelError('Responsável é obrigatório.'); hasError = true; } else { setNomeResponsavelError(''); }
+    if (!form.telefone.trim() || telefoneError) { setTelefoneError('Telefone inválido (11 dígitos).'); hasError = true; } else { setTelefoneError(''); }
+    if (!form.cpf_cnpj.trim() || cpfCnpjError) { setCpfCnpjError('CPF ou CNPJ inválido.'); hasError = true; } else { setCpfCnpjError(''); }
 
-    if (!form.nome.trim()) { setNomeEmpresarioError('Empresário é obrigatório.'); isValid = false; } else { setNomeEmpresarioError(''); }
-    if (!form.nome_empresa.trim()) { setNomeEmpresaError('Empresa é obrigatória.'); isValid = false; } else { setNomeEmpresaError(''); }
-    if (!form.nome_responsavel.trim()) { setNomeResponsavelError('Responsável é obrigatório.'); isValid = false; } else { setNomeResponsavelError(''); }
-    if (!form.telefone.trim() || !validatePhoneNumber(form.telefone)) { setTelefoneError('Telefone inválido (11 dígitos).'); isValid = false; } else { setTelefoneError(''); }
-    if (!form.cpf_cnpj.trim() || !validateCpfCnpj(form.cpf_cnpj)) { setCpfCnpjError('CPF ou CNPJ inválido.'); isValid = false; } else { setCpfCnpjError(''); }
-
-    if (!isValid) {
-      toast.error('Por favor, corrija os erros no formulário.');
+    if (hasError) {
+      toast.error('Por favor, preencha todos os campos obrigatórios e corrija os erros.');
       return;
     }
 
     setSalvando(true)
+    const payload = { ...form, plano_id: form.plano_id || null } // Garante que plano_id seja null se vazio
     try {
-      const payload = { ...form, plano_id: form.plano_id || null }
       if (clienteSelecionado) {
         const { error } = await supabase.from('clientes').update(payload).eq('id', clienteSelecionado.id)
-        if (error) throw error;
-        toast.success('Cliente atualizado com sucesso!');
+        if (error) throw error
+        toast.success('Cliente atualizado com sucesso!')
       } else {
         const { error } = await supabase.from('clientes').insert([payload])
-        if (error) throw error;
-        toast.success('Cliente cadastrado com sucesso!');
+        if (error) throw error
+        toast.success('Cliente cadastrado com sucesso!')
       }
       await buscarDados()
       fecharModal()
     } catch (error) {
       console.error('Erro ao salvar cliente:', error)
-      toast.error(`Erro ao salvar cliente: ${error.message}`);
+      toast.error(`Erro ao salvar cliente: ${error.message || 'Verifique os dados.'}`)
     } finally {
       setSalvando(false)
     }
   }
 
   async function excluirCliente(id) {
-    setSalvando(true)
     try {
       const { error } = await supabase.from('clientes').delete().eq('id', id)
-      if (error) throw error;
-      toast.success('Cliente excluído com sucesso!');
-      await buscarDados()
+      if (error) throw error
+      toast.success('Cliente excluído com sucesso!')
       setConfirmDelete(null)
+      await buscarDados()
     } catch (error) {
       console.error('Erro ao excluir cliente:', error)
-      toast.error(`Erro ao excluir cliente: ${error.message}`);
-    } finally {
-      setSalvando(false)
+      toast.error(`Erro ao excluir cliente: ${error.message || 'Tente novamente.'}`)
     }
   }
 
-  const clientesFiltrados = clientes.filter(cliente => {
-    const termoBusca = busca.toLowerCase()
-    const statusCorresponde = filtroStatus === 'Todos' || cliente.status === filtroStatus
-    const buscaCorresponde = (
-      cliente.nome?.toLowerCase().includes(termoBusca) ||
-      cliente.nome_empresa?.toLowerCase().includes(termoBusca) ||
-      cliente.nome_responsavel?.toLowerCase().includes(termoBusca) ||
-      cliente.email?.toLowerCase().includes(termoBusca) ||
-      cliente.telefone?.includes(termoBusca) ||
-      cliente.cpf_cnpj?.includes(termoBusca) ||
-      cliente.cidade?.toLowerCase().includes(termoBusca) ||
-      cliente.planos?.nome?.toLowerCase().includes(termoBusca)
-    )
-    return statusCorresponde && buscaCorresponde
+  const clientesFiltrados = clientes.filter((c) => {
+    const buscaOk =
+      c.nome?.toLowerCase().includes(busca.toLowerCase()) ||
+      c.nome_empresa?.toLowerCase().includes(busca.toLowerCase()) ||
+      c.nome_responsavel?.toLowerCase().includes(busca.toLowerCase()) ||
+      c.email?.toLowerCase().includes(busca.toLowerCase()) ||
+      c.telefone?.includes(busca) ||
+      c.cpf_cnpj?.includes(busca) ||
+      c.cidade?.toLowerCase().includes(busca.toLowerCase())
+    const statusOk = filtroStatus === 'Todos' || c.status === filtroStatus
+    return buscaOk && statusOk
   })
+
+  const totalAtivos = clientes.filter(c => c.status === 'Ativo').length
+  const totalInativos = clientes.filter(c => c.status === 'Inativo').length
+  const totalInadimplentes = clientes.filter(c => c.status === 'Inadimplente').length
 
   return (
     <>
-      <Toaster position="bottom-right" reverseOrder={false} />
-      <main className="container mx-auto px-4 py-8 text-white">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold flex items-center gap-3">
-            <Users size={24} className="text-green-500" /> Clientes
-          </h1>
-          <button
-            onClick={() => abrirModal()}
-            className="bg-green-500 hover:bg-green-400 text-black font-semibold py-2 px-4 rounded-xl text-sm transition-colors flex items-center gap-2"
-          >
-            <Plus size={18} /> Novo Cliente
-          </button>
-        </div>
+      <Toaster position="top-right" />
+      <div className="flex flex-col sm:flex-row items-center justify-between mb-6">
+        <h1 className="text-2xl font-semibold text-white flex items-center gap-3 mb-4 sm:mb-0">
+          <Users size={28} className="text-green-500" /> Clientes
+        </h1>
+        <button
+          onClick={() => abrirModal()}
+          className="bg-green-500 hover:bg-green-400 text-black font-semibold py-2.5 px-5 rounded-xl text-sm transition-colors flex items-center gap-2"
+        >
+          <Plus size={18} /> Novo Cliente
+        </button>
+      </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Buscar por empresário, empresa, responsável, email, telefone, CPF/CNPJ..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
-              />
-            </div>
-            <div className="relative">
-              <select
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-                className="w-full md:w-48 bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors appearance-none pr-8"
-              >
-                <option value="Todos">Todos os Status</option>
-                {statusOpcoes.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-400">Total de Clientes</p>
+            <p className="text-2xl font-semibold text-white">{clientes.length}</p>
+          </div>
+          <Users size={28} className="text-gray-600" />
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-400">Ativos</p>
+            <p className="text-2xl font-semibold text-green-500">{totalAtivos}</p>
+          </div>
+          <Check size={28} className="text-green-600" />
+        </div>
+        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-400">Inadimplentes</p>
+            <p className="text-2xl font-semibold text-red-500">{totalInadimplentes}</p>
+          </div>
+          <CreditCard size={28} className="text-red-600" />
+        </div>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 mb-6">
+        <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative flex-1 w-full">
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Buscar por empresário, empresa, responsável, email, telefone ou CPF/CNPJ..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-11 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
+            />
+          </div>
+          <div className="w-full sm:w-auto">
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors appearance-none pr-8"
+            >
+              <option value="Todos">Todos os Status</option>
+              {statusOpcoes.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
           </div>
         </div>
+      </div>
 
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="text-center py-10 text-gray-400">Carregando clientes...</div>
+          <div className="p-6 text-center text-gray-400">Carregando clientes...</div>
         ) : clientesFiltrados.length === 0 ? (
-          <div className="text-center py-10 text-gray-400">Nenhum cliente encontrado.</div>
+          <div className="p-6 text-center text-gray-400">Nenhum cliente encontrado.</div>
         ) : (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-800">
-                <thead className="bg-gray-800">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Empresário / Empresa
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Contato
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Plano
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-800">
-                  {clientesFiltrados.map((cliente) => (
-                    <tr key={cliente.id} className="hover:bg-gray-800 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10 rounded-full bg-blue-400/10 flex items-center justify-center text-blue-400 font-semibold text-sm">
-                            {cliente.nome?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-white">{cliente.nome}</div>
-                            <div className="text-xs text-gray-400">{cliente.nome_empresa}</div>
-                          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-400">
+              <thead className="text-xs text-gray-300 uppercase bg-gray-800">
+                <tr>
+                  <th scope="col" className="px-6 py-3">Empresário / Empresa</th>
+                  <th scope="col" className="px-6 py-3">Contato</th>
+                  <th scope="col" className="px-6 py-3">Endereço</th>
+                  <th scope="col" className="px-6 py-3">Plano</th>
+                  <th scope="col" className="px-6 py-3">Status</th>
+                  <th scope="col" className="px-6 py-3 text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clientesFiltrados.map((cliente) => (
+                  <tr key={cliente.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-green-400/10 flex items-center justify-center text-green-400 font-semibold text-sm">
+                          {cliente.nome?.charAt(0).toUpperCase() || '?'}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-300 flex items-center gap-1"><Mail size={14} /> {cliente.email}</div>
-                        <div className="text-sm text-gray-300 flex items-center gap-1"><Phone size={14} /> {cliente.telefone}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                        {cliente.planos?.nome || 'N/A'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusCores[cliente.status]}`}>
-                          {cliente.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div>
+                          <p className="font-medium text-white">{cliente.nome || '—'}</p>
+                          <p className="text-xs text-gray-500">{cliente.nome_empresa || '—'}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-gray-300 mb-1">
+                        <Phone size={14} className="text-gray-500" />
+                        <span className="text-xs">{cliente.telefone || '—'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <Mail size={14} className="text-gray-500" />
+                        <span className="text-xs">{cliente.email || '—'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-gray-300">
+                        <MapPin size={14} className="text-gray-500" />
+                        <span className="text-xs">{cliente.cidade || '—'}, {cliente.estado || '—'}</span>
+                      </div>
+                      <p className="text-xs text-gray-500">{cliente.endereco || '—'}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <p className="font-medium text-white">{cliente.planos?.nome || 'Sem plano'}</p>
+                      <p className="text-xs text-gray-500">Responsável: {cliente.nome_responsavel || '—'}</p>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${statusCores[cliente.status] || 'bg-gray-400/10 text-gray-400'}`}>
+                        {cliente.status || 'Desconhecido'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => abrirModal(cliente)}
-                          className="text-green-500 hover:text-green-400 mr-3"
-                          title="Editar"
+                          className="text-gray-400 hover:text-green-500 p-2 transition-colors"
+                          title="Editar cliente"
                         >
                           <Pencil size={18} />
                         </button>
                         <button
                           onClick={() => setConfirmDelete(cliente.id)}
-                          className="text-red-500 hover:text-red-400"
-                          title="Excluir"
+                          className="text-gray-400 hover:text-red-500 p-2 transition-colors"
+                          title="Excluir cliente"
                         >
                           <Trash2 size={18} />
                         </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
-      </main>
+      </div>
 
       {modalAberto && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl">
-            <div className="flex justify-between items-center p-6 border-b border-gray-800">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-2xl flex flex-col max-h-[95vh]"> {/* Adicionado flex-col e max-h-[95vh] */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-800">
               <h2 className="text-xl font-semibold text-white">{clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}</h2>
               <button onClick={fecharModal} className="text-gray-400 hover:text-white transition-colors">
-                <X size={24} />
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 overflow-y-auto flex-grow"> {/* Adicionado overflow-y-auto e flex-grow */}
               {/* Campo: Empresário */}
               <div>
                 <label htmlFor="nome" className="block text-sm font-medium text-gray-300 mb-1">Empresário</label>
@@ -422,8 +445,8 @@ export default function Clientes() {
                     name="nome"
                     value={form.nome}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                    placeholder="Nome do empresário"
+                    placeholder="Nome completo do empresário"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                 </div>
@@ -441,8 +464,8 @@ export default function Clientes() {
                     name="nome_empresa"
                     value={form.nome_empresa}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
                     placeholder="Nome da empresa"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                 </div>
@@ -460,8 +483,8 @@ export default function Clientes() {
                     name="nome_responsavel"
                     value={form.nome_responsavel}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
                     placeholder="Nome do responsável pela venda"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                 </div>
@@ -479,8 +502,8 @@ export default function Clientes() {
                     name="email"
                     value={form.email}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
                     placeholder="email@exemplo.com"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
               </div>
@@ -496,9 +519,9 @@ export default function Clientes() {
                     name="telefone"
                     value={form.telefone}
                     onChange={handleChange}
+                    placeholder="DDD + Número (ex: 11987654321)"
                     maxLength={11}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                    placeholder="DDD + 9 dígitos (ex: 11987654321)"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                 </div>
@@ -516,9 +539,9 @@ export default function Clientes() {
                     name="cpf_cnpj"
                     value={form.cpf_cnpj}
                     onChange={handleChange}
+                    placeholder="CPF ou CNPJ"
                     maxLength={14}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                    placeholder="Somente números"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                     required
                   />
                 </div>
@@ -526,7 +549,7 @@ export default function Clientes() {
               </div>
 
               {/* Campo: Endereço */}
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2"> {/* Ocupa duas colunas em telas maiores */}
                 <label htmlFor="endereco" className="block text-sm font-medium text-gray-300 mb-1">Endereço</label>
                 <div className="relative">
                   <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
@@ -536,8 +559,8 @@ export default function Clientes() {
                     name="endereco"
                     value={form.endereco}
                     onChange={handleChange}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
                     placeholder="Rua, número, bairro"
+                    className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                   />
                 </div>
               </div>
@@ -551,8 +574,8 @@ export default function Clientes() {
                   name="cidade"
                   value={form.cidade}
                   onChange={handleChange}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500 transition-colors"
-                  placeholder="Cidade"
+                  placeholder="Nome da cidade"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
 
