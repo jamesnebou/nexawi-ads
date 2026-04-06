@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick } from 'lucide-react'
+import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Plus, Search, X } from 'lucide-react'
 import dynamic from 'next/dynamic';
 
 const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search), { ssr: false });
@@ -21,7 +21,6 @@ export default function Anuncios() {
   const [salvando, setSalvando] = useState(false)
   const [anuncioEditando, setAnuncioEditando] = useState(null)
   const [form, setForm] = useState({
-    hotspot_id: '',
     titulo: '',
     descricao: '',
     media_url: '',
@@ -30,6 +29,8 @@ export default function Anuncios() {
     duracao_segundos: 15,
     ativo: true,
   })
+  const [selectedHotspotIds, setSelectedHotspotIds] = useState([]);
+
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
 
@@ -74,9 +75,9 @@ export default function Anuncios() {
 
     setHotspots(hotspotsComClientes || [])
 
-    let selectString = '*, hotspots(id, nome, cliente_id)';
+    let selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, clientes(id, nome), anuncio_hotspots(hotspots(id, nome))';
     if (filterClientId) {
-      selectString = '*, hotspots!inner(id, nome, cliente_id)';
+      selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, clientes!inner(id, nome), anuncio_hotspots(hotspots(id, nome))';
     }
 
     let query = supabase
@@ -91,12 +92,11 @@ export default function Anuncios() {
     }
 
     if (filterHotspotId) {
-      query = query.eq('hotspot_id', filterHotspotId)
+      query = query.filter('anuncio_hotspots.hotspot_id', 'eq', filterHotspotId);
     }
 
     if (filterClientId) {
-      console.log('Aplicando filtro de cliente com ID:', filterClientId);
-      query = query.filter('hotspots.cliente_id', 'eq', filterClientId);
+      query = query.filter('clientes.id', 'eq', filterClientId);
     }
 
     if (filterMediaType === 'imagem') {
@@ -118,10 +118,15 @@ export default function Anuncios() {
     }
 
     const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
-      const hotspotDoAnuncio = hotspotsComClientes.find(h => h.id === anuncio.hotspot_id);
+      const clienteDoAnuncio = clientesData?.find(c => c.id === anuncio.cliente_id);
+      const hotspotNomes = anuncio.anuncio_hotspots
+        .map(ah => ah.hotspots?.nome)
+        .filter(Boolean);
+
       return {
         ...anuncio,
-        hotspots: hotspotDoAnuncio || anuncio.hotspots
+        hotspot_nomes: hotspotNomes,
+        cliente: clienteDoAnuncio || anuncio.clientes
       };
     });
 
@@ -154,7 +159,6 @@ export default function Anuncios() {
     if (anuncio) {
       setAnuncioEditando(anuncio)
       setForm({
-        hotspot_id: anuncio.hotspot_id || '',
         titulo: anuncio.titulo || '',
         descricao: anuncio.descricao || '',
         media_url: anuncio.media_url || '',
@@ -163,12 +167,11 @@ export default function Anuncios() {
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
       })
-      const clienteDoHotspot = hotspots.find(h => h.id === anuncio.hotspot_id)?.clientes?.id;
-      setSelectedClientInModal(clienteDoHotspot || '');
+      setSelectedClientInModal(anuncio.cliente_id || '');
+      setSelectedHotspotIds(anuncio.anuncio_hotspots ? anuncio.anuncio_hotspots.map(ah => ah.hotspots?.id).filter(Boolean) : []);
     } else {
       setAnuncioEditando(null)
       setForm({
-        hotspot_id: '',
         titulo: '',
         descricao: '',
         media_url: '',
@@ -178,6 +181,7 @@ export default function Anuncios() {
         ativo: true,
       })
       setSelectedClientInModal(clientes[0]?.id || '')
+      setSelectedHotspotIds([]);
     }
     setSelectedFile(null)
     setModalAberto(true)
@@ -188,12 +192,24 @@ export default function Anuncios() {
     setAnuncioEditando(null)
     setSelectedFile(null)
     setSelectedClientInModal('')
+    setSelectedHotspotIds([]);
   }
 
   const allActiveHotspotsForModal = hotspots;
 
+  const handleHotspotSelection = (hotspotId) => {
+    setSelectedHotspotIds(prevSelected =>
+      prevSelected.includes(hotspotId)
+        ? prevSelected.filter(id => id !== hotspotId)
+        : [...prevSelected, hotspotId]
+    );
+  };
+
   async function salvar() {
-    if (!form.titulo.trim() || !form.hotspot_id) return
+    if (!form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0) {
+      alert('Por favor, preencha todos os campos obrigatórios: Título, Cliente e selecione pelo menos um Hotspot.');
+      return;
+    }
 
     setSalvando(true)
     setUploading(true)
@@ -231,45 +247,62 @@ export default function Anuncios() {
 
     setUploading(false)
 
-    const dataToSave = { ...form, media_url: mediaUrlToSave, tipo_media: mediaTypeToSave }
-
-    if (selectedClientInModal && form.hotspot_id) {
-      const { error: updateHotspotError } = await supabase
-        .from('hotspots')
-        .update({ cliente_id: selectedClientInModal })
-        .eq('id', form.hotspot_id);
-
-      if (updateHotspotError) {
-        console.error('Erro ao vincular hotspot ao cliente:', updateHotspotError);
-        alert('Erro ao vincular hotspot ao cliente. Por favor, tente novamente.');
-        setSalvando(false);
-        return;
-      }
-    } else if (!selectedClientInModal && form.hotspot_id) {
-      const { error: updateHotspotError } = await supabase
-        .from('hotspots')
-        .update({ cliente_id: null })
-        .eq('id', form.hotspot_id);
-
-      if (updateHotspotError) {
-        console.error('Erro ao desvincular hotspot:', updateHotspotError);
-        alert('Erro ao desvincular hotspot. Por favor, tente novamente.');
-        setSalvando(false);
-        return;
-      }
+    const dataToSave = {
+      ...form,
+      media_url: mediaUrlToSave,
+      tipo_media: mediaTypeToSave,
+      cliente_id: selectedClientInModal,
     }
 
+    let anuncioId;
+
     if (anuncioEditando) {
-      const { error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id)
+      const { data, error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id).select('id').single();
       if (updateError) {
         console.error('Erro ao atualizar anúncio:', updateError)
         alert('Erro ao atualizar anúncio. Por favor, tente novamente.')
+        setSalvando(false);
+        return;
+      }
+      anuncioId = data.id;
+
+      const { error: deleteOldLinksError } = await supabase
+        .from('anuncio_hotspots')
+        .delete()
+        .eq('anuncio_id', anuncioId);
+
+      if (deleteOldLinksError) {
+        console.error('Erro ao remover vínculos antigos de hotspot:', deleteOldLinksError);
+        alert('Erro ao atualizar vínculos de hotspot. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
       }
     } else {
-      const { error: insertError } = await supabase.from('anuncios').insert([dataToSave])
+      const { data, error: insertError } = await supabase.from('anuncios').insert([dataToSave]).select('id').single();
       if (insertError) {
         console.error('Erro ao criar anúncio:', insertError)
         alert('Erro ao criar anúncio. Por favor, tente novamente.')
+        setSalvando(false);
+        return;
+      }
+      anuncioId = data.id;
+    }
+
+    const hotspotLinks = selectedHotspotIds.map(hotspot_id => ({
+      anuncio_id: anuncioId,
+      hotspot_id: hotspot_id,
+    }));
+
+    if (hotspotLinks.length > 0) {
+      const { error: insertLinksError } = await supabase
+        .from('anuncio_hotspots')
+        .insert(hotspotLinks);
+
+      if (insertLinksError) {
+        console.error('Erro ao vincular hotspots ao anúncio:', insertLinksError);
+        alert('Erro ao vincular hotspots ao anúncio. Por favor, tente novamente.');
+        setSalvando(false);
+        return;
       }
     }
 
@@ -278,7 +311,6 @@ export default function Anuncios() {
     buscarDados()
   }
 
-  // Função para alternar o status ativo/inativo do anúncio
   async function toggleAtivo(anuncio) {
     const novoStatus = !anuncio.ativo;
     const { error } = await supabase
@@ -290,11 +322,10 @@ export default function Anuncios() {
       console.error('Erro ao alternar status do anúncio:', error);
       alert('Erro ao alternar status do anúncio. Por favor, tente novamente.');
     } else {
-      buscarDados(); // Recarrega os dados para refletir a mudança
+      buscarDados();
     }
   }
 
-  // Função para excluir anúncio
   async function excluir(id) {
     if (!window.confirm('Tem certeza que deseja excluir este anúncio?')) {
       return;
@@ -308,220 +339,180 @@ export default function Anuncios() {
       console.error('Erro ao excluir anúncio:', error);
       alert('Erro ao excluir anúncio. Por favor, tente novamente.');
     } else {
-      buscarDados(); // Recarrega os dados após a exclusão
+      buscarDados();
     }
   }
 
-
   return (
     <>
-      <div className="px-4 sm:px-6 md:px-8">
-        <div className="flex items-center justify-between mb-6">
-          <div className="mb-4 sm:mb-0">
-            <h1 className="text-2xl font-bold text-white">Anúncios</h1>
-            <p className="text-gray-400 text-sm mt-1">Gerencie os anúncios exibidos no portal de captação</p>
+      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-10 gap-6">
+          <div>
+            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 tracking-tight">Anúncios</h1>
+            <p className="text-gray-500 text-sm mt-1.5 font-medium">Gerencie as campanhas exibidas no portal de captação</p>
           </div>
           <button
             onClick={() => abrirModal()}
-            className="bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors flex-shrink-0"
+            className="bg-green-500 hover:bg-green-400 text-black font-bold py-3 px-6 rounded-2xl transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 flex items-center justify-center gap-2 text-sm"
           >
-            + Novo Anúncio
+            <Plus size={18} strokeWidth={2.5} />
+            Novo Anúncio
           </button>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="relative">
-              <SearchIcon size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar por título ou descrição..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
-              />
-            </div>
-
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-            >
-              <option value="todos">Status: Todos</option>
-              <option value="ativo">Status: Ativos</option>
-              <option value="inativo">Status: Inativos</option>
-            </select>
-
-            <select
-              value={filterHotspotId}
-              onChange={(e) => setFilterHotspotId(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-            >
-              <option value="">Hotspot: Todos</option>
-              {hotspots.map((h) => (
-                <option key={h.id} value={h.id}>{h.nome}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterClientId}
-              onChange={(e) => {
-                console.log('Cliente selecionado no dropdown (onChange):', e.target.value);
-                setFilterClientId(e.target.value);
-              }}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-            >
-              <option value="">Cliente: Todos</option>
-              {clientes.map((c) => (
-                <option key={c.id} value={c.id}>{c.nome}</option>
-              ))}
-            </select>
-
-            <select
-              value={filterMediaType}
-              onChange={(e) => setFilterMediaType(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-            >
-              <option value="todos">Mídia: Todas</option>
-              <option value="imagem">Mídia: Imagem</option>
-              <option value="video">Mídia: Vídeo</option>
-            </select>
+        {/* Filtros Premium */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+          <div className="relative group/input">
+            <input
+              type="text"
+              placeholder="Buscar anúncio..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner pl-11"
+            />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" size={16} />
           </div>
+
+          {[
+            { value: filterStatus, setter: setFilterStatus, options: [{ val: 'todos', label: 'Status: Todos' }, { val: 'ativo', label: 'Ativos' }, { val: 'inativo', label: 'Inativos' }] },
+            { value: filterHotspotId, setter: setFilterHotspotId, options: [{ val: '', label: 'Hotspot: Todos' }, ...hotspots.map(h => ({ val: h.id, label: h.nome }))] },
+            { value: filterClientId, setter: setFilterClientId, options: [{ val: '', label: 'Cliente: Todos' }, ...clientes.map(c => ({ val: c.id, label: c.nome }))] },
+            { value: filterMediaType, setter: setFilterMediaType, options: [{ val: 'todos', label: 'Mídia: Todas' }, { val: 'imagem', label: 'Imagens' }, { val: 'video', label: 'Vídeos' }] }
+          ].map((filter, idx) => (
+            <div key={idx} className="relative group/select">
+              <select
+                value={filter.value}
+                onChange={(e) => filter.setter(e.target.value)}
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer"
+              >
+                {filter.options.map(opt => (
+                  <option key={opt.val} value={opt.val} className="bg-[#0a0a0a] text-white">{opt.label}</option>
+                ))}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+              </div>
+            </div>
+          ))}
         </div>
 
+        {/* Lista de Anúncios */}
         {carregando ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+          <div className="flex justify-center items-center py-32">
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
+              <ImageIcon className="text-green-500 animate-pulse" size={24} />
+            </div>
           </div>
         ) : anuncios.length === 0 ? (
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-12 text-center">
-            <div className="text-4xl mb-3">📢</div>
-            <h3 className="text-white font-semibold mb-1">Nenhum anúncio encontrado</h3>
-            <p className="text-gray-500 text-sm mb-4">Ajuste seus filtros ou crie um novo anúncio.</p>
-            <button
-              onClick={() => abrirModal()}
-              className="bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
-            >
-              Criar primeiro anúncio
-            </button>
+          <div className="text-center bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] py-24 backdrop-blur-xl shadow-2xl">
+            <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto mb-6 border border-white/[0.05]">
+              <ImageIcon size={32} className="text-gray-600" />
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">Nenhum anúncio encontrado</h3>
+            <p className="text-gray-500 text-sm max-w-md mx-auto">Tente ajustar os filtros de busca ou crie uma nova campanha para começar.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {anuncios.map((anuncio) => (
-              <div key={anuncio.id} className="bg-gray-900 border border-gray-800 rounded-2xl p-5 flex flex-row items-center gap-4 w-full shadow-green-glow">
-               <div className="flex-shrink-0 flex items-center justify-center relative">
-                  {anuncio.media_url ? (
-                      anuncio.tipo_media === 'video' ? (
-                      <video
-                          src={anuncio.media_url}
-                          className="w-[108px] h-48 object-cover rounded-xl"
-                          controls={false}
-                          muted
-                          loop
-                          playsInline
-                          autoPlay
-                          type="video/mp4"
-                          onError={(e) => {
-                              e.target.classList.add('hidden');
-                              e.target.nextSibling.classList.remove('hidden');
-                          }}
-                      />
-                      ) : (
-                      <img
-                          src={anuncio.media_url}
-                          alt={anuncio.titulo}
-                          className="w-[108px] h-48 object-cover rounded-xl"
-                          onError={(e) => {
-                              e.target.classList.add('hidden');
-                              e.target.nextSibling.classList.remove('hidden');
-                          }}
-                      />
-                      )
-                  ) : null}
-                  <div
-                      className={`w-[108px] h-48 bg-gray-800 rounded-xl flex items-center justify-center text-4xl ${anuncio.media_url ? 'hidden' : ''}`}
-                  >
-                      {anuncio.tipo_media === 'video' ? <VideoIcon size={40} className="text-gray-400" /> : <ImageIcon size={40} className="text-gray-400" />}
-                  </div>
-               </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            {anuncios.map((anuncio, index) => (
+              <div key={anuncio.id} className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden flex flex-row hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] h-[280px] animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
 
-                <div className="flex-1 min-w-0 flex flex-col gap-1 items-center w-full text-center">
-                  <div className="flex flex-wrap items-center gap-2 justify-center">
-                    <h3 className="text-white font-semibold text-sm">{anuncio.titulo}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0 ${anuncio.ativo ? 'bg-green-400/10 text-green-400' : 'bg-gray-700 text-gray-400'}`}>
+                {/* Esquerda: Mídia (Proporção 9:16) */}
+                <div className="relative w-[150px] min-w-[150px] h-full bg-[#050505] flex-shrink-0 border-r border-white/[0.05] overflow-hidden">
+                  {anuncio.media_url ? (
+                    anuncio.tipo_media === 'video' ? (
+                      <video src={anuncio.media_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" muted loop playsInline autoPlay />
+                    ) : (
+                      <img src={anuncio.media_url} alt={anuncio.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" />
+                    )
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon size={32} className="text-gray-800" />
+                    </div>
+                  )}
+
+                  {/* Gradiente e Badges */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90"></div>
+                  <div className="absolute top-3 left-3">
+                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
                       {anuncio.ativo ? 'Ativo' : 'Inativo'}
                     </span>
                   </div>
-                  {anuncio.descricao && (
-                    <p className="text-gray-500 text-xs mb-1">{anuncio.descricao}</p>
+                  {anuncio.tipo_media === 'video' && (
+                    <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md p-1.5 rounded-lg border border-white/[0.05]">
+                      <VideoIcon size={14} className="text-white" />
+                    </div>
                   )}
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-600 justify-center">
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <MapPin size={11} className="flex-shrink-0" />
-                      <span>{anuncio.hotspots?.nome || '—'}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <Clock size={11} className="flex-shrink-0" />
-                      <span>{anuncio.duracao_segundos}s</span>
-                    </span>
-                    {anuncio.url_destino && (
-                      <a
-                        href={(() => {
-                          let rawUrl = anuncio.url_destino;
-                          let formattedUrl = rawUrl;
+                </div>
 
-                          if (rawUrl.startsWith('wa.me/')) {
-                              formattedUrl = 'https://' + rawUrl.replace('wa.me//', 'wa.me/');
-                          } else if (!(rawUrl.startsWith('http://') || rawUrl.startsWith('https://'))) {
-                              formattedUrl = `https://${rawUrl}`;
-                          }
-                          return formattedUrl;
-                        })()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-blue-400 hover:underline flex-shrink-0"
-                      >
-                        <ExternalLink size={11} className="flex-shrink-0" />
-                        <span>CTA</span>
-                      </a>
+                {/* Direita: Informações */}
+                <div className="p-5 flex flex-col flex-1 min-w-0 relative z-10">
+
+                  {/* 1. Título */}
+                  <h3 className="text-white font-semibold text-lg mb-1.5 truncate group-hover:text-green-400 transition-colors duration-300" title={anuncio.titulo}>
+                    {anuncio.titulo}
+                  </h3>
+
+                  {/* 2. Subtítulo (Descrição) */}
+                  <p className="text-gray-500 text-xs line-clamp-2 mb-4 leading-relaxed" title={anuncio.descricao}>
+                    {anuncio.descricao || 'Sem descrição'}
+                  </p>
+
+                  {/* 3. Hotspots (Um abaixo do outro) */}
+                  <div className="flex flex-col gap-2 mb-2 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                    {anuncio.hotspot_nomes && anuncio.hotspot_nomes.length > 0 ? (
+                      anuncio.hotspot_nomes.map((nome, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
+                          <MapPin size={12} className="text-green-500/70 mt-0.5 flex-shrink-0" />
+                          <span className="truncate leading-tight">{nome}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <span className="text-gray-600 text-xs italic">Nenhum hotspot vinculado</span>
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mt-2 justify-center">
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <User size={11} className="flex-shrink-0" />
-                      <span>Cliente: {anuncio.hotspots?.clientes?.nome || 'N/A'}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <Eye size={11} className="flex-shrink-0" />
-                      <span>Visualizações: {anuncio.views}</span>
-                    </span>
-                    <span className="flex items-center gap-1.5 flex-shrink-0">
-                      <MousePointerClick size={11} className="flex-shrink-0" />
-                      <span>Cliques: {anuncio.clicks}</span>
-                    </span>
+                  {/* Container fixo na parte inferior */}
+                  <div className="mt-auto pt-4 border-t border-white/[0.05]">
+
+                    {/* 4. Cliente e Tempo (Mesma linha) */}
+                    <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
+                      <div className="flex items-center gap-2 truncate pr-2">
+                        <User size={12} className="text-gray-600 flex-shrink-0" />
+                        <span className="truncate font-medium text-gray-400">{anuncio.cliente?.nome || 'N/A'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0 bg-white/[0.02] border border-white/[0.05] px-2.5 py-1 rounded-lg">
+                        <Clock size={12} className="text-green-500/70" />
+                        <span className="font-medium text-gray-300">{anuncio.duracao_segundos}s</span>
+                      </div>
+                    </div>
+
+                    {/* 5. Botões (Centralizados) */}
+                    <div className="flex justify-center items-center gap-2 w-full">
+                      <button
+                        onClick={() => toggleAtivo(anuncio)}
+                        className={`flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20'}`}
+                      >
+                        {anuncio.ativo ? 'Pausar' : 'Ativar'}
+                      </button>
+                      <button
+                        onClick={() => abrirModal(anuncio)}
+                        className="flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white transition-all duration-300"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => excluir(anuncio.id)}
+                        className="flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-red-500/5 border border-red-500/10 text-red-500/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
+                      >
+                        Excluir
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="flex flex-row gap-2 mt-3 flex-shrink-0 justify-center">
-                    <button
-                      onClick={() => toggleAtivo(anuncio)}
-                      className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors flex-shrink-0 ${anuncio.ativo ? 'bg-gray-700 hover:bg-gray-600 text-gray-300' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
-                    >
-                      {anuncio.ativo ? 'Desativar' : 'Ativar'}
-                    </button>
-                    <button
-                      onClick={() => abrirModal(anuncio)}
-                      className="text-xs px-3 py-1.5 rounded-lg font-medium bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors flex-shrink-0"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => excluir(anuncio.id)}
-                      className="text-xs px-3 py-1.5 rounded-lg font-medium bg-red-400/10 hover:bg-red-400/20 text-red-400 transition-colors flex-shrink-0"
-                    >
-                      Excluir
-                    </button>
-                  </div>
                 </div>
               </div>
             ))}
@@ -529,184 +520,224 @@ export default function Anuncios() {
         )}
       </div>
 
+      {/* Modal Premium */}
       {modalAberto && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-lg flex flex-col max-h-[90vh]">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800 flex-shrink-0">
-              <h2 className="text-white font-bold text-lg">
-                {anuncioEditando ? 'Editar Anúncio' : 'Novo Anúncio'}
+        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-3xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
+              <h2 className="text-white font-bold text-2xl tracking-tight">
+                {anuncioEditando ? 'Editar Campanha' : 'Nova Campanha'}
               </h2>
-              <button onClick={fecharModal} className="text-gray-500 hover:text-white transition-colors text-xl leading-none">×</button>
+              <button onClick={fecharModal} className="p-2.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+                <X size={20} />
+              </button>
             </div>
 
-            <div className="p-6 space-y-4 flex-1 overflow-y-auto">
+            {/* Modal Body */}
+            <div className="p-8 space-y-8 flex-1 overflow-y-auto custom-scrollbar">
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Cliente Responsável</label>
+                  <div className="relative group/select">
+                    <select
+                      value={selectedClientInModal}
+                      onChange={(e) => setSelectedClientInModal(e.target.value)}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none"
+                    >
+                      <option value="" className="bg-[#050505]">Selecione um cliente...</option>
+                      {clientes.map((c) => (
+                        <option key={c.id} value={c.id} className="bg-[#050505]">{c.nome}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Duração (Segundos)</label>
+                  <div className="relative group/select">
+                    <select
+                      value={form.duracao_segundos}
+                      onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none"
+                    >
+                      {[10, 15, 20, 30, 40].map(sec => (
+                        <option key={sec} value={sec} className="bg-[#050505]">{sec} segundos</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Hotspots como Tags/Pílulas */}
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Cliente</label>
-                <select
-                  value={selectedClientInModal}
-                  onChange={(e) => {
-                    console.log('Cliente selecionado no dropdown (onChange):', e.target.value);
-                    setSelectedClientInModal(e.target.value);
-                  }}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-                >
-                  <option value="">Selecione um cliente</option>
-                  {clientes.map((c) => (
-                    <option key={c.id} value={c.id}>{c.nome}</option>
-                  ))}
-                </select>
+                <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Vincular Hotspots</label>
+                <div className="bg-[#050505] border border-white/[0.05] rounded-2xl p-5 shadow-inner">
+                  {allActiveHotspotsForModal.length === 0 ? (
+                    <p className="text-sm text-gray-600 italic">Nenhum hotspot ativo disponível no momento.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-3">
+                      {allActiveHotspotsForModal.map((h) => {
+                        const isSelected = selectedHotspotIds.includes(h.id);
+                        return (
+                          <button
+                            key={h.id}
+                            type="button"
+                            onClick={() => handleHotspotSelection(h.id)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 border ${
+                              isSelected
+                                ? 'bg-green-500/10 text-green-400 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
+                                : 'bg-white/[0.02] text-gray-500 border-white/[0.05] hover:border-white/[0.1] hover:text-white'
+                            }`}
+                          >
+                            {h.nome}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Hotspot</label>
-                <select
-                  value={form.hotspot_id}
-                  onChange={(e) => setForm({ ...form, hotspot_id: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-                >
-                  <option value="">Selecione um hotspot</option>
-                  {allActiveHotspotsForModal.map((h) => (
-                    <option key={h.id} value={h.id}>{h.nome}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Título do anúncio</label>
+                <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Título da Campanha</label>
                 <input
                   type="text"
-                  placeholder="Ex: 20% de desconto na sua próxima compra"
+                  placeholder="Ex: Oferta Especial de Verão"
                   value={form.titulo}
                   onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner"
                 />
               </div>
 
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Descrição</label>
+                <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Descrição</label>
                 <textarea
-                  placeholder="Detalhes da oferta ou mensagem..."
+                  placeholder="Detalhes que chamem a atenção do usuário..."
                   value={form.descricao}
                   onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                   rows={3}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 resize-none"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner resize-none"
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Link de Destino (CTA)</label>
+                  <input
+                    type="url"
+                    placeholder="https://seusite.com.br"
+                    value={form.url_destino}
+                    onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner"
+                  />
+                </div>
+
+                <div className="flex items-center mt-7">
+                  <label className="flex items-center gap-4 cursor-pointer p-4 w-full bg-[#050505] rounded-2xl border border-white/[0.05] hover:border-white/[0.1] transition-colors shadow-inner">
+                    <div className="relative flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={form.ativo}
+                        onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
+                        className="peer sr-only"
+                      />
+                      <div className="w-11 h-6 bg-white/[0.05] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-white after:border-transparent after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                    </div>
+                    <span className="text-sm font-bold text-gray-300">Campanha Ativa</span>
+                  </label>
+                </div>
+              </div>
+
               <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Mídia do anúncio (Imagem ou Vídeo)</label>
-                <input
-                  type="file"
-                  accept="image/*,video/*"
-                  onChange={(e) => setSelectedFile(e.target.files[0])}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-green-500 file:text-black hover:file:bg-green-400"
-                />
+                <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Mídia (Imagem ou Vídeo)</label>
+                <div className="flex items-center justify-center w-full">
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/[0.05] border-dashed rounded-2xl cursor-pointer bg-[#050505] hover:bg-white/[0.02] hover:border-green-500/30 transition-all shadow-inner group">
+                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                      <ImageIcon className="w-10 h-10 mb-3 text-gray-600 group-hover:text-green-500/70 transition-colors" />
+                      <p className="mb-2 text-sm text-gray-400"><span className="font-bold text-green-500">Clique para enviar</span> ou arraste o arquivo</p>
+                      <p className="text-xs text-gray-600 font-medium">PNG, JPG ou MP4 (Recomendado: 1080x1920px)</p>
+                    </div>
+                    <input type="file" accept="image/*,video/*" onChange={(e) => setSelectedFile(e.target.files[0])} className="hidden" />
+                  </label>
+                </div>
+
                 {(selectedFile || form.media_url) && (
-                  <div className="mt-3 flex items-center gap-3">
-                    <p className="text-xs text-gray-400">Pré-visualização:</p>
-                    {selectedFile && selectedFile.type.startsWith('video/') ? (
-                      <video
-                        src={URL.createObjectURL(selectedFile)}
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
-                        controls={false}
-                        muted
-                        loop
-                        playsInline
-                        autoPlay
-                        type={selectedFile.type}
-                      />
-                    ) : selectedFile && selectedFile.type.startsWith('image/') ? (
-                      <img
-                        src={URL.createObjectURL(selectedFile)}
-                        alt="Pré-visualização"
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
-                      />
-                    ) : form.media_url && form.tipo_media === 'video' ? (
-                      <video
-                        src={form.media_url}
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
-                        controls={false}
-                        muted
-                        loop
-                        playsInline
-                        autoPlay
-                        type="video/mp4"
-                      />
-                    ) : form.media_url && form.tipo_media === 'imagem' ? (
-                      <img
-                        src={form.media_url}
-                        alt="Pré-visualização"
-                        className="w-32 h-[228px] object-cover rounded-lg border border-gray-700"
-                      />
-                    ) : null}
-                    {selectedFile && (
-                      <p className="text-xs text-gray-500 truncate flex-1">{selectedFile.name}</p>
-                    )}
+                  <div className="mt-5 p-4 bg-[#050505] border border-white/[0.05] rounded-2xl flex items-center gap-5 shadow-inner">
+                    <div className="w-16 h-24 rounded-xl overflow-hidden bg-[#0a0a0a] flex-shrink-0 border border-white/[0.05]">
+                      {selectedFile && selectedFile.type.startsWith('video/') ? (
+                        <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                      ) : selectedFile && selectedFile.type.startsWith('image/') ? (
+                        <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
+                      ) : form.media_url && form.tipo_media === 'video' ? (
+                        <video src={form.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                      ) : form.media_url && form.tipo_media === 'imagem' ? (
+                        <img src={form.media_url} alt="Preview" className="w-full h-full object-cover" />
+                      ) : null}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-white truncate">
+                        {selectedFile ? selectedFile.name : 'Mídia atual da campanha'}
+                      </p>
+                      <p className="text-xs font-bold text-green-500 mt-1.5 uppercase tracking-widest">Pronto para uso</p>
+                    </div>
                   </div>
                 )}
-                <p className="text-xs text-gray-600 mt-1">Selecione uma imagem ou vídeo para o anúncio. Imagem: 1080x1920px. Vídeo: MP4, WebM.</p>
               </div>
 
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">URL de destino (CTA)</label>
-                <input
-                  type="url"
-                  placeholder="https://seusite.com.br"
-                  value={form.url_destino}
-                  onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs text-gray-400 mb-1.5 block">Duração obrigatória (segundos)</label>
-                <select
-                  value={form.duracao_segundos}
-                  onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
-                  className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-green-500"
-                >
-                  <option value={10}>10 segundos</option>
-                  <option value={15}>15 segundos</option>
-                  <option value={20}>20 segundos</option>
-                  <option value={30}>30 segundos</option>
-                  <option value={40}>40 segundos</option>
-                </select>
-                <p className="text-xs text-gray-600 mt-1">O usuário precisa aguardar esse tempo antes de continuar</p>
-              </div>
-
-              <label className="flex items-center gap-3 cursor-pointer p-3 bg-gray-800 rounded-xl border border-gray-700">
-                <input
-                  type="checkbox"
-                  checked={form.ativo}
-                  onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
-                  className="accent-green-500"
-                />
-                <span className="text-sm text-gray-300">Anúncio ativo</span>
-              </label>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-gray-800 flex-shrink-0">
+            {/* Modal Footer */}
+            <div className="flex gap-4 p-8 border-t border-white/[0.05] bg-white/[0.01] rounded-b-[2.5rem] flex-shrink-0">
               <button
                 onClick={fecharModal}
-                className="flex-1 py-3 rounded-xl font-medium text-sm text-gray-400 hover:text-white bg-gray-800 hover:bg-gray-700 transition-colors"
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-gray-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
               >
                 Cancelar
               </button>
               <button
                 onClick={salvar}
-                disabled={salvando || uploading || !form.titulo.trim() || !form.hotspot_id}
-                className="flex-1 py-3 rounded-xl font-semibold text-sm text-black bg-green-500 hover:bg-green-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={salvando || uploading || !form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0}
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-black bg-green-500 hover:bg-green-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {(salvando || uploading) ? (
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <>
+                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                    Salvando...
+                  </>
                 ) : (
-                  anuncioEditando ? 'Salvar alterações' : 'Criar anúncio'
+                  anuncioEditando ? 'Salvar Alterações' : 'Publicar Anúncio'
                 )}
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Estilo extra para a barra de rolagem do modal ficar elegante (CORRIGIDO PARA innerHTML) */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+      `}} />
     </>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
 import { Wifi, Plus, Search, Pencil, Trash2, X, Check, MapPin } from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -11,29 +12,45 @@ const supabase = createClient(
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
 
+const corStatus = (status) => {
+  if (status === 'Ativo') return 'bg-green-500/10 text-green-400 border border-green-500/20'
+  if (status === 'Inativo') return 'bg-red-500/10 text-red-400 border border-red-500/20'
+  return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' // Manutenção
+}
+
 export default function Hotspots() {
   const [hotspots, setHotspots] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('Todos')
   const [modalAberto, setModalAberto] = useState(false)
   const [hotspotSelecionado, setHotspotSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
+
   const [form, setForm] = useState({
     nome: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo'
   })
 
-  useEffect(() => { buscarDados() }, [])
+  useEffect(() => {
+    buscarDados()
+  }, [busca, filtroStatus])
 
   async function buscarDados() {
-    setLoading(true)
-    const { data } = await supabase
-      .from('hotspots')
-      .select('*')
-      .order('created_at', { ascending: false })
-    setHotspots(data || [])
-    setLoading(false)
+    setCarregando(true)
+    let query = supabase.from('hotspots').select('*').order('created_at', { ascending: false })
+
+    if (filtroStatus !== 'Todos') query = query.eq('status', filtroStatus)
+    if (busca) query = query.or(`nome.ilike.%${busca}%,cidade.ilike.%${busca}%,parceiro.ilike.%${busca}%`)
+
+    const { data, error } = await query
+    if (error) {
+      console.error('Erro ao buscar hotspots:', error)
+      toast.error('Erro ao carregar hotspots.')
+    } else {
+      setHotspots(data || [])
+    }
+    setCarregando(false)
   }
 
   function abrirModal(hotspot = null) {
@@ -56,249 +73,289 @@ export default function Hotspots() {
   function fecharModal() {
     setModalAberto(false)
     setHotspotSelecionado(null)
-    setForm({ nome: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo' })
   }
 
   async function salvarHotspot() {
     if (!form.nome.trim()) return
     setSalvando(true)
-    if (hotspotSelecionado) {
-      await supabase.from('hotspots').update(form).eq('id', hotspotSelecionado.id)
+
+    const { error } = hotspotSelecionado
+      ? await supabase.from('hotspots').update(form).eq('id', hotspotSelecionado.id)
+      : await supabase.from('hotspots').insert([form])
+
+    if (error) {
+      console.error('Erro ao salvar hotspot:', error)
+      toast.error('Erro ao salvar hotspot.')
     } else {
-      await supabase.from('hotspots').insert([form])
+      toast.success(hotspotSelecionado ? 'Hotspot atualizado!' : 'Hotspot criado!')
+      await buscarDados()
+      fecharModal()
     }
-    await buscarDados()
     setSalvando(false)
-    fecharModal()
   }
 
   async function excluirHotspot(id) {
-    await supabase.from('hotspots').delete().eq('id', id)
-    setConfirmDelete(null)
-    await buscarDados()
-  }
-
-  const hotspotsFiltrados = hotspots.filter((h) => {
-    const buscaOk = h.nome?.toLowerCase().includes(busca.toLowerCase()) ||
-      h.cidade?.toLowerCase().includes(busca.toLowerCase()) ||
-      h.parceiro?.toLowerCase().includes(busca.toLowerCase())
-    const statusOk = filtroStatus === 'Todos' || (h.status || 'Ativo').toLowerCase() === filtroStatus.toLowerCase()
-    return buscaOk && statusOk
-  })
-
-  const corStatus = (status) => {
-    if (!status || status.toLowerCase() === 'ativo') return 'bg-green-400/10 text-green-400'
-    if (status.toLowerCase() === 'inativo') return 'bg-red-400/10 text-red-400'
-    return 'bg-yellow-400/10 text-yellow-400'
+    const { error } = await supabase.from('hotspots').delete().eq('id', id)
+    if (error) {
+      console.error('Erro ao excluir hotspot:', error)
+      toast.error('Erro ao excluir hotspot.')
+    } else {
+      toast.success('Hotspot excluído com sucesso!')
+      setConfirmDelete(null)
+      await buscarDados()
+    }
   }
 
   return (
     <>
-      <main className="flex-1 overflow-auto"> {/* REMOVIDO px-8 py-8 - o padding agora é do layout pai */}
+      <Toaster 
+        position="top-right" 
+        toastOptions={{ 
+          style: { background: '#0a0a0a', color: '#fff', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' },
+          success: { iconTheme: { primary: '#22c55e', secondary: '#0a0a0a' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#0a0a0a' } }
+        }} 
+      />
 
-        <div className="flex items-center justify-between mb-8">
+      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+
+        {/* Header e Controles */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-2xl font-bold text-white">Hotspots</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              {hotspots.length} hotspot{hotspots.length !== 1 ? 's' : ''} cadastrado{hotspots.length !== 1 ? 's' : ''}
-            </p>
+            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
+              <div className="p-2.5 bg-green-500/10 rounded-2xl border border-green-500/20">
+                <Wifi className="text-green-500" size={24} />
+              </div>
+              Hotspots
+            </h1>
+            <p className="text-sm text-neutral-500 mt-2 font-medium">Gerencie os pontos de acesso Wi-Fi da sua rede.</p>
           </div>
-          <button
-            onClick={() => abrirModal()}
-            className="flex items-center gap-2 bg-green-500 hover:bg-green-400 text-black font-semibold px-4 py-2.5 rounded-xl transition-all text-sm"
-          >
-            <Plus size={16} />
-            Novo Hotspot
-          </button>
-        </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-            <input
-              type="text"
-              placeholder="Buscar por nome, cidade ou parceiro..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full bg-gray-900 border border-gray-800 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-            />
-          </div>
-          <div className="flex gap-2">
-            {['Todos', ...statusOpcoes].map((s) => (
-              <button
-                key={s}
-                onClick={() => setFiltroStatus(s)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                  filtroStatus === s
-                    ? 'bg-green-500 text-black'
-                    : 'bg-gray-900 border border-gray-800 text-gray-400 hover:border-gray-600'
-                }`}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="relative w-full sm:w-72 group/input">
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, cidade..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+              />
+            </div>
+
+            <div className="relative w-full sm:w-48 group/select">
+              <select
+                value={filtroStatus}
+                onChange={(e) => setFiltroStatus(e.target.value)}
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer shadow-inner"
               >
-                {s}
-              </button>
-            ))}
+                <option value="Todos" className="bg-[#0a0a0a]">Todos os Status</option>
+                {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#0a0a0a]">{s}</option>)}
+              </select>
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+            </div>
+
+            <button
+              onClick={() => abrirModal()}
+              className="w-full sm:w-auto bg-green-500 hover:bg-green-400 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              Novo Hotspot
+            </button>
           </div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-2xl overflow-x-auto pb-2"> {/* ADICIONADO overflow-x-auto e pb-2, REMOVIDO overflow-hidden */}
-          {loading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        {/* Tabela */}
+        {carregando ? (
+          <div className="flex justify-center items-center py-32">
+            <div className="relative w-16 h-16 flex items-center justify-center">
+              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
+              <Wifi className="text-green-500 animate-pulse" size={24} />
             </div>
-          ) : hotspotsFiltrados.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Wifi size={36} className="text-gray-700 mb-3" />
-              <p className="text-gray-500 text-sm">Nenhum hotspot encontrado.</p>
-              <button onClick={() => abrirModal()} className="mt-3 text-xs text-green-400 hover:underline">
-                Cadastrar primeiro hotspot
-              </button>
+          </div>
+        ) : hotspots.length === 0 ? (
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] py-24 text-center flex flex-col items-center justify-center backdrop-blur-xl shadow-2xl">
+            <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center mb-6 border border-white/[0.05]">
+              <Wifi size={32} className="text-neutral-600" />
             </div>
-          ) : (
-            <table className="min-w-full"> {/* ALTERADO de w-full para min-w-full */}
-              <thead>
-                <tr className="border-b border-gray-800">
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Hotspot</th> {/* ADICIONADO whitespace-nowrap */}
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cidade</th> {/* ADICIONADO whitespace-nowrap */}
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Parceiro</th> {/* ADICIONADO whitespace-nowrap */}
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Status</th> {/* ADICIONADO whitespace-nowrap */}
-                  <th className="text-left text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Cadastrado em</th> {/* ADICIONADO whitespace-nowrap */}
-                  <th className="text-right text-xs text-gray-500 font-medium px-6 py-4 whitespace-nowrap">Ações</th> {/* ADICIONADO whitespace-nowrap */}
-                </tr>
-              </thead>
-              <tbody>
-                {hotspotsFiltrados.map((hotspot) => (
-                  <tr key={hotspot.id} className="border-b border-gray-800 last:border-0 hover:bg-gray-800/40 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-400/10 flex items-center justify-center flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
-                          <Wifi size={16} className="text-blue-400" />
-                        </div>
-                        <div className="min-w-0"> {/* ADICIONADO min-w-0 */}
-                          <p className="text-sm font-medium text-white truncate">{hotspot.nome}</p> {/* ADICIONADO truncate */}
-                          <p className="text-xs text-gray-500 flex items-center gap-1 truncate"> {/* ADICIONADO truncate */}
-                            <MapPin size={10} className="flex-shrink-0" /> {/* ADICIONADO flex-shrink-0 */}
-                            {hotspot.endereco || '—'}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{hotspot.cidade || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
-                    <td className="px-6 py-4 text-sm text-gray-400 whitespace-nowrap">{hotspot.parceiro || '—'}</td> {/* ADICIONADO whitespace-nowrap */}
-                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
-                      <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${corStatus(hotspot.status)} w-fit`}> {/* ADICIONADO w-fit */}
-                        {hotspot.status || 'Ativo'}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
-                      {new Date(hotspot.created_at).toLocaleDateString('pt-BR')}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap"> {/* ADICIONADO whitespace-nowrap */}
-                      <div className="flex items-center justify-end gap-2 flex-shrink-0"> {/* ADICIONADO flex-shrink-0 */}
-                        <button
-                          onClick={() => abrirModal(hotspot)}
-                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors flex-shrink-0"
-                        >
-                          <Pencil size={14} className="text-gray-400" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDelete(hotspot.id)}
-                          className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-red-500/20 flex items-center justify-center transition-colors flex-shrink-0"
-                        >
-                          <Trash2 size={14} className="text-gray-400" />
-                        </button>
-                      </div>
-                    </td>
+            <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">Nenhum hotspot encontrado</h3>
+            <p className="text-sm text-neutral-500 mb-8 max-w-md">Você ainda não tem pontos de acesso cadastrados ou nenhum resultado corresponde à sua busca.</p>
+            <button onClick={() => abrirModal()} className="bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.05] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center gap-2">
+              <Plus size={18} /> Cadastrar primeiro hotspot
+            </button>
+          </div>
+        ) : (
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.05] bg-white/[0.01]">
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Hotspot</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Cidade</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Parceiro</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Status</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Criado em</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right whitespace-nowrap">Ações</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </main>
+                </thead>
+                <tbody className="divide-y divide-white/[0.02]">
+                  {hotspots.map((hotspot) => (
+                    <tr key={hotspot.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <div className="flex items-center gap-4">
+                          <div className="w-11 h-11 rounded-full bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-center flex-shrink-0 shadow-inner group-hover:border-white/[0.1] transition-colors">
+                            <Wifi size={18} className="text-neutral-400 group-hover:text-white transition-colors" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors truncate">{hotspot.nome}</p>
+                            <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 truncate font-medium">
+                              <MapPin size={12} className="flex-shrink-0 text-neutral-600" />
+                              {hotspot.endereco || 'Endereço não informado'}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-sm text-neutral-400 font-medium whitespace-nowrap">{hotspot.cidade || '—'}</td>
+                      <td className="px-6 py-5 text-sm text-neutral-400 font-medium whitespace-nowrap">{hotspot.parceiro || '—'}</td>
+                      <td className="px-6 py-5 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(hotspot.status)}`}>
+                          {hotspot.status || 'Ativo'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-sm text-neutral-500 font-medium whitespace-nowrap">
+                        {new Date(hotspot.created_at).toLocaleDateString('pt-BR')}
+                      </td>
+                      <td className="px-6 py-5 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                          <button
+                            onClick={() => abrirModal(hotspot)}
+                            className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
+                            title="Editar"
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setConfirmDelete(hotspot.id)}
+                            className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
 
+      {/* Modal de Criação/Edição Premium */}
       {modalAberto && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-md">
-            <div className="flex items-center justify-between p-6 border-b border-gray-800 sticky top-0 bg-gray-900 z-10">
-              <h2 className="text-base font-semibold text-white">
-                {hotspotSelecionado ? 'Editar Hotspot' : 'Novo Hotspot'}
-              </h2>
-              <button onClick={fecharModal} className="w-8 h-8 rounded-lg bg-gray-800 hover:bg-gray-700 flex items-center justify-center transition-colors">
-                <X size={16} className="text-gray-400" />
+        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-2xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+
+            <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-white/[0.02] flex items-center justify-center border border-white/[0.05]">
+                  <Wifi size={18} className="text-neutral-400" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-white tracking-tight">
+                    {hotspotSelecionado ? 'Editar Hotspot' : 'Novo Hotspot'}
+                  </h2>
+                </div>
+              </div>
+              <button onClick={fecharModal} className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+                <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 gap-3"> {/* Alterado para grid-cols-1 para melhor responsividade no modal */}
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
+              <div className="space-y-6">
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Nome do Hotspot *</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nome do Hotspot *</label>
                   <input
                     type="text"
                     placeholder="Ex: Hotspot Centro"
                     value={form.nome}
                     onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Cidade</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: São Paulo"
-                    value={form.cidade}
-                    onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Endereço</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Endereço</label>
                   <input
                     type="text"
                     placeholder="Ex: Rua das Flores, 123"
                     value={form.endereco}
                     onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
                   />
                 </div>
-                <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Parceiro</label>
-                  <input
-                    type="text"
-                    placeholder="Ex: Restaurante XYZ"
-                    value={form.parceiro}
-                    onChange={(e) => setForm({ ...form, parceiro: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-green-500 transition-colors"
-                  />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cidade</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: São Paulo"
+                      value={form.cidade}
+                      onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Parceiro</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Restaurante XYZ"
+                      value={form.parceiro}
+                      onChange={(e) => setForm({ ...form, parceiro: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="text-xs text-gray-400 mb-1.5 block">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-green-500 transition-colors"
-                  >
-                    {statusOpcoes.map((s) => <option key={s}>{s}</option>)}
-                  </select>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Status</label>
+                  <div className="relative group/select">
+                    <select
+                      value={form.status}
+                      onChange={(e) => setForm({ ...form, status: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
+                    >
+                      {statusOpcoes.map((s) => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-gray-800">
+            <div className="flex gap-4 p-8 border-t border-white/[0.05] bg-white/[0.01] rounded-b-[2.5rem] flex-shrink-0">
               <button
                 onClick={fecharModal}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-xl text-sm transition-colors"
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
               >
                 Cancelar
               </button>
               <button
                 onClick={salvarHotspot}
                 disabled={salvando || !form.nome.trim()}
-                className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-semibold py-2.5 rounded-xl text-sm transition-colors flex items-center justify-center gap-2"
+                className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
-                  <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <><Check size={15} />{hotspotSelecionado ? 'Salvar alterações' : 'Cadastrar'}</>
+                  <><Check size={18} strokeWidth={2.5} /> {hotspotSelecionado ? 'Salvar Alterações' : 'Cadastrar Hotspot'}</>
                 )}
               </button>
             </div>
@@ -306,31 +363,49 @@ export default function Hotspots() {
         </div>
       )}
 
+      {/* Modal de Confirmação de Exclusão Premium */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-12 h-12 rounded-full bg-red-400/10 flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={20} className="text-red-400" />
+        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+              <Trash2 size={32} className="text-red-500" />
             </div>
-            <h2 className="text-base font-semibold text-white mb-2">Excluir hotspot?</h2>
-            <p className="text-sm text-gray-400 mb-6">Esta ação não pode ser desfeita.</p>
-            <div className="flex gap-3">
+            <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">Excluir hotspot?</h2>
+            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">Esta ação não pode ser desfeita. O ponto de acesso será removido permanentemente do sistema.</p>
+            <div className="flex gap-4">
               <button
                 onClick={() => setConfirmDelete(null)}
-                className="flex-1 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-xl text-sm transition-colors"
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => excluirHotspot(confirmDelete)}
-                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-semibold py-2.5 rounded-xl text-sm transition-colors"
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:-translate-y-1"
               >
-                Excluir
+                Sim, Excluir
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Estilo para a barra de rolagem do modal */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+      `}} />
     </>
   )
 }

@@ -1,9 +1,12 @@
-// src/app/portal/[slug]/page.js
 'use client'
 
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { 
+  User, Mail, Smartphone, FileText, ShieldCheck, 
+  Wifi, Loader2, ArrowRight, CheckCircle2 
+} from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -29,456 +32,368 @@ export default function Portal() {
   const [salvando, setSalvando] = useState(false)
   const [leadId, setLeadId] = useState(null)
   const [form, setForm] = useState({
-    nome: '',
-    email: '',
-    telefone: '',
-    cpf: '',
-    aceite_lgpd: false,
+    nome: '', email: '', telefone: '', cpf: '', aceite_lgpd: false,
   })
   const [erros, setErros] = useState({})
 
-  const anunciosMostradosRef = useRef(new Set());
-  const intervaloAnuncioRef = useRef(null);
+  const intervaloAnuncioRef = useRef(null)
 
+  // 1. Busca os dados iniciais
   useEffect(() => {
     buscarHotspot()
   }, [slug])
 
+  // 2. Controla o cronômetro do anúncio atual
+  useEffect(() => {
+    if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
+      setContador(anuncioAtual.duracao_segundos || 15) 
+
+      intervaloAnuncioRef.current = setInterval(() => {
+        setContador((prev) => {
+          if (prev <= 1) {
+            clearInterval(intervaloAnuncioRef.current)
+            setEtapa(ETAPAS.CTA) 
+            return 0
+          }
+          return prev - 1
+        })
+      }, 1000)
+    }
+
+    return () => {
+      if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
+    }
+  }, [etapa, anuncioAtual])
+
+  // 3. Loop de 20 minutos para exibir novo anúncio
+  useEffect(() => {
+    let timeoutId;
+
+    if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
+      const tempoEmMilissegundos = 20 * 60 * 1000; 
+
+      timeoutId = setTimeout(() => {
+        const anuncioSorteado = anuncios[Math.floor(Math.random() * anuncios.length)]
+        setAnuncioAtual(anuncioSorteado)
+        setEtapa(ETAPAS.ANUNCIO)
+      }, tempoEmMilissegundos)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [etapa, anuncios])
+
   async function buscarHotspot() {
-    const { data, error } = await supabase
+    const { data: hotspotData, error: hotspotError } = await supabase
       .from('hotspots')
       .select('*')
       .eq('id', slug)
       .single()
 
-    if (error || !data) {
+    if (hotspotError || !hotspotData) {
       setEtapa(ETAPAS.ERRO)
       return
     }
 
-    setHotspot(data)
+    setHotspot(hotspotData)
 
-    const { data: anunciosData } = await supabase
-      .from('anuncios')
-      .select('*')
-      .eq('hotspot_id', data.id)
-      .eq('ativo', true)
+    const { data: vinculos } = await supabase
+      .from('anuncio_hotspots')
+      .select('anuncio_id')
+      .eq('hotspot_id', hotspotData.id)
 
-    setAnuncios(anunciosData || [])
+    if (vinculos && vinculos.length > 0) {
+      const anuncioIds = vinculos.map(v => v.anuncio_id)
+
+      const { data: anunciosData } = await supabase
+        .from('anuncios')
+        .select('*')
+        .in('id', anuncioIds)
+        .eq('ativo', true)
+
+      setAnuncios(anunciosData || [])
+    } else {
+      setAnuncios([]) 
+    }
+
     setEtapa(ETAPAS.CADASTRO)
+  }
+
+  const validatePhoneNumber = (phone) => {
+    const cleanedPhone = String(phone).replace(/\D/g, '')
+    return cleanedPhone.length === 11
+  }
+
+  const validateCpf = (cpf) => {
+    const cleanedCpf = String(cpf).replace(/\D/g, '')
+    const cpfRepeatedDigitsRegex = new RegExp('^(\\d)\\1{10}$')
+
+    if (cleanedCpf.length !== 11 || cpfRepeatedDigitsRegex.test(cleanedCpf)) {
+      return false
+    }
+
+    let sum = 0
+    let remainder
+
+    for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanedCpf.substring(i - 1, i)) * (11 - i)
+    remainder = (sum * 10) % 11
+    if ((remainder === 10) || (remainder === 11)) remainder = 0
+    if (remainder !== parseInt(cleanedCpf.substring(9, 10))) return false
+
+    sum = 0
+    for (let i = 1; i <= 10; i++) sum = sum + parseInt(cleanedCpf.substring(i - 1, i)) * (12 - i)
+    remainder = (sum * 10) % 11
+    if ((remainder === 10) || (remainder === 11)) remainder = 0
+    if (remainder !== parseInt(cleanedCpf.substring(10, 11))) return false
+
+    return true
   }
 
   function validarForm() {
     const novosErros = {}
-    if (!form.nome.trim()) novosErros.nome = 'Nome obrigatório'
-    if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) novosErros.email = 'E-mail inválido'
-    if (!form.telefone.trim() || form.telefone.replace(/\D/g, '').length < 10) novosErros.telefone = 'Telefone inválido'
-    if (!form.cpf.trim() || form.cpf.replace(/\D/g, '').length !== 11) novosErros.cpf = 'CPF inválido'
+    if (!form.nome.trim()) novosErros.nome = 'Nome é obrigatório'
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) novosErros.email = 'E-mail inválido'
+    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inválido (11 dígitos)'
+    if (!validateCpf(form.cpf)) novosErros.cpf = 'CPF inválido'
     if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
+
     setErros(novosErros)
     return Object.keys(novosErros).length === 0
   }
-const validatePhoneNumber = (phone) => {
-  const cleanedPhone = String(phone).replace(/\D/g, '');
-  return cleanedPhone.length === 11;
-};
 
-const validateCpf = (cpf) => {
-  const cleanedCpf = String(cpf).replace(/\D/g, '');
-  // Usa construtor RegExp para evitar problemas de "Unterminated regexp literal"
-  const cpfRepeatedDigitsRegex = new RegExp('^(\\d)\\1{10}$');
-
-  if (cleanedCpf.length !== 11 || cpfRepeatedDigitsRegex.test(cleanedCpf)) {
-    return false; // Verifica 11 dígitos e CPFs com dígitos repetidos
-  }
-
-  let sum = 0;
-  let remainder;
-
-  for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanedCpf.substring(i - 1, i)) * (11 - i);
-  remainder = (sum * 10) % 11;
-  if ((remainder === 10) || (remainder === 11)) remainder = 0;
-  if (remainder !== parseInt(cleanedCpf.substring(9, 10))) return false;
-
-  sum = 0;
-  for (let i = 1; i <= 10; i++) sum = sum + parseInt(cleanedCpf.substring(i - 1, i)) * (12 - i);
-  remainder = (sum * 10) % 11;
-  if ((remainder === 10) || (remainder === 11)) remainder = 0;
-  if (remainder !== parseInt(cleanedCpf.substring(10, 11))) return false;
-
-  return true;
-};
-
-  async function handleCadastro() {
+  async function handleCadastro(e) {
+    e.preventDefault()
     if (!validarForm()) return
+
     setSalvando(true)
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert([{
+          hotspot_id: hotspot.id,
+          nome: form.nome,
+          email: form.email,
+          telefone: String(form.telefone).replace(/\D/g, ''),
+          cpf: String(form.cpf).replace(/\D/g, ''),
+          aceite_lgpd: form.aceite_lgpd
+        }])
+        .select()
+        .single()
 
-    const { data, error } = await supabase.from('leads').insert([{
-      nome: form.nome,
-      email: form.email,
-      telefone: form.telefone,
-      cpf: form.cpf.replace(/\D/g, ''),
-      hotspot_id: hotspot.id,
-      aceite_lgpd: true,
-      data_aceite_lgpd: new Date().toISOString(),
-      ip: null,
-    }]).select().single()
+      if (error) throw error
 
-    setSalvando(false)
+      setLeadId(data.id)
 
-    if (error) {
-      setErros({ geral: 'Erro ao salvar cadastro. Tente novamente.' })
-      return
-    }
-
-    setLeadId(data.id)
-    anunciosMostradosRef.current.clear();
-    mostrarProximoAnuncio();
-  }
-
-  // Nova função para registrar a visualização do anúncio
-  const registrarVisualizacaoAnuncio = useCallback(async (anuncioId, leadId, hotspotId) => {
-    if (!anuncioId || !leadId || !hotspotId) {
-      console.error("Dados incompletos para registrar visualização de anúncio.");
-      return;
-    }
-    const { error } = await supabase.from('visualizacoes_anuncios').insert([{
-      anuncio_id: anuncioId,
-      lead_id: leadId,
-      hotspot_id: hotspotId,
-    }]);
-    if (error) {
-      console.error("Erro ao registrar visualização de anúncio:", error);
-    } else {
-      console.log(`Visualização do anúncio ${anuncioId} registrada.`);
-    }
-  }, []);
-
-
-  const mostrarProximoAnuncio = useCallback(() => {
-    const anunciosDisponiveis = anuncios.filter(anuncio => !anunciosMostradosRef.current.has(anuncio.id));
-
-    if (anunciosDisponiveis.length === 0) {
       if (anuncios.length > 0) {
-        anunciosMostradosRef.current.clear();
-        console.log("Todos os anúncios foram mostrados. Reiniciando o ciclo de anúncios.");
-        mostrarProximoAnuncio();
-        return;
+        const anuncioSorteado = anuncios[Math.floor(Math.random() * anuncios.length)]
+        setAnuncioAtual(anuncioSorteado)
+        setEtapa(ETAPAS.ANUNCIO) 
       } else {
-        setEtapa(ETAPAS.ACESSO);
-        return;
+        setEtapa(ETAPAS.ACESSO) 
+      }
+
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error)
+      alert(`Erro do banco: ${error.message || error.details || 'Erro desconhecido'}`)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  async function handleCtaClick(clicou) {
+    if (clicou && anuncioAtual && leadId) {
+      try {
+        await supabase.rpc('incrementar_clique', { anuncio_id_param: anuncioAtual.id })
+      } catch (error) {
+        console.error('Erro ao registrar clique:', error)
       }
     }
-
-    const aleatorio = anunciosDisponiveis[Math.floor(Math.random() * anunciosDisponiveis.length)];
-    setAnuncioAtual(aleatorio);
-    setContador(aleatorio.duracao_segundos || 15);
-    setEtapa(ETAPAS.ANUNCIO);
-
-    anunciosMostradosRef.current.add(aleatorio.id);
-
-    // Registra a visualização do anúncio aqui
-    if (leadId && hotspot?.id) { // Garante que leadId e hotspot.id estão disponíveis
-      registrarVisualizacaoAnuncio(aleatorio.id, leadId, hotspot.id);
-    }
-
-
-  }, [anuncios, leadId, hotspot?.id, registrarVisualizacaoAnuncio]); // Adicionado dependências
-
-
-  useEffect(() => {
-    if (etapa !== ETAPAS.ANUNCIO) return
-    if (contador <= 0) {
-      setEtapa(ETAPAS.CTA)
-      return
-    }
-    const timer = setTimeout(() => setContador((c) => c - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [etapa, contador])
-
-  useEffect(() => {
-    if (intervaloAnuncioRef.current) {
-      clearInterval(intervaloAnuncioRef.current);
-      intervaloAnuncioRef.current = null;
-    }
-
-    if (etapa === ETAPAS.ACESSO) {
-      intervaloAnuncioRef.current = setInterval(() => {
-        console.log("20 minutos se passaram. Forçando novo anúncio.");
-        mostrarProximoAnuncio();
-      }, 20 * 60 * 1000); // Mantenho 10 segundos para teste, lembre-se de ajustar para 20 * 60 * 1000
-    }
-
-    return () => {
-      if (intervaloAnuncioRef.current) {
-        clearInterval(intervaloAnuncioRef.current);
-        intervaloAnuncioRef.current = null;
-      }
-    };
-  }, [etapa, mostrarProximoAnuncio]);
-
-  const handleCtaClick = useCallback(() => {
-    setEtapa(ETAPAS.ACESSO);
-  }, []);
-
-  function formatarCPF(v) {
-    const n = v.replace(/\D/g, '').slice(0, 11)
-    if (n.length <= 3) return n
-    if (n.length <= 6) return `${n.slice(0,3)}.${n.slice(3)}`
-    if (n.length <= 9) return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6)}`
-    return `${n.slice(0,3)}.${n.slice(3,6)}.${n.slice(6,9)}-${n.slice(9)}`
-  }
-
-  function formatarTelefone(v) {
-    const n = v.replace(/\D/g, '').slice(0, 11)
-    if (n.length <= 2) return n
-    if (n.length <= 7) return `(${n.slice(0,2)}) ${n.slice(2)}`
-    return `(${n.slice(0,2)}) ${n.slice(2,7)}-${n.slice(7)}`
-  }
-
-  const cor = hotspot?.cor_primaria || '#22c55e'
-
-  if (etapa === ETAPAS.LOADING) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: cor }} />
-      </div>
-    )
-  }
-
-  if (etapa === ETAPAS.ERRO) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center p-6 text-center">
-        <div>
-          <div className="text-4xl mb-4">📡</div>
-          <h1 className="text-white text-xl font-bold mb-2">Erro ao carregar Hotspot</h1>
-          <p className="text-gray-400 text-sm">
-            Não foi possível encontrar as informações do hotspot. Verifique o link.
-          </p>
-        </div>
-      </div>
-    )
+    setEtapa(ETAPAS.ACESSO)
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-green-500/30 flex items-center justify-center p-4 relative overflow-hidden">
 
-      {/* ETAPA 1 — CADASTRO */}
+      {/* Efeitos de Luz no Fundo (Ambient Glow Minimalista) */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+
+      {/* ETAPA 0 — LOADING */}
+      {etapa === ETAPAS.LOADING && (
+        <div className="relative z-10 flex flex-col items-center justify-center animate-fade-in-up">
+          <div className="relative w-20 h-20 flex items-center justify-center mb-4">
+            <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
+            <Wifi className="text-green-500 animate-pulse" size={30} />
+          </div>
+          <p className="text-gray-500 font-medium tracking-wide">Conectando à rede...</p>
+        </div>
+      )}
+
+      {/* ETAPA 1 — ERRO */}
+      {etapa === ETAPAS.ERRO && (
+        <div className="relative z-10 w-full max-w-md text-center animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] p-10 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
+              <ShieldCheck size={32} className="text-red-400" />
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-3">Rede não encontrada</h1>
+            <p className="text-gray-500 text-sm">Verifique se você escaneou o QR Code correto ou tente conectar novamente.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ETAPA 2 — CADASTRO */}
       {etapa === ETAPAS.CADASTRO && (
-        <div className="w-full max-w-md text-center">
-          <div className="mb-8">
-            <div
-              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              👋
+        <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+
+            {/* LOGO COM EFEITO BLUR NO HOVER */}
+            <div className="flex justify-center mb-8 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
+              </div>
             </div>
-            <h1 className="text-white text-2xl font-bold mb-2">Bem-vindo ao Wi-Fi de {hotspot?.nome}!</h1>
-            <p className="text-gray-400 text-sm">
-              Preencha seus dados para acessar a internet.
-            </p>
-          </div>
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8">
-            <div className="flex flex-col gap-4 mb-6">
-              <div>
-                <label htmlFor="nome" className="block text-left text-sm font-medium text-gray-300 mb-1">Nome</label>
-                <input
-                  type="text"
-                  id="nome"
-                  value={form.nome}
-                  onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Seu nome completo"
-                />
-                {erros.nome && <p className="text-red-500 text-xs mt-1 text-left">{erros.nome}</p>}
-              </div>
-              <div>
-                <label htmlFor="email" className="block text-left text-sm font-medium text-gray-300 mb-1">E-mail</label>
-                <input
-                  type="email"
-                  id="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="seu@email.com"
-                />
-                {erros.email && <p className="text-red-500 text-xs mt-1 text-left">{erros.email}</p>}
-              </div>
-              <div>
-                <label htmlFor="telefone" className="block text-left text-sm font-medium text-gray-300 mb-1">Telefone</label>
-                <input
-                  type="tel"
-                  id="telefone"
-                  value={formatarTelefone(form.telefone)}
-                  onChange={(e) => setForm({ ...form, telefone: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="(99) 99999-9999"
-                />
-                {erros.telefone && <p className="text-red-500 text-xs mt-1 text-left">{erros.telefone}</p>}
-              </div>
-              <div>
-                <label htmlFor="cpf" className="block text-left text-sm font-medium text-gray-300 mb-1">CPF</label>
-                <input
-                  type="text"
-                  id="cpf"
-                  value={formatarCPF(form.cpf)}
-                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl bg-gray-800 border border-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="999.999.999-99"
-                />
-                {erros.cpf && <p className="text-red-500 text-xs mt-1 text-left">{erros.cpf}</p>}
-              </div>
-              <div className="flex items-center mt-2">
-                <input
-                  type="checkbox"
-                  id="aceite_lgpd"
-                  checked={form.aceite_lgpd}
-                  onChange={(e) => setForm({ ...form, aceite_lgpd: e.target.checked })}
-                  className="h-4 w-4 text-green-500 focus:ring-green-500 border-gray-600 rounded"
-                />
-                <label htmlFor="aceite_lgpd" className="ml-2 block text-sm text-gray-400 text-left">
-                  Li e aceito a <a href="#" className="text-green-500 hover:underline">política de privacidade</a>.
-                </label>
-              </div>
-              {erros.aceite_lgpd && <p className="text-red-500 text-xs mt-1 text-left">{erros.aceite_lgpd}</p>}
-              {erros.geral && <p className="text-red-500 text-xs mt-4 text-left">{erros.geral}</p>}
-            </div>
-            <button
-              onClick={handleCadastro}
-              disabled={salvando}
-              className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all shadow-lg"
-              style={{ backgroundColor: cor }}
-            >
-              {salvando ? 'Salvando...' : 'Continuar'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ETAPA 2 — ANÚNCIO */}
-      {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
-        <div className="fixed inset-0 flex flex-col items-center justify-end z-50 bg-black">
-          {/* Mídia do Anúncio (Vídeo ou Imagem) */}
-          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-            <video
-              key={anuncioAtual.media_url}
-              src={anuncioAtual.media_url}
-              className="absolute inset-0 w-full h-full object-cover"
-              autoPlay
-              muted
-              playsInline
-              onEnded={() => setContador(0)} // Avança se o vídeo terminar antes do contador
-            />
-          ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
-            <img
-              key={anuncioAtual.media_url}
-              src={anuncioAtual.media_url}
-              alt={anuncioAtual.titulo || 'Anúncio'}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-lg">
-              Nenhuma mídia disponível para este anúncio.
-            </div>
-          )}
-
-          {/* Overlay Escuro */}
-          <div className="absolute inset-0 bg-black opacity-50 z-10"></div>
-
-          {/* Conteúdo do Anúncio (Contador e Texto) */}
-          <div className="relative z-20 flex flex-col items-center justify-end h-full w-full p-6">
-            {contador > 0 ? (
-              <div className="flex flex-col items-center gap-2 mb-8">
-                <div
-                  className="w-16 h-16 rounded-full border-4 flex items-center justify-center text-2xl font-bold text-white shadow-lg"
-                  style={{ borderColor: cor }}
-                >
-                  {contador}
-                </div>
-                <p className="text-gray-200 text-sm font-medium">Aguarde para continuar</p>
-              </div>
-            ) : (
-              // Este bloco só aparece quando o contador <= 0
-              <>
-                {/* Título e descrição visíveis apenas após o contador zerar */}
-                <div className="bg-gray-900/80 backdrop-blur-sm rounded-2xl p-6 text-center mb-8 max-w-md w-full">
-                  {anuncioAtual.titulo && (
-                    <h2 className="text-white text-2xl font-bold mb-2">{anuncioAtual.titulo}</h2>
-                  )}
-                  {anuncioAtual.descricao && (
-                    <p className="text-gray-300 text-base leading-relaxed">{anuncioAtual.descricao}</p>
-                  )}
-                </div>
-                <button
-                  onClick={() => setEtapa(ETAPAS.CTA)}
-                  className="w-full max-w-xs py-3.5 rounded-xl font-semibold text-base text-black transition-all shadow-lg"
-                  style={{ backgroundColor: cor }}
-                >
-                  Continuar
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ETAPA 3 — CTA DO ANUNCIANTE (NOVA IMPLEMENTAÇÃO) */}
-      {etapa === ETAPAS.CTA && anuncioAtual && (
-        <div className="fixed inset-0 flex flex-col items-center justify-center z-50 bg-black">
-          {/* Mídia do Anúncio (Vídeo ou Imagem) com opacidade de 60% */}
-          {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-            <video
-              key={anuncioAtual.media_url}
-              src={anuncioAtual.media_url}
-              className="absolute inset-0 w-full h-full object-cover opacity-60"
-              autoPlay
-              muted
-              playsInline
-              loop
-            />
-          ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
-            <img
-              key={anuncioAtual.media_url}
-              src={anuncioAtual.media_url}
-              alt={anuncioAtual.titulo || 'Anúncio'}
-              className="absolute inset-0 w-full h-full object-cover opacity-60"
-            />
-          ) : (
-            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gray-900 text-gray-500 text-lg opacity-60">
-              Nenhuma mídia disponível para este anúncio.
-            </div>
-          )}
-
-          {/* Overlay Escuro sobre a mídia esmaecida */}
-          <div className="absolute inset-0 bg-black opacity-70 z-10"></div>
-
-          {/* Popup Centralizado para o CTA */}
-          <div className="relative z-20 w-full max-w-md text-center p-4">
-            <div className="bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl">
-              <h2 className="text-white text-2xl font-bold mb-2">Oferta especial para você!</h2>
-              <p className="text-gray-300 text-base mb-6 leading-relaxed">
-                {anuncioAtual.titulo} — clique abaixo para saber mais e aproveitar a oferta.
+            <div className="text-center mb-8">
+              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-2 tracking-tight">
+                Wi-Fi Grátis
+              </h1>
+              <p className="text-gray-500 text-sm font-medium">
+                Cadastre-se para liberar seu acesso em <strong className="text-gray-300">{hotspot?.nome}</strong>
               </p>
+            </div>
 
-              <div className="flex flex-col gap-3">
+            <form onSubmit={handleCadastro} className="space-y-4">
+              {/* Input Nome */}
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <User size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                </div>
+                <input type="text" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="Nome completo" />
+                {erros.nome && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.nome}</span>}
+              </div>
+
+              {/* Input Email */}
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <Mail size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                </div>
+                <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="E-mail" />
+                {erros.email && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.email}</span>}
+              </div>
+
+              {/* Input Telefone */}
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <Smartphone size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                </div>
+                <input type="tel" value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="WhatsApp (com DDD)" />
+                {erros.telefone && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.telefone}</span>}
+              </div>
+
+              {/* Input CPF */}
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                </div>
+                <input type="text" value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="CPF" />
+                {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
+              </div>
+
+              {/* Checkbox LGPD Premium */}
+              <div className="pt-2">
+                <label className="flex items-start gap-3 cursor-pointer group">
+                  <div className="relative flex items-center justify-center mt-0.5">
+                    <input type="checkbox" checked={form.aceite_lgpd} onChange={e => setForm({...form, aceite_lgpd: e.target.checked})} className="peer sr-only" />
+                    <div className="w-5 h-5 rounded border border-white/[0.1] bg-[#0a0a0a] peer-checked:bg-green-500 peer-checked:border-green-500 transition-all duration-300 flex items-center justify-center">
+                      <CheckCircle2 size={14} className="text-black opacity-0 peer-checked:opacity-100 transition-opacity duration-300" />
+                    </div>
+                  </div>
+                  <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-400 transition-colors">
+                    Concordo com os <a href="#" className="text-green-500 hover:underline">Termos de Uso</a> e <a href="#" className="text-green-500 hover:underline">Política de Privacidade</a>.
+                  </span>
+                </label>
+                {erros.aceite_lgpd && <span className="text-red-400 text-xs mt-2 ml-8 block">{erros.aceite_lgpd}</span>}
+              </div>
+
+              {/* Botão Conectar */}
+              <button type="submit" disabled={salvando} className="w-full mt-6 bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+                {salvando ? <Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ETAPA 3 — ANÚNCIO (TELA CHEIA 9:16) */}
+      {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
+        <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center animate-fade-in-up">
+
+          {/* Barra de Progresso Premium */}
+          <div className="absolute top-0 left-0 w-full h-1.5 bg-white/[0.05] z-30">
+            <div 
+              className="h-full bg-green-500 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.8)]"
+              style={{ width: `${((anuncioAtual.duracao_segundos - contador) / anuncioAtual.duracao_segundos) * 100}%` }}
+            />
+          </div>
+
+          {/* Container do Vídeo/Imagem restrito à proporção 1080x1920 (9:16) */}
+          <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+              <video src={anuncioAtual.media_url} className="w-full h-full object-cover" autoPlay muted playsInline loop />
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+              <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
+            ) : (
+              <div className="text-gray-600 text-sm">Mídia não disponível</div>
+            )}
+
+            {/* Degradê escuro na parte de baixo */}
+            <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none" />
+          </div>
+
+          {/* Contador flutuante Premium */}
+          <div className="absolute top-6 right-6 z-20">
+            <div className="bg-black/40 backdrop-blur-xl border border-white/[0.05] px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
+              <Loader2 size={14} className="text-green-500 animate-spin" />
+              <span className="text-white text-sm font-medium tracking-wide">Aguarde {contador}s</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ETAPA 3.5 — CTA DO ANUNCIANTE */}
+      {etapa === ETAPAS.CTA && anuncioAtual && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-[#050505]/80 backdrop-blur-xl p-4">
+          <div className="absolute inset-0 opacity-20 pointer-events-none">
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+              <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay muted loop playsInline />
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+              <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" />
+            ) : null}
+          </div>
+
+          <div className="relative z-20 w-full max-w-sm animate-fade-in-up">
+            <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 text-center border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+
+              <div className="flex justify-center mb-8 group cursor-pointer">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                  <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
+                </div>
+              </div>
+
+              <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">Oferta Especial!</h2>
+              <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
+
+              <div className="flex flex-col gap-4">
                 {anuncioAtual.url_destino && (
-                  <a
-                    href={anuncioAtual.url_destino}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={handleCtaClick}
-                    className="w-full py-3.5 rounded-xl font-semibold text-base text-black transition-all block shadow-lg"
-                    style={{ backgroundColor: cor }}
-                  >
-                    Quero saber mais
+                  <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]">
+                    Quero aproveitar
                   </a>
                 )}
-                <button
-                  onClick={handleCtaClick}
-                  className="w-full py-3 rounded-xl font-medium text-base text-gray-400 hover:text-gray-200 transition-colors"
-                >
-                  Não, obrigado — ir para o Wi-Fi
+                <button onClick={() => handleCtaClick(false)} className="w-full py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300">
+                  Não, obrigado. Ir para o Wi-Fi
                 </button>
               </div>
             </div>
@@ -488,32 +403,46 @@ const validateCpf = (cpf) => {
 
       {/* ETAPA 4 — ACESSO LIBERADO */}
       {etapa === ETAPAS.ACESSO && (
-        <div className="w-full max-w-md text-center">
-          <div className="mb-8">
-            <div
-              className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center text-4xl"
-              style={{ backgroundColor: `${cor}20` }}
-            >
-              ✅
-            </div>
-            <h1 className="text-white text-2xl font-bold mb-2">Wi-Fi liberado!</h1>
-            <p className="text-gray-400 text-sm">
-              Você já tem acesso à internet. Aproveite sua conexão em <strong className="text-white">{hotspot?.nome}</strong>.
-            </p>
-          </div>
+        <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-12 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
 
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-5 text-left">
-            <div className="flex items-center gap-3">
-              <div
-                className="w-2 h-2 rounded-full animate-pulse"
-                style={{ backgroundColor: cor }}
-              />
-              <span className="text-sm text-gray-300">Conexão ativa</span>
+            <div className="flex justify-center mb-10 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
+              </div>
+            </div>
+
+            <div className="relative w-24 h-24 mx-auto mb-8">
+              <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-green-500"></div>
+              <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-green-400 to-green-600">
+                <Wifi size={40} className="text-black" />
+              </div>
+            </div>
+
+            <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Conectado!</h1>
+            <p className="text-gray-500 text-sm mb-10 leading-relaxed">
+              Sua internet foi liberada com sucesso. Aproveite a conexão em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+            </p>
+
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.02] border border-white/[0.05]">
+              <div className="w-2 h-2 rounded-full animate-pulse bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status: Online</span>
             </div>
           </div>
         </div>
       )}
 
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          opacity: 0;
+        }
+      `}} />
     </div>
   )
 }

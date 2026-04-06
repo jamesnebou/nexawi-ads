@@ -35,7 +35,7 @@ export default function WelcomePage() {
           Ir para o Dashboard
         </Link>
         <Link href="/admin" style={{ 
-          backgroundColor: '#6c757d', 
+          backgroundColor: '#050505', 
           color: 'white', 
           padding: '12px 25px', 
           borderRadius: '5px', 

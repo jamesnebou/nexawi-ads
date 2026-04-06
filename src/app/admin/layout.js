@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import Link from 'next/link'
+import { LogOut } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -47,15 +48,14 @@ export default function AdminLayout({ children }) {
     router.push('/admin/login')
   }
 
-  // Página de login não usa o layout com sidebar
   if (pathname === '/admin/login') {
     return <>{children}</>
   }
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -63,53 +63,46 @@ export default function AdminLayout({ children }) {
   if (!usuario) return null
 
   return (
-    <div style={{ display: 'flex', height: '100vh', background: '#f9fafb' }}>
-      {/* Sidebar admin — completamente isolada do dashboard */}
-      <div style={{ width: '240px', background: '#fff', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column' }}>
-        <div style={{ padding: '24px', borderBottom: '1px solid #e5e7eb' }}>
-          <h1 style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827', margin: 0 }}>Admin</h1>
-          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>{usuario.email}</p>
+    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-green-500/30">
+      {/* Sidebar Admin Premium */}
+      <div className="w-64 bg-[#0a0a0a] border-r border-white/[0.05] flex flex-col flex-shrink-0 z-20">
+        <div className="p-6 border-b border-white/[0.05]">
+          <h1 className="text-xl font-extrabold text-white tracking-tight">Admin</h1>
+          <p className="text-xs text-neutral-500 mt-1 font-medium truncate">{usuario.email}</p>
         </div>
 
-        <nav style={{ flex: 1, padding: '16px 0' }}>
+        <nav className="flex-1 py-6 flex flex-col gap-1">
           {menuItems.map((item) => {
             const ativo = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href)
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '10px 24px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  textDecoration: 'none',
-                  color: ativo ? '#1d4ed8' : '#374151',
-                  background: ativo ? '#eff6ff' : 'transparent',
-                  borderRight: ativo ? '2px solid #1d4ed8' : '2px solid transparent',
-                }}
+                className={`flex items-center gap-3 px-6 py-3.5 text-sm font-bold transition-all duration-300 border-r-2 ${
+                  ativo 
+                    ? 'text-green-400 bg-green-500/10 border-green-500 shadow-inner' 
+                    : 'text-neutral-500 border-transparent hover:bg-white/[0.02] hover:text-neutral-300'
+                }`}
               >
-                <span>{item.icon}</span>
+                <span className="text-lg">{item.icon}</span>
                 {item.label}
               </Link>
             )
           })}
         </nav>
 
-        <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb' }}>
+        <div className="p-6 border-t border-white/[0.05]">
           <button
             onClick={logout}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#6b7280', display: 'flex', alignItems: 'center', gap: '8px' }}
+            className="flex items-center gap-2 text-sm font-bold text-neutral-500 hover:text-white transition-colors w-full"
           >
-            <span>🚪</span> Sair
+            <LogOut size={16} /> Sair
           </button>
         </div>
       </div>
 
-      {/* Conteúdo */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Conteúdo Principal */}
+      <div className="flex-1 overflow-y-auto relative z-10">
         {children}
       </div>
     </div>
