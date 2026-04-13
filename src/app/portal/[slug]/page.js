@@ -5,7 +5,7 @@ import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { 
   User, Mail, Smartphone, FileText, ShieldCheck, 
-  Wifi, Loader2, ArrowRight, CheckCircle2 
+  Wifi, Loader2, ArrowRight, CheckCircle2, Clock, X, Shield
 } from 'lucide-react'
 
 const supabase = createClient(
@@ -19,6 +19,7 @@ const ETAPAS = {
   ANUNCIO: 'anuncio',
   CTA: 'cta',
   ACESSO: 'acesso',
+  BLOQUEADO: 'bloqueado',
   ERRO: 'erro',
 }
 
@@ -28,9 +29,14 @@ export default function Portal() {
   const [hotspot, setHotspot] = useState(null)
   const [anuncioAtual, setAnuncioAtual] = useState(null)
   const [anuncios, setAnuncios] = useState([])
+  const [anunciosExibidos, setAnunciosExibidos] = useState([]) 
   const [contador, setContador] = useState(0)
   const [salvando, setSalvando] = useState(false)
   const [leadId, setLeadId] = useState(null)
+  const [ipAddress, setIpAddress] = useState('0.0.0.0')
+  const [tempoEspera, setTempoEspera] = useState(0) 
+  const [modalAberto, setModalAberto] = useState(null) 
+
   const [form, setForm] = useState({
     nome: '', email: '', telefone: '', cpf: '', aceite_lgpd: false,
   })
@@ -38,9 +44,44 @@ export default function Portal() {
 
   const intervaloAnuncioRef = useRef(null)
 
-  // 1. Busca os dados iniciais
+   // 1. INICIALIZAÇÃO UNIFICADA (Resolve o Loop e ajusta a regra de tempo)
   useEffect(() => {
-    buscarHotspot()
+    // A. Busca o IP silenciosamente
+    fetch('https://api.ipify.org?format=json')
+      .then(res => res.json())
+      .then(data => setIpAddress(data.ip))
+      .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
+
+    // B. Verifica a regra de tempo (1h de uso + 20m de bloqueio)
+    const lastConnection = localStorage.getItem('nexawi_last_connection')
+    let isBlocked = false;
+
+    if (lastConnection) {
+      const tempoPassadoMs = Date.now() - parseInt(lastConnection)
+      const tempoUsoMs = 60 * 60 * 1000 // 60 minutos de uso permitido
+      const tempoTotalCicloMs = 80 * 60 * 1000 // 60 uso + 20 bloqueio = 80 minutos
+
+      if (tempoPassadoMs < tempoUsoMs) {
+        // Cenário 1: Ainda está dentro da 1 hora de uso.
+        // Se ele caiu na tela do portal por engano, apenas mostramos que está conectado.
+        setEtapa(ETAPAS.ACESSO)
+        isBlocked = true;
+      } else if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+        // Cenário 2: Passou de 1 hora, mas ainda não deu 1h20m. (Está na geladeira)
+        const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+        setTempoEspera(minutosRestantes)
+        setEtapa(ETAPAS.BLOQUEADO)
+        isBlocked = true;
+      } else {
+        // Cenário 3: Já passou de 80 minutos. Limpa a memória para ele logar de novo.
+        localStorage.removeItem('nexawi_last_connection')
+      }
+    }
+
+    // C. Se não estiver bloqueado/conectado, busca os dados do Hotspot para iniciar o cadastro
+    if (!isBlocked) {
+      buscarHotspot()
+    }
   }, [slug])
 
   // 2. Controla o cronômetro do anúncio atual
@@ -65,24 +106,83 @@ export default function Portal() {
     }
   }, [etapa, anuncioAtual])
 
-  // 3. Loop de 20 minutos para exibir novo anúncio
+  // 3. Loop de 10 minutos para exibir novo anúncio
   useEffect(() => {
     let timeoutId;
 
     if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
-      const tempoEmMilissegundos = 20 * 60 * 1000; 
+      const tempoEmMilissegundos = 10 * 60 * 1000; // 10 minutos
 
       timeoutId = setTimeout(() => {
-        const anuncioSorteado = anuncios[Math.floor(Math.random() * anuncios.length)]
-        setAnuncioAtual(anuncioSorteado)
-        setEtapa(ETAPAS.ANUNCIO)
+        const anuncioSorteado = sortearAnuncioSemRepetir()
+        if (anuncioSorteado) {
+          setAnuncioAtual(anuncioSorteado)
+          setEtapa(ETAPAS.ANUNCIO)
+          registrarVisualizacao(anuncioSorteado.id, ipAddress)
+        }
       }, tempoEmMilissegundos)
     }
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId)
     }
-  }, [etapa, anuncios])
+  }, [etapa, anuncios, ipAddress, anunciosExibidos])
+
+  // --- FUNÇÃO: SORTEIO SEM REPETIÇÃO ---
+  function sortearAnuncioSemRepetir() {
+    if (anuncios.length === 0) return null;
+
+    let disponiveis = anuncios.filter(ad => !anunciosExibidos.includes(ad.id));
+
+    if (disponiveis.length === 0) {
+      disponiveis = [...anuncios];
+      setAnunciosExibidos([]); // Reseta a memória se já viu todos
+    }
+
+    const sorteado = disponiveis[Math.floor(Math.random() * disponiveis.length)];
+    setAnunciosExibidos(prev => [...prev, sorteado.id]);
+    return sorteado;
+  }
+
+  // --- FUNÇÕES ANTI-FRAUDE (IP + 1 por dia) ---
+  async function registrarVisualizacao(anuncioId, ip) {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const { data: existing } = await supabase
+        .from('anuncio_views')
+        .select('id')
+        .eq('anuncio_id', anuncioId)
+        .eq('ip_address', ip)
+        .gte('timestamp', `${hoje}T00:00:00.000Z`)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('anuncio_views').insert([{ anuncio_id: anuncioId, ip_address: ip }]);
+      }
+    } catch (err) {
+      console.error('Erro silencioso ao registrar view:', err);
+    }
+  }
+
+  async function registrarClique(anuncioId, ip) {
+    try {
+      const hoje = new Date().toISOString().split('T')[0];
+      const { data: existing } = await supabase
+        .from('anuncio_clicks')
+        .select('id')
+        .eq('anuncio_id', anuncioId)
+        .eq('ip_address', ip)
+        .gte('timestamp', `${hoje}T00:00:00.000Z`)
+        .limit(1);
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('anuncio_clicks').insert([{ anuncio_id: anuncioId, ip_address: ip }]);
+      }
+    } catch (err) {
+      console.error('Erro silencioso ao registrar clique:', err);
+    }
+  }
+  // --------------------------------------------
 
   async function buscarHotspot() {
     const { data: hotspotData, error: hotspotError } = await supabase
@@ -105,7 +205,6 @@ export default function Portal() {
 
     if (vinculos && vinculos.length > 0) {
       const anuncioIds = vinculos.map(v => v.anuncio_id)
-
       const { data: anunciosData } = await supabase
         .from('anuncios')
         .select('*')
@@ -129,13 +228,9 @@ export default function Portal() {
     const cleanedCpf = String(cpf).replace(/\D/g, '')
     const cpfRepeatedDigitsRegex = new RegExp('^(\\d)\\1{10}$')
 
-    if (cleanedCpf.length !== 11 || cpfRepeatedDigitsRegex.test(cleanedCpf)) {
-      return false
-    }
+    if (cleanedCpf.length !== 11 || cpfRepeatedDigitsRegex.test(cleanedCpf)) return false
 
-    let sum = 0
-    let remainder
-
+    let sum = 0, remainder
     for (let i = 1; i <= 9; i++) sum = sum + parseInt(cleanedCpf.substring(i - 1, i)) * (11 - i)
     remainder = (sum * 10) % 11
     if ((remainder === 10) || (remainder === 11)) remainder = 0
@@ -168,6 +263,8 @@ export default function Portal() {
 
     setSalvando(true)
     try {
+      const anuncioSorteado = sortearAnuncioSemRepetir()
+
       const { data, error } = await supabase
         .from('leads')
         .insert([{
@@ -176,7 +273,8 @@ export default function Portal() {
           email: form.email,
           telefone: String(form.telefone).replace(/\D/g, ''),
           cpf: String(form.cpf).replace(/\D/g, ''),
-          aceite_lgpd: form.aceite_lgpd
+          aceite_lgpd: form.aceite_lgpd,
+          anuncio_id: anuncioSorteado ? anuncioSorteado.id : null
         }])
         .select()
         .single()
@@ -185,10 +283,13 @@ export default function Portal() {
 
       setLeadId(data.id)
 
-      if (anuncios.length > 0) {
-        const anuncioSorteado = anuncios[Math.floor(Math.random() * anuncios.length)]
+      // Registra o início da sessão para a regra de bloqueio
+      localStorage.setItem('nexawi_last_connection', Date.now().toString())
+
+      if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setEtapa(ETAPAS.ANUNCIO) 
+        registrarVisualizacao(anuncioSorteado.id, ipAddress)
       } else {
         setEtapa(ETAPAS.ACESSO) 
       }
@@ -202,12 +303,8 @@ export default function Portal() {
   }
 
   async function handleCtaClick(clicou) {
-    if (clicou && anuncioAtual && leadId) {
-      try {
-        await supabase.rpc('incrementar_clique', { anuncio_id_param: anuncioAtual.id })
-      } catch (error) {
-        console.error('Erro ao registrar clique:', error)
-      }
+    if (clicou && anuncioAtual) {
+      await registrarClique(anuncioAtual.id, ipAddress)
     }
     setEtapa(ETAPAS.ACESSO)
   }
@@ -215,7 +312,7 @@ export default function Portal() {
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-green-500/30 flex items-center justify-center p-4 relative overflow-hidden">
 
-      {/* Efeitos de Luz no Fundo (Ambient Glow Minimalista) */}
+      {/* Efeitos de Luz no Fundo */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
 
       {/* ETAPA 0 — LOADING */}
@@ -229,25 +326,43 @@ export default function Portal() {
         </div>
       )}
 
+      {/* ETAPA - BLOQUEADO (COOLDOWN) */}
+      {etapa === ETAPAS.BLOQUEADO && (
+        <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-12 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+            <div className="flex justify-center mb-8">
+              <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center border border-red-500/20">
+                <Clock size={32} className="text-red-500" />
+              </div>
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Tempo Esgotado</h1>
+            <p className="text-gray-400 text-sm mb-8 leading-relaxed">
+              Você já utilizou seu tempo limite de conexão. Para garantir o acesso a todos, aguarde o tempo de carência.
+            </p>
+            <div className="bg-[#0a0a0a] rounded-2xl p-4 border border-white/[0.05]">
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Tempo Restante</p>
+              <p className="text-3xl font-light text-white">{tempoEspera} <span className="text-base text-gray-500">min</span></p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ETAPA 1 — ERRO */}
       {etapa === ETAPAS.ERRO && (
-        <div className="relative z-10 w-full max-w-md text-center animate-fade-in-up">
-          <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] p-10 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-            <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6 border border-red-500/20">
-              <ShieldCheck size={32} className="text-red-400" />
-            </div>
-            <h1 className="text-2xl font-bold text-white mb-3">Rede não encontrada</h1>
-            <p className="text-gray-500 text-sm">Verifique se você escaneou o QR Code correto ou tente conectar novamente.</p>
+        <div className="relative z-10 text-center animate-fade-in-up">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <ShieldCheck className="text-red-500" size={24} />
           </div>
+          <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
+          <p className="text-gray-500">Não foi possível carregar as configurações deste ponto de acesso.</p>
         </div>
       )}
 
       {/* ETAPA 2 — CADASTRO */}
       {etapa === ETAPAS.CADASTRO && (
         <div className="relative z-10 w-full max-w-md animate-fade-in-up">
-          <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] p-8 sm:p-12 shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
 
-            {/* LOGO COM EFEITO BLUR NO HOVER */}
             <div className="flex justify-center mb-8 group cursor-pointer">
               <div className="relative">
                 <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
@@ -255,12 +370,10 @@ export default function Portal() {
               </div>
             </div>
 
-            <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-2 tracking-tight">
-                Wi-Fi Grátis
-              </h1>
-              <p className="text-gray-500 text-sm font-medium">
-                Cadastre-se para liberar seu acesso em <strong className="text-gray-300">{hotspot?.nome}</strong>
+            <div className="text-center mb-10">
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Wi-Fi Grátis</h1>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
               </p>
             </div>
 
@@ -274,7 +387,7 @@ export default function Portal() {
                 {erros.nome && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.nome}</span>}
               </div>
 
-              {/* Input Email */}
+              {/* Input E-mail */}
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
                   <Mail size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
@@ -311,7 +424,7 @@ export default function Portal() {
                     </div>
                   </div>
                   <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-400 transition-colors">
-                    Concordo com os <a href="#" className="text-green-500 hover:underline">Termos de Uso</a> e <a href="#" className="text-green-500 hover:underline">Política de Privacidade</a>.
+                    Concordo com os <button type="button" onClick={() => setModalAberto('termos')} className="text-green-500 hover:underline">Termos de Uso</button> e <button type="button" onClick={() => setModalAberto('privacidade')} className="text-green-500 hover:underline">Política de Privacidade</button>.
                   </span>
                 </label>
                 {erros.aceite_lgpd && <span className="text-red-400 text-xs mt-2 ml-8 block">{erros.aceite_lgpd}</span>}
@@ -329,16 +442,12 @@ export default function Portal() {
       {/* ETAPA 3 — ANÚNCIO (TELA CHEIA 9:16) */}
       {etapa === ETAPAS.ANUNCIO && anuncioAtual && (
         <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center animate-fade-in-up">
-
-          {/* Barra de Progresso Premium */}
           <div className="absolute top-0 left-0 w-full h-1.5 bg-white/[0.05] z-30">
             <div 
               className="h-full bg-green-500 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.8)]"
               style={{ width: `${((anuncioAtual.duracao_segundos - contador) / anuncioAtual.duracao_segundos) * 100}%` }}
             />
           </div>
-
-          {/* Container do Vídeo/Imagem restrito à proporção 1080x1920 (9:16) */}
           <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
             {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
               <video src={anuncioAtual.media_url} className="w-full h-full object-cover" autoPlay muted playsInline loop />
@@ -347,12 +456,8 @@ export default function Portal() {
             ) : (
               <div className="text-gray-600 text-sm">Mídia não disponível</div>
             )}
-
-            {/* Degradê escuro na parte de baixo */}
             <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none" />
           </div>
-
-          {/* Contador flutuante Premium */}
           <div className="absolute top-6 right-6 z-20">
             <div className="bg-black/40 backdrop-blur-xl border border-white/[0.05] px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <Loader2 size={14} className="text-green-500 animate-spin" />
@@ -375,17 +480,14 @@ export default function Portal() {
 
           <div className="relative z-20 w-full max-w-sm animate-fade-in-up">
             <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 text-center border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-
               <div className="flex justify-center mb-8 group cursor-pointer">
                 <div className="relative">
                   <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                   <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
                 </div>
               </div>
-
               <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">Oferta Especial!</h2>
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
-
               <div className="flex flex-col gap-4">
                 {anuncioAtual.url_destino && (
                   <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]">
@@ -405,29 +507,68 @@ export default function Portal() {
       {etapa === ETAPAS.ACESSO && (
         <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
           <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-12 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-
             <div className="flex justify-center mb-10 group cursor-pointer">
               <div className="relative">
                 <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                 <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
               </div>
             </div>
-
             <div className="relative w-24 h-24 mx-auto mb-8">
               <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-green-500"></div>
               <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-green-400 to-green-600">
                 <Wifi size={40} className="text-black" />
               </div>
             </div>
-
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Conectado!</h1>
             <p className="text-gray-500 text-sm mb-10 leading-relaxed">
               Sua internet foi liberada com sucesso. Aproveite a conexão em <strong className="text-gray-300">{hotspot?.nome}</strong>.
             </p>
-
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.02] border border-white/[0.05]">
               <div className="w-2 h-2 rounded-full animate-pulse bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status: Online</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAIS DE TERMOS E PRIVACIDADE */}
+      {modalAberto && (
+        <div className="fixed inset-0 z-[60] bg-[#050505]/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
+              <div className="flex items-center gap-3">
+                {modalAberto === 'termos' ? <FileText className="text-green-500" size={24} /> : <Shield className="text-green-500" size={24} />}
+                <h2 className="text-xl font-bold text-white">
+                  {modalAberto === 'termos' ? 'Termos de Uso' : 'Política de Privacidade'}
+                </h2>
+              </div>
+              <button onClick={() => setModalAberto(null)} className="p-2 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto text-sm text-gray-400 space-y-4 custom-scrollbar">
+              {modalAberto === 'termos' ? (
+                <>
+                  <p><strong>1. Aceitação dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, você concorda com estes termos. O acesso é fornecido de forma gratuita mediante a visualização de anúncios publicitários.</p>
+                  <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lícitos. É estritamente proibido o uso para download de conteúdo ilegal, pirataria, ataques cibernéticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
+                  <p><strong>3. Exibição de Anúncios:</strong> O acesso contínuo à internet está condicionado à exibição periódica de anúncios. O sistema poderá interromper a navegação temporariamente para a exibição de novas campanhas.</p>
+                  <p><strong>4. Limite de Conexão:</strong> Para garantir a qualidade da rede para todos os usuários, a sessão possui um limite de tempo (ex: 1 hora). Após esse período, uma nova autenticação poderá ser exigida, respeitando o tempo de carência estabelecido pelo estabelecimento.</p>
+                  <p><strong>5. Isenção de Responsabilidade:</strong> A NexaWi ADS e o estabelecimento parceiro não se responsabilizam por falhas na conexão, perda de dados ou danos causados por malwares durante o uso da rede aberta. Recomendamos o uso de conexões seguras (HTTPS) para transações sensíveis.</p>
+                </>
+              ) : (
+                <>
+                  <p><strong>1. Coleta de Dados:</strong> A NexaWi ADS coleta os dados fornecidos no momento do cadastro (Nome, E-mail, Telefone, CPF), bem como dados técnicos de conexão (Endereço IP, MAC Address e tempo de sessão) para fins de autenticação e segurança.</p>
+                  <p><strong>2. Finalidade do Uso (LGPD):</strong> Os dados coletados são utilizados para: (a) Liberar o acesso à rede Wi-Fi; (b) Cumprir obrigações legais do Marco Civil da Internet (registro de logs); (c) Direcionar campanhas publicitárias relevantes durante a sua navegação; (d) Comunicações de marketing do estabelecimento parceiro.</p>
+                  <p><strong>3. Compartilhamento:</strong> Seus dados não são vendidos a terceiros. Eles podem ser compartilhados exclusivamente com o estabelecimento onde você está acessando a rede e com autoridades competentes mediante ordem judicial.</p>
+                  <p><strong>4. Segurança:</strong> Adotamos medidas técnicas e administrativas para proteger seus dados pessoais contra acessos não autorizados, destruição ou alteração, armazenando-os em servidores seguros.</p>
+                  <p><strong>5. Seus Direitos:</strong> Conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você tem o direito de solicitar a exclusão, alteração ou visualização dos seus dados a qualquer momento, entrando em contato com o suporte da NexaWi ADS.</p>
+                </>
+              )}
+            </div>
+            <div className="p-6 border-t border-white/[0.05]">
+              <button onClick={() => setModalAberto(null)} className="w-full py-3 bg-white/[0.05] hover:bg-white/[0.1] text-white font-medium rounded-xl transition-colors">
+                Entendi e concordo
+              </button>
             </div>
           </div>
         </div>
@@ -441,6 +582,19 @@ export default function Portal() {
         .animate-fade-in-up {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(255, 255, 255, 0.2);
         }
       `}} />
     </div>

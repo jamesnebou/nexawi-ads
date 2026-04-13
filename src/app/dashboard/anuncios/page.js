@@ -20,6 +20,7 @@ export default function Anuncios() {
   const [modalAberto, setModalAberto] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [anuncioEditando, setAnuncioEditando] = useState(null)
+
   const [form, setForm] = useState({
     titulo: '',
     descricao: '',
@@ -28,6 +29,8 @@ export default function Anuncios() {
     url_destino: '',
     duracao_segundos: 15,
     ativo: true,
+    estado: '',
+    cidade: ''
   })
   const [selectedHotspotIds, setSelectedHotspotIds] = useState([]);
 
@@ -40,18 +43,42 @@ export default function Anuncios() {
   const [filterClientId, setFilterClientId] = useState('')
   const [filterMediaType, setFilterMediaType] = useState('todos')
 
+  const [filterEstado, setFilterEstado] = useState('')
+  const [filterCidade, setFilterCidade] = useState('')
+  const [estadosIBGE, setEstadosIBGE] = useState([])
+  const [cidadesIBGE, setCidadesIBGE] = useState([])
+
   const [selectedClientInModal, setSelectedClientInModal] = useState('')
 
   useEffect(() => {
+    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome")
+      .then((res) => res.json())
+      .then((dados) => setEstadosIBGE(dados))
+      .catch(err => console.error("Erro ao buscar estados:", err));
+  }, []);
+
+  useEffect(() => {
+    if (!filterEstado) {
+      setCidadesIBGE([]);
+      setFilterCidade('');
+      return;
+    }
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${filterEstado}/municipios`)
+      .then((res) => res.json())
+      .then((dados) => setCidadesIBGE(dados))
+      .catch(err => console.error("Erro ao buscar cidades:", err));
+  }, [filterEstado]);
+
+  useEffect(() => {
     buscarDados()
-  }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType])
+  }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType, filterEstado, filterCidade])
 
   async function buscarDados() {
     setCarregando(true)
 
     const { data: clientesData, error: clientesError } = await supabase
       .from('clientes')
-      .select('id, nome')
+      .select('id, nome, estado, cidade')
       .order('nome', { ascending: true })
     if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
     if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
@@ -60,7 +87,7 @@ export default function Anuncios() {
 
     const { data: hotspotsData, error: hotspotsError } = await supabase
       .from('hotspots')
-      .select('id, nome, status, cliente_id')
+      .select('id, nome, status, cliente_id, estado, cidade')
       .eq('status', 'Ativo')
       .order('nome', { ascending: true })
     if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
@@ -75,9 +102,9 @@ export default function Anuncios() {
 
     setHotspots(hotspotsComClientes || [])
 
-    let selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, clientes(id, nome), anuncio_hotspots(hotspots(id, nome))';
+    let selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, estado, cidade, clientes(id, nome), anuncio_hotspots(hotspots(id, nome))';
     if (filterClientId) {
-      selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, clientes!inner(id, nome), anuncio_hotspots(hotspots(id, nome))';
+      selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, estado, cidade, clientes!inner(id, nome), anuncio_hotspots(hotspots(id, nome))';
     }
 
     let query = supabase
@@ -103,6 +130,13 @@ export default function Anuncios() {
       query = query.eq('tipo_media', 'imagem')
     } else if (filterMediaType === 'video') {
       query = query.eq('tipo_media', 'video')
+    }
+
+    if (filterEstado) {
+      query = query.eq('estado', filterEstado)
+    }
+    if (filterCidade) {
+      query = query.eq('cidade', filterCidade)
     }
 
     if (searchTerm) {
@@ -166,6 +200,8 @@ export default function Anuncios() {
         url_destino: anuncio.url_destino || '',
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
+        estado: anuncio.estado || '',
+        cidade: anuncio.cidade || ''
       })
       setSelectedClientInModal(anuncio.cliente_id || '');
       setSelectedHotspotIds(anuncio.anuncio_hotspots ? anuncio.anuncio_hotspots.map(ah => ah.hotspots?.id).filter(Boolean) : []);
@@ -179,8 +215,10 @@ export default function Anuncios() {
         url_destino: '',
         duracao_segundos: 15,
         ativo: true,
+        estado: '',
+        cidade: ''
       })
-      setSelectedClientInModal(clientes[0]?.id || '')
+      setSelectedClientInModal('')
       setSelectedHotspotIds([]);
     }
     setSelectedFile(null)
@@ -195,7 +233,10 @@ export default function Anuncios() {
     setSelectedHotspotIds([]);
   }
 
-  const allActiveHotspotsForModal = hotspots;
+  const allActiveHotspotsForModal = hotspots.filter(h => {
+    if (!form.estado) return true; 
+    return h.estado === form.estado;
+  });
 
   const handleHotspotSelection = (hotspotId) => {
     setSelectedHotspotIds(prevSelected =>
@@ -363,7 +404,7 @@ export default function Anuncios() {
         </div>
 
         {/* Filtros Premium */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-4 mb-10">
           <div className="relative group/input">
             <input
               type="text"
@@ -396,6 +437,41 @@ export default function Anuncios() {
               </div>
             </div>
           ))}
+
+          {/* Filtro de Estado */}
+          <div className="relative group/select">
+            <select
+              value={filterEstado}
+              onChange={(e) => setFilterEstado(e.target.value)}
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer"
+            >
+              <option value="" className="bg-[#0a0a0a] text-white">Estado: Todos</option>
+              {estadosIBGE.map(estado => (
+                <option key={estado.id} value={estado.sigla} className="bg-[#0a0a0a] text-white">{estado.sigla}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
+
+          {/* Filtro de Cidade */}
+          <div className="relative group/select">
+            <select
+              value={filterCidade}
+              onChange={(e) => setFilterCidade(e.target.value)}
+              disabled={!filterEstado}
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer disabled:opacity-50"
+            >
+              <option value="" className="bg-[#0a0a0a] text-white">Cidade: Todas</option>
+              {cidadesIBGE.map(cidade => (
+                <option key={cidade.id} value={cidade.nome} className="bg-[#0a0a0a] text-white">{cidade.nome}</option>
+              ))}
+            </select>
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+            </div>
+          </div>
         </div>
 
         {/* Lista de Anúncios */}
@@ -478,7 +554,17 @@ export default function Anuncios() {
                   {/* Container fixo na parte inferior */}
                   <div className="mt-auto pt-4 border-t border-white/[0.05]">
 
-                    {/* 4. Cliente e Tempo (Mesma linha) */}
+                    {/* 4. Localização (Nova Linha) Inteligente */}
+                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 truncate pr-2">
+                  <MapPin size={12} className="text-gray-600 flex-shrink-0" />
+                  <span className="truncate font-medium text-gray-400">
+                  {(anuncio.cidade || anuncio.cliente?.cidade) && (anuncio.estado || anuncio.cliente?.estado)
+                  ? `${anuncio.cidade || anuncio.cliente?.cidade}, ${anuncio.estado || anuncio.cliente?.estado}`
+                  : 'Localização não definida'}
+                  </span>
+                  </div>
+
+                    {/* 5. Cliente e Tempo (Mesma linha) */}
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
                       <div className="flex items-center gap-2 truncate pr-2">
                         <User size={12} className="text-gray-600 flex-shrink-0" />
@@ -490,7 +576,7 @@ export default function Anuncios() {
                       </div>
                     </div>
 
-                    {/* 5. Botões (Centralizados) */}
+                    {/* 6. Botões (Centralizados) */}
                     <div className="flex justify-center items-center gap-2 w-full">
                       <button
                         onClick={() => toggleAtivo(anuncio)}
@@ -544,7 +630,20 @@ export default function Anuncios() {
                   <div className="relative group/select">
                     <select
                       value={selectedClientInModal}
-                      onChange={(e) => setSelectedClientInModal(e.target.value)}
+                      onChange={(e) => {
+                        const newClientId = e.target.value;
+                        setSelectedClientInModal(newClientId);
+
+                        // Lógica de auto-preenchimento de estado e cidade
+                        const cliente = clientes.find(c => c.id === newClientId);
+                        if (cliente) {
+                          setForm(prev => ({
+                            ...prev,
+                            estado: cliente.estado || prev.estado,
+                            cidade: cliente.cidade || prev.cidade
+                          }));
+                        }
+                      }}
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none"
                     >
                       <option value="" className="bg-[#050505]">Selecione um cliente...</option>
@@ -582,7 +681,7 @@ export default function Anuncios() {
                 <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Vincular Hotspots</label>
                 <div className="bg-[#050505] border border-white/[0.05] rounded-2xl p-5 shadow-inner">
                   {allActiveHotspotsForModal.length === 0 ? (
-                    <p className="text-sm text-gray-600 italic">Nenhum hotspot ativo disponível no momento.</p>
+                    <p className="text-sm text-gray-600 italic">Nenhum hotspot ativo disponível para o estado deste cliente.</p>
                   ) : (
                     <div className="flex flex-wrap gap-3">
                       {allActiveHotspotsForModal.map((h) => {
@@ -722,7 +821,7 @@ export default function Anuncios() {
         </div>
       )}
 
-      {/* Estilo extra para a barra de rolagem do modal ficar elegante (CORRIGIDO PARA innerHTML) */}
+      {/* Estilo extra para a barra de rolagem do modal ficar elegante */}
       <style dangerouslySetInnerHTML={{__html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Package, Plus, Pencil, Trash2, X, Check, Star, Users, RefreshCw } from 'lucide-react'
+import { Package, Plus, Pencil, Trash2, X, Check, Star, Users, RefreshCw, UserCheck } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createClient(
@@ -27,8 +27,27 @@ export default function Planos() {
 
   async function buscarDados() {
     setCarregando(true)
-    const { data } = await supabase.from('planos').select('*').order('preco', { ascending: true })
-    setPlanos(data || [])
+
+    // 1. Busca os planos
+    const { data: planosData } = await supabase.from('planos').select('*').order('preco', { ascending: true })
+
+    // 2. Busca os clientes para fazer a contagem (traz apenas o plano_id para ficar leve e rápido)
+    const { data: clientesData } = await supabase.from('clientes').select('plano_id')
+
+    // 3. Cruza os dados e conta quantos clientes cada plano tem
+    if (planosData) {
+      const planosComContagem = planosData.map(plano => {
+        const contagem = clientesData ? clientesData.filter(c => c.plano_id === plano.id).length : 0;
+        return {
+          ...plano,
+          quantidade_clientes: contagem
+        }
+      })
+      setPlanos(planosComContagem)
+    } else {
+      setPlanos([])
+    }
+
     setCarregando(false)
   }
 
@@ -207,6 +226,18 @@ export default function Planos() {
                     </div>
                     <span className="text-sm font-bold text-white capitalize">{plano.intervalo_relatorio}</span>
                   </div>
+
+                  {/* NOVA LINHA: Contagem de Clientes */}
+                  <div className="flex items-center justify-between group/item pt-2 border-t border-white/[0.02]">
+                    <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
+                      <UserCheck size={16} className="text-neutral-600 group-hover/item:text-green-500 transition-colors" />
+                      <span className="text-sm font-medium">Clientes ativos</span>
+                    </div>
+                    <span className="text-sm font-bold text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-lg border border-green-500/20">
+                      {plano.quantidade_clientes || 0}
+                    </span>
+                  </div>
+
                 </div>
               </div>
             ))}
@@ -214,7 +245,7 @@ export default function Planos() {
         )}
       </div>
 
-      {/* Modal de Criação/Edição Premium (Estilo da Imagem) */}
+      {/* Modal de Criação/Edição Premium */}
       {modalAberto && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]">

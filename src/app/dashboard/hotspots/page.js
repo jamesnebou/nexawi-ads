@@ -28,9 +28,34 @@ export default function Hotspots() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
+  // --- NOVOS STATES PARA O IBGE ---
+  const [estadosIBGE, setEstadosIBGE] = useState([])
+  const [cidadesIBGE, setCidadesIBGE] = useState([])
+
+  // Adicionado o campo 'estado' no form inicial
   const [form, setForm] = useState({
-    nome: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo'
+    nome: '', estado: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo'
   })
+
+  // --- EFEITOS DO IBGE ---
+  useEffect(() => {
+    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome")
+      .then((res) => res.json())
+      .then((dados) => setEstadosIBGE(dados))
+      .catch(err => console.error("Erro ao buscar estados:", err));
+  }, []);
+
+  useEffect(() => {
+    if (!form.estado) {
+      setCidadesIBGE([]);
+      return;
+    }
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.estado}/municipios`)
+      .then((res) => res.json())
+      .then((dados) => setCidadesIBGE(dados))
+      .catch(err => console.error("Erro ao buscar cidades:", err));
+  }, [form.estado]);
+
 
   useEffect(() => {
     buscarDados()
@@ -58,6 +83,7 @@ export default function Hotspots() {
       setHotspotSelecionado(hotspot)
       setForm({
         nome: hotspot.nome || '',
+        estado: hotspot.estado || '', // Adicionado
         cidade: hotspot.cidade || '',
         endereco: hotspot.endereco || '',
         parceiro: hotspot.parceiro || '',
@@ -65,7 +91,7 @@ export default function Hotspots() {
       })
     } else {
       setHotspotSelecionado(null)
-      setForm({ nome: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo' })
+      setForm({ nome: '', estado: '', cidade: '', endereco: '', parceiro: '', status: 'Ativo' })
     }
     setModalAberto(true)
   }
@@ -299,17 +325,50 @@ export default function Hotspots() {
                   />
                 </div>
 
+                {/* Nova Linha: Estado e Cidade */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Estado</label>
+                    <div className="relative group/select">
+                      <select
+                        value={form.estado}
+                        onChange={(e) => setForm({ ...form, estado: e.target.value, cidade: '' })}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
+                      >
+                        <option value="" className="bg-[#050505]">Selecione o UF</option>
+                        {estadosIBGE.map(estado => (
+                          <option key={estado.id} value={estado.sigla} className="bg-[#050505]">
+                            {estado.nome} ({estado.sigla})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      </div>
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cidade</label>
                     <input
+                      list="lista-cidades-hotspot"
                       type="text"
-                      placeholder="Ex: São Paulo"
+                      placeholder={form.estado ? "Digite para buscar a cidade" : "Selecione o estado primeiro"}
                       value={form.cidade}
                       onChange={(e) => setForm({ ...form, cidade: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                      disabled={!form.estado}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                     />
+                    <datalist id="lista-cidades-hotspot">
+                      {cidadesIBGE.map((cidade) => (
+                        <option key={cidade.id} value={cidade.nome} />
+                      ))}
+                    </datalist>
                   </div>
+                </div>
+
+                {/* Nova Linha: Parceiro e Status */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Parceiro</label>
                     <input
@@ -320,23 +379,23 @@ export default function Hotspots() {
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
                     />
                   </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Status</label>
-                  <div className="relative group/select">
-                    <select
-                      value={form.status}
-                      onChange={(e) => setForm({ ...form, status: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
-                    >
-                      {statusOpcoes.map((s) => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
-                    </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
-                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                  <div>
+                    <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Status</label>
+                    <div className="relative group/select">
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
+                      >
+                        {statusOpcoes.map((s) => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
+                      </select>
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                      </div>
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
 

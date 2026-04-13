@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Search, Download, UserPlus, Wifi, Shield, ShieldOff } from 'lucide-react'
+import { Search, Download, UserPlus, Wifi, Shield, ShieldOff, MonitorPlay } from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -12,6 +12,7 @@ const supabase = createClient(
 export default function Leads() {
   const [leads, setLeads] = useState([])
   const [hotspots, setHotspots] = useState([])
+  const [anuncios, setAnuncios] = useState([]) // NOVO ESTADO
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroHotspot, setFiltroHotspot] = useState('Todos')
@@ -21,24 +22,29 @@ export default function Leads() {
 
   async function buscarDados() {
     setLoading(true)
-    const [{ data: leadsData }, { data: hotspotsData }] = await Promise.all([
+    // AGORA BUSCA TAMBÉM OS ANÚNCIOS
+    const [{ data: leadsData }, { data: hotspotsData }, { data: anunciosData }] = await Promise.all([
       supabase.from('leads').select('*').order('created_at', { ascending: false }),
-      supabase.from('hotspots').select('id, nome').order('nome')
+      supabase.from('hotspots').select('id, nome').order('nome'),
+      supabase.from('anuncios').select('id, titulo')
     ])
     setLeads(leadsData || [])
     setHotspots(hotspotsData || [])
+    setAnuncios(anunciosData || [])
     setLoading(false)
   }
 
   function exportarCSV() {
     const linhas = [
-      ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Aceite LGPD', 'Data de Captura'],
+      // CABEÇALHO ATUALIZADO
+      ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
       ...leadsFiltrados.map(l => [
         l.nome || '',
         l.email || '',
         l.telefone || '',
         l.cpf || '',
         nomeHotspot(l.hotspot_id),
+        nomeAnuncio(l.anuncio_id), // NOVA COLUNA NO CSV
         l.aceite_lgpd ? 'Sim' : 'Não',
         new Date(l.created_at).toLocaleString('pt-BR')
       ])
@@ -54,6 +60,12 @@ export default function Leads() {
   }
 
   const nomeHotspot = (id) => hotspots.find(h => h.id === id)?.nome || 'Desconhecido'
+
+  // NOVA FUNÇÃO PARA PEGAR O NOME DO ANÚNCIO
+  const nomeAnuncio = (id) => {
+    if (!id) return 'Orgânico / Sem anúncio'
+    return anuncios.find(a => a.id === id)?.titulo || 'Anúncio excluído'
+  }
 
   const leadsFiltrados = leads.filter((l) => {
     const termo = busca.toLowerCase()
@@ -172,6 +184,8 @@ export default function Leads() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Lead</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Contato</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Hotspot</th>
+                    {/* NOVA COLUNA */}
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Anúncio Visto</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">LGPD</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Capturado em</th>
                   </tr>
@@ -202,6 +216,15 @@ export default function Leads() {
                           <span className="truncate max-w-[150px]">{nomeHotspot(lead.hotspot_id)}</span>
                         </span>
                       </td>
+
+                      {/* NOVA CÉLULA DO ANÚNCIO */}
+                      <td className="px-8 py-5 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
+                          <MonitorPlay size={14} className="text-neutral-600 group-hover:text-green-500 transition-colors flex-shrink-0" />
+                          <span className="truncate max-w-[150px]">{nomeAnuncio(lead.anuncio_id)}</span>
+                        </span>
+                      </td>
+
                       <td className="px-8 py-5 whitespace-nowrap">
                         {lead.aceite_lgpd ? (
                           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-[11px] font-bold uppercase tracking-widest text-green-400">

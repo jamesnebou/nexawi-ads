@@ -18,6 +18,8 @@ export default function Dashboard() {
     clientesAtivos: 0,
     hotspotsAtivos: 0,
     leadsHoje: 0,
+    leadsMes: 0,
+    pessoasOnline: 0,
     recebidoMes: 0,
   })
   const [leadsPorDiaGeral, setLeadsPorDiaGeral] = useState([])
@@ -30,19 +32,20 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [hotspots, setHotspots] = useState([])
   const [selectedHotspotId, setSelectedHotspotId] = useState('')
-  const [totalVisualizacoesHotspot, setTotalVisualizacoesHotspot] = useState(0)
-  const [onlineUsers, setOnlineUsers] = useState(0)
 
   const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
   const corStatus = (s) => s === 'Pago' ? 'text-green-400' : s === 'Pendente' ? 'text-yellow-400' : 'text-red-400'
 
   const selectedHotspotName = hotspots.find(h => h.id === selectedHotspotId)?.nome || 'Todos';
 
-  const buscarDados = useCallback(async () => {
-    setLoading(true)
+  // Adicionado parâmetro "silent" para atualizar em tempo real sem piscar a tela
+  const buscarDados = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+
     const hoje = new Date()
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
     const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0)).toISOString()
+    const quinzeMinutosAtras = new Date(Date.now() - 15 * 60 * 1000).toISOString()
 
     // 1. Buscar Hotspots para o Select
     if (hotspots.length === 0) {
@@ -60,18 +63,33 @@ export default function Dashboard() {
       }
     }
 
-    // 2. Buscar dados gerais
+    // 2. Montar as queries de contagem baseadas no Hotspot selecionado
+    let queryLeadsHoje = supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', inicioHoje);
+    let queryLeadsMes = supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', inicioMes);
+    let queryPessoasOnline = supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', quinzeMinutosAtras);
+
+    if (selectedHotspotId) {
+      queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', selectedHotspotId);
+      queryLeadsMes = queryLeadsMes.eq('hotspot_id', selectedHotspotId);
+      queryPessoasOnline = queryPessoasOnline.eq('hotspot_id', selectedHotspotId);
+    }
+
+    // 3. Buscar dados gerais simultaneamente
     const [
       { count: clientesAtivos },
       { count: hotspotsAtivos },
       { count: leadsHoje },
+      { count: leadsMes },
+      { count: pessoasOnline },
       { data: pagamentos },
       { data: clientes },
       { data: leadsGeral }
     ] = await Promise.all([
       supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('status', 'Ativo'),
       supabase.from('hotspots').select('*', { count: 'exact', head: true }).eq('status', 'Ativo'),
-      supabase.from('leads').select('*', { count: 'exact', head: true }).gte('created_at', inicioHoje),
+      queryLeadsHoje,
+      queryLeadsMes,
+      queryPessoasOnline,
       supabase.from('pagamentos').select('*, clientes(nome)').order('created_at', { ascending: false }),
       supabase.from('clientes').select('status'),
       supabase.from('leads').select('*, hotspots(nome)').order('created_at', { ascending: false })
@@ -81,43 +99,14 @@ export default function Dashboard() {
       .filter(p => p.status === 'Pago' && p.created_at >= inicioMes)
       .reduce((acc, p) => acc + Number(p.valor), 0)
 
-    setMetricas({ clientesAtivos: clientesAtivos || 0, hotspotsAtivos: hotspotsAtivos || 0, leadsHoje: leadsHoje || 0, recebidoMes })
-
-    // 3. Buscar Visualizações do Hotspot Selecionado
-    if (selectedHotspotId) {
-      const { count: viewsCount, error: viewsError } = await supabase
-        .from('anuncio_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('hotspot_id', selectedHotspotId);
-
-      if (viewsError) {
-        console.error('Erro ao buscar visualizações do hotspot:', viewsError);
-        setTotalVisualizacoesHotspot(0);
-      } else {
-        setTotalVisualizacoesHotspot(viewsCount || 0);
-      }
-    } else {
-      setTotalVisualizacoesHotspot(0);
-    }
-
-    // 4. Buscar Usuários Online
-    if (selectedHotspotId) {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('hotspot_sessions')
-        .select('id')
-        .eq('hotspot_id', selectedHotspotId)
-        .gte('last_active_at', fiveMinutesAgo);
-
-      if (sessionsError) {
-        console.error('Erro ao buscar sessões online:', sessionsError);
-        setOnlineUsers(0);
-      } else {
-        setOnlineUsers(sessions?.length || 0);
-      }
-    } else {
-      setOnlineUsers(0);
-    }
+    setMetricas({ 
+      clientesAtivos: clientesAtivos || 0, 
+      hotspotsAtivos: hotspotsAtivos || 0, 
+      leadsHoje: leadsHoje || 0, 
+      leadsMes: leadsMes || 0,
+      pessoasOnline: pessoasOnline || 0,
+      recebidoMes 
+    })
 
     // Lógica para leadsPorDiaGeral
     const ultimos14 = Array.from({ length: 14 }, (_, i) => {
@@ -208,60 +197,45 @@ export default function Dashboard() {
     // Leads Recentes
     setLeadsRecentes((leadsGeral || []).slice(0, 5))
 
-    setLoading(false)
+    if (!silent) setLoading(false)
   }, [selectedHotspotId, hotspots])
 
   useEffect(() => {
     buscarDados()
   }, [buscarDados])
 
+  // Atualização em Tempo Real baseada na tabela LEADS
   useEffect(() => {
     if (!selectedHotspotId) return;
 
-    const reCountOnlineUsers = async () => {
-      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-      const { data: sessions, error: sessionsError } = await supabase
-        .from('hotspot_sessions')
-        .select('id')
-        .eq('hotspot_id', selectedHotspotId)
-        .gte('last_active_at', fiveMinutesAgo);
-
-      if (sessionsError) {
-        console.error('Erro ao re-contar sessões online:', sessionsError);
-      } else {
-        setOnlineUsers(sessions?.length || 0);
-      }
-    };
-
     const channel = supabase
-      .channel(`hotspot_sessions_channel_${selectedHotspotId}`)
+      .channel(`leads_channel_${selectedHotspotId}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
-          table: 'hotspot_sessions',
+          table: 'leads',
           filter: `hotspot_id=eq.${selectedHotspotId}`
         },
         (payload) => {
-          reCountOnlineUsers();
+          // Atualiza os dados silenciosamente (sem loading)
+          buscarDados(true);
 
-          if (payload.eventType === 'INSERT') {
-            toast.success(`Hotspot ${selectedHotspotName} recebeu um novo acesso!`, {
-              position: 'bottom-right',
-              duration: 4000,
-              style: {
-                background: '#0a0a0a',
-                color: '#fff',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '16px',
-              },
-              iconTheme: {
-                primary: '#22c55e',
-                secondary: '#0a0a0a',
-              },
-            });
-          }
+          toast.success(`Novo acesso registrado em ${selectedHotspotName}!`, {
+            position: 'bottom-right',
+            duration: 4000,
+            style: {
+              background: '#0a0a0a',
+              color: '#fff',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '16px',
+            },
+            iconTheme: {
+              primary: '#22c55e',
+              secondary: '#0a0a0a',
+            },
+          });
         }
       )
       .subscribe();
@@ -269,15 +243,15 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedHotspotId, selectedHotspotName]);
+  }, [selectedHotspotId, selectedHotspotName, buscarDados]);
 
   const cards = [
     { label: 'Clientes Ativos', valor: metricas.clientesAtivos, icon: Users, text: 'text-green-400', bg: 'bg-green-500/20' },
     { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, icon: Wifi, text: 'text-blue-400', bg: 'bg-blue-500/20' },
-    { label: 'Leads Hoje', valor: metricas.leadsHoje, icon: UserPlus, text: 'text-orange-400', bg: 'bg-orange-500/20' },
+    { label: 'Acessos Hoje', valor: metricas.leadsHoje, sub: selectedHotspotName, icon: UserPlus, text: 'text-orange-400', bg: 'bg-orange-500/20' },
+    { label: 'Acessos no Mês', valor: metricas.leadsMes, sub: selectedHotspotName, icon: Eye, text: 'text-red-400', bg: 'bg-red-500/20' },
+    { label: 'Pessoas Online', valor: metricas.pessoasOnline, sub: 'Últimos 15 min', icon: Activity, text: 'text-cyan-400', bg: 'bg-cyan-500/20' },
     { label: 'Recebido no Mês', valor: fmt(metricas.recebidoMes), icon: DollarSign, text: 'text-purple-400', bg: 'bg-purple-500/20' },
-    { label: 'Acessos ao Portal', valor: totalVisualizacoesHotspot, icon: Eye, text: 'text-red-400', bg: 'bg-red-500/20' },
-    { label: 'Pessoas Online', valor: onlineUsers, sub: `No hotspot: ${selectedHotspotName}`, icon: Activity, text: 'text-cyan-400', bg: 'bg-cyan-500/20' },
   ];
 
   return (

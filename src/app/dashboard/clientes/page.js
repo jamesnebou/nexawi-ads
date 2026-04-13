@@ -18,7 +18,6 @@ const statusCores = {
 }
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Inadimplente', 'Cancelado']
-const estadosBR = ['AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC', 'SP', 'SE', 'TO']
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
@@ -31,6 +30,10 @@ export default function Clientes() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
+  // --- NOVOS STATES PARA O IBGE ---
+  const [estadosIBGE, setEstadosIBGE] = useState([])
+  const [cidadesIBGE, setCidadesIBGE] = useState([])
+
   const [form, setForm] = useState({
     nome: '', nome_empresa: '', nome_responsavel: '', email: '', telefone: '',
     cpf_cnpj: '', endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo'
@@ -41,6 +44,26 @@ export default function Clientes() {
   const [nomeEmpresarioError, setNomeEmpresarioError] = useState('')
   const [nomeEmpresaError, setNomeEmpresaError] = useState('')
   const [nomeResponsavelError, setNomeResponsavelError] = useState('')
+
+  // --- EFEITOS DO IBGE ---
+  useEffect(() => {
+    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome")
+      .then((res) => res.json())
+      .then((dados) => setEstadosIBGE(dados))
+      .catch(err => console.error("Erro ao buscar estados:", err));
+  }, []);
+
+  useEffect(() => {
+    if (!form.estado) {
+      setCidadesIBGE([]);
+      return;
+    }
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.estado}/municipios`)
+      .then((res) => res.json())
+      .then((dados) => setCidadesIBGE(dados))
+      .catch(err => console.error("Erro ao buscar cidades:", err));
+  }, [form.estado]);
+
 
   useEffect(() => {
     buscarDados()
@@ -108,7 +131,11 @@ export default function Clientes() {
       setNomeResponsavelError(validarNome(newValue, 'Nome do responsável'))
     }
 
-    setForm({ ...form, [name]: newValue })
+    if (name === 'estado') {
+      setForm({ ...form, [name]: newValue, cidade: '' })
+    } else {
+      setForm({ ...form, [name]: newValue })
+    }
   }
 
   function abrirModal(cliente = null) {
@@ -145,8 +172,9 @@ export default function Clientes() {
       toast.error('Corrija os erros no formulário antes de salvar.')
       return
     }
-    if (!form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim()) {
-      toast.error('Preencha todos os campos obrigatórios.')
+    // E-mail agora é obrigatório na validação
+    if (!form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim() || !form.email.trim()) {
+      toast.error('Preencha todos os campos obrigatórios, incluindo o E-mail.')
       return
     }
 
@@ -155,13 +183,26 @@ export default function Clientes() {
 
     try {
       if (clienteSelecionado) {
+        // Apenas atualiza os dados na tabela (não mexe na senha aqui)
         const { error } = await supabase.from('clientes').update(dadosParaSalvar).eq('id', clienteSelecionado.id)
         if (error) throw error
         toast.success('Cliente atualizado com sucesso!')
       } else {
+        // 1. CRIA O USUÁRIO NO SUPABASE AUTH (Login: Email / Senha: CPF)
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: form.email,
+          password: form.cpf_cnpj,
+        })
+
+        if (authError) {
+          throw new Error('Erro ao criar credenciais de acesso: ' + authError.message)
+        }
+
+        // 2. SALVA OS DADOS NA TABELA CLIENTES
         const { error } = await supabase.from('clientes').insert([dadosParaSalvar])
         if (error) throw error
-        toast.success('Cliente cadastrado com sucesso!')
+
+        toast.success('Cliente cadastrado e acesso criado com sucesso!')
       }
       fecharModal()
       buscarDados()
@@ -420,14 +461,15 @@ export default function Clientes() {
                 {cpfCnpjError && <p className="text-red-400 text-xs mt-2 font-medium">{cpfCnpjError}</p>}
               </div>
 
-              {/* Campo: Email */}
+              {/* Campo: Email (AGORA OBRIGATÓRIO) */}
               <div>
-                <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Email</label>
+                <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Email (Login) *</label>
                 <div className="relative group/input">
                   <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
                   <input
                     type="email" id="email" name="email" value={form.email} onChange={handleChange} placeholder="contato@empresa.com"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    required
                   />
                 </div>
               </div>
@@ -458,16 +500,7 @@ export default function Clientes() {
                 </div>
               </div>
 
-              {/* Campo: Cidade */}
-              <div>
-                <label htmlFor="cidade" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cidade</label>
-                <input
-                  type="text" id="cidade" name="cidade" value={form.cidade} onChange={handleChange} placeholder="Nome da cidade"
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
-                />
-              </div>
-
-              {/* Campo: Estado */}
+              {/* Campo: Estado (IBGE) */}
               <div>
                 <label htmlFor="estado" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Estado</label>
                 <div className="relative group/select">
@@ -476,12 +509,33 @@ export default function Clientes() {
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
                     <option value="" className="bg-[#050505]">Selecione o UF</option>
-                    {estadosBR.map(estado => <option key={estado} value={estado} className="bg-[#050505]">{estado}</option>)}
+                    {estadosIBGE.map(estado => (
+                      <option key={estado.id} value={estado.sigla} className="bg-[#050505]">
+                        {estado.nome} ({estado.sigla})
+                      </option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                   </div>
                 </div>
+              </div>
+
+              {/* Campo: Cidade (IBGE com Datalist) */}
+              <div>
+                <label htmlFor="cidade" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cidade</label>
+                <input
+                  list="lista-cidades-ibge"
+                  type="text" id="cidade" name="cidade" value={form.cidade} onChange={handleChange} 
+                  placeholder={form.estado ? "Digite para buscar a cidade" : "Selecione o estado primeiro"}
+                  disabled={!form.estado}
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+                <datalist id="lista-cidades-ibge">
+                  {cidadesIBGE.map((cidade) => (
+                    <option key={cidade.id} value={cidade.nome} />
+                  ))}
+                </datalist>
               </div>
 
               {/* Campo: Plano */}
@@ -527,7 +581,7 @@ export default function Clientes() {
               </button>
               <button
                 onClick={salvarCliente}
-                disabled={salvando || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError || telefoneError || cpfCnpjError || !form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim()}
+                disabled={salvando || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError || telefoneError || cpfCnpjError || !form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim() || !form.email.trim()}
                 className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
