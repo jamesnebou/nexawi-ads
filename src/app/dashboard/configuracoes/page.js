@@ -106,8 +106,8 @@ export default function Configuracoes() {
     return (
       <div className="flex-1 flex items-center justify-center py-32">
         <div className="relative w-16 h-16 flex items-center justify-center">
-          <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-          <Save className="text-green-500 animate-pulse" size={24} />
+          <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+          <Save className="text-[#6be12f] animate-pulse" size={24} />
         </div>
       </div>
     )
@@ -117,7 +117,7 @@ export default function Configuracoes() {
     <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
 
       {/* Luz ambiente de fundo */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-green-500/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 relative z-10">
         <div>
@@ -129,7 +129,7 @@ export default function Configuracoes() {
           <button
             onClick={salvarConfiguracoes}
             disabled={salvando}
-            className="w-full sm:w-auto bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold px-8 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+            className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold px-8 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
           >
             {salvando ? (
               <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
@@ -159,7 +159,7 @@ export default function Configuracoes() {
                     : 'hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <div className={`p-3 rounded-xl transition-colors duration-300 ${ativo ? 'bg-green-500/10 text-green-500 border border-green-500/20 shadow-inner' : 'bg-[#050505] text-neutral-500 border border-white/[0.05] group-hover:text-neutral-300 shadow-inner'}`}>
+                <div className={`p-3 rounded-xl transition-colors duration-300 ${ativo ? 'bg-[#6be12f]/10 text-[#6be12f] border border-[#6be12f]/20 shadow-inner' : 'bg-[#050505] text-neutral-500 border border-white/[0.05] group-hover:text-neutral-300 shadow-inner'}`}>
                   <Icon size={20} />
                 </div>
                 <div>
@@ -187,35 +187,35 @@ export default function Configuracoes() {
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nome da Empresa</label>
                   <input
                     type="text" value={form.nome_empresa} onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">CNPJ</label>
                   <input
                     type="text" value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Telefone de Contato</label>
                   <input
                     type="text" value={form.telefone_contato} onChange={(e) => setForm({ ...form, telefone_contato: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">E-mail de Contato</label>
                   <input
                     type="email" value={form.email_contato} onChange={(e) => setForm({ ...form, email_contato: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Endereço Completo</label>
                   <input
                     type="text" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -234,7 +234,7 @@ export default function Configuracoes() {
                   <input
                     type="text" placeholder="Ex: Wi-Fi Grátis - Minha Empresa"
                     value={form.titulo_portal} onChange={(e) => setForm({ ...form, titulo_portal: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div>
@@ -242,7 +242,7 @@ export default function Configuracoes() {
                   <textarea
                     rows={4} placeholder="Ex: Cadastre-se para acessar a internet gratuitamente."
                     value={form.texto_boas_vindas} onChange={(e) => setForm({ ...form, texto_boas_vindas: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all resize-none shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all resize-none shadow-inner"
                   />
                 </div>
                 <div>
@@ -256,7 +256,7 @@ export default function Configuracoes() {
                     </div>
                     <input
                       type="text" value={form.cor_principal} onChange={(e) => setForm({ ...form, cor_principal: e.target.value })}
-                      className="w-36 bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all uppercase shadow-inner font-mono"
+                      className="w-36 bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all uppercase shadow-inner font-mono"
                     />
                   </div>
                 </div>
@@ -274,7 +274,7 @@ export default function Configuracoes() {
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Texto Completo dos Termos</label>
                 <textarea
                   value={form.texto_lgpd} onChange={(e) => setForm({ ...form, texto_lgpd: e.target.value })}
-                  className="w-full flex-1 min-h-[400px] bg-[#050505] border border-white/[0.05] rounded-2xl px-6 py-6 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all resize-none custom-scrollbar leading-relaxed shadow-inner"
+                  className="w-full flex-1 min-h-[400px] bg-[#050505] border border-white/[0.05] rounded-2xl px-6 py-6 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all resize-none custom-scrollbar leading-relaxed shadow-inner"
                   placeholder="Insira aqui os termos de uso, política de privacidade e adequação à LGPD..."
                 />
               </div>
@@ -293,7 +293,7 @@ export default function Configuracoes() {
                   <input
                     type="email" placeholder="seu@email.com"
                     value={form.email_notificacoes} onChange={(e) => setForm({ ...form, email_notificacoes: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
@@ -304,10 +304,10 @@ export default function Configuracoes() {
                     className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
-                      <p className="text-base font-bold text-white group-hover:text-green-400 transition-colors tracking-tight">Novos leads capturados</p>
+                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">Novos leads capturados</p>
                       <p className="text-sm text-neutral-500 mt-1 font-medium">Receber um resumo diário de novos cadastros na rede</p>
                     </div>
-                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_novos_leads ? 'bg-green-500' : 'bg-neutral-800'}`}>
+                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_novos_leads ? 'bg-[#6be12f]' : 'bg-neutral-800'}`}>
                       <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${form.notificar_novos_leads ? 'left-8' : 'left-1'}`} />
                     </div>
                   </div>
@@ -318,10 +318,10 @@ export default function Configuracoes() {
                     className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
-                      <p className="text-base font-bold text-white group-hover:text-green-400 transition-colors tracking-tight">Relatórios automáticos</p>
+                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">Relatórios automáticos</p>
                       <p className="text-sm text-neutral-500 mt-1 font-medium">Receber relatórios de desempenho conforme o intervalo do plano</p>
                     </div>
-                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_relatorios ? 'bg-green-500' : 'bg-neutral-800'}`}>
+                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_relatorios ? 'bg-[#6be12f]' : 'bg-neutral-800'}`}>
                       <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${form.notificar_relatorios ? 'left-8' : 'left-1'}`} />
                     </div>
                   </div>
@@ -342,7 +342,7 @@ export default function Configuracoes() {
                   <input
                     type="password" placeholder="Mínimo 6 caracteres"
                     value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div>
@@ -350,7 +350,7 @@ export default function Configuracoes() {
                   <input
                     type="password" placeholder="Repita a nova senha"
                     value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
@@ -360,8 +360,8 @@ export default function Configuracoes() {
                   </div>
                 )}
                 {senhaOk && (
-                  <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-2xl">
-                    <p className="text-sm font-bold text-green-400 text-center">Senha alterada com sucesso!</p>
+                  <div className="p-4 bg-[#6be12f]/10 border border-[#6be12f]/20 rounded-2xl">
+                    <p className="text-sm font-bold text-[#8cf059] text-center">Senha alterada com sucesso!</p>
                   </div>
                 )}
 

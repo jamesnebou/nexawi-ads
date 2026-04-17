@@ -49,17 +49,17 @@ export default function ClientLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden selection:bg-green-500/30 font-sans">
+    <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden selection:bg-[#6be12f]/30 font-sans">
 
       {/* Efeitos de Luz no Fundo */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none"></div>
 
       <div className="relative z-10 w-full max-w-md animate-fade-in-up">
         <div className="bg-white/[0.02] backdrop-blur-3xl border border-white/[0.05] rounded-[2.5rem] p-10 sm:p-12 shadow-[0_20px_40px_rgba(0,0,0,0.4)] text-center">
 
           <div className="flex justify-center mb-10 group cursor-pointer">
             <div className="relative">
-              <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+              <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
               <img 
                 src="/Nexa-logo.png" 
                 alt="Nexa Logo" 
@@ -79,13 +79,13 @@ export default function ClientLoginPage() {
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="relative group/input">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <Mail size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                <Mail size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
               </div>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium shadow-inner"
+                className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium shadow-inner"
                 placeholder="Seu e-mail de acesso"
                 required
               />
@@ -93,13 +93,13 @@ export default function ClientLoginPage() {
 
             <div className="relative group/input">
               <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                <Lock size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                <Lock size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
               </div>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium shadow-inner"
+                className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium shadow-inner"
                 placeholder="Sua senha (CPF/CNPJ)"
                 required
               />
@@ -114,7 +114,7 @@ export default function ClientLoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-2 bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              className="w-full mt-2 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
             >
               {loading ? (
                 <Loader2 size={20} className="animate-spin" />

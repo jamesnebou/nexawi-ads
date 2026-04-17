@@ -11,7 +11,7 @@ const supabase = createClient(
 )
 
 const statusCores = {
-  'Ativo': 'bg-green-500/10 text-green-400 border border-green-500/20',
+  'Ativo': 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
   'Inativo': 'bg-red-500/10 text-red-400 border border-red-500/20',
   'Inadimplente': 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
   'Cancelado': 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
@@ -249,13 +249,13 @@ export default function Clientes() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative w-full sm:w-72 group/input">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
               <input
                 type="text"
                 placeholder="Buscar cliente, empresa, CPF..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
               />
             </div>
 
@@ -263,19 +263,19 @@ export default function Clientes() {
               <select
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer shadow-inner"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer shadow-inner"
               >
                 <option value="Todos" className="bg-[#0a0a0a]">Todos os Status</option>
                 {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#0a0a0a]">{s}</option>)}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
 
             <button
               onClick={() => abrirModal()}
-              className="w-full sm:w-auto bg-green-500 hover:bg-green-400 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
             >
               <Plus size={18} strokeWidth={2.5} />
               Novo Cliente
@@ -287,8 +287,8 @@ export default function Clientes() {
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-              <Users className="text-green-500 animate-pulse" size={24} />
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <Users className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
         ) : clientes.length === 0 ? (
@@ -409,10 +409,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="nome" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Empresário *</label>
                 <div className="relative group/input">
-                  <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="nome" name="nome" value={form.nome} onChange={handleChange} placeholder="Nome completo"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -423,10 +423,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="nome_empresa" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Empresa *</label>
                 <div className="relative group/input">
-                  <Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="nome_empresa" name="nome_empresa" value={form.nome_empresa} onChange={handleChange} placeholder="Nome do negócio"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -437,10 +437,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="nome_responsavel" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Responsável pela Venda *</label>
                 <div className="relative group/input">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="nome_responsavel" name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} placeholder="Quem fechou o negócio"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -451,10 +451,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="cpf_cnpj" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">CPF/CNPJ *</label>
                 <div className="relative group/input">
-                  <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="cpf_cnpj" name="cpf_cnpj" value={form.cpf_cnpj} onChange={handleChange} placeholder="Apenas números" maxLength={14}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -465,10 +465,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Email (Login) *</label>
                 <div className="relative group/input">
-                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="email" id="email" name="email" value={form.email} onChange={handleChange} placeholder="contato@empresa.com"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -478,10 +478,10 @@ export default function Clientes() {
               <div>
                 <label htmlFor="telefone" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Telefone / WhatsApp *</label>
                 <div className="relative group/input">
-                  <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="DDD + Número" maxLength={11}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
@@ -492,10 +492,10 @@ export default function Clientes() {
               <div className="md:col-span-2">
                 <label htmlFor="endereco" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Endereço Completo</label>
                 <div className="relative group/input">
-                  <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
                     type="text" id="endereco" name="endereco" value={form.endereco} onChange={handleChange} placeholder="Rua, número, complemento, bairro"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -506,7 +506,7 @@ export default function Clientes() {
                 <div className="relative group/select">
                   <select
                     id="estado" name="estado" value={form.estado} onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
                     <option value="" className="bg-[#050505]">Selecione o UF</option>
                     {estadosIBGE.map(estado => (
@@ -515,7 +515,7 @@ export default function Clientes() {
                       </option>
                     ))}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                   </div>
                 </div>
@@ -529,7 +529,7 @@ export default function Clientes() {
                   type="text" id="cidade" name="cidade" value={form.cidade} onChange={handleChange} 
                   placeholder={form.estado ? "Digite para buscar a cidade" : "Selecione o estado primeiro"}
                   disabled={!form.estado}
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                 />
                 <datalist id="lista-cidades-ibge">
                   {cidadesIBGE.map((cidade) => (
@@ -544,12 +544,12 @@ export default function Clientes() {
                 <div className="relative group/select">
                   <select
                     id="plano_id" name="plano_id" value={form.plano_id} onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
                     <option value="" className="bg-[#050505]">Sem plano vinculado</option>
                     {planos.map(plano => <option key={plano.id} value={plano.id} className="bg-[#050505]">{plano.nome}</option>)}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                   </div>
                 </div>
@@ -561,11 +561,11 @@ export default function Clientes() {
                 <div className="relative group/select">
                   <select
                     id="status" name="status" value={form.status} onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
                     {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                   </div>
                 </div>
@@ -582,7 +582,7 @@ export default function Clientes() {
               <button
                 onClick={salvarCliente}
                 disabled={salvando || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError || telefoneError || cpfCnpjError || !form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim() || !form.email.trim()}
-                className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />

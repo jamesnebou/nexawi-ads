@@ -396,7 +396,7 @@ export default function Anuncios() {
           </div>
           <button
             onClick={() => abrirModal()}
-            className="bg-green-500 hover:bg-green-400 text-black font-bold py-3 px-6 rounded-2xl transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 flex items-center justify-center gap-2 text-sm"
+            className="bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3 px-6 rounded-2xl transition-all duration-300 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 flex items-center justify-center gap-2 text-sm"
           >
             <Plus size={18} strokeWidth={2.5} />
             Novo Anúncio
@@ -411,9 +411,9 @@ export default function Anuncios() {
               placeholder="Buscar anúncio..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner pl-11"
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner pl-11"
             />
-            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" size={16} />
+            <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" size={16} />
           </div>
 
           {[
@@ -426,13 +426,13 @@ export default function Anuncios() {
               <select
                 value={filter.value}
                 onChange={(e) => filter.setter(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none cursor-pointer"
               >
                 {filter.options.map(opt => (
                   <option key={opt.val} value={opt.val} className="bg-[#0a0a0a] text-white">{opt.label}</option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-[#6be12f] transition-colors">
                 <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
               </div>
             </div>
@@ -443,14 +443,14 @@ export default function Anuncios() {
             <select
               value={filterEstado}
               onChange={(e) => setFilterEstado(e.target.value)}
-              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer"
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none cursor-pointer"
             >
               <option value="" className="bg-[#0a0a0a] text-white">Estado: Todos</option>
               {estadosIBGE.map(estado => (
                 <option key={estado.id} value={estado.sigla} className="bg-[#0a0a0a] text-white">{estado.sigla}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-[#6be12f] transition-colors">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
           </div>
@@ -461,14 +461,14 @@ export default function Anuncios() {
               value={filterCidade}
               onChange={(e) => setFilterCidade(e.target.value)}
               disabled={!filterEstado}
-              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none cursor-pointer disabled:opacity-50"
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-3.5 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none cursor-pointer disabled:opacity-50"
             >
               <option value="" className="bg-[#0a0a0a] text-white">Cidade: Todas</option>
               {cidadesIBGE.map(cidade => (
                 <option key={cidade.id} value={cidade.nome} className="bg-[#0a0a0a] text-white">{cidade.nome}</option>
               ))}
             </select>
-            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-[#6be12f] transition-colors">
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
             </div>
           </div>
@@ -478,8 +478,8 @@ export default function Anuncios() {
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-              <ImageIcon className="text-green-500 animate-pulse" size={24} />
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <ImageIcon className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
         ) : anuncios.length === 0 ? (
@@ -512,8 +512,8 @@ export default function Anuncios() {
                   {/* Gradiente e Badges */}
                   <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90"></div>
                   <div className="absolute top-3 left-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-[#8cf059] animate-pulse' : 'bg-red-400'}`}></div>
                       {anuncio.ativo ? 'Ativo' : 'Inativo'}
                     </span>
                   </div>
@@ -528,7 +528,7 @@ export default function Anuncios() {
                 <div className="p-5 flex flex-col flex-1 min-w-0 relative z-10">
 
                   {/* 1. Título */}
-                  <h3 className="text-white font-semibold text-lg mb-1.5 truncate group-hover:text-green-400 transition-colors duration-300" title={anuncio.titulo}>
+                  <h3 className="text-white font-semibold text-lg mb-1.5 truncate group-hover:text-[#8cf059] transition-colors duration-300" title={anuncio.titulo}>
                     {anuncio.titulo}
                   </h3>
 
@@ -542,7 +542,7 @@ export default function Anuncios() {
                     {anuncio.hotspot_nomes && anuncio.hotspot_nomes.length > 0 ? (
                       anuncio.hotspot_nomes.map((nome, idx) => (
                         <div key={idx} className="flex items-start gap-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
-                          <MapPin size={12} className="text-green-500/70 mt-0.5 flex-shrink-0" />
+                          <MapPin size={12} className="text-[#6be12f]/70 mt-0.5 flex-shrink-0" />
                           <span className="truncate leading-tight">{nome}</span>
                         </div>
                       ))
@@ -571,7 +571,7 @@ export default function Anuncios() {
                         <span className="truncate font-medium text-gray-400">{anuncio.cliente?.nome || 'N/A'}</span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-shrink-0 bg-white/[0.02] border border-white/[0.05] px-2.5 py-1 rounded-lg">
-                        <Clock size={12} className="text-green-500/70" />
+                        <Clock size={12} className="text-[#6be12f]/70" />
                         <span className="font-medium text-gray-300">{anuncio.duracao_segundos}s</span>
                       </div>
                     </div>
@@ -580,7 +580,7 @@ export default function Anuncios() {
                     <div className="flex justify-center items-center gap-2 w-full">
                       <button
                         onClick={() => toggleAtivo(anuncio)}
-                        className={`flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-green-500/10 border border-green-500/20 text-green-400 hover:bg-green-500/20'}`}
+                        className={`flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] hover:bg-[#6be12f]/20'}`}
                       >
                         {anuncio.ativo ? 'Pausar' : 'Ativar'}
                       </button>
@@ -644,14 +644,14 @@ export default function Anuncios() {
                           }));
                         }
                       }}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"
                     >
                       <option value="" className="bg-[#050505]">Selecione um cliente...</option>
                       {clientes.map((c) => (
                         <option key={c.id} value={c.id} className="bg-[#050505]">{c.nome}</option>
                       ))}
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-[#6be12f] transition-colors">
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
@@ -663,13 +663,13 @@ export default function Anuncios() {
                     <select
                       value={form.duracao_segundos}
                       onChange={(e) => setForm({ ...form, duracao_segundos: parseInt(e.target.value) })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner appearance-none"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"
                     >
                       {[10, 15, 20, 30, 40].map(sec => (
                         <option key={sec} value={sec} className="bg-[#050505]">{sec} segundos</option>
                       ))}
                     </select>
-                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-green-500 transition-colors">
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-600 group-hover/select:text-[#6be12f] transition-colors">
                       <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
                     </div>
                   </div>
@@ -693,7 +693,7 @@ export default function Anuncios() {
                             onClick={() => handleHotspotSelection(h.id)}
                             className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 border ${
                               isSelected
-                                ? 'bg-green-500/10 text-green-400 border-green-500/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
+                                ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]'
                                 : 'bg-white/[0.02] text-gray-500 border-white/[0.05] hover:border-white/[0.1] hover:text-white'
                             }`}
                           >
@@ -713,7 +713,7 @@ export default function Anuncios() {
                   placeholder="Ex: Oferta Especial de Verão"
                   value={form.titulo}
                   onChange={(e) => setForm({ ...form, titulo: e.target.value })}
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
                 />
               </div>
 
@@ -724,7 +724,7 @@ export default function Anuncios() {
                   value={form.descricao}
                   onChange={(e) => setForm({ ...form, descricao: e.target.value })}
                   rows={3}
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner resize-none"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner resize-none"
                 />
               </div>
 
@@ -736,7 +736,7 @@ export default function Anuncios() {
                     placeholder="https://seusite.com.br"
                     value={form.url_destino}
                     onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
@@ -749,7 +749,7 @@ export default function Anuncios() {
                         onChange={(e) => setForm({ ...form, ativo: e.target.checked })}
                         className="peer sr-only"
                       />
-                      <div className="w-11 h-6 bg-white/[0.05] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-white after:border-transparent after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                      <div className="w-11 h-6 bg-white/[0.05] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 peer-checked:after:bg-white after:border-transparent after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#6be12f]"></div>
                     </div>
                     <span className="text-sm font-bold text-gray-300">Campanha Ativa</span>
                   </label>
@@ -759,10 +759,10 @@ export default function Anuncios() {
               <div>
                 <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">Mídia (Imagem ou Vídeo)</label>
                 <div className="flex items-center justify-center w-full">
-                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/[0.05] border-dashed rounded-2xl cursor-pointer bg-[#050505] hover:bg-white/[0.02] hover:border-green-500/30 transition-all shadow-inner group">
+                  <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-white/[0.05] border-dashed rounded-2xl cursor-pointer bg-[#050505] hover:bg-white/[0.02] hover:border-[#6be12f]/30 transition-all shadow-inner group">
                     <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                      <ImageIcon className="w-10 h-10 mb-3 text-gray-600 group-hover:text-green-500/70 transition-colors" />
-                      <p className="mb-2 text-sm text-gray-400"><span className="font-bold text-green-500">Clique para enviar</span> ou arraste o arquivo</p>
+                      <ImageIcon className="w-10 h-10 mb-3 text-gray-600 group-hover:text-[#6be12f]/70 transition-colors" />
+                      <p className="mb-2 text-sm text-gray-400"><span className="font-bold text-[#6be12f]">Clique para enviar</span> ou arraste o arquivo</p>
                       <p className="text-xs text-gray-600 font-medium">PNG, JPG ou MP4 (Recomendado: 1080x1920px)</p>
                     </div>
                     <input type="file" accept="image/*,video/*" onChange={(e) => setSelectedFile(e.target.files[0])} className="hidden" />
@@ -786,7 +786,7 @@ export default function Anuncios() {
                       <p className="text-sm font-bold text-white truncate">
                         {selectedFile ? selectedFile.name : 'Mídia atual da campanha'}
                       </p>
-                      <p className="text-xs font-bold text-green-500 mt-1.5 uppercase tracking-widest">Pronto para uso</p>
+                      <p className="text-xs font-bold text-[#6be12f] mt-1.5 uppercase tracking-widest">Pronto para uso</p>
                     </div>
                   </div>
                 )}
@@ -805,7 +805,7 @@ export default function Anuncios() {
               <button
                 onClick={salvar}
                 disabled={salvando || uploading || !form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0}
-                className="flex-1 py-4 rounded-2xl font-bold text-sm text-black bg-green-500 hover:bg-green-400 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-black bg-[#6be12f] hover:bg-[#8cf059] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {(salvando || uploading) ? (
                   <>

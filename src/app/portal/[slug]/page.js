@@ -310,17 +310,17 @@ export default function Portal() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-green-500/30 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
 
       {/* Efeitos de Luz no Fundo */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none"></div>
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none"></div>
 
       {/* ETAPA 0 — LOADING */}
       {etapa === ETAPAS.LOADING && (
         <div className="relative z-10 flex flex-col items-center justify-center animate-fade-in-up">
           <div className="relative w-20 h-20 flex items-center justify-center mb-4">
-            <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-            <Wifi className="text-green-500 animate-pulse" size={30} />
+            <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+            <Wifi className="text-[#6be12f] animate-pulse" size={30} />
           </div>
           <p className="text-gray-500 font-medium tracking-wide">Conectando à rede...</p>
         </div>
@@ -365,7 +365,7 @@ export default function Portal() {
 
             <div className="flex justify-center mb-8 group cursor-pointer">
               <div className="relative">
-                <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                 <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
               </div>
             </div>
@@ -381,36 +381,36 @@ export default function Portal() {
               {/* Input Nome */}
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <User size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <User size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
-                <input type="text" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="Nome completo" />
+                <input type="text" value={form.nome} onChange={e => setForm({...form, nome: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="Nome completo" />
                 {erros.nome && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.nome}</span>}
               </div>
 
               {/* Input E-mail */}
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Mail size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
-                <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="E-mail" />
+                <input type="email" value={form.email} onChange={e => setForm({...form, email: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="E-mail" />
                 {erros.email && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.email}</span>}
               </div>
 
               {/* Input Telefone */}
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <Smartphone size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <Smartphone size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
-                <input type="tel" value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="WhatsApp (com DDD)" />
+                <input type="tel" value={form.telefone} onChange={e => setForm({...form, telefone: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="WhatsApp (com DDD)" />
                 {erros.telefone && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.telefone}</span>}
               </div>
 
               {/* Input CPF */}
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
-                <input type="text" value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-green-500/30 focus:ring-1 focus:ring-green-500/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="CPF" />
+                <input type="text" value={form.cpf} onChange={e => setForm({...form, cpf: e.target.value})} className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium" placeholder="CPF" />
                 {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
               </div>
 
@@ -419,19 +419,19 @@ export default function Portal() {
                 <label className="flex items-start gap-3 cursor-pointer group">
                   <div className="relative flex items-center justify-center mt-0.5">
                     <input type="checkbox" checked={form.aceite_lgpd} onChange={e => setForm({...form, aceite_lgpd: e.target.checked})} className="peer sr-only" />
-                    <div className="w-5 h-5 rounded border border-white/[0.1] bg-[#0a0a0a] peer-checked:bg-green-500 peer-checked:border-green-500 transition-all duration-300 flex items-center justify-center">
+                    <div className="w-5 h-5 rounded border border-white/[0.1] bg-[#0a0a0a] peer-checked:bg-[#6be12f] peer-checked:border-[#6be12f] transition-all duration-300 flex items-center justify-center">
                       <CheckCircle2 size={14} className="text-black opacity-0 peer-checked:opacity-100 transition-opacity duration-300" />
                     </div>
                   </div>
                   <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-400 transition-colors">
-                    Concordo com os <button type="button" onClick={() => setModalAberto('termos')} className="text-green-500 hover:underline">Termos de Uso</button> e <button type="button" onClick={() => setModalAberto('privacidade')} className="text-green-500 hover:underline">Política de Privacidade</button>.
+                    Concordo com os <button type="button" onClick={() => setModalAberto('termos')} className="text-[#6be12f] hover:underline">Termos de Uso</button> e <button type="button" onClick={() => setModalAberto('privacidade')} className="text-[#6be12f] hover:underline">Política de Privacidade</button>.
                   </span>
                 </label>
                 {erros.aceite_lgpd && <span className="text-red-400 text-xs mt-2 ml-8 block">{erros.aceite_lgpd}</span>}
               </div>
 
               {/* Botão Conectar */}
-              <button type="submit" disabled={salvando} className="w-full mt-6 bg-green-500 hover:bg-green-400 text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
+              <button type="submit" disabled={salvando} className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0">
                 {salvando ? <Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
               </button>
             </form>
@@ -444,7 +444,7 @@ export default function Portal() {
         <div className="fixed inset-0 z-50 bg-[#050505] flex flex-col items-center justify-center animate-fade-in-up">
           <div className="absolute top-0 left-0 w-full h-1.5 bg-white/[0.05] z-30">
             <div 
-              className="h-full bg-green-500 transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.8)]"
+              className="h-full bg-[#6be12f] transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.8)]"
               style={{ width: `${((anuncioAtual.duracao_segundos - contador) / anuncioAtual.duracao_segundos) * 100}%` }}
             />
           </div>
@@ -460,7 +460,7 @@ export default function Portal() {
           </div>
           <div className="absolute top-6 right-6 z-20">
             <div className="bg-black/40 backdrop-blur-xl border border-white/[0.05] px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
-              <Loader2 size={14} className="text-green-500 animate-spin" />
+              <Loader2 size={14} className="text-[#6be12f] animate-spin" />
               <span className="text-white text-sm font-medium tracking-wide">Aguarde {contador}s</span>
             </div>
           </div>
@@ -482,7 +482,7 @@ export default function Portal() {
             <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 text-center border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
               <div className="flex justify-center mb-8 group cursor-pointer">
                 <div className="relative">
-                  <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                  <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                   <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
                 </div>
               </div>
@@ -490,7 +490,7 @@ export default function Portal() {
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
               <div className="flex flex-col gap-4">
                 {anuncioAtual.url_destino && (
-                  <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-green-500 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]">
+                  <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-[#6be12f] shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]">
                     Quero aproveitar
                   </a>
                 )}
@@ -509,13 +509,13 @@ export default function Portal() {
           <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-12 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
             <div className="flex justify-center mb-10 group cursor-pointer">
               <div className="relative">
-                <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                 <img src="/Nexa-logo.png" alt="Nexa Logo" className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" onError={(e) => e.target.style.display = 'none'} />
               </div>
             </div>
             <div className="relative w-24 h-24 mx-auto mb-8">
-              <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-green-500"></div>
-              <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-green-400 to-green-600">
+              <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
+              <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
                 <Wifi size={40} className="text-black" />
               </div>
             </div>
@@ -524,7 +524,7 @@ export default function Portal() {
               Sua internet foi liberada com sucesso. Aproveite a conexão em <strong className="text-gray-300">{hotspot?.nome}</strong>.
             </p>
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.02] border border-white/[0.05]">
-              <div className="w-2 h-2 rounded-full animate-pulse bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
+              <div className="w-2 h-2 rounded-full animate-pulse bg-[#6be12f] shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
               <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status: Online</span>
             </div>
           </div>
@@ -537,7 +537,7 @@ export default function Portal() {
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
               <div className="flex items-center gap-3">
-                {modalAberto === 'termos' ? <FileText className="text-green-500" size={24} /> : <Shield className="text-green-500" size={24} />}
+                {modalAberto === 'termos' ? <FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
                 <h2 className="text-xl font-bold text-white">
                   {modalAberto === 'termos' ? 'Termos de Uso' : 'Política de Privacidade'}
                 </h2>

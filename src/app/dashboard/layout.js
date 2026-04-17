@@ -8,7 +8,7 @@ export default function DashboardLayout({ children }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-green-500/30">
+    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-[#6be12f]/30">
       {/* Botão de Hambúrguer para Mobile */}
       <button
         className="fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-[#0a0a0a] border border-white/[0.05] text-neutral-400 hover:text-white md:hidden transition-colors shadow-lg"

@@ -12,7 +12,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
-const CORES = ['#22c55e', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+const CORES = ['#6be12f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 export default function Dashboard() {
   const [metricas, setMetricas] = useState({
@@ -35,7 +35,7 @@ export default function Dashboard() {
   const [selectedHotspotId, setSelectedHotspotId] = useState('')
 
   const fmt = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0)
-  const corStatus = (s) => s === 'Pago' ? 'text-green-400' : s === 'Pendente' ? 'text-yellow-400' : 'text-red-400'
+  const corStatus = (s) => s === 'Pago' ? 'text-[#8cf059]' : s === 'Pendente' ? 'text-yellow-400' : 'text-red-400'
 
   const selectedHotspotName = hotspots.find(h => h.id === selectedHotspotId)?.nome || 'Todos';
 
@@ -233,7 +233,7 @@ export default function Dashboard() {
               borderRadius: '16px',
             },
             iconTheme: {
-              primary: '#22c55e',
+              primary: '#6be12f',
               secondary: '#0a0a0a',
             },
           });
@@ -247,7 +247,7 @@ export default function Dashboard() {
   }, [selectedHotspotId, selectedHotspotName, buscarDados]);
 
   const cards = [
-    { label: 'Clientes Ativos', valor: metricas.clientesAtivos, icon: Users, text: 'text-green-400', bg: 'bg-green-500/20' },
+    { label: 'Clientes Ativos', valor: metricas.clientesAtivos, icon: Users, text: 'text-[#8cf059]', bg: 'bg-[#6be12f]/20' },
     { label: 'Hotspots Ativos', valor: metricas.hotspotsAtivos, icon: Wifi, text: 'text-blue-400', bg: 'bg-blue-500/20' },
     { label: 'Acessos Hoje', valor: metricas.leadsHoje, sub: selectedHotspotName, icon: UserPlus, text: 'text-orange-400', bg: 'bg-orange-500/20' },
     { label: 'Acessos no Mês', valor: metricas.leadsMes, sub: selectedHotspotName, icon: Eye, text: 'text-red-400', bg: 'bg-red-500/20' },
@@ -256,10 +256,10 @@ export default function Dashboard() {
   ];
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#050505] text-white min-h-screen relative overflow-hidden selection:bg-green-500/30 font-sans">
+    <main className="flex-1 p-4 sm:p-6 md:p-8 bg-[#050505] text-white min-h-screen relative overflow-hidden selection:bg-[#6be12f]/30 font-sans">
 
       {/* Efeitos de Luz no Fundo (Ambient Glow Minimalista) */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-green-500/5 rounded-full blur-[150px] pointer-events-none z-0"></div>
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none z-0"></div>
 
       <Toaster />
 
@@ -271,7 +271,7 @@ export default function Dashboard() {
 
         <div className="relative min-w-[260px] group/select">
           <select
-            className="appearance-none w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] text-white text-sm font-medium rounded-2xl focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 block pl-5 pr-12 py-3.5 transition-all cursor-pointer shadow-inner hover:border-white/[0.1] outline-none"
+            className="appearance-none w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] text-white text-sm font-medium rounded-2xl focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 block pl-5 pr-12 py-3.5 transition-all cursor-pointer shadow-inner hover:border-white/[0.1] outline-none"
             value={selectedHotspotId}
             onChange={(e) => setSelectedHotspotId(e.target.value)}
           >
@@ -285,7 +285,7 @@ export default function Dashboard() {
               ))
             )}
           </select>
-          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-500 group-hover/select:text-green-500 transition-colors">
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-gray-500 group-hover/select:text-[#6be12f] transition-colors">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
           </div>
         </div>
@@ -294,8 +294,8 @@ export default function Dashboard() {
       {loading ? (
         <div className="relative z-10 flex items-center justify-center h-[60vh]">
           <div className="relative w-20 h-20 flex items-center justify-center">
-            <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-            <Activity className="text-green-500 animate-pulse" size={30} />
+            <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+            <Activity className="text-[#6be12f] animate-pulse" size={30} />
           </div>
         </div>
       ) : (
@@ -333,15 +333,15 @@ export default function Dashboard() {
                 <AreaChart data={leadsPorDiaGeral} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorLeads" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#6be12f" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6be12f" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="data" tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} dy={10} />
                   <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <Tooltip contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} labelStyle={{ color: '#9ca3af', marginBottom: '4px' }} itemStyle={{ color: '#22c55e', fontWeight: 'bold' }} />
-                  <Area type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
+                  <Area type="monotone" dataKey="leads" stroke="#6be12f" strokeWidth={3} fillOpacity={1} fill="url(#colorLeads)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -382,7 +382,7 @@ export default function Dashboard() {
                   <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} />
                   <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} labelStyle={{ color: '#9ca3af', marginBottom: '4px' }} formatter={(v) => fmt(v)} />
                   <Legend wrapperStyle={{ fontSize: '12px', color: '#9ca3af', paddingTop: '20px' }} iconType="circle" />
-                  <Bar dataKey="recebido" name="Recebido" fill="#22c55e" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="recebido" name="Recebido" fill="#6be12f" radius={[6, 6, 0, 0]} />
                   <Bar dataKey="pendente" name="Pendente" fill="#f59e0b" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>

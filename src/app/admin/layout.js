@@ -55,7 +55,7 @@ export default function AdminLayout({ children }) {
   if (carregando) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-green-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-[#6be12f] border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -63,7 +63,7 @@ export default function AdminLayout({ children }) {
   if (!usuario) return null
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-green-500/30">
+    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-[#6be12f]/30">
       {/* Sidebar Admin Premium */}
       <div className="w-64 bg-[#0a0a0a] border-r border-white/[0.05] flex flex-col flex-shrink-0 z-20">
         <div className="p-6 border-b border-white/[0.05]">
@@ -80,7 +80,7 @@ export default function AdminLayout({ children }) {
                 href={item.href}
                 className={`flex items-center gap-3 px-6 py-3.5 text-sm font-bold transition-all duration-300 border-r-2 ${
                   ativo 
-                    ? 'text-green-400 bg-green-500/10 border-green-500 shadow-inner' 
+                    ? 'text-[#8cf059] bg-[#6be12f]/10 border-[#6be12f] shadow-inner' 
                     : 'text-neutral-500 border-transparent hover:bg-white/[0.02] hover:text-neutral-300'
                 }`}
               >

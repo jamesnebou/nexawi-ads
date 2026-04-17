@@ -91,8 +91,8 @@ export default function Leads() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
-              <div className="p-2.5 bg-green-500/10 rounded-2xl border border-green-500/20">
-                <UserPlus className="text-green-500" size={24} />
+              <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
+                <UserPlus className="text-[#6be12f]" size={24} />
               </div>
               Leads Capturados
             </h1>
@@ -113,13 +113,13 @@ export default function Leads() {
         {/* Filtros Premium */}
         <div className="flex flex-col xl:flex-row gap-4 mb-8">
           <div className="relative flex-1 group/input">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
             <input
               type="text"
               placeholder="Buscar por nome, e-mail, telefone ou CPF..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
-              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
             />
           </div>
 
@@ -128,14 +128,14 @@ export default function Leads() {
               <select
                 value={filtroHotspot}
                 onChange={(e) => setFiltroHotspot(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all appearance-none pr-12 cursor-pointer shadow-inner"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all appearance-none pr-12 cursor-pointer shadow-inner"
               >
                 <option value="Todos" className="bg-[#0a0a0a]">Todos os hotspots</option>
                 {hotspots.map((h) => (
                   <option key={h.id} value={h.id} className="bg-[#0a0a0a]">{h.nome}</option>
                 ))}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
@@ -165,8 +165,8 @@ export default function Leads() {
             {loading ? (
               <div className="flex items-center justify-center py-32">
                 <div className="relative w-16 h-16 flex items-center justify-center">
-                  <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-                  <UserPlus className="text-green-500 animate-pulse" size={24} />
+                  <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+                  <UserPlus className="text-[#6be12f] animate-pulse" size={24} />
                 </div>
               </div>
             ) : leadsFiltrados.length === 0 ? (
@@ -195,7 +195,7 @@ export default function Leads() {
                     <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
                       <td className="px-8 py-5 whitespace-nowrap">
                         <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-full bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-500 font-bold text-sm flex-shrink-0 shadow-inner group-hover:text-green-400 group-hover:border-green-500/30 transition-all duration-300">
+                          <div className="w-11 h-11 rounded-full bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-500 font-bold text-sm flex-shrink-0 shadow-inner group-hover:text-[#8cf059] group-hover:border-[#6be12f]/30 transition-all duration-300">
                             {lead.nome?.charAt(0).toUpperCase() || '?'}
                           </div>
                           <div className="min-w-0">
@@ -212,7 +212,7 @@ export default function Leads() {
                       </td>
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
-                          <Wifi size={14} className="text-neutral-600 group-hover:text-green-500 transition-colors flex-shrink-0" />
+                          <Wifi size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
                           <span className="truncate max-w-[150px]">{nomeHotspot(lead.hotspot_id)}</span>
                         </span>
                       </td>
@@ -220,14 +220,14 @@ export default function Leads() {
                       {/* NOVA CÉLULA DO ANÚNCIO */}
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
-                          <MonitorPlay size={14} className="text-neutral-600 group-hover:text-green-500 transition-colors flex-shrink-0" />
+                          <MonitorPlay size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
                           <span className="truncate max-w-[150px]">{nomeAnuncio(lead.anuncio_id)}</span>
                         </span>
                       </td>
 
                       <td className="px-8 py-5 whitespace-nowrap">
                         {lead.aceite_lgpd ? (
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/20 text-[11px] font-bold uppercase tracking-widest text-green-400">
+                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#6be12f]/10 border border-[#6be12f]/20 text-[11px] font-bold uppercase tracking-widest text-[#8cf059]">
                             <Shield size={14} className="flex-shrink-0" />
                             Aceito
                           </span>

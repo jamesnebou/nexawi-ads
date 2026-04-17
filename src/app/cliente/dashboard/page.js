@@ -136,18 +136,18 @@ export default function ClientDashboardPage() {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center">
         <div className="relative w-20 h-20 flex items-center justify-center mb-4">
-          <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-          <Activity className="text-green-500 animate-pulse" size={30} />
+          <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+          <Activity className="text-[#6be12f] animate-pulse" size={30} />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-green-500/30">
+    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
 
       {/* Efeitos de Luz de Fundo */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-green-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none"></div>
 
       {/* NAVBAR PREMIUM */}
       <nav className="sticky top-0 z-40 bg-[#050505]/70 backdrop-blur-2xl border-b border-white/[0.04]">
@@ -157,11 +157,11 @@ export default function ClientDashboardPage() {
             {/* LOGO */}
             <div className="flex items-center gap-3 group cursor-pointer">
               <div className="relative">
-                <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
                 <img 
                   src="/Nexa-logo.png" 
                   alt="Nexa Logo" 
-                  className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" 
+                  className="h-20 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" 
                   onError={(e) => e.target.style.display = 'none'} 
                 />
               </div>
@@ -170,7 +170,7 @@ export default function ClientDashboardPage() {
             {/* PERFIL E AÇÕES */}
             <div className="flex items-center gap-2 sm:gap-6">
               <div className="hidden md:flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.02] border border-white/[0.05]">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                <div className="w-2 h-2 rounded-full bg-[#6be12f] animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
                 <span className="text-xs font-medium text-gray-400">{user?.email}</span>
               </div>
 
@@ -210,10 +210,10 @@ export default function ClientDashboardPage() {
 
           {/* Card: Anúncios Ativos */}
           <div className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-8 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#6be12f]/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
             <div className="relative z-10 flex items-center justify-between mb-6">
               <h3 className="text-gray-500 text-sm font-semibold tracking-wide uppercase">Anúncios Ativos</h3>
-              <Activity className="text-green-500/80 group-hover:text-green-400 transition-colors" size={20} />
+              <Activity className="text-[#6be12f]/80 group-hover:text-[#8cf059] transition-colors" size={20} />
             </div>
             <p className="relative z-10 text-5xl font-light text-white tracking-tight">{anunciosAtivos}</p>
           </div>
@@ -294,7 +294,7 @@ export default function ClientDashboardPage() {
                   {/* Badge Dinâmico (Ativo/Inativo) */}
                   {ad.ativo ? (
                     <div className="absolute top-5 right-5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#6be12f] animate-pulse"></div>
                       <span className="text-[10px] font-bold text-white uppercase tracking-widest">Ativo</span>
                     </div>
                   ) : (
@@ -307,7 +307,7 @@ export default function ClientDashboardPage() {
 
                 {/* Conteúdo do Card */}
                 <div className="p-8 relative z-10 -mt-6">
-                  <h3 className="text-xl font-semibold text-white mb-3 line-clamp-1 group-hover:text-green-400 transition-colors duration-300">{ad.titulo}</h3>
+                  <h3 className="text-xl font-semibold text-white mb-3 line-clamp-1 group-hover:text-[#8cf059] transition-colors duration-300">{ad.titulo}</h3>
                   <p className="text-gray-500 text-sm mb-8 line-clamp-2 leading-relaxed">{ad.descricao}</p>
 
                   {/* Métricas Individuais */}
@@ -348,12 +348,12 @@ export default function ClientDashboardPage() {
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nova Senha</label>
                   <div className="relative group/input">
-                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                     <input
                       type="password"
                       value={pwdForm.new}
                       onChange={(e) => setPwdForm({ ...pwdForm, new: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                       placeholder="Mínimo 6 caracteres"
                       required
                     />
@@ -362,12 +362,12 @@ export default function ClientDashboardPage() {
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Confirmar Nova Senha</label>
                   <div className="relative group/input">
-                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                     <input
                       type="password"
                       value={pwdForm.confirm}
                       onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                       placeholder="Repita a nova senha"
                       required
                     />
@@ -376,12 +376,12 @@ export default function ClientDashboardPage() {
               </div>
 
               {pwdStatus.error && <div className="p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">{pwdStatus.error}</div>}
-              {pwdStatus.success && <div className="p-4 mb-6 rounded-2xl bg-green-500/10 border border-green-500/20 text-green-400 text-sm text-center flex items-center justify-center gap-2"><Check size={16} /> {pwdStatus.success}</div>}
+              {pwdStatus.success && <div className="p-4 mb-6 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] text-sm text-center flex items-center justify-center gap-2"><Check size={16} /> {pwdStatus.success}</div>}
 
               <button
                 type="submit"
                 disabled={pwdStatus.loading || pwdStatus.success}
-                className="w-full bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {pwdStatus.loading ? <Loader2 size={20} className="animate-spin" /> : 'Atualizar Senha'}
               </button>

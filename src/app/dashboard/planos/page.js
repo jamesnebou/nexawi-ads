@@ -121,8 +121,8 @@ export default function Planos() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
-              <div className="p-2.5 bg-green-500/10 rounded-2xl border border-green-500/20">
-                <Package className="text-green-500" size={24} />
+              <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
+                <Package className="text-[#6be12f]" size={24} />
               </div>
               Planos
             </h1>
@@ -131,7 +131,7 @@ export default function Planos() {
 
           <button
             onClick={() => abrirModal()}
-            className="w-full sm:w-auto bg-green-500 hover:bg-green-400 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+            className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
           >
             <Plus size={18} strokeWidth={2.5} />
             Novo Plano
@@ -141,8 +141,8 @@ export default function Planos() {
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-              <Package className="text-green-500 animate-pulse" size={24} />
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <Package className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
         ) : planos.length === 0 ? (
@@ -165,11 +165,11 @@ export default function Planos() {
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 {/* Efeito de luz sutil no hover */}
-                <div className="absolute -right-10 -top-10 w-32 h-32 bg-green-500/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#6be12f]/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                 <div className="flex items-start justify-between mb-8 relative z-10">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-400 group-hover:text-green-500 group-hover:border-green-500/30 transition-all duration-300 shadow-inner">
+                    <div className="w-12 h-12 rounded-2xl bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-400 group-hover:text-[#6be12f] group-hover:border-[#6be12f]/30 transition-all duration-300 shadow-inner">
                       <Package size={24} />
                     </div>
                     <h3 className="text-xl font-bold text-white tracking-tight">{plano.nome}</h3>
@@ -205,14 +205,14 @@ export default function Planos() {
                 <div className="space-y-4 pt-6 border-t border-white/[0.05] mt-auto relative z-10">
                   <div className="flex items-center justify-between group/item">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
-                      <Star size={16} className="text-neutral-600 group-hover/item:text-green-500 transition-colors" />
+                      <Star size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
                       <span className="text-sm font-medium">Máx. criativos</span>
                     </div>
                     <span className="text-sm font-bold text-white">{plano.max_criativos}</span>
                   </div>
                   <div className="flex items-center justify-between group/item">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
-                      <Users size={16} className="text-neutral-600 group-hover/item:text-green-500 transition-colors" />
+                      <Users size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
                       <span className="text-sm font-medium">Máx. pontos</span>
                     </div>
                     <span className="text-sm font-bold text-white">
@@ -221,7 +221,7 @@ export default function Planos() {
                   </div>
                   <div className="flex items-center justify-between group/item">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
-                      <RefreshCw size={16} className="text-neutral-600 group-hover/item:text-green-500 transition-colors" />
+                      <RefreshCw size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
                       <span className="text-sm font-medium">Relatório</span>
                     </div>
                     <span className="text-sm font-bold text-white capitalize">{plano.intervalo_relatorio}</span>
@@ -230,10 +230,10 @@ export default function Planos() {
                   {/* NOVA LINHA: Contagem de Clientes */}
                   <div className="flex items-center justify-between group/item pt-2 border-t border-white/[0.02]">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
-                      <UserCheck size={16} className="text-neutral-600 group-hover/item:text-green-500 transition-colors" />
+                      <UserCheck size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
                       <span className="text-sm font-medium">Clientes ativos</span>
                     </div>
-                    <span className="text-sm font-bold text-green-400 bg-green-500/10 px-2.5 py-0.5 rounded-lg border border-green-500/20">
+                    <span className="text-sm font-bold text-[#8cf059] bg-[#6be12f]/10 px-2.5 py-0.5 rounded-lg border border-[#6be12f]/20">
                       {plano.quantidade_clientes || 0}
                     </span>
                   </div>
@@ -272,7 +272,7 @@ export default function Planos() {
                   placeholder="Ex: Dominância"
                   value={form.nome}
                   onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                 />
               </div>
 
@@ -280,14 +280,14 @@ export default function Planos() {
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Preço (R$) *</label>
                 <div className="relative group/input">
                   <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <span className="text-neutral-500 text-sm font-bold group-focus-within/input:text-green-500 transition-colors">R$</span>
+                    <span className="text-neutral-500 text-sm font-bold group-focus-within/input:text-[#6be12f] transition-colors">R$</span>
                   </div>
                   <input
                     type="number"
                     placeholder="0.00"
                     value={form.preco}
                     onChange={(e) => setForm({ ...form, preco: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -300,7 +300,7 @@ export default function Planos() {
                     placeholder="Ex: 3"
                     value={form.max_criativos}
                     onChange={(e) => setForm({ ...form, max_criativos: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
                 <div>
@@ -310,7 +310,7 @@ export default function Planos() {
                     placeholder="Ex: 999"
                     value={form.max_pontos}
                     onChange={(e) => setForm({ ...form, max_pontos: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
               </div>
@@ -321,11 +321,11 @@ export default function Planos() {
                   <select
                     value={form.intervalo_relatorio}
                     onChange={(e) => setForm({ ...form, intervalo_relatorio: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 capitalize shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer appearance-none pr-12 capitalize shadow-inner"
                   >
                     {intervalos.map((i) => <option key={i} value={i} className="bg-[#050505]">{i}</option>)}
                   </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                     <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                   </div>
                 </div>
@@ -342,7 +342,7 @@ export default function Planos() {
               <button
                 onClick={salvarPlano}
                 disabled={salvando || !form.nome.trim() || !form.preco}
-                className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />

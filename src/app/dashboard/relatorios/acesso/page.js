@@ -41,8 +41,8 @@ export default function RelatorioAcesso() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
-              <div className="p-2.5 bg-green-500/10 rounded-2xl border border-green-500/20">
-                <BarChart3 className="text-green-500" size={24} />
+              <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
+                <BarChart3 className="text-[#6be12f]" size={24} />
               </div>
               Relatório de Acesso
             </h1>
@@ -53,8 +53,8 @@ export default function RelatorioAcesso() {
         {carregando ? (
           <div className="flex items-center justify-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-              <BarChart3 className="text-green-500 animate-pulse" size={24} />
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <BarChart3 className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
         ) : relatorio.length === 0 ? (
@@ -74,15 +74,15 @@ export default function RelatorioAcesso() {
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 {/* Efeito de luz sutil no hover */}
-                <div className="absolute -right-10 -top-10 w-32 h-32 bg-green-500/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+                <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#6be12f]/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
                 {/* Informações do Hotspot */}
                 <div className="flex items-center gap-5 w-full lg:w-auto relative z-10">
-                  <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/[0.05] flex items-center justify-center shadow-inner group-hover:border-green-500/30 transition-all duration-300 flex-shrink-0">
-                    <MapPin size={24} className="text-neutral-500 group-hover:text-green-500 transition-colors duration-300" />
+                  <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/[0.05] flex items-center justify-center shadow-inner group-hover:border-[#6be12f]/30 transition-all duration-300 flex-shrink-0">
+                    <MapPin size={24} className="text-neutral-500 group-hover:text-[#6be12f] transition-colors duration-300" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="text-xl font-bold text-white group-hover:text-green-400 transition-colors truncate tracking-tight">
+                    <h3 className="text-xl font-bold text-white group-hover:text-[#8cf059] transition-colors truncate tracking-tight">
                       {item.hotspot_nome}
                     </h3>
                     <div className="flex items-center gap-2 text-sm text-neutral-500 mt-1.5 font-medium">
@@ -107,9 +107,9 @@ export default function RelatorioAcesso() {
                   </div>
 
                   {/* Cliques */}
-                  <div className="w-full sm:w-52 bg-[#050505] border border-white/[0.05] rounded-2xl p-5 flex items-center gap-5 shadow-inner group/metric hover:border-green-500/20 transition-colors">
-                    <div className="w-12 h-12 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center flex-shrink-0 group-hover/metric:bg-green-500/20 transition-colors">
-                      <MousePointerClick size={20} className="text-green-500" />
+                  <div className="w-full sm:w-52 bg-[#050505] border border-white/[0.05] rounded-2xl p-5 flex items-center gap-5 shadow-inner group/metric hover:border-[#6be12f]/20 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0 group-hover/metric:bg-[#6be12f]/20 transition-colors">
+                      <MousePointerClick size={20} className="text-[#6be12f]" />
                     </div>
                     <div>
                       <p className="text-[10px] text-neutral-500 uppercase tracking-widest font-bold mb-1">Cliques</p>

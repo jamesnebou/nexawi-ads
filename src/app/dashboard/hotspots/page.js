@@ -13,7 +13,7 @@ const supabase = createClient(
 const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
 
 const corStatus = (status) => {
-  if (status === 'Ativo') return 'bg-green-500/10 text-green-400 border border-green-500/20'
+  if (status === 'Ativo') return 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
   if (status === 'Inativo') return 'bg-red-500/10 text-red-400 border border-red-500/20'
   return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' // Manutenção
 }
@@ -149,8 +149,8 @@ export default function Hotspots() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
-              <div className="p-2.5 bg-green-500/10 rounded-2xl border border-green-500/20">
-                <Wifi className="text-green-500" size={24} />
+              <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
+                <Wifi className="text-[#6be12f]" size={24} />
               </div>
               Hotspots
             </h1>
@@ -159,13 +159,13 @@ export default function Hotspots() {
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative w-full sm:w-72 group/input">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-green-500 transition-colors duration-300" />
+              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
               <input
                 type="text"
                 placeholder="Buscar por nome, cidade..."
                 value={busca}
                 onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
               />
             </div>
 
@@ -173,19 +173,19 @@ export default function Hotspots() {
               <select
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer shadow-inner"
+                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer shadow-inner"
               >
                 <option value="Todos" className="bg-[#0a0a0a]">Todos os Status</option>
                 {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#0a0a0a]">{s}</option>)}
               </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                 <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
               </div>
             </div>
 
             <button
               onClick={() => abrirModal()}
-              className="w-full sm:w-auto bg-green-500 hover:bg-green-400 text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
             >
               <Plus size={18} strokeWidth={2.5} />
               Novo Hotspot
@@ -197,8 +197,8 @@ export default function Hotspots() {
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-green-500/50 rounded-full animate-spin"></div>
-              <Wifi className="text-green-500 animate-pulse" size={24} />
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <Wifi className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
         ) : hotspots.length === 0 ? (
@@ -310,7 +310,7 @@ export default function Hotspots() {
                     placeholder="Ex: Hotspot Centro"
                     value={form.nome}
                     onChange={(e) => setForm({ ...form, nome: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
@@ -321,7 +321,7 @@ export default function Hotspots() {
                     placeholder="Ex: Rua das Flores, 123"
                     value={form.endereco}
                     onChange={(e) => setForm({ ...form, endereco: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
@@ -333,7 +333,7 @@ export default function Hotspots() {
                       <select
                         value={form.estado}
                         onChange={(e) => setForm({ ...form, estado: e.target.value, cidade: '' })}
-                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
                       >
                         <option value="" className="bg-[#050505]">Selecione o UF</option>
                         {estadosIBGE.map(estado => (
@@ -342,7 +342,7 @@ export default function Hotspots() {
                           </option>
                         ))}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                         <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                       </div>
                     </div>
@@ -357,7 +357,7 @@ export default function Hotspots() {
                       value={form.cidade}
                       onChange={(e) => setForm({ ...form, cidade: e.target.value })}
                       disabled={!form.estado}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                     <datalist id="lista-cidades-hotspot">
                       {cidadesIBGE.map((cidade) => (
@@ -376,7 +376,7 @@ export default function Hotspots() {
                       placeholder="Ex: Restaurante XYZ"
                       value={form.parceiro}
                       onChange={(e) => setForm({ ...form, parceiro: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all shadow-inner"
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     />
                   </div>
                   <div>
@@ -385,11 +385,11 @@ export default function Hotspots() {
                       <select
                         value={form.status}
                         onChange={(e) => setForm({ ...form, status: e.target.value })}
-                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-green-500/30 focus:border-green-500/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer appearance-none pr-12 shadow-inner"
                       >
                         {statusOpcoes.map((s) => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
                       </select>
-                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-green-500 transition-colors">
+                      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
                         <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
                       </div>
                     </div>
@@ -409,7 +409,7 @@ export default function Hotspots() {
               <button
                 onClick={salvarHotspot}
                 disabled={salvando || !form.nome.trim()}
-                className="flex-1 bg-green-500 hover:bg-green-400 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />

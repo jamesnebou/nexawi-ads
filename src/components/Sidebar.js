@@ -42,12 +42,12 @@ export default function Sidebar({ onClose }) {
     <div className="min-h-screen bg-[#050505] border-r border-white/[0.05] flex flex-col relative overflow-hidden font-sans">
 
       {/* Efeito de luz difusa (Glow) atrás da logo */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-40 bg-green-500/5 blur-[80px] rounded-full pointer-events-none" />
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-40 bg-[#6be12f]/5 blur-[80px] rounded-full pointer-events-none" />
 
       {/* Header da Logo com Efeito Premium */}
       <div className="px-6 py-10 flex items-center justify-center relative z-10 group cursor-pointer">
         <div className="relative">
-          <div className="absolute inset-0 bg-green-500/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+          <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
           <Image
             src="/Nexa-logo.png"
             alt="Nexa Logo"
@@ -81,14 +81,14 @@ export default function Sidebar({ onClose }) {
             >
               {/* Indicador lateral verde neon para o item ativo */}
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-green-500 rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-[#6be12f] rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
               )}
 
               <Icon 
                 size={20} 
                 className={`transition-all duration-300 ${
                   active 
-                    ? 'text-green-400 drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
+                    ? 'text-[#8cf059] drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]' 
                     : 'group-hover:scale-110 group-hover:text-gray-300'
                 }`} 
               />
