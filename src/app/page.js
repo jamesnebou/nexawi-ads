@@ -805,6 +805,22 @@ export default function LandingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
+                    Exibição em 1 ponto
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
                     Botão de Redirecionamento
                   </li>
                   <li className="flex items-center gap-3">
