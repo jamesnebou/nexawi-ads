@@ -327,68 +327,40 @@ export default function Portal() {
   }
 
   // NOVA FUNÇÃO: Lidar com a liberação da internet
-  async function handleLiberarInternet() {
-    if (!macAddress) {
-      console.error("MAC Address não encontrado na URL. Não é possível liberar a internet.");
-      setEtapa(ETAPAS.ERRO); // Ou alguma etapa de erro específica
-      return;
-    }
-
-    // A URL de liberação do Mikrotik geralmente é algo como:
-    // http://<hotspot-ip>/login?username=TICKET_OU_MAC&password=SENHA_VAZIA
-    // Ou, se usando RADIUS, o Mikrotik espera um POST para /login com os dados do usuário.
-    // Como você está usando IronWiFi, o Mikrotik espera que o IronWiFi envie o CoA.
-    // No entanto, se o IronWiFi não está fazendo isso, podemos tentar uma autenticação "fake"
-    // para o Mikrotik, usando o MAC como username e uma senha vazia.
-
-    // A URL do Mikrotik para autenticação é geralmente o IP do Hotspot (10.5.50.1 no seu caso)
-    // ou o dns-name do hotspot (wifi.nexawi.com.br).
-    // O Mikrotik espera um POST para /login.
-    // Os parâmetros são 'username' e 'password'.
-
-    // O IronWiFi já deveria ter enviado o CoA para o Mikrotik.
-    // Se a internet não está liberando, pode ser que o CoA não esteja chegando ou sendo processado.
-    // Uma alternativa é tentar um "login" direto no Mikrotik com o MAC.
-
-    // Vamos tentar o login direto no Mikrotik com o MAC como username e senha vazia.
-    // Isso simula o que o Mikrotik esperaria de um portal interno ou de um RADIUS que não usa CoA.
-    // A URL de login do Mikrotik é geralmente o IP do Hotspot ou o dns-name.
-    // O Mikrotik envia o IP do Hotspot na URL como 'ip'.
-    const hotspotIp = searchParams.get('ip') || '10.5.50.1'; // Pega o IP do Hotspot da URL ou usa o padrão
-
-    try {
-      const response = await fetch(`http://${hotspotIp}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: new URLSearchParams({
-          username: macAddress, // Usamos o MAC como username
-          password: '', // Senha vazia
-          dst: linkOrig || 'http://google.com', // Redireciona para o link original ou Google
-        }).toString(),
-      });
-
-      if (response.ok) {
-        console.log("Requisição de liberação enviada ao Mikrotik com sucesso!");
-        setEtapa(ETAPAS.ACESSO);
-        // Redireciona o usuário para o destino original ou para o Google
-        window.location.href = linkOrig || 'http://google.com';
-      } else {
-        console.error("Erro ao enviar requisição de liberação ao Mikrotik:", response.status, response.statusText);
-        // Se a resposta não for OK, pode ser que o Mikrotik já liberou ou há outro problema.
-        // Ainda assim, podemos tentar ir para a etapa de acesso.
-        setEtapa(ETAPAS.ACESSO);
-        // Redireciona o usuário para o destino original ou para o Google
-        window.location.href = linkOrig || 'http://google.com';
-      }
-    } catch (error) {
-      console.error("Erro na comunicação com o Mikrotik para liberação:", error);
-      // Em caso de erro de rede, ainda podemos ir para a etapa de acesso e tentar redirecionar.
-      setEtapa(ETAPAS.ACESSO);
-      window.location.href = linkOrig || 'http://google.com';
-    }
+async function handleLiberarInternet() {
+  if (!macAddress) {
+    console.error("MAC não encontrado")
+    setEtapa(ETAPAS.ERRO)
+    return
   }
+
+  try {
+    const response = await fetch('/api/liberar-internet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mac: macAddress })
+    })
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Erro ao autenticar')
+    }
+
+    console.log("Internet liberada via RADIUS")
+
+    setEtapa(ETAPAS.ACESSO)
+
+    // 🔥 Redirecionamento FINAL (IMPORTANTÍSSIMO)
+    setTimeout(() => {
+      window.location.href = linkOrig || 'http://google.com'
+    }, 1500)
+
+  } catch (error) {
+    console.error("Erro ao liberar internet:", error)
+    setEtapa(ETAPAS.ERRO)
+  }
+}
 
 
   return (
