@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
+import { useSearchParams } from 'next/navigation'
 import { 
   User, Mail, Smartphone, FileText, ShieldCheck, 
   Wifi, Loader2, ArrowRight, CheckCircle2, Clock, X, Shield
@@ -25,6 +26,7 @@ const ETAPAS = {
 
 export default function Portal() {
   const { slug } = useParams()
+  const searchParams = useSearchParams() // Adicionado para pegar os parâmetros da URL
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
   const [anuncioAtual, setAnuncioAtual] = useState(null)
@@ -34,6 +36,8 @@ export default function Portal() {
   const [salvando, setSalvando] = useState(false)
   const [leadId, setLeadId] = useState(null)
   const [ipAddress, setIpAddress] = useState('0.0.0.0')
+  const [macAddress, setMacAddress] = useState('') // Novo estado para o MAC Address
+  const [linkOrig, setLinkOrig] = useState('') // Novo estado para o link original de redirecionamento
   const [tempoEspera, setTempoEspera] = useState(0) 
   const [modalAberto, setModalAberto] = useState(null) 
 
@@ -46,6 +50,12 @@ export default function Portal() {
 
    // 1. INICIALIZAÇÃO UNIFICADA (Resolve o Loop e ajusta a regra de tempo)
   useEffect(() => {
+    // Captura o MAC Address e o link original da URL
+    const mac = searchParams.get('mac') || '';
+    const orig = searchParams.get('link-orig') || ''; // O Mikrotik geralmente envia o link original
+    setMacAddress(mac);
+    setLinkOrig(orig);
+
     // A. Busca o IP silenciosamente
     fetch('https://api.ipify.org?format=json')
       .then(res => res.json())
@@ -64,8 +74,11 @@ export default function Portal() {
       if (tempoPassadoMs < tempoUsoMs) {
         // Cenário 1: Ainda está dentro da 1 hora de uso.
         // Se ele caiu na tela do portal por engano, apenas mostramos que está conectado.
+        // E tentamos liberar a internet, caso já esteja autenticado.
         setEtapa(ETAPAS.ACESSO)
         isBlocked = true;
+        // Tenta liberar a internet se já estiver autenticado (útil para reconexões)
+        handleLiberarInternet(); 
       } else if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
         // Cenário 2: Passou de 1 hora, mas ainda não deu 1h20m. (Está na geladeira)
         const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
@@ -82,7 +95,7 @@ export default function Portal() {
     if (!isBlocked) {
       buscarHotspot()
     }
-  }, [slug])
+  }, [slug, searchParams]) // Adicionado searchParams como dependência
 
   // 2. Controla o cronômetro do anúncio atual
   useEffect(() => {
@@ -274,7 +287,9 @@ export default function Portal() {
           telefone: String(form.telefone).replace(/\D/g, ''),
           cpf: String(form.cpf).replace(/\D/g, ''),
           aceite_lgpd: form.aceite_lgpd,
-          anuncio_id: anuncioSorteado ? anuncioSorteado.id : null
+          anuncio_id: anuncioSorteado ? anuncioSorteado.id : null,
+          mac_address: macAddress, // Salva o MAC Address no lead
+          ip_address: ipAddress // Salva o IP Address no lead
         }])
         .select()
         .single()
@@ -291,7 +306,8 @@ export default function Portal() {
         setEtapa(ETAPAS.ANUNCIO) 
         registrarVisualizacao(anuncioSorteado.id, ipAddress)
       } else {
-        setEtapa(ETAPAS.ACESSO) 
+        // Se não houver anúncio, vai direto para a liberação da internet
+        await handleLiberarInternet(); 
       }
 
     } catch (error) {
@@ -306,8 +322,74 @@ export default function Portal() {
     if (clicou && anuncioAtual) {
       await registrarClique(anuncioAtual.id, ipAddress)
     }
-    setEtapa(ETAPAS.ACESSO)
+    // Após o CTA, tenta liberar a internet
+    await handleLiberarInternet();
   }
+
+  // NOVA FUNÇÃO: Lidar com a liberação da internet
+  async function handleLiberarInternet() {
+    if (!macAddress) {
+      console.error("MAC Address não encontrado na URL. Não é possível liberar a internet.");
+      setEtapa(ETAPAS.ERRO); // Ou alguma etapa de erro específica
+      return;
+    }
+
+    // A URL de liberação do Mikrotik geralmente é algo como:
+    // http://<hotspot-ip>/login?username=TICKET_OU_MAC&password=SENHA_VAZIA
+    // Ou, se usando RADIUS, o Mikrotik espera um POST para /login com os dados do usuário.
+    // Como você está usando IronWiFi, o Mikrotik espera que o IronWiFi envie o CoA.
+    // No entanto, se o IronWiFi não está fazendo isso, podemos tentar uma autenticação "fake"
+    // para o Mikrotik, usando o MAC como username e uma senha vazia.
+
+    // A URL do Mikrotik para autenticação é geralmente o IP do Hotspot (10.5.50.1 no seu caso)
+    // ou o dns-name do hotspot (wifi.nexawi.com.br).
+    // O Mikrotik espera um POST para /login.
+    // Os parâmetros são 'username' e 'password'.
+
+    // O IronWiFi já deveria ter enviado o CoA para o Mikrotik.
+    // Se a internet não está liberando, pode ser que o CoA não esteja chegando ou sendo processado.
+    // Uma alternativa é tentar um "login" direto no Mikrotik com o MAC.
+
+    // Vamos tentar o login direto no Mikrotik com o MAC como username e senha vazia.
+    // Isso simula o que o Mikrotik esperaria de um portal interno ou de um RADIUS que não usa CoA.
+    // A URL de login do Mikrotik é geralmente o IP do Hotspot ou o dns-name.
+    // O Mikrotik envia o IP do Hotspot na URL como 'ip'.
+    const hotspotIp = searchParams.get('ip') || '10.5.50.1'; // Pega o IP do Hotspot da URL ou usa o padrão
+
+    try {
+      const response = await fetch(`http://${hotspotIp}/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          username: macAddress, // Usamos o MAC como username
+          password: '', // Senha vazia
+          dst: linkOrig || 'http://google.com', // Redireciona para o link original ou Google
+        }).toString(),
+      });
+
+      if (response.ok) {
+        console.log("Requisição de liberação enviada ao Mikrotik com sucesso!");
+        setEtapa(ETAPAS.ACESSO);
+        // Redireciona o usuário para o destino original ou para o Google
+        window.location.href = linkOrig || 'http://google.com';
+      } else {
+        console.error("Erro ao enviar requisição de liberação ao Mikrotik:", response.status, response.statusText);
+        // Se a resposta não for OK, pode ser que o Mikrotik já liberou ou há outro problema.
+        // Ainda assim, podemos tentar ir para a etapa de acesso.
+        setEtapa(ETAPAS.ACESSO);
+        // Redireciona o usuário para o destino original ou para o Google
+        window.location.href = linkOrig || 'http://google.com';
+      }
+    } catch (error) {
+      console.error("Erro na comunicação com o Mikrotik para liberação:", error);
+      // Em caso de erro de rede, ainda podemos ir para a etapa de acesso e tentar redirecionar.
+      setEtapa(ETAPAS.ACESSO);
+      window.location.href = linkOrig || 'http://google.com';
+    }
+  }
+
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -490,7 +572,7 @@ export default function Portal() {
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
               <div className="flex flex-col gap-4">
                 {anuncioAtual.url_destino && (
-                  <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-[#6be12f] shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]">
+                  <a href={anuncioAtual.url_destino} target="_blank" rel="noopener noreferrer" onClick={() => handleCtaClick(true)} className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-[#6be12f] shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]" >
                     Quero aproveitar
                   </a>
                 )}
@@ -502,6 +584,8 @@ export default function Portal() {
           </div>
         </div>
       )}
+
+
 
       {/* ETAPA 4 — ACESSO LIBERADO */}
       {etapa === ETAPAS.ACESSO && (
