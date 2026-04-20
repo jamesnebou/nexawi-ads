@@ -2,11 +2,35 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+// Componente Modal (pode ser movido para um arquivo separado como components/Modal.jsx se preferir)
+const Modal = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[9999] p-4">
+      <div className="bg-[#050505] border border-white/10 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+        <div className="flex justify-between items-center p-6 border-b border-white/10">
+          <h2 className="text-2xl font-bold text-white">{title}</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-white text-3xl leading-none">&times;</button>
+        </div>
+        <div className="p-6 text-gray-300 text-base leading-relaxed">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function LandingPage() {
 
   // Variáveis de Estado para a Barra de Status ao Vivo
   const [onlineUsers, setOnlineUsers] = useState(124);
   const [leadsToday, setLeadsToday] = useState(47);
+
+  // Estados para controlar a visibilidade dos Modals
+  const [showTermsPopup, setShowTermsPopup] = useState(false);
+  const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
+  const [showContactPopup, setShowContactPopup] = useState(false);
 
   // Efeito para simular os números mudando em tempo real (Opcional, mas dá um toque premium)
   useEffect(() => {
@@ -57,6 +81,25 @@ export default function LandingPage() {
 
     return () => clearInterval(interval);
   }, []);
+
+ // Handlers para abrir os Modals (com stopPropagation)
+  const handleOpenTerms = (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // Impede que o evento suba e cause o scroll
+    setShowTermsPopup(true);
+  };
+
+  const handleOpenPrivacy = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowPrivacyPopup(true);
+  };
+
+  const handleOpenContact = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowContactPopup(true);
+  };
 
   return (
     <div className="relative min-h-screen bg-[#050505] text-white selection:bg-[#6be12f] selection:text-black font-sans overflow-hidden">
@@ -473,9 +516,11 @@ export default function LandingPage() {
             </div>
             <p className="text-gray-500 text-sm">© 2026 NexaWi ADS. Todos os direitos reservados.</p>
             <div className="flex gap-6 text-sm font-medium text-gray-400">
-              <a href="#" className="hover:text-[#8cf059] transition-colors">Termos de Uso</a>
-              <a href="#" className="hover:text-[#8cf059] transition-colors">Privacidade</a>
-              <a href="#" className="hover:text-[#8cf059] transition-colors">Contato</a>
+               {/* LINKS ALTERADOS AQUI PARA ABRIR OS MODALS */}
+              <a href="#" onClick={handleOpenTerms} className="hover:text-[#8cf059] transition-colors">Termos de Uso</a>
+              <a href="#" onClick={handleOpenPrivacy} className="hover:text-[#8cf059] transition-colors">Privacidade</a>
+              <a href="#" onClick={handleOpenContact} className="hover:text-[#8cf059] transition-colors">Contato</a>
+            
             </div>
           </div>
         </footer>
@@ -507,6 +552,100 @@ export default function LandingPage() {
         </div>
 
       </div> {/* Fim do container de conteúdo (z-10) */}
+
+      {/* Modals */}
+      <Modal isOpen={showTermsPopup} onClose={() => setShowTermsPopup(false)} title="Termos de Uso">
+        {/* Conteúdo dos Termos de Uso */}
+        <p className="mb-4">Bem-vindo aos Termos de Uso da NexaWi ADS. Ao acessar e utilizar nossos serviços, você concorda em cumprir e estar vinculado aos seguintes termos e condições.</p>
+        <h3 className="text-xl font-bold text-white mb-2">1. Aceitação dos Termos</h3>
+        <p className="mb-4">Estes Termos de Uso ("Termos") regem seu acesso e uso dos serviços, websites e aplicativos oferecidos pela NexaWi ADS ("NexaWi", "nós", "nosso"). Ao acessar ou usar os Serviços, você concorda em estar vinculado a estes Termos e a todas as políticas e diretrizes incorporadas por referência.</p>
+        <h3 className="text-xl font-bold text-white mb-2">2. Alterações nos Termos</h3>
+        <p className="mb-4">A NexaWi reserva-se o direito de modificar ou revisar estes Termos a qualquer momento, a seu exclusivo critério. Quaisquer alterações entrarão em vigor imediatamente após a publicação dos Termos revisados em nosso site. Seu uso continuado dos Serviços após a publicação de quaisquer alterações constitui sua aceitação dessas alterações.</p>
+        <h3 className="text-xl font-bold text-white mb-2">3. Uso dos Serviços</h3>
+        <p className="mb-4">Você concorda em usar os Serviços apenas para fins lícitos e de maneira que não infrinja os direitos de, ou restrinja ou iniba o uso e o desfrute dos Serviços por terceiros. Comportamento proibido inclui assediar ou causar angústia ou inconveniência a qualquer outra pessoa, transmitir conteúdo obsceno ou ofensivo ou interromper o fluxo normal de diálogo dentro dos Serviços.</p>
+        <h3 className="text-xl font-bold text-white mb-2">4. Propriedade Intelectual</h3>
+        <p className="mb-4">Todo o conteúdo e materiais disponíveis nos Serviços, incluindo, mas não se limitando a texto, gráficos, logotipos, ícones, imagens, clipes de áudio, downloads digitais, compilações de dados e software, são propriedade da NexaWi ou de seus fornecedores de conteúdo e são protegidos por leis de direitos autorais internacionais.</p>
+        <h3 className="text-xl font-bold text-white mb-2">5. Limitação de Responsabilidade</h3>
+        <p className="mb-4">Em nenhuma circunstância a NexaWi será responsável por quaisquer danos diretos, indiretos, incidentais, especiais, consequenciais ou exemplares, incluindo, mas não se limitando a, danos por perda de lucros, boa vontade, uso, dados ou outras perdas intangíveis (mesmo que a NexaWi tenha sido avisada da possibilidade de tais danos), resultantes de:</p>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>O uso ou a incapacidade de usar os Serviços;</li>
+          <li>O custo de aquisição de bens e serviços substitutos resultantes de quaisquer bens, dados, informações ou serviços adquiridos ou obtidos ou mensagens recebidas ou transações realizadas através ou a partir dos Serviços;</li>
+          <li>Acesso não autorizado ou alteração de suas transmissões ou dados;</li>
+          <li>Declarações ou conduta de qualquer terceiro nos Serviços; ou</li>
+          <li>Qualquer outro assunto relacionado aos Serviços.</li>
+        </ul>
+        <h3 className="text-xl font-bold text-white mb-2">6. Indenização</h3>
+        <p className="mb-4">Você concorda em indenizar e isentar a NexaWi e suas afiliadas, diretores, agentes, funcionários e parceiros de qualquer reivindicação ou demanda, incluindo honorários advocatíveis razoáveis, feita por qualquer terceiro devido ou decorrente de seu uso dos Serviços, sua violação destes Termos ou sua violação de quaisquer direitos de outra pessoa ou entidade.</p>
+        <h3 className="text-xl font-bold text-white mb-2">7. Lei Aplicável</h3>
+        <p className="mb-4">Estes Termos serão regidos e interpretados de acordo com as leis do Brasil, sem levar em consideração seus princípios de conflito de leis. Você concorda em se submeter à jurisdição pessoal e exclusiva dos tribunais localizados no Brasil para a resolução de quaisquer disputas decorrentes destes Termos ou dos Serviços.</p>
+        <h3 className="text-xl font-bold text-white mb-2">8. Contato</h3>
+        <p>Se você tiver alguma dúvida sobre estes Termos, entre em contato conosco através do nosso formulário de contato ou e-mail.</p>
+      </Modal>
+
+      <Modal isOpen={showPrivacyPopup} onClose={() => setShowPrivacyPopup(false)} title="Política de Privacidade">
+        {/* Conteúdo da Política de Privacidade */}
+        <p className="mb-4">A sua privacidade é de extrema importância para a NexaWi ADS. Esta Política de Privacidade descreve como coletamos, usamos, processamos e divulgamos suas informações, incluindo dados pessoais, em conexão com seu acesso e uso da plataforma NexaWi ADS.</p>
+        <h3 className="text-xl font-bold text-white mb-2">1. Informações que Coletamos</h3>
+        <p className="mb-4">Coletamos informações para fornecer e melhorar nossos serviços. As categorias de informações que coletamos incluem:</p>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>**Informações de Contato:** Nome, endereço de e-mail, número de telefone.</li>
+          <li>**Informações de Uso:** Dados sobre como você interage com nossos serviços, como páginas visitadas, tempo gasto, cliques e outras atividades.</li>
+          <li>**Informações Técnicas:** Endereço IP, tipo de navegador, sistema operacional, informações do dispositivo.</li>
+          <li>**Informações de Localização:** Se você nos conceder permissão, podemos coletar dados de localização para oferecer serviços baseados em localização.</li>
+        </ul>
+        <h3 className="text-xl font-bold text-white mb-2">2. Como Usamos Suas Informações</h3>
+        <p className="mb-4">Utilizamos as informações coletadas para:</p>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>Fornecer, operar e manter nossos serviços.</li>
+          <li>Melhorar, personalizar e expandir nossos serviços.</li>
+          <li>Entender e analisar como você usa nossos serviços.</li>
+          <li>Desenvolver novos produtos, serviços, recursos e funcionalidades.</li>
+          <li>Comunicar-nos com você, diretamente ou através de um de nossos parceiros, para atendimento ao cliente, para fornecer atualizações e outras informações relacionadas ao serviço, e para fins de marketing e promoção.</li>
+          <li>Processar suas transações e gerenciar seus pedidos.</li>
+          <li>Detectar e prevenir fraudes.</li>
+        </ul>
+        <h3 className="text-xl font-bold text-white mb-2">3. Compartilhamento de Informações</h3>
+        <p className="mb-4">Não compartilhamos suas informações pessoais com terceiros, exceto nas seguintes circunstâncias:</p>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>**Com Prestadores de Serviços:** Podemos compartilhar informações com terceiros que prestam serviços em nosso nome, como processamento de pagamentos, análise de dados, serviços de marketing e suporte ao cliente.</li>
+          <li>**Para Conformidade Legal:** Podemos divulgar suas informações se exigido por lei ou em resposta a solicitações válidas de autoridades públicas (por exemplo, um tribunal ou agência governamental).</li>
+          <li>**Com Seu Consentimento:** Podemos compartilhar suas informações com terceiros quando tivermos seu consentimento explícito para fazê-lo.</li>
+        </ul>
+        <h3 className="text-xl font-bold text-white mb-2">4. Segurança dos Dados</h3>
+        <p className="mb-4">Implementamos medidas de segurança técnicas e organizacionais razoáveis projetadas para proteger a segurança de qualquer informação pessoal que processamos. No entanto, lembre-se que não podemos garantir que a internet em si seja 100% segura. Embora façamos o nosso melhor para proteger suas informações pessoais, a transmissão de informações pessoais para e de nossos Serviços é por sua conta e risco.</p>
+        <h3 className="text-xl font-bold text-white mb-2">5. Seus Direitos de Privacidade</h3>
+        <p className="mb-4">Dependendo da sua localização, você pode ter os seguintes direitos em relação aos seus dados pessoais:</p>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>O direito de acessar suas informações pessoais.</li>
+          <li>O direito de retificar informações imprecisas.</li>
+          <li>O direito de solicitar a exclusão de suas informações pessoais.</li>
+          <li>O direito de se opor ao processamento de suas informações pessoais.</li>
+          <li>O direito à portabilidade dos dados.</li>
+        </ul>
+        <p>Para exercer qualquer um desses direitos, entre em contato conosco usando as informações fornecidas na seção "Contato" abaixo.</p>
+        <h3 className="text-xl font-bold text-white mb-2">6. Alterações a Esta Política de Privacidade</h3>
+        <p className="mb-4">Podemos atualizar nossa Política de Privacidade de tempos em tempos. Notificaremos você sobre quaisquer alterações publicando a nova Política de Privacidade nesta página. Aconselhamos que você revise esta Política de Privacidade periodicamente para quaisquer alterações. As alterações a esta Política de Privacidade são efetivas quando são publicadas nesta página.</p>
+        <h3 className="text-xl font-bold text-white mb-2">7. Contato</h3>
+        <p>Se você tiver alguma dúvida ou preocupação sobre esta Política de Privacidade ou nossas práticas de dados, entre em contato conosco através do nosso formulário de contato ou e-mail.</p>
+      </Modal>
+
+      <Modal isOpen={showContactPopup} onClose={() => setShowContactPopup(false)} title="Contato">
+        {/* Conteúdo do Contato */}
+        <p className="mb-4">Temos o prazer de ouvir você! Se tiver alguma dúvida, sugestão, ou precisar de suporte, por favor, entre em contato conosco através dos canais abaixo:</p>
+        <h3 className="text-xl font-bold text-white mb-2">Canais de Atendimento:</h3>
+        <ul className="list-disc list-inside mb-4 pl-4">
+          <li>WhatsApp: <a href="https://wa.me/77988656394" target="_blank" rel="noopener noreferrer" className="text-[#6be12f] hover:underline">77 98865-6394</a></li>
+          <li>E-mail: <a href="mailto:contato@nexawiads.com" className="text-[#6be12f] hover:underline">contato@nexawiads.com</a></li>
+          <li>Formulário de Contato: <b>Estamos sem em melhorias, em breve, um formulário de contato estará disponível aqui.</b></li>
+        </ul>
+        <p className="mb-4">Nossa equipe está pronta para ajudar de segunda a sexta-feira, das 9h às 20h (horário de Brasília).</p>
+        <p>Agradecemos o seu interesse na NexaWi ADS!</p>
+        <p>A sua empresa de mídia GeoLocalizada hiperlocal da região.</p>
+      </Modal>
+
     </div> /* Fim do wrapper principal */
   );
 }
+
+
+

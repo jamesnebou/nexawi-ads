@@ -188,7 +188,7 @@ export default function Portal() {
     const { data: hotspotData, error: hotspotError } = await supabase
       .from('hotspots')
       .select('*')
-      .eq('id', slug)
+      .eq('nome', slug)
       .single()
 
     if (hotspotError || !hotspotData) {
