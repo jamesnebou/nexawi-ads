@@ -1,4 +1,4 @@
-// app/api/contact/route.ts
+// src/app/api/Contato/route.ts
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 
@@ -15,8 +15,8 @@ export async function POST(request: Request) {
 
     const transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
-      port: Number(process.env.EMAIL_PORT || 587),
-      secure: false,
+      port: Number(process.env.EMAIL_PORT) || 587,
+      secure: Number(process.env.EMAIL_PORT) === 465,
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -24,12 +24,11 @@ export async function POST(request: Request) {
     });
 
     const htmlBody = `
-      <h2>Novo lead pelo site NexaWi</h2>
+      <h2>Novo lead do formulário de contato</h2>
       <p><strong>Nome:</strong> ${name}</p>
       <p><strong>Telefone:</strong> ${phone}</p>
       <p><strong>E-mail:</strong> ${email}</p>
       <p><strong>Cidade:</strong> ${city}</p>
-      <p>Recebido em: ${new Date().toLocaleString("pt-BR")}</p>
     `;
 
     await transporter.sendMail({
