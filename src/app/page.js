@@ -26,6 +26,56 @@ const Modal = ({ isOpen, onClose, title, children }) => {
   );
 };
 
+const handleSubmitContact = async (e) => {
+  e.preventDefault();
+
+  setContactSuccess(null);
+  setContactError(null);
+  setIsSendingContact(true);
+
+  try {
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: contactName,
+        phone: contactPhone,
+        email: contactEmail,
+        city: contactCity,
+      }),
+    });
+
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (err) {
+      console.error("Erro ao converter resposta em JSON:", err);
+    }
+
+    if (!res.ok || data.ok === false) {
+      throw new Error(
+        (data && data.message) ||
+          "Erro ao enviar mensagem. Tente novamente em instantes."
+      );
+    }
+
+    setContactSuccess(
+      "Mensagem enviada com sucesso! Em breve, um consultor NexaWi falará com você."
+    );
+    setContactName("");
+    setContactPhone("");
+    setContactEmail("");
+    setContactCity("");
+  } catch (err) {
+    console.error("Erro no envio do formulário:", err);
+    setContactError(
+      err.message || "Não foi possível enviar sua mensagem. Tente novamente."
+    );
+  } finally {
+    setIsSendingContact(false);
+  }
+};
+
 export default function LandingPage() {
   // Variáveis de Estado para a Barra de Status ao Vivo
   const [onlineUsers, setOnlineUsers] = useState(124);
@@ -37,6 +87,15 @@ export default function LandingPage() {
   const [showTermsPopup, setShowTermsPopup] = useState(false);
   const [showPrivacyPopup, setShowPrivacyPopup] = useState(false);
   const [showContactPopup, setShowContactPopup] = useState(false);
+  // Estados do formulário de contato
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactCity, setContactCity] = useState("");
+  const [isSendingContact, setIsSendingContact] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState(null);
+  const [contactError, setContactError] = useState(null);
+
 
   // Efeito para simular os números mudando em tempo real
   useEffect(() => {
@@ -1147,54 +1206,96 @@ export default function LandingPage() {
       </Modal>
 
       <Modal
-        isOpen={showContactPopup}
-        onClose={() => setShowContactPopup(false)}
-        title="Contato"
-      >
-        <p className="mb-4">
-          Temos o prazer de ouvir você! Se tiver alguma dúvida, sugestão, ou
-          precisar de suporte, por favor, entre em contato conosco através dos
-          canais abaixo:
-        </p>
-        <h3 className="text-xl font-bold text-white mb-2">
-          Canais de Atendimento:
-        </h3>
-        <ul className="list-disc list-inside mb-4 pl-4">
-          <li>
-            WhatsApp:{" "}
-            <a
-              href="https://wa.me/77988656394"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[#6be12f] hover:underline"
-            >
-              77 98865-6394
-            </a>
-          </li>
-          <li>
-            E-mail:{" "}
-            <a
-              href="mailto:contato@nexawiads.com"
-              className="text-[#6be12f] hover:underline"
-            >
-              contato@nexawiads.com
-            </a>
-          </li>
-          <li>
-            Formulário de Contato:{" "}
-            <b>
-              Estamos em melhorias, em breve, um formulário de contato estará
-              disponível aqui.
-            </b>
-          </li>
-        </ul>
-        <p className="mb-4">
-          Nossa equipe está pronta para ajudar de segunda a sexta-feira, das 9h
-          às 20h (horário de Brasília).
-        </p>
-        <p>Agradecemos o seu interesse na NexaWi ADS!</p>
-        <p>A sua empresa de mídia GeoLocalizada hiperlocal da região.</p>
-      </Modal>
+  isOpen={showContactPopup}
+  onClose={() => setShowContactPopup(false)}
+  title="Contato"
+>
+  <form onSubmit={handleSubmitContact} className="space-y-4">
+    <p className="text-sm text-gray-300">
+      Preencha os dados abaixo e um consultor NexaWi entrará em contato com você.
+    </p>
+
+    <div>
+      <label className="block text-sm font-semibold mb-1" htmlFor="contact-name">
+        Nome
+      </label>
+      <input
+        id="contact-name"
+        type="text"
+        required
+        className="w-full rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6be12f] focus:border-[#6be12f] placeholder:text-gray-500"
+        placeholder="Seu nome completo"
+        value={contactName}
+        onChange={(e) => setContactName(e.target.value)}
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-semibold mb-1" htmlFor="contact-phone">
+        Telefone / WhatsApp
+      </label>
+      <input
+        id="contact-phone"
+        type="tel"
+        required
+        className="w-full rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6be12f] focus:border-[#6be12f] placeholder:text-gray-500"
+        placeholder="(77) 9 0000-0000"
+        value={contactPhone}
+        onChange={(e) => setContactPhone(e.target.value)}
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-semibold mb-1" htmlFor="contact-email">
+        E-mail
+      </label>
+      <input
+        id="contact-email"
+        type="email"
+        required
+        className="w-full rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6be12f] focus:border-[#6be12f] placeholder:text-gray-500"
+        placeholder="seuemail@empresa.com"
+        value={contactEmail}
+        onChange={(e) => setContactEmail(e.target.value)}
+      />
+    </div>
+
+    <div>
+      <label className="block text-sm font-semibold mb-1" htmlFor="contact-city">
+        Cidade
+      </label>
+      <input
+        id="contact-city"
+        type="text"
+        required
+        className="w-full rounded-lg bg-black/40 border border-white/15 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#6be12f] focus:border-[#6be12f] placeholder:text-gray-500"
+        placeholder="De qual cidade você está falando?"
+        value={contactCity}
+        onChange={(e) => setContactCity(e.target.value)}
+      />
+    </div>
+
+    {contactError && (
+      <p className="text-sm text-red-400 bg-red-900/20 border border-red-500/40 rounded-lg px-3 py-2">
+        {contactError}
+      </p>
+    )}
+
+    {contactSuccess && (
+      <p className="text-sm text-[#6be12f] bg-[#6be12f]/10 border border-[#6be12f]/40 rounded-lg px-3 py-2">
+        {contactSuccess}
+      </p>
+    )}
+
+    <button
+      type="submit"
+      disabled={isSendingContact}
+      className="w-full mt-2 inline-flex items-center justify-center px-4 py-2.5 rounded-lg bg-[#6be12f] text-black text-sm font-extrabold shadow-[0_0_18px_rgba(107,225,47,0.7)] hover:shadow-[0_0_28px_rgba(107,225,47,0.9)] disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+    >
+      {isSendingContact ? "Enviando..." : "Enviar mensagem"}
+    </button>
+  </form>
+</Modal>
     </div>
   );
 }
