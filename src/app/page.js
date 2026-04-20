@@ -268,21 +268,21 @@ export default function LandingPage() {
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
-              Apareça para{" "}
+              Você está ignorando{" "}
               <span className="whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#8cf059] to-[#46a31a]">
-               QUEM ESTÁ AGORA
+               O ÚNICO CLIENTE
               </span>{" "}
               <br />
-              usando Wifi.
+              já está na sua porta.
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 md:mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
-              Nós transformamos o Wi-Fi de praças, shoppings e comércios em um
-              espaço publicitário exclusivo.{" "}
+              Enquanto você briga por atenção na internet…
+              nós fazemos você aparecer exatamente pra <b>quem já está perto do seu negócio</b> — com o celular na mão.{" "}
               <strong className="text-white font-bold">
-                O cliente pede internet, a sua marca aparece na tela dele.
+                <p>O cliente usa a internet, a sua marca aparece na tela dele.</p>
               </strong>{" "}
-              Simples, inevitável e 100% local.
+              <p>Simples, inevitável e 100% local.</p>
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 sm:gap-5 w-full sm:w-auto justify-center lg:justify-start">
@@ -291,13 +291,13 @@ export default function LandingPage() {
                 className="group relative px-7 sm:px-8 py-3.5 sm:py-4 bg-[#6be12f] text-black font-extrabold rounded-xl shadow-[0_0_20px_rgba(107,225,47,0.6)] hover:shadow-[0_0_50px_rgba(107,225,47,0.6)] transition-all duration-300 hover:-translate-y-1 text-center overflow-hidden"
               >
                 <div className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-                Ver Planos para Anunciantes
+                Quero ser visto pelo meu cliente
               </a>
               <a
                 href="#como-funciona"
                 className="px-7 sm:px-8 py-3.5 sm:py-4 bg-white/5 backdrop-blur-md text-white font-bold rounded-xl border border-white/10 hover:border-white/30 hover:bg-white/10 transition-all duration-300 text-center"
               >
-                Como Funciona?
+                Como Funciona isso?
               </a>
             </div>
 
@@ -394,30 +394,18 @@ export default function LandingPage() {
                 ALTA CONVERSÃO
               </span>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
-                Seu anúncio no lugar certo, na hora certa.
+                O outdoor que ninguém consegue ignorar...
               </h2>
               <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed mb-8">
-                Chega de gastar com anúncios que ninguém vê. Com a NexaWi, sua
-                marca aparece para quem está ativamente buscando conexão, no
-                exato momento em que ele está mais receptivo.
-              </p>
+                A NexaWi transforma Wi-Fi em pontos estratégicos de publicidade.
+                <p>A sua marca aparece <b>na tela dele</b></p>
+                <p>Sem disputa.</p>
+                <p>Sem distração.</p>
+                 <p>Sem algoritmo.</p>
+                 <p><b>Só você… e a atenção dele.</b></p>
+                 </p>
               <ul className="space-y-4 text-gray-300 text-sm sm:text-base md:text-lg">
-                <li className="flex items-center gap-3">
-                  <svg
-                    className="w-6 h-6 text-[#6be12f]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth="2"
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Audiência engajada e local.
-                </li>
+               
                 <li className="flex items-center gap-3">
                   <svg
                     className="w-6 h-6 text-[#6be12f]"
@@ -488,8 +476,8 @@ export default function LandingPage() {
         A Busca por Conexão
       </h3>
       <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
-        O público na sua região precisa de internet e encontra a
-        rede aberta disponível.
+        O público na sua região precisa de internet ou não quer usar os dados móveis e encontra a
+        rede aberta da NexaWi disponível.
       </p>
     </div>
 
@@ -520,7 +508,7 @@ export default function LandingPage() {
                     Wi-Fi Grátis Nexa
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
-                    A sua empresa fornece o acesso gratuito, atraindo a atenção
+                    A NexaWi fornece o acesso gratuito, atraindo a atenção
                     imediata do cliente.
                   </p>
                 </div>
@@ -548,8 +536,7 @@ export default function LandingPage() {
                     Captura de Dados
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
-                    Para conectar, o cliente preenche um cadastro rápido (Nome,
-                    WhatsApp, E-mail).
+                    Para conectar, o cliente preenche um cadastro rápido (Nome, WhatsApp, E-mail) e assina o termo LGPD.
                   </p>
                 </div>
                 <div className="absolute 
@@ -577,7 +564,7 @@ export default function LandingPage() {
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
                     A NexaWi exibe o anúncio da sua empresa. O cliente assiste
-                    com 100% de atenção.
+                    com 100% de atenção. E sabemos exatamente quem clicou no seu anúcio.
                   </p>
                 </div>
                 <div className="absolute 
@@ -605,7 +592,7 @@ export default function LandingPage() {
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
                     Após o anúncio, ele tem a opção de ser direcionado para o
-                    seu site ou WhatsApp.
+                    seu site ou WhatsApp. Depois de qualquer uma das ações, a internet será liberada.
                   </p>
                 </div>
                 <div className="absolute 
@@ -633,7 +620,7 @@ export default function LandingPage() {
                   </h3>
                   <p className="text-gray-300 text-lg sm:text-xl md:text-2xl leading-relaxed">
                     O cliente navega feliz, e você ganha um lead qualificado e
-                    alto impacto de marca.
+                    alto impacto de marca. A cada 10 minutos um novo anúcio para o usuário.
                   </p>
                 </div>
                 <div className="absolute 
@@ -660,10 +647,10 @@ export default function LandingPage() {
         >
           <div className="text-center mb-14 md:mb-16">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-4 md:mb-6">
-              Escolha o seu plano
+              Escolha o seu plano ideal
             </h2>
             <p className="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto">
-              Planos mensais sem fidelidade. Cancele quando quiser.
+              Planos mensais com fidelidade de 3 meses. (Consulte os planos anuais)
             </p>
           </div>
 
@@ -674,7 +661,7 @@ export default function LandingPage() {
                 Vitrine
               </h3>
               <p className="text-gray-400 mb-6 md:mb-8 min-h-[3rem] text-sm md:text-base">
-                Ideal para pequenos comércios locais.
+                Ideal para Prestadores de Serviços local.
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
                 R$ 147
@@ -729,6 +716,22 @@ export default function LandingPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
+                  Botão de Redirecionamento
+                </li>
+                <li className="flex items-center gap-3">
+                  <svg
+                    className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
                   Relatório Mensal
                 </li>
               </ul>
@@ -762,10 +765,10 @@ export default function LandingPage() {
                   Comercial
                 </h3>
                 <p className="text-gray-300 mb-6 md:mb-8 min-h-[3rem] text-sm md:text-base">
-                  Para negócios com bom fluxo que querem impacto em vídeo.
+                  Para negócios com bom fluxo que querem impacto real e rápido.
                 </p>
                 <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
-                  R$ 297
+                  R$ 247
                   <span className="text-lg sm:text-xl text-gray-400 font-medium">
                     /mês
                   </span>
@@ -786,7 +789,7 @@ export default function LandingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Vídeo de 30 Segundos
+                    3 Criativos (Imagem ou Video)
                   </li>
                   <li className="flex items-center gap-3">
                     <svg
@@ -802,7 +805,7 @@ export default function LandingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Botão &quot;Pedir no WhatsApp&quot;
+                    Botão de Redirecionamento
                   </li>
                   <li className="flex items-center gap-3">
                     <svg
@@ -818,7 +821,55 @@ export default function LandingPage() {
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    Alta Frequência de Exibição
+                    Enviar para seu Site
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Prioridade na Exibição
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Relatório Quinzenal
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Maior Frequência de Exibição
                   </li>
                 </ul>
 
@@ -836,18 +887,34 @@ export default function LandingPage() {
             {/* VIP */}
             <div className="p-7 sm:p-8 md:p-10 rounded-3xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-white/30 transition-all duration-300 hover:-translate-y-2 flex flex-col">
               <h3 className="text-xl sm:text-2xl font-bold mb-2 text-white">
-                VIP / Exclusivo
+                VIP / Exclusividade
               </h3>
               <p className="text-gray-400 mb-6 md:mb-8 min-h-[3rem] text-sm md:text-base">
-                Para dominar a cidade e capturar contatos (leads).
+                Para dominar a cidade e capturar contatos com exclusividade no seu nincho.
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
-                R$ 697
+                R$ 597
                 <span className="text-lg sm:text-xl text-gray-500 font-medium">
                   /mês
                 </span>
               </div>
               <ul className="space-y-4 md:space-y-5 mb-6 md:mb-10 text-gray-300 font-medium text-sm md:text-base flex-1">
+                <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    5 Criativos (Imagem e Video)
+                  </li>
                 <li className="flex items-center gap-3">
                   <svg
                     className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
@@ -894,8 +961,88 @@ export default function LandingPage() {
                       d="M5 13l4 4L19 7"
                     />
                   </svg>
-                  Logo Fixo na Tela de Login
+                  Acesso exclusivo a Dashboard
                 </li>
+                <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Relatório em RealTime
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Enviar para Site
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Destaque Máximo
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Campanha Promo
+                  </li>
+                  <li className="flex items-center gap-3">
+                    <svg
+                      className="w-5 h-5 sm:w-6 sm:h-6 text-[#6be12f]"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Acesso a todos os pontos
+                  </li>
               </ul>
               <a
                 href="https://wa.me/77988656394?text=Ol%C3%A1%2C%20tenho%20interesse%20no%20Plano%20VIP%20da%20NexaWi%20ADS!"
