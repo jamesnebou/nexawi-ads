@@ -273,7 +273,7 @@ export default function LandingPage() {
                O ÚNICO CLIENTE
               </span>{" "}
               <br />
-              já está na sua porta.
+              na porta do seu negócio.
             </h1>
 
             <p className="text-base sm:text-lg md:text-xl text-gray-400 mb-8 md:mb-10 max-w-2xl mx-auto lg:mx-0 leading-relaxed font-medium">
