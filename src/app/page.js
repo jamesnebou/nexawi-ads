@@ -383,7 +383,7 @@ export default function LandingPage() {
              shadow-lg group-hover:scale-105 transition-transform duration-300
              inline-flex items-center justify-center whitespace-nowrap"
                   >
-              +1.200 conexões por mês
+              +15.000 conexões mensais!
              </div>
               </div>
             </div>
