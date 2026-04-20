@@ -269,8 +269,8 @@ export default function LandingPage() {
 
             <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
               Apareça para{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8cf059] to-[#46a31a] sm:whitespace-nowrap">
-                QUEM ESTÁ AGORA
+              <span className="whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r from-[#8cf059] to-[#46a31a]">
+               QUEM ESTÁ AGORA
               </span>{" "}
               <br />
               usando Wifi.
