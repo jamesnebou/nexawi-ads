@@ -118,6 +118,7 @@ export default function Portal() {
   const stageParam = searchParams.get('stage') || ''
   const onlineParam = searchParams.get('online') || ''
   const ctaStorageKey = `nexawi_cta_${slug}`
+  const onlineStorageKey = `nexawi_online_${slug}`
 
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
@@ -185,6 +186,17 @@ export default function Portal() {
 
         if (connectedParam === '1') {
   limparEstadoCta()
+  function marcarOnline() {
+  sessionStorage.setItem(onlineStorageKey, '1')
+}
+
+function limparOnline() {
+  sessionStorage.removeItem(onlineStorageKey)
+}
+
+function estaOnlineNoNavegador() {
+  return sessionStorage.getItem(onlineStorageKey) === '1'
+}
   setInternetLiberadaNaCta(true)
   setLiberandoNaCta(false)
   setEtapa(ETAPAS.ACESSO)
@@ -197,6 +209,7 @@ if (stageParam === 'cta' && onlineParam === '1') {
   const anuncioSalvo = lerEstadoCta()
 
   if (anuncioSalvo) {
+    marcarOnline()
     setAnuncioAtual(anuncioSalvo)
     setInternetLiberadaNaCta(true)
     setLiberandoNaCta(false)
@@ -206,6 +219,7 @@ if (stageParam === 'cta' && onlineParam === '1') {
 }
 
 if (connectedParam === '1') {
+  marcarOnline()
   limparEstadoCta()
   setInternetLiberadaNaCta(true)
   setLiberandoNaCta(false)
@@ -213,10 +227,12 @@ if (connectedParam === '1') {
   return
 }
 
+const EstadoSessao = verificarEstadoSessao()
+
 if (estadoSessao === 'online') {
   const anuncioSalvo = lerEstadoCta()
 
-  if (anuncioSalvo) {
+  if (anuncioSalvo && estaOnlineNoNavegador()) {
     setAnuncioAtual(anuncioSalvo)
     setInternetLiberadaNaCta(true)
     setLiberandoNaCta(false)
@@ -224,8 +240,12 @@ if (estadoSessao === 'online') {
     return
   }
 
-  setEtapa(ETAPAS.ACESSO)
-  return
+  if (estaOnlineNoNavegador()) {
+    setInternetLiberadaNaCta(true)
+    setLiberandoNaCta(false)
+    setEtapa(ETAPAS.ACESSO)
+    return
+  }
 }
 
 if (estadoSessao === 'blocked') {
@@ -311,6 +331,8 @@ setEtapa(ETAPAS.CADASTRO)
   if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
     const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
     setTempoEspera(minutosRestantes)
+    limparEstadoCta()
+    limparOnline()
     setEtapa(ETAPAS.BLOQUEADO)
     return 'blocked'
   }
@@ -318,6 +340,8 @@ setEtapa(ETAPAS.CADASTRO)
   localStorage.removeItem('nexawi_last_connection')
   localStorage.removeItem('nexawi_radius_username')
   localStorage.removeItem('nexawi_radius_password')
+  limparEstadoCta()
+  limparOnline()
   return 'expired'
 }
 
@@ -367,6 +391,7 @@ async function preLiberarInternetNaCta(anuncio) {
 
     salvarEstadoCta(anuncio)
     localStorage.setItem('nexawi_last_connection', Date.now().toString())
+marcarOnline()
 
     setLiberandoNaCta(true)
 
@@ -719,6 +744,8 @@ async function preLiberarInternetNaCta(anuncio) {
   try {
     if (!internetLiberadaNaCta) return
 
+    marcarOnline()
+
     if (clicou && anuncioAtual) {
       await registrarClique(anuncioAtual.id, ipAddress)
     }
@@ -730,7 +757,7 @@ async function preLiberarInternetNaCta(anuncio) {
     }
 
     limparEstadoCta()
-    window.location.href = `${window.location.origin}/portal/${slug}?connected=1`
+    window.location.replace(`${window.location.origin}/portal/${slug}?connected=1`)
   } catch (error) {
     console.error('Erro na CTA:', error)
     setEtapa(ETAPAS.ERRO)
@@ -752,6 +779,7 @@ async function preLiberarInternetNaCta(anuncio) {
       }
 
       localStorage.setItem('nexawi_last_connection', Date.now().toString())
+marcarOnline()
 
       if (!destinoFinal) {
         destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
