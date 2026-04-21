@@ -114,6 +114,7 @@ export default function Portal() {
   const stageParam = searchParams.get('stage') || ''
   const onlineParam = searchParams.get('online') || ''
   const ctaStorageKey = `nexawi_cta_${slug}`
+  const authConfirmedKey = `nexawi_auth_confirmed_${slug}`
 
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
@@ -180,31 +181,35 @@ export default function Portal() {
   }
 
   function verificarEstadoSessao() {
-    const lastConnection = localStorage.getItem('nexawi_last_connection')
-    if (!lastConnection) return 'none'
+  const lastConnection = localStorage.getItem('nexawi_last_connection')
 
-    const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
-    const tempoUsoMs = 20 * 60 * 1000
-    const tempoTotalCicloMs = 30 * 60 * 1000
+  if (!lastConnection) return 'none'
+  if (!authEstaConfirmado()) return 'none'
 
-    if (tempoPassadoMs < tempoUsoMs) {
-      return 'online'
-    }
+  const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
+  const tempoUsoMs = 20 * 60 * 1000
+  const tempoTotalCicloMs = 30 * 60 * 1000
 
-    if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
-      const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
-      setTempoEspera(minutosRestantes)
-      limparEstadoCta()
-      setEtapa(ETAPAS.BLOQUEADO)
-      return 'blocked'
-    }
-
-    localStorage.removeItem('nexawi_last_connection')
-    localStorage.removeItem('nexawi_radius_username')
-    localStorage.removeItem('nexawi_radius_password')
-    limparEstadoCta()
-    return 'expired'
+  if (tempoPassadoMs < tempoUsoMs) {
+    return 'online'
   }
+
+  if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+    const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+    setTempoEspera(minutosRestantes)
+    limparEstadoCta()
+    limparAuthConfirmado()
+    setEtapa(ETAPAS.BLOQUEADO)
+    return 'blocked'
+  }
+
+  localStorage.removeItem('nexawi_last_connection')
+  localStorage.removeItem('nexawi_radius_username')
+  localStorage.removeItem('nexawi_radius_password')
+  limparEstadoCta()
+  limparAuthConfirmado()
+  return 'expired'
+}
 
   async function carregarHotspotEAnuncios() {
     try {
@@ -406,7 +411,7 @@ export default function Portal() {
     return Object.keys(novosErros).length === 0
   }
 
-  async function handleLiberarInternet(destinoFinal = '') {
+ async function handleLiberarInternet(destinoFinal = '') {
   try {
     const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
     const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
@@ -419,6 +424,8 @@ export default function Portal() {
     if (!loginAction) {
       throw new Error('link-login-only não encontrado na URL do hotspot')
     }
+
+    limparAuthConfirmado()
 
     if (!destinoFinal) {
       destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
@@ -466,7 +473,7 @@ export default function Portal() {
   }
 }
 
-  async function preLiberarInternetNaCta(anuncio) {
+ async function preLiberarInternetNaCta(anuncio) {
   try {
     const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
     const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
@@ -480,6 +487,7 @@ export default function Portal() {
       throw new Error('link-login-only não encontrado na URL do hotspot')
     }
 
+    limparAuthConfirmado()
     salvarEstadoCta(anuncio)
     setLiberandoNaCta(true)
     setInternetLiberadaNaCta(false)
@@ -636,11 +644,33 @@ export default function Portal() {
 
       if (clicou && destinoExterno) {
         limparEstadoCta()
+        function marcarAuthConfirmado() {
+  sessionStorage.setItem(authConfirmedKey, '1')
+}
+
+function limparAuthConfirmado() {
+  sessionStorage.removeItem(authConfirmedKey)
+}
+
+function authEstaConfirmado() {
+  return sessionStorage.getItem(authConfirmedKey) === '1'
+}
         window.location.href = destinoExterno
         return
       }
 
       limparEstadoCta()
+      function marcarAuthConfirmado() {
+  sessionStorage.setItem(authConfirmedKey, '1')
+}
+
+function limparAuthConfirmado() {
+  sessionStorage.removeItem(authConfirmedKey)
+}
+
+function authEstaConfirmado() {
+  return sessionStorage.getItem(authConfirmedKey) === '1'
+}
       window.location.replace(`${window.location.origin}/portal/${slug}?connected=1`)
     } catch (error) {
       console.error('Erro na CTA:', error)
@@ -658,6 +688,8 @@ export default function Portal() {
       setMacAddress(macParam)
       setLinkOrig(linkOrigParam)
       setLinkLoginOnly(linkLoginOnlyParam)
+      setInternetLiberadaNaCta(false)
+      setLiberandoNaCta(false)
 
       fetch('https://api.ipify.org?format=json')
         .then((res) => res.json())
@@ -673,6 +705,7 @@ export default function Portal() {
         const anuncioSalvo = lerEstadoCta()
 
         if (anuncioSalvo) {
+          marcarAuthConfirmado()
           localStorage.setItem('nexawi_last_connection', Date.now().toString())
           setAnuncioAtual(anuncioSalvo)
           setInternetLiberadaNaCta(true)
@@ -683,6 +716,7 @@ export default function Portal() {
       }
 
       if (connectedParam === '1') {
+        marcarAuthConfirmado()
         localStorage.setItem('nexawi_last_connection', Date.now().toString())
         limparEstadoCta()
         setInternetLiberadaNaCta(true)
@@ -694,8 +728,6 @@ export default function Portal() {
       const estadoSessao = verificarEstadoSessao()
 
       if (estadoSessao === 'online') {
-        setInternetLiberadaNaCta(true)
-        setLiberandoNaCta(false)
         setEtapa(ETAPAS.ACESSO)
         return
       }
