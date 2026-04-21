@@ -407,88 +407,26 @@ export default function Portal() {
   }
 
   async function handleLiberarInternet(destinoFinal = '') {
-    try {
-      const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
-      const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
-      const loginAction = linkLoginOnly || linkLoginOnlyParam
+  try {
+    const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+    const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
+    const loginAction = linkLoginOnly || linkLoginOnlyParam
 
-      if (!username || !password) {
-        throw new Error('Credenciais RADIUS não encontradas')
-      }
-
-      if (!loginAction) {
-        throw new Error('link-login-only não encontrado na URL do hotspot')
-      }
-
-      localStorage.setItem('nexawi_last_connection', Date.now().toString())
-
-      if (!destinoFinal) {
-        destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
-      }
-
-      setEtapa(ETAPAS.LOADING)
-
-      setTimeout(() => {
-        const formElement = document.createElement('form')
-        formElement.method = 'POST'
-        formElement.action = loginAction
-        formElement.style.display = 'none'
-
-        const usernameInput = document.createElement('input')
-        usernameInput.type = 'hidden'
-        usernameInput.name = 'username'
-        usernameInput.value = username
-
-        const passwordInput = document.createElement('input')
-        passwordInput.type = 'hidden'
-        passwordInput.name = 'password'
-        passwordInput.value = password
-
-        const dstInput = document.createElement('input')
-        dstInput.type = 'hidden'
-        dstInput.name = 'dst'
-        dstInput.value = destinoFinal
-
-        const popupInput = document.createElement('input')
-        popupInput.type = 'hidden'
-        popupInput.name = 'popup'
-        popupInput.value = 'false'
-
-        formElement.appendChild(usernameInput)
-        formElement.appendChild(passwordInput)
-        formElement.appendChild(dstInput)
-        formElement.appendChild(popupInput)
-
-        document.body.appendChild(formElement)
-        formElement.submit()
-      }, 500)
-    } catch (error) {
-      console.error('Erro ao liberar internet:', error)
-      setEtapa(ETAPAS.ERRO)
+    if (!username || !password) {
+      throw new Error('Credenciais RADIUS não encontradas')
     }
-  }
 
-  async function preLiberarInternetNaCta(anuncio) {
-    try {
-      const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
-      const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
-      const loginAction = linkLoginOnly || linkLoginOnlyParam
+    if (!loginAction) {
+      throw new Error('link-login-only não encontrado na URL do hotspot')
+    }
 
-      if (!username || !password) {
-        throw new Error('Credenciais RADIUS não encontradas')
-      }
+    if (!destinoFinal) {
+      destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
+    }
 
-      if (!loginAction) {
-        throw new Error('link-login-only não encontrado na URL do hotspot')
-      }
+    setEtapa(ETAPAS.LOADING)
 
-      salvarEstadoCta(anuncio)
-      localStorage.setItem('nexawi_last_connection', Date.now().toString())
-      setLiberandoNaCta(true)
-      setInternetLiberadaNaCta(false)
-
-      const destinoFinal = `${window.location.origin}/portal/${slug}?stage=cta&online=1`
-
+    setTimeout(() => {
       const formElement = document.createElement('form')
       formElement.method = 'POST'
       formElement.action = loginAction
@@ -521,12 +459,70 @@ export default function Portal() {
 
       document.body.appendChild(formElement)
       formElement.submit()
-    } catch (error) {
-      console.error('Erro ao pré-liberar internet na CTA:', error)
-      setEtapa(ETAPAS.ERRO)
-    }
+    }, 500)
+  } catch (error) {
+    console.error('Erro ao liberar internet:', error)
+    setEtapa(ETAPAS.ERRO)
   }
+}
 
+  async function preLiberarInternetNaCta(anuncio) {
+  try {
+    const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+    const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
+    const loginAction = linkLoginOnly || linkLoginOnlyParam
+
+    if (!username || !password) {
+      throw new Error('Credenciais RADIUS não encontradas')
+    }
+
+    if (!loginAction) {
+      throw new Error('link-login-only não encontrado na URL do hotspot')
+    }
+
+    salvarEstadoCta(anuncio)
+    setLiberandoNaCta(true)
+    setInternetLiberadaNaCta(false)
+
+    const destinoFinal = `${window.location.origin}/portal/${slug}?stage=cta&online=1`
+
+    const formElement = document.createElement('form')
+    formElement.method = 'POST'
+    formElement.action = loginAction
+    formElement.style.display = 'none'
+
+    const usernameInput = document.createElement('input')
+    usernameInput.type = 'hidden'
+    usernameInput.name = 'username'
+    usernameInput.value = username
+
+    const passwordInput = document.createElement('input')
+    passwordInput.type = 'hidden'
+    passwordInput.name = 'password'
+    passwordInput.value = password
+
+    const dstInput = document.createElement('input')
+    dstInput.type = 'hidden'
+    dstInput.name = 'dst'
+    dstInput.value = destinoFinal
+
+    const popupInput = document.createElement('input')
+    popupInput.type = 'hidden'
+    popupInput.name = 'popup'
+    popupInput.value = 'false'
+
+    formElement.appendChild(usernameInput)
+    formElement.appendChild(passwordInput)
+    formElement.appendChild(dstInput)
+    formElement.appendChild(popupInput)
+
+    document.body.appendChild(formElement)
+    formElement.submit()
+  } catch (error) {
+    console.error('Erro ao pré-liberar internet na CTA:', error)
+    setEtapa(ETAPAS.ERRO)
+  }
+}
   async function handleCadastro(e) {
     e.preventDefault()
     if (!validarForm()) return
@@ -677,6 +673,7 @@ export default function Portal() {
         const anuncioSalvo = lerEstadoCta()
 
         if (anuncioSalvo) {
+          localStorage.setItem('nexawi_last_connection', Date.now().toString())
           setAnuncioAtual(anuncioSalvo)
           setInternetLiberadaNaCta(true)
           setLiberandoNaCta(false)
@@ -686,6 +683,7 @@ export default function Portal() {
       }
 
       if (connectedParam === '1') {
+        localStorage.setItem('nexawi_last_connection', Date.now().toString())
         limparEstadoCta()
         setInternetLiberadaNaCta(true)
         setLiberandoNaCta(false)
@@ -696,16 +694,6 @@ export default function Portal() {
       const estadoSessao = verificarEstadoSessao()
 
       if (estadoSessao === 'online') {
-        const anuncioSalvo = lerEstadoCta()
-
-        if (anuncioSalvo) {
-          setAnuncioAtual(anuncioSalvo)
-          setInternetLiberadaNaCta(true)
-          setLiberandoNaCta(false)
-          setEtapa(ETAPAS.CTA)
-          return
-        }
-
         setInternetLiberadaNaCta(true)
         setLiberandoNaCta(false)
         setEtapa(ETAPAS.ACESSO)
