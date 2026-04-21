@@ -75,6 +75,8 @@ function getMesAtualRange() {
 }
 
 export default function Portal() {
+  const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
+  const [liberandoNaCta, setLiberandoNaCta] = useState(false)
   const { slug } = useParams()
   const searchParams = useSearchParams()
 
@@ -82,6 +84,9 @@ export default function Portal() {
   const linkOrigParam = searchParams.get('link-orig') || ''
   const linkLoginOnlyParam = searchParams.get('link-login-only') || ''
   const connectedParam = searchParams.get('connected') || ''
+  const stageParam = searchParams.get('stage') || ''
+  const onlineParam = searchParams.get('online') || ''
+  const ctaStorageKey = `nexawi_cta_${slug}`
 
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
@@ -134,12 +139,26 @@ export default function Portal() {
           .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
         const hotspotData = await carregarHotspotEAnuncios()
+        if (stageParam === 'cta' && onlineParam === '1') {
+  const anuncioSalvo = lerEstadoCta()
+
+  if (anuncioSalvo) {
+    setAnuncioAtual(anuncioSalvo)
+    setInternetLiberadaNaCta(true)
+    setLiberandoNaCta(false)
+    setEtapa(ETAPAS.CTA)
+    return
+  }
+}
         if (!hotspotData || !isMounted) return
 
         if (connectedParam === '1') {
-          setEtapa(ETAPAS.ACESSO)
-          return
-        }
+  limparEstadoCta()
+  setInternetLiberadaNaCta(true)
+  setLiberandoNaCta(false)
+  setEtapa(ETAPAS.ACESSO)
+  return
+}
 
         const bloqueado = verificarCooldown()
         if (bloqueado) return
@@ -229,6 +248,96 @@ export default function Portal() {
 
     return false
   }
+
+function salvarEstadoCta(anuncio) {
+  if (!anuncio) return
+
+  sessionStorage.setItem(
+    ctaStorageKey,
+    JSON.stringify({
+      id: anuncio.id,
+      titulo: anuncio.titulo,
+      url_destino: anuncio.url_destino,
+      media_url: anuncio.media_url,
+      tipo_media: anuncio.tipo_media,
+      duracao_segundos: anuncio.duracao_segundos,
+    })
+  )
+}
+
+function lerEstadoCta() {
+  try {
+    const raw = sessionStorage.getItem(ctaStorageKey)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function limparEstadoCta() {
+  sessionStorage.removeItem(ctaStorageKey)
+}
+
+async function preLiberarInternetNaCta(anuncio) {
+  try {
+    const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+    const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
+    const loginAction = linkLoginOnly || linkLoginOnlyParam
+
+    if (!username || !password) {
+      throw new Error('Credenciais RADIUS não encontradas')
+    }
+
+    if (!loginAction) {
+      throw new Error('link-login-only não encontrado na URL do hotspot')
+    }
+
+    salvarEstadoCta(anuncio)
+    localStorage.setItem('nexawi_last_connection', Date.now().toString())
+
+    setLiberandoNaCta(true)
+
+    const destinoFinal = `${window.location.origin}/portal/${slug}?stage=cta&online=1`
+
+    const formElement = document.createElement('form')
+    formElement.method = 'POST'
+    formElement.action = loginAction
+    formElement.style.display = 'none'
+
+    const usernameInput = document.createElement('input')
+    usernameInput.type = 'hidden'
+    usernameInput.name = 'username'
+    usernameInput.value = username
+
+    const passwordInput = document.createElement('input')
+    passwordInput.type = 'hidden'
+    passwordInput.name = 'password'
+    passwordInput.value = password
+
+    const dstInput = document.createElement('input')
+    dstInput.type = 'hidden'
+    dstInput.name = 'dst'
+    dstInput.value = destinoFinal
+
+    const popupInput = document.createElement('input')
+    popupInput.type = 'hidden'
+    popupInput.name = 'popup'
+    popupInput.value = 'false'
+
+    formElement.appendChild(usernameInput)
+    formElement.appendChild(passwordInput)
+    formElement.appendChild(dstInput)
+    formElement.appendChild(popupInput)
+
+    document.body.appendChild(formElement)
+    formElement.submit()
+  } catch (error) {
+    console.error('Erro ao pré-liberar internet na CTA:', error)
+    setEtapa(ETAPAS.ERRO)
+  }
+}
+
 
   async function carregarHotspotEAnuncios() {
     try {

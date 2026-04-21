@@ -1,12 +1,33 @@
-import 'dotenv/config'
+console.log('=== ARQUIVO NOVO DO RADIUS CARREGADO ===')
+console.log('CWD:', process.cwd())
+console.log('INICIANDO RADIUS...')
+
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import dgram from 'node:dgram'
+import dotenv from 'dotenv'
 import radius from 'radius'
 import { createClient } from '@supabase/supabase-js'
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const projectRoot = path.resolve(__dirname, '../../..')
+
+// Lê EXPLICITAMENTE o .env da raiz do projeto
+dotenv.config({ path: path.join(projectRoot, '.env') })
+
+console.log('ENV PATH:', path.join(projectRoot, '.env'))
+console.log(
+  'SECRET LIDO:',
+  process.env.RADIUS_SECRET
+    ? `${process.env.RADIUS_SECRET.slice(0, 6)}... len=${process.env.RADIUS_SECRET.length}`
+    : 'VAZIO'
+)
+
 const RADIUS_PORT = Number(process.env.RADIUS_PORT || 1812)
-const RADIUS_SECRET = 'viacao30NebouNexaWi@.!'
-const SUPABASE_URL = process.env.SUPABASE_URL
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const RADIUS_SECRET = String(process.env.RADIUS_SECRET || '').trim()
+const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim()
+const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
 
 if (!RADIUS_SECRET) {
   throw new Error('RADIUS_SECRET não definido no .env')
@@ -15,6 +36,8 @@ if (!RADIUS_SECRET) {
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não definidos no .env')
 }
+
+console.log(`RADIUS rodando com secret carregado: ${RADIUS_SECRET.slice(0, 6)}... (len=${RADIUS_SECRET.length})`)
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const server = dgram.createSocket('udp4')
