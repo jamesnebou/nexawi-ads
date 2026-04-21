@@ -96,6 +96,8 @@ export default function LandingPage() {
   const [contactSuccess, setContactSuccess] = useState(null);
   const [contactError, setContactError] = useState(null);
 
+  
+
 
   // Efeito para simular os números mudando em tempo real
   useEffect(() => {

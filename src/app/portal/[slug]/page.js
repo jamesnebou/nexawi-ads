@@ -74,6 +74,37 @@ function getMesAtualRange() {
   }
 }
 
+
+function AvisoTempoConexao() {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#0a0a0a] px-4 py-4 mt-6">
+      <div className="absolute inset-0 bg-gradient-to-r from-[#6be12f]/[0.06] via-transparent to-[#6be12f]/[0.04] pointer-events-none" />
+
+      <div className="relative flex items-start gap-3">
+        <div className="mt-0.5 flex-shrink-0">
+          <div className="relative w-3 h-3">
+            <div className="absolute inset-0 rounded-full bg-[#6be12f] animate-ping opacity-40" />
+            <div className="relative w-3 h-3 rounded-full bg-[#6be12f] shadow-[0_0_12px_rgba(107,225,47,0.9)]" />
+          </div>
+        </div>
+
+        <div className="flex-1">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-[#6be12f] font-bold mb-2">
+            Aviso importante
+          </p>
+
+          <p className="text-sm text-gray-300 leading-relaxed">
+            Você terá <span className="text-white font-bold">20 minutos de internet liberada</span>.
+            <br />
+            Após esse período, o acesso ficará em <span className="text-white font-bold">pausa por 10 minutos</span> antes de uma nova liberação.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
 export default function Portal() {
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
   const [liberandoNaCta, setLiberandoNaCta] = useState(false)
@@ -160,16 +191,56 @@ export default function Portal() {
   return
 }
 
-        const bloqueado = verificarCooldown()
-        if (bloqueado) return
+        const estadoSessao = verificarEstadoSessao()
 
-        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
+if (stageParam === 'cta' && onlineParam === '1') {
+  const anuncioSalvo = lerEstadoCta()
 
-        if (leadDoMes) {
-          setLeadRapido(leadDoMes)
-          setEtapa(ETAPAS.CPF_RAPIDO)
-          return
-        }
+  if (anuncioSalvo) {
+    setAnuncioAtual(anuncioSalvo)
+    setInternetLiberadaNaCta(true)
+    setLiberandoNaCta(false)
+    setEtapa(ETAPAS.CTA)
+    return
+  }
+}
+
+if (connectedParam === '1') {
+  limparEstadoCta()
+  setInternetLiberadaNaCta(true)
+  setLiberandoNaCta(false)
+  setEtapa(ETAPAS.ACESSO)
+  return
+}
+
+if (estadoSessao === 'online') {
+  const anuncioSalvo = lerEstadoCta()
+
+  if (anuncioSalvo) {
+    setAnuncioAtual(anuncioSalvo)
+    setInternetLiberadaNaCta(true)
+    setLiberandoNaCta(false)
+    setEtapa(ETAPAS.CTA)
+    return
+  }
+
+  setEtapa(ETAPAS.ACESSO)
+  return
+}
+
+if (estadoSessao === 'blocked') {
+  return
+}
+
+const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
+
+if (leadDoMes) {
+  setLeadRapido(leadDoMes)
+  setEtapa(ETAPAS.CPF_RAPIDO)
+  return
+}
+
+setEtapa(ETAPAS.CADASTRO)
 
         setEtapa(ETAPAS.CADASTRO)
       } catch (error) {
@@ -192,10 +263,10 @@ export default function Portal() {
       intervaloAnuncioRef.current = setInterval(() => {
         setContador((prev) => {
           if (prev <= 1) {
-            clearInterval(intervaloAnuncioRef.current)
-            setEtapa(ETAPAS.CTA)
-            return 0
-          }
+  clearInterval(intervaloAnuncioRef.current)
+  preLiberarInternetNaCta(anuncioAtual)
+  return 0
+}
           return prev - 1
         })
       }, 1000)
@@ -225,29 +296,30 @@ export default function Portal() {
     }
   }, [etapa, anuncios, ipAddress, anunciosExibidos])
 
-  function verificarCooldown() {
-    const lastConnection = localStorage.getItem('nexawi_last_connection')
-    if (!lastConnection) return false
+  function verificarEstadoSessao() {
+  const lastConnection = localStorage.getItem('nexawi_last_connection')
+  if (!lastConnection) return 'none'
 
-    const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
-    const tempoUsoMs = 20 * 60 * 1000
-    const tempoTotalCicloMs = 30 * 60 * 1000
+  const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
+  const tempoUsoMs = 20 * 60 * 1000
+  const tempoTotalCicloMs = 30 * 60 * 1000
 
-    if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
-      const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
-      setTempoEspera(minutosRestantes)
-      setEtapa(ETAPAS.BLOQUEADO)
-      return true
-    }
-
-    if (tempoPassadoMs >= tempoTotalCicloMs) {
-      localStorage.removeItem('nexawi_last_connection')
-      localStorage.removeItem('nexawi_radius_username')
-      localStorage.removeItem('nexawi_radius_password')
-    }
-
-    return false
+  if (tempoPassadoMs < tempoUsoMs) {
+    return 'online'
   }
+
+  if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+    const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+    setTempoEspera(minutosRestantes)
+    setEtapa(ETAPAS.BLOQUEADO)
+    return 'blocked'
+  }
+
+  localStorage.removeItem('nexawi_last_connection')
+  localStorage.removeItem('nexawi_radius_username')
+  localStorage.removeItem('nexawi_radius_password')
+  return 'expired'
+}
 
 function salvarEstadoCta(anuncio) {
   if (!anuncio) return
@@ -644,16 +716,26 @@ async function preLiberarInternetNaCta(anuncio) {
   }
 
   async function handleCtaClick(clicou, destinoExterno = '') {
+  try {
+    if (!internetLiberadaNaCta) return
+
     if (clicou && anuncioAtual) {
       await registrarClique(anuncioAtual.id, ipAddress)
     }
 
-    const destinoFinal = clicou && destinoExterno
-      ? destinoExterno
-      : `${window.location.origin}/portal/${slug}?connected=1`
+    if (clicou && destinoExterno) {
+      limparEstadoCta()
+      window.location.href = destinoExterno
+      return
+    }
 
-    await handleLiberarInternet(destinoFinal)
+    limparEstadoCta()
+    window.location.href = `${window.location.origin}/portal/${slug}?connected=1`
+  } catch (error) {
+    console.error('Erro na CTA:', error)
+    setEtapa(ETAPAS.ERRO)
   }
+}
 
   async function handleLiberarInternet(destinoFinal = '') {
     try {
@@ -779,12 +861,14 @@ async function preLiberarInternetNaCta(anuncio) {
             </div>
 
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bem-vindo de volta</h1>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
-                Digite apenas seu CPF para continuar.
-              </p>
-            </div>
+  <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bem-vindo de volta</h1>
+  <p className="text-gray-500 text-sm leading-relaxed">
+    Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+    Digite apenas seu CPF para continuar.
+  </p>
+
+  <AvisoTempoConexao />
+</div>
 
             <form onSubmit={handleCpfRapido} className="space-y-4">
               <div className="relative group/input">
@@ -829,11 +913,13 @@ async function preLiberarInternetNaCta(anuncio) {
             </div>
 
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Wi-Fi Grátis</h1>
-              <p className="text-gray-500 text-sm leading-relaxed">
-                Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
-              </p>
-            </div>
+  <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Wi-Fi Grátis</h1>
+  <p className="text-gray-500 text-sm leading-relaxed">
+    Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+  </p>
+
+  <AvisoTempoConexao />
+</div>
 
             <form onSubmit={handleCadastro} className="space-y-4">
               <div className="relative group/input">
@@ -988,17 +1074,21 @@ async function preLiberarInternetNaCta(anuncio) {
                 Oferta Especial!
               </h2>
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
+              {liberandoNaCta && !internetLiberadaNaCta && (
+  <p className="text-xs text-[#6be12f] mb-6 leading-relaxed">
+    Estamos liberando sua conexão para você seguir sem interrupções...
+  </p>
+)}
 
               <div className="flex flex-col gap-4">
-                {anuncioAtual.url_destino && (
-                  <button
-                    type="button"
-                    onClick={() => handleCtaClick(true, anuncioAtual.url_destino)}
-                    className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-[#6be12f] shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]"
-                  >
-                    Quero aproveitar
-                  </button>
-                )}
+                <button
+  type="button"
+  disabled={!internetLiberadaNaCta || liberandoNaCta}
+  onClick={() => handleCtaClick(false)}
+  className="w-full py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
+>
+  {liberandoNaCta && !internetLiberadaNaCta ? 'Aguarde...' : 'Não, obrigado. Ir para o Wi-Fi'}
+</button>
 
                 <button
                   type="button"
