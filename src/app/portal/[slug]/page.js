@@ -114,7 +114,6 @@ export default function Portal() {
   const stageParam = searchParams.get('stage') || ''
   const onlineParam = searchParams.get('online') || ''
   const ctaStorageKey = `nexawi_cta_${slug}`
-  const authConfirmedKey = `nexawi_auth_confirmed_${slug}`
 
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
@@ -150,6 +149,17 @@ export default function Portal() {
   const [erros, setErros] = useState({})
   const intervaloAnuncioRef = useRef(null)
 
+  function falhar(etiqueta, erro = '') {
+  const detalhe =
+    typeof erro === 'string'
+      ? erro
+      : erro?.message || JSON.stringify(erro) || 'Erro desconhecido'
+
+  console.error(etiqueta, erro)
+  setErroDetalhe(`${etiqueta}${detalhe ? `: ${detalhe}` : ''}`)
+  setEtapa(ETAPAS.ERRO)
+}
+
   function salvarEstadoCta(anuncio) {
     if (!anuncio) return
 
@@ -181,35 +191,31 @@ export default function Portal() {
   }
 
   function verificarEstadoSessao() {
-  const lastConnection = localStorage.getItem('nexawi_last_connection')
+    const lastConnection = localStorage.getItem('nexawi_last_connection')
+    if (!lastConnection) return 'none'
 
-  if (!lastConnection) return 'none'
-  if (!authEstaConfirmado()) return 'none'
+    const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
+    const tempoUsoMs = 20 * 60 * 1000
+    const tempoTotalCicloMs = 30 * 60 * 1000
 
-  const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
-  const tempoUsoMs = 20 * 60 * 1000
-  const tempoTotalCicloMs = 30 * 60 * 1000
+    if (tempoPassadoMs < tempoUsoMs) {
+      return 'online'
+    }
 
-  if (tempoPassadoMs < tempoUsoMs) {
-    return 'online'
-  }
+    if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+      const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+      setTempoEspera(minutosRestantes)
+      limparEstadoCta()
+      setEtapa(ETAPAS.BLOQUEADO)
+      return 'blocked'
+    }
 
-  if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
-    const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
-    setTempoEspera(minutosRestantes)
+    localStorage.removeItem('nexawi_last_connection')
+    localStorage.removeItem('nexawi_radius_username')
+    localStorage.removeItem('nexawi_radius_password')
     limparEstadoCta()
-    limparAuthConfirmado()
-    setEtapa(ETAPAS.BLOQUEADO)
-    return 'blocked'
+    return 'expired'
   }
-
-  localStorage.removeItem('nexawi_last_connection')
-  localStorage.removeItem('nexawi_radius_username')
-  localStorage.removeItem('nexawi_radius_password')
-  limparEstadoCta()
-  limparAuthConfirmado()
-  return 'expired'
-}
 
   async function carregarHotspotEAnuncios() {
     try {
@@ -236,9 +242,9 @@ export default function Portal() {
       }
 
       if (!hotspotData) {
-        setEtapa(ETAPAS.ERRO)
-        return null
-      }
+  falhar('Hotspot não encontrado', `slug recebido: ${slug}`)
+  return null
+}
 
       setHotspot(hotspotData)
 
@@ -274,10 +280,9 @@ export default function Portal() {
 
       return hotspotData
     } catch (error) {
-      console.error('Erro ao carregar hotspot:', error)
-      setEtapa(ETAPAS.ERRO)
-      return null
-    }
+  falhar('Erro ao carregar hotspot', error)
+  return null
+}
   }
 
   async function buscarLeadRapidoDoMes(hotspotId, mac) {
@@ -411,29 +416,85 @@ export default function Portal() {
     return Object.keys(novosErros).length === 0
   }
 
- async function handleLiberarInternet(destinoFinal = '') {
-  try {
-    const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
-    const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
-    const loginAction = linkLoginOnly || linkLoginOnlyParam
+  async function handleLiberarInternet(destinoFinal = '') {
+    try {
+      const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+      const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
+      const loginAction = linkLoginOnly || linkLoginOnlyParam
 
-    if (!username || !password) {
-      throw new Error('Credenciais RADIUS não encontradas')
-    }
+      if (!username || !password) {
+        throw new Error('Credenciais RADIUS não encontradas')
+      }
 
-    if (!loginAction) {
-      throw new Error('link-login-only não encontrado na URL do hotspot')
-    }
+      if (!loginAction) {
+        throw new Error('link-login-only não encontrado na URL do hotspot')
+      }
 
-    limparAuthConfirmado()
+      if (!destinoFinal) {
+        destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
+      }
 
-    if (!destinoFinal) {
-      destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
-    }
+      setEtapa(ETAPAS.LOADING)
 
-    setEtapa(ETAPAS.LOADING)
+      setTimeout(() => {
+        const formElement = document.createElement('form')
+        formElement.method = 'POST'
+        formElement.action = loginAction
+        formElement.style.display = 'none'
 
-    setTimeout(() => {
+        const usernameInput = document.createElement('input')
+        usernameInput.type = 'hidden'
+        usernameInput.name = 'username'
+        usernameInput.value = username
+
+        const passwordInput = document.createElement('input')
+        passwordInput.type = 'hidden'
+        passwordInput.name = 'password'
+        passwordInput.value = password
+
+        const dstInput = document.createElement('input')
+        dstInput.type = 'hidden'
+        dstInput.name = 'dst'
+        dstInput.value = destinoFinal
+
+        const popupInput = document.createElement('input')
+        popupInput.type = 'hidden'
+        popupInput.name = 'popup'
+        popupInput.value = 'false'
+
+        formElement.appendChild(usernameInput)
+        formElement.appendChild(passwordInput)
+        formElement.appendChild(dstInput)
+        formElement.appendChild(popupInput)
+
+        document.body.appendChild(formElement)
+        formElement.submit()
+      }, 500)
+    } catch (error) {
+  falhar('Erro ao liberar internet', error)
+}
+  }
+
+  async function preLiberarInternetNaCta(anuncio) {
+    try {
+      const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+      const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
+      const loginAction = linkLoginOnly || linkLoginOnlyParam
+
+      if (!username || !password) {
+        throw new Error('Credenciais RADIUS não encontradas')
+      }
+
+      if (!loginAction) {
+        throw new Error('link-login-only não encontrado na URL do hotspot')
+      }
+
+      salvarEstadoCta(anuncio)
+      setLiberandoNaCta(true)
+      setInternetLiberadaNaCta(false)
+
+      const destinoFinal = `${window.location.origin}/portal/${slug}?stage=cta&online=1`
+
       const formElement = document.createElement('form')
       formElement.method = 'POST'
       formElement.action = loginAction
@@ -466,71 +527,12 @@ export default function Portal() {
 
       document.body.appendChild(formElement)
       formElement.submit()
-    }, 500)
-  } catch (error) {
-    console.error('Erro ao liberar internet:', error)
-    setEtapa(ETAPAS.ERRO)
-  }
-}
-
- async function preLiberarInternetNaCta(anuncio) {
-  try {
-    const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
-    const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
-    const loginAction = linkLoginOnly || linkLoginOnlyParam
-
-    if (!username || !password) {
-      throw new Error('Credenciais RADIUS não encontradas')
+    } catch (error) {
+      console.error('Erro ao pré-liberar internet na CTA:', error)
+      setEtapa(ETAPAS.ERRO)
     }
-
-    if (!loginAction) {
-      throw new Error('link-login-only não encontrado na URL do hotspot')
-    }
-
-    limparAuthConfirmado()
-    salvarEstadoCta(anuncio)
-    setLiberandoNaCta(true)
-    setInternetLiberadaNaCta(false)
-
-    const destinoFinal = `${window.location.origin}/portal/${slug}?stage=cta&online=1`
-
-    const formElement = document.createElement('form')
-    formElement.method = 'POST'
-    formElement.action = loginAction
-    formElement.style.display = 'none'
-
-    const usernameInput = document.createElement('input')
-    usernameInput.type = 'hidden'
-    usernameInput.name = 'username'
-    usernameInput.value = username
-
-    const passwordInput = document.createElement('input')
-    passwordInput.type = 'hidden'
-    passwordInput.name = 'password'
-    passwordInput.value = password
-
-    const dstInput = document.createElement('input')
-    dstInput.type = 'hidden'
-    dstInput.name = 'dst'
-    dstInput.value = destinoFinal
-
-    const popupInput = document.createElement('input')
-    popupInput.type = 'hidden'
-    popupInput.name = 'popup'
-    popupInput.value = 'false'
-
-    formElement.appendChild(usernameInput)
-    formElement.appendChild(passwordInput)
-    formElement.appendChild(dstInput)
-    formElement.appendChild(popupInput)
-
-    document.body.appendChild(formElement)
-    formElement.submit()
-  } catch (error) {
-    console.error('Erro ao pré-liberar internet na CTA:', error)
-    setEtapa(ETAPAS.ERRO)
   }
-}
+
   async function handleCadastro(e) {
     e.preventDefault()
     if (!validarForm()) return
@@ -644,33 +646,11 @@ export default function Portal() {
 
       if (clicou && destinoExterno) {
         limparEstadoCta()
-        function marcarAuthConfirmado() {
-  sessionStorage.setItem(authConfirmedKey, '1')
-}
-
-function limparAuthConfirmado() {
-  sessionStorage.removeItem(authConfirmedKey)
-}
-
-function authEstaConfirmado() {
-  return sessionStorage.getItem(authConfirmedKey) === '1'
-}
         window.location.href = destinoExterno
         return
       }
 
       limparEstadoCta()
-      function marcarAuthConfirmado() {
-  sessionStorage.setItem(authConfirmedKey, '1')
-}
-
-function limparAuthConfirmado() {
-  sessionStorage.removeItem(authConfirmedKey)
-}
-
-function authEstaConfirmado() {
-  return sessionStorage.getItem(authConfirmedKey) === '1'
-}
       window.location.replace(`${window.location.origin}/portal/${slug}?connected=1`)
     } catch (error) {
       console.error('Erro na CTA:', error)
@@ -678,85 +658,86 @@ function authEstaConfirmado() {
     }
   }
 
+  const [erroDetalhe, setErroDetalhe] = useState('')
+
   useEffect(() => {
-  let isMounted = true
+    let isMounted = true
 
-  async function inicializarPortal() {
-    try {
-      if (!isMounted) return
+    async function inicializarPortal() {
+      try {
+        if (!isMounted) return
 
-      setMacAddress(macParam)
-      setLinkOrig(linkOrigParam)
-      setLinkLoginOnly(linkLoginOnlyParam)
-      setInternetLiberadaNaCta(false)
-      setLiberandoNaCta(false)
+        setMacAddress(macParam)
+        setLinkOrig(linkOrigParam)
+        setLinkLoginOnly(linkLoginOnlyParam)
+        setInternetLiberadaNaCta(false)
+        setLiberandoNaCta(false)
 
-      fetch('https://api.ipify.org?format=json')
-        .then((res) => res.json())
-        .then((data) => {
-          if (isMounted) setIpAddress(data.ip)
-        })
-        .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
+        fetch('https://api.ipify.org?format=json')
+          .then((res) => res.json())
+          .then((data) => {
+            if (isMounted) setIpAddress(data.ip)
+          })
+          .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
-      const hotspotData = await carregarHotspotEAnuncios()
-      if (!hotspotData || !isMounted) return
+        const hotspotData = await carregarHotspotEAnuncios()
+        if (!hotspotData || !isMounted) return
 
-      if (stageParam === 'cta' && onlineParam === '1') {
-        const anuncioSalvo = lerEstadoCta()
+        if (stageParam === 'cta' && onlineParam === '1') {
+          const anuncioSalvo = lerEstadoCta()
 
-        if (anuncioSalvo) {
-          marcarAuthConfirmado()
+          if (anuncioSalvo) {
+            localStorage.setItem('nexawi_last_connection', Date.now().toString())
+            setAnuncioAtual(anuncioSalvo)
+            setInternetLiberadaNaCta(true)
+            setLiberandoNaCta(false)
+            setEtapa(ETAPAS.CTA)
+            return
+          }
+        }
+
+        if (connectedParam === '1') {
           localStorage.setItem('nexawi_last_connection', Date.now().toString())
-          setAnuncioAtual(anuncioSalvo)
+          limparEstadoCta()
           setInternetLiberadaNaCta(true)
           setLiberandoNaCta(false)
-          setEtapa(ETAPAS.CTA)
+          setEtapa(ETAPAS.ACESSO)
           return
         }
-      }
 
-      if (connectedParam === '1') {
-        marcarAuthConfirmado()
-        localStorage.setItem('nexawi_last_connection', Date.now().toString())
-        limparEstadoCta()
-        setInternetLiberadaNaCta(true)
-        setLiberandoNaCta(false)
-        setEtapa(ETAPAS.ACESSO)
-        return
-      }
+        const estadoSessao = verificarEstadoSessao()
 
-      const estadoSessao = verificarEstadoSessao()
+        if (estadoSessao === 'online') {
+          setInternetLiberadaNaCta(true)
+          setLiberandoNaCta(false)
+          setEtapa(ETAPAS.ACESSO)
+          return
+        }
 
-      if (estadoSessao === 'online') {
-        setEtapa(ETAPAS.ACESSO)
-        return
-      }
+        if (estadoSessao === 'blocked') {
+          return
+        }
 
-      if (estadoSessao === 'blocked') {
-        return
-      }
+        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
 
-      const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
+        if (leadDoMes) {
+          setLeadRapido(leadDoMes)
+          setEtapa(ETAPAS.CPF_RAPIDO)
+          return
+        }
 
-      if (leadDoMes) {
-        setLeadRapido(leadDoMes)
-        setEtapa(ETAPAS.CPF_RAPIDO)
-        return
-      }
-
-      setEtapa(ETAPAS.CADASTRO)
-    } catch (error) {
-      console.error('Erro na inicialização do portal:', error)
-      if (isMounted) setEtapa(ETAPAS.ERRO)
+        setEtapa(ETAPAS.CADASTRO)
+      } catch (error) {
+  if (isMounted) falhar('Erro na inicialização do portal', error)
+}
     }
-  }
 
-  inicializarPortal()
+    inicializarPortal()
 
-  return () => {
-    isMounted = false
-  }
-}, [slug, macParam, linkOrigParam, linkLoginOnlyParam, connectedParam, stageParam, onlineParam])
+    return () => {
+      isMounted = false
+    }
+  }, [slug, macParam, linkOrigParam, linkLoginOnlyParam, connectedParam, stageParam, onlineParam])
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
@@ -835,14 +816,25 @@ function authEstaConfirmado() {
       )}
 
       {etapa === ETAPAS.ERRO && (
-        <div className="relative z-10 text-center animate-fade-in-up">
-          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
-            <ShieldCheck className="text-red-500" size={24} />
-          </div>
-          <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
-          <p className="text-gray-500">Não foi possível carregar as configurações deste ponto de acesso.</p>
-        </div>
-      )}
+  <div className="relative z-10 text-center animate-fade-in-up max-w-md px-6">
+    <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+      <ShieldCheck className="text-red-500" size={24} />
+    </div>
+    <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
+    <p className="text-gray-500 mb-3">Não foi possível carregar as configurações deste ponto de acesso.</p>
+
+    {erroDetalhe ? (
+      <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-left">
+        <p className="text-[11px] uppercase tracking-[0.2em] text-red-400 font-bold mb-2">
+          Detalhe técnico
+        </p>
+        <p className="text-sm text-red-200 break-words">
+          {erroDetalhe}
+        </p>
+      </div>
+    ) : null}
+  </div>
+)}
 
       {etapa === ETAPAS.CPF_RAPIDO && (
         <div className="relative z-10 w-full max-w-md animate-fade-in-up">
