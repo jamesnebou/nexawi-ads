@@ -1,11 +1,21 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import {
-  User, Mail, Smartphone, FileText, ShieldCheck,
-  Wifi, Loader2, ArrowRight, CheckCircle2, Clock, X, Shield
+  User,
+  Mail,
+  Smartphone,
+  FileText,
+  ShieldCheck,
+  Wifi,
+  Loader2,
+  ArrowRight,
+  CheckCircle2,
+  Clock,
+  X,
+  Shield,
 } from 'lucide-react'
 
 const supabase = createClient(
@@ -27,6 +37,10 @@ export default function Portal() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
 
+  const macParam = searchParams.get('mac') || ''
+  const linkOrigParam = searchParams.get('link-orig') || ''
+  const linkLoginOnlyParam = searchParams.get('link-login-only') || ''
+
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
   const [anuncioAtual, setAnuncioAtual] = useState(null)
@@ -38,7 +52,7 @@ export default function Portal() {
   const [ipAddress, setIpAddress] = useState('0.0.0.0')
   const [macAddress, setMacAddress] = useState('')
   const [linkOrig, setLinkOrig] = useState('')
-  const [linkLogin, setLinkLogin] = useState('')
+  const [linkLoginOnly, setLinkLoginOnly] = useState('')
   const [tempoEspera, setTempoEspera] = useState(0)
   const [modalAberto, setModalAberto] = useState(null)
 
@@ -54,56 +68,61 @@ export default function Portal() {
   const intervaloAnuncioRef = useRef(null)
 
   useEffect(() => {
-    const mac = searchParams.get('mac') || ''
-    const orig = searchParams.get('link-orig') || ''
-    const loginOnly = searchParams.get('link-login-only') || ''
+    let isMounted = true
 
-    setMacAddress(mac)
-    setLinkOrig(orig)
-    setLinkLoginOnly(loginOnly)
+    async function inicializarPortal() {
+      try {
+        if (!isMounted) return
 
-    fetch('https://api.ipify.org?format=json')
-      .then((res) => res.json())
-      .then((data) => setIpAddress(data.ip))
-      .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
+        setMacAddress(macParam)
+        setLinkOrig(linkOrigParam)
+        setLinkLoginOnly(linkLoginOnlyParam)
 
-    const lastConnection = localStorage.getItem('nexawi_last_connection')
-    let isBlocked = false
+        fetch('https://api.ipify.org?format=json')
+          .then((res) => res.json())
+          .then((data) => {
+            if (isMounted) setIpAddress(data.ip)
+          })
+          .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
-    if (lastConnection) {
-      const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
-      const tempoUsoMs = 20 * 60 * 1000
-      const tempoTotalCicloMs = 30 * 60 * 1000
+        const lastConnection = localStorage.getItem('nexawi_last_connection')
+        let isBlocked = false
 
-      if (tempoPassadoMs < tempoUsoMs) {
-        setEtapa(ETAPAS.ACESSO)
-        isBlocked = true
+        if (lastConnection) {
+          const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
+          const tempoUsoMs = 20 * 60 * 1000
+          const tempoTotalCicloMs = 30 * 60 * 1000
 
-        const storedUsername = localStorage.getItem('nexawi_auth_username')
-        const storedPassword = localStorage.getItem('nexawi_auth_password')
-
-        if (login && storedUsername && storedPassword) {
-          setTimeout(() => {
-            const destino = montarUrlLogin(login, storedUsername, storedPassword, orig)
-            window.location.href = destino
-          }, 800)
+          if (tempoPassadoMs < tempoUsoMs) {
+            setEtapa(ETAPAS.ACESSO)
+            isBlocked = true
+          } else if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+            const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+            setTempoEspera(minutosRestantes)
+            setEtapa(ETAPAS.BLOQUEADO)
+            isBlocked = true
+          } else {
+            localStorage.removeItem('nexawi_last_connection')
+            localStorage.removeItem('nexawi_auth_username')
+            localStorage.removeItem('nexawi_auth_password')
+          }
         }
-      } else if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
-        const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
-        setTempoEspera(minutosRestantes)
-        setEtapa(ETAPAS.BLOQUEADO)
-        isBlocked = true
-      } else {
-        localStorage.removeItem('nexawi_last_connection')
-        localStorage.removeItem('nexawi_auth_username')
-        localStorage.removeItem('nexawi_auth_password')
+
+        if (!isBlocked) {
+          await buscarHotspot()
+        }
+      } catch (error) {
+        console.error('Erro na inicialização do portal:', error)
+        if (isMounted) setEtapa(ETAPAS.ERRO)
       }
     }
 
-    if (!isBlocked) {
-      buscarHotspot()
+    inicializarPortal()
+
+    return () => {
+      isMounted = false
     }
-  }, [slug, searchParams])
+  }, [slug, macParam, linkOrigParam, linkLoginOnlyParam])
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
@@ -146,17 +165,6 @@ export default function Portal() {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [etapa, anuncios, ipAddress, anunciosExibidos])
-
-  function montarUrlLogin(loginUrl, username, password, destinoOriginal = '') {
-    const separador = loginUrl.includes('?') ? '&' : '?'
-    let url = `${loginUrl}${separador}username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-
-    if (destinoOriginal) {
-      url += `&dst=${encodeURIComponent(destinoOriginal)}`
-    }
-
-    return url
-  }
 
   function sortearAnuncioSemRepetir() {
     if (anuncios.length === 0) return null
@@ -212,52 +220,72 @@ export default function Portal() {
   }
 
   async function buscarHotspot() {
-    let hotspotData = null
+    try {
+      let hotspotData = null
 
-    const { data: porSlug } = await supabase
-      .from('hotspots')
-      .select('*')
-      .eq('slug', slug)
-      .single()
-
-    if (porSlug) {
-      hotspotData = porSlug
-    } else {
-      const { data: porNome } = await supabase
+      const { data: porSlug, error: erroSlug } = await supabase
         .from('hotspots')
         .select('*')
-        .eq('nome', slug)
+        .eq('slug', slug)
         .single()
 
-      hotspotData = porNome || null
-    }
+      if (!erroSlug && porSlug) {
+        hotspotData = porSlug
+      } else {
+        const { data: porNome, error: erroNome } = await supabase
+          .from('hotspots')
+          .select('*')
+          .eq('nome', slug)
+          .single()
 
-    if (!hotspotData) {
+        if (!erroNome && porNome) {
+          hotspotData = porNome
+        }
+      }
+
+      if (!hotspotData) {
+        setEtapa(ETAPAS.ERRO)
+        return
+      }
+
+      setHotspot(hotspotData)
+
+      const { data: vinculos, error: erroVinculos } = await supabase
+        .from('anuncio_hotspots')
+        .select('anuncio_id')
+        .eq('hotspot_id', hotspotData.id)
+
+      if (erroVinculos) {
+        console.error('Erro ao buscar vínculos de anúncios:', erroVinculos)
+        setAnuncios([])
+        setEtapa(ETAPAS.CADASTRO)
+        return
+      }
+
+      if (vinculos && vinculos.length > 0) {
+        const anuncioIds = vinculos.map((v) => v.anuncio_id)
+
+        const { data: anunciosData, error: erroAnuncios } = await supabase
+          .from('anuncios')
+          .select('*')
+          .in('id', anuncioIds)
+          .eq('ativo', true)
+
+        if (erroAnuncios) {
+          console.error('Erro ao buscar anúncios:', erroAnuncios)
+          setAnuncios([])
+        } else {
+          setAnuncios(anunciosData || [])
+        }
+      } else {
+        setAnuncios([])
+      }
+
+      setEtapa(ETAPAS.CADASTRO)
+    } catch (error) {
+      console.error('Erro em buscarHotspot:', error)
       setEtapa(ETAPAS.ERRO)
-      return
     }
-
-    setHotspot(hotspotData)
-
-    const { data: vinculos } = await supabase
-      .from('anuncio_hotspots')
-      .select('anuncio_id')
-      .eq('hotspot_id', hotspotData.id)
-
-    if (vinculos && vinculos.length > 0) {
-      const anuncioIds = vinculos.map((v) => v.anuncio_id)
-      const { data: anunciosData } = await supabase
-        .from('anuncios')
-        .select('*')
-        .in('id', anuncioIds)
-        .eq('ativo', true)
-
-      setAnuncios(anunciosData || [])
-    } else {
-      setAnuncios([])
-    }
-
-    setEtapa(ETAPAS.CADASTRO)
   }
 
   const validatePhoneNumber = (phone) => {
@@ -275,7 +303,7 @@ export default function Portal() {
     let remainder
 
     for (let i = 1; i <= 9; i++) {
-      sum = sum + parseInt(cleanedCpf.substring(i - 1, i), 10) * (11 - i)
+      sum += parseInt(cleanedCpf.substring(i - 1, i), 10) * (11 - i)
     }
 
     remainder = (sum * 10) % 11
@@ -284,7 +312,7 @@ export default function Portal() {
 
     sum = 0
     for (let i = 1; i <= 10; i++) {
-      sum = sum + parseInt(cleanedCpf.substring(i - 1, i), 10) * (12 - i)
+      sum += parseInt(cleanedCpf.substring(i - 1, i), 10) * (12 - i)
     }
 
     remainder = (sum * 10) % 11
@@ -368,59 +396,61 @@ export default function Portal() {
   }
 
   async function handleLiberarInternet() {
-  try {
-    const telefone = String(form.telefone || localStorage.getItem('nexawi_auth_username') || '').replace(/\D/g, '')
-    const cpf = String(form.cpf || localStorage.getItem('nexawi_auth_password') || '').replace(/\D/g, '')
+    try {
+      const telefone = String(form.telefone || localStorage.getItem('nexawi_auth_username') || '').replace(/\D/g, '')
+      const cpf = String(form.cpf || localStorage.getItem('nexawi_auth_password') || '').replace(/\D/g, '')
 
-    if (!telefone || !cpf) {
-      throw new Error('Dados inválidos')
+      if (!telefone || !cpf) {
+        throw new Error('Dados inválidos')
+      }
+
+      const loginAction = linkLoginOnly || linkLoginOnlyParam
+
+      if (!loginAction) {
+        throw new Error('link-login-only não encontrado na URL do hotspot')
+      }
+
+      setEtapa(ETAPAS.ACESSO)
+
+      setTimeout(() => {
+        const formElement = document.createElement('form')
+        formElement.method = 'POST'
+        formElement.action = loginAction
+        formElement.style.display = 'none'
+
+        const usernameInput = document.createElement('input')
+        usernameInput.type = 'hidden'
+        usernameInput.name = 'username'
+        usernameInput.value = telefone
+
+        const passwordInput = document.createElement('input')
+        passwordInput.type = 'hidden'
+        passwordInput.name = 'password'
+        passwordInput.value = cpf
+
+        const dstInput = document.createElement('input')
+        dstInput.type = 'hidden'
+        dstInput.name = 'dst'
+        dstInput.value = linkOrig || linkOrigParam || 'http://google.com'
+
+        const popupInput = document.createElement('input')
+        popupInput.type = 'hidden'
+        popupInput.name = 'popup'
+        popupInput.value = 'true'
+
+        formElement.appendChild(usernameInput)
+        formElement.appendChild(passwordInput)
+        formElement.appendChild(dstInput)
+        formElement.appendChild(popupInput)
+
+        document.body.appendChild(formElement)
+        formElement.submit()
+      }, 1500)
+    } catch (error) {
+      console.error('Erro ao liberar internet:', error)
+      setEtapa(ETAPAS.ERRO)
     }
-
-    if (!linkLoginOnly) {
-      throw new Error('link-login-only não encontrado na URL do hotspot')
-    }
-
-    setEtapa(ETAPAS.ACESSO)
-
-    setTimeout(() => {
-      const formElement = document.createElement('form')
-      formElement.method = 'POST'
-      formElement.action = linkLoginOnly
-      formElement.style.display = 'none'
-
-      const usernameInput = document.createElement('input')
-      usernameInput.type = 'hidden'
-      usernameInput.name = 'username'
-      usernameInput.value = telefone
-
-      const passwordInput = document.createElement('input')
-      passwordInput.type = 'hidden'
-      passwordInput.name = 'password'
-      passwordInput.value = cpf
-
-      const dstInput = document.createElement('input')
-      dstInput.type = 'hidden'
-      dstInput.name = 'dst'
-      dstInput.value = linkOrig || 'http://google.com'
-
-      const popupInput = document.createElement('input')
-      popupInput.type = 'hidden'
-      popupInput.name = 'popup'
-      popupInput.value = 'true'
-
-      formElement.appendChild(usernameInput)
-      formElement.appendChild(passwordInput)
-      formElement.appendChild(dstInput)
-      formElement.appendChild(popupInput)
-
-      document.body.appendChild(formElement)
-      formElement.submit()
-    }, 1500)
-  } catch (error) {
-    console.error('Erro ao liberar internet:', error)
-    setEtapa(ETAPAS.ERRO)
   }
-}
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
