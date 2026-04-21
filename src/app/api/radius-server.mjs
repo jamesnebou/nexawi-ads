@@ -4,7 +4,7 @@ import radius from 'radius'
 import { createClient } from '@supabase/supabase-js'
 
 const RADIUS_PORT = Number(process.env.RADIUS_PORT || 1812)
-const RADIUS_SECRET = process.env.RADIUS_SECRET
+const RADIUS_SECRET = 'viacao30NebouNexaWi@.!'
 const SUPABASE_URL = process.env.SUPABASE_URL
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
