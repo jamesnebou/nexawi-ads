@@ -33,6 +33,28 @@ const ETAPAS = {
   ERRO: 'erro',
 }
 
+function gerarStringAleatoria(tamanho = 24) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+  const bytes = new Uint32Array(tamanho)
+  window.crypto.getRandomValues(bytes)
+
+  let resultado = ''
+  for (let i = 0; i < tamanho; i++) {
+    resultado += chars[bytes[i] % chars.length]
+  }
+  return resultado
+}
+
+function gerarCredenciaisRadius(macAddress = '') {
+  const macLimpo = String(macAddress || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
+  const sufixo = gerarStringAleatoria(6).toUpperCase()
+
+  return {
+    radiusUsername: `NXW${macLimpo || 'SEMMA'}${Date.now()}${sufixo}`,
+    radiusPassword: gerarStringAleatoria(32),
+  }
+}
+
 export default function Portal() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
@@ -55,6 +77,8 @@ export default function Portal() {
   const [linkLoginOnly, setLinkLoginOnly] = useState('')
   const [tempoEspera, setTempoEspera] = useState(0)
   const [modalAberto, setModalAberto] = useState(null)
+  const [radiusUsername, setRadiusUsername] = useState('')
+  const [radiusPassword, setRadiusPassword] = useState('')
 
   const [form, setForm] = useState({
     nome: '',
@@ -86,31 +110,26 @@ export default function Portal() {
           .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
         const lastConnection = localStorage.getItem('nexawi_last_connection')
-        let isBlocked = false
-
         if (lastConnection) {
           const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
           const tempoUsoMs = 20 * 60 * 1000
           const tempoTotalCicloMs = 30 * 60 * 1000
 
-          if (tempoPassadoMs < tempoUsoMs) {
-            setEtapa(ETAPAS.ACESSO)
-            isBlocked = true
-          } else if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+          if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
             const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
             setTempoEspera(minutosRestantes)
             setEtapa(ETAPAS.BLOQUEADO)
-            isBlocked = true
-          } else {
+            return
+          }
+
+          if (tempoPassadoMs >= tempoTotalCicloMs) {
             localStorage.removeItem('nexawi_last_connection')
-            localStorage.removeItem('nexawi_auth_username')
-            localStorage.removeItem('nexawi_auth_password')
+            localStorage.removeItem('nexawi_radius_username')
+            localStorage.removeItem('nexawi_radius_password')
           }
         }
 
-        if (!isBlocked) {
-          await buscarHotspot()
-        }
+        await buscarHotspot()
       } catch (error) {
         console.error('Erro na inicialização do portal:', error)
         if (isMounted) setEtapa(ETAPAS.ERRO)
@@ -149,8 +168,6 @@ export default function Portal() {
     let timeoutId
 
     if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
-      const tempoEmMilissegundos = 10 * 60 * 1000
-
       timeoutId = setTimeout(() => {
         const anuncioSorteado = sortearAnuncioSemRepetir()
         if (anuncioSorteado) {
@@ -158,7 +175,7 @@ export default function Portal() {
           setEtapa(ETAPAS.ANUNCIO)
           registrarVisualizacao(anuncioSorteado.id, ipAddress)
         }
-      }, tempoEmMilissegundos)
+      }, 10 * 60 * 1000)
     }
 
     return () => {
@@ -347,6 +364,7 @@ export default function Portal() {
       const anuncioSorteado = sortearAnuncioSemRepetir()
       const telefoneLimpo = String(form.telefone).replace(/\D/g, '')
       const cpfLimpo = String(form.cpf).replace(/\D/g, '')
+      const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(macAddress)
 
       const { data, error } = await supabase
         .from('leads')
@@ -358,8 +376,11 @@ export default function Portal() {
           cpf: cpfLimpo,
           aceite_lgpd: form.aceite_lgpd,
           anuncio_id: anuncioSorteado ? anuncioSorteado.id : null,
-          mac_address: macAddress,
-          ip_address: ipAddress
+          mac_address: macAddress || null,
+          ip_address: ipAddress || null,
+          radius_username: radiusUsername,
+          radius_password: radiusPassword,
+          radius_used: false,
         }])
         .select()
         .single()
@@ -367,17 +388,18 @@ export default function Portal() {
       if (error) throw error
 
       setLeadId(data.id)
+      setRadiusUsername(radiusUsername)
+      setRadiusPassword(radiusPassword)
 
-      localStorage.setItem('nexawi_last_connection', Date.now().toString())
-      localStorage.setItem('nexawi_auth_username', telefoneLimpo)
-      localStorage.setItem('nexawi_auth_password', cpfLimpo)
+      localStorage.setItem('nexawi_radius_username', radiusUsername)
+      localStorage.setItem('nexawi_radius_password', radiusPassword)
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setEtapa(ETAPAS.ANUNCIO)
         registrarVisualizacao(anuncioSorteado.id, ipAddress)
       } else {
-        await handleLiberarInternet()
+        await handleLiberarInternet(linkOrig || linkOrigParam || 'http://google.com')
       }
     } catch (error) {
       console.error('Erro ao salvar lead:', error)
@@ -387,28 +409,29 @@ export default function Portal() {
     }
   }
 
-  async function handleCtaClick(clicou) {
+  async function handleCtaClick(clicou, destinoFinal = '') {
     if (clicou && anuncioAtual) {
       await registrarClique(anuncioAtual.id, ipAddress)
     }
 
-    await handleLiberarInternet()
+    await handleLiberarInternet(destinoFinal || linkOrig || linkOrigParam || 'http://google.com')
   }
 
-  async function handleLiberarInternet() {
+  async function handleLiberarInternet(destinoFinal = '') {
     try {
-      const telefone = String(form.telefone || localStorage.getItem('nexawi_auth_username') || '').replace(/\D/g, '')
-      const cpf = String(form.cpf || localStorage.getItem('nexawi_auth_password') || '').replace(/\D/g, '')
-
-      if (!telefone || !cpf) {
-        throw new Error('Dados inválidos')
-      }
-
+      const username = radiusUsername || localStorage.getItem('nexawi_radius_username') || ''
+      const password = radiusPassword || localStorage.getItem('nexawi_radius_password') || ''
       const loginAction = linkLoginOnly || linkLoginOnlyParam
+
+      if (!username || !password) {
+        throw new Error('Credenciais RADIUS não encontradas')
+      }
 
       if (!loginAction) {
         throw new Error('link-login-only não encontrado na URL do hotspot')
       }
+
+      localStorage.setItem('nexawi_last_connection', Date.now().toString())
 
       setEtapa(ETAPAS.ACESSO)
 
@@ -421,17 +444,17 @@ export default function Portal() {
         const usernameInput = document.createElement('input')
         usernameInput.type = 'hidden'
         usernameInput.name = 'username'
-        usernameInput.value = telefone
+        usernameInput.value = username
 
         const passwordInput = document.createElement('input')
         passwordInput.type = 'hidden'
         passwordInput.name = 'password'
-        passwordInput.value = cpf
+        passwordInput.value = password
 
         const dstInput = document.createElement('input')
         dstInput.type = 'hidden'
         dstInput.name = 'dst'
-        dstInput.value = linkOrig || linkOrigParam || 'http://google.com'
+        dstInput.value = destinoFinal || 'http://google.com'
 
         const popupInput = document.createElement('input')
         popupInput.type = 'hidden'
@@ -445,7 +468,7 @@ export default function Portal() {
 
         document.body.appendChild(formElement)
         formElement.submit()
-      }, 1500)
+      }, 1200)
     } catch (error) {
       console.error('Erro ao liberar internet:', error)
       setEtapa(ETAPAS.ERRO)
@@ -676,19 +699,18 @@ export default function Portal() {
 
               <div className="flex flex-col gap-4">
                 {anuncioAtual.url_destino && (
-                  <a
-                    href={anuncioAtual.url_destino}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => handleCtaClick(true)}
+                  <button
+                    type="button"
+                    onClick={() => handleCtaClick(true, anuncioAtual.url_destino)}
                     className="w-full py-4 rounded-2xl font-bold text-black text-base transition-all duration-300 hover:-translate-y-1 bg-[#6be12f] shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)]"
                   >
                     Quero aproveitar
-                  </a>
+                  </button>
                 )}
 
                 <button
-                  onClick={() => handleCtaClick(false)}
+                  type="button"
+                  onClick={() => handleCtaClick(false, linkOrig || linkOrigParam || 'http://google.com')}
                   className="w-full py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
                 >
                   Não, obrigado. Ir para o Wi-Fi

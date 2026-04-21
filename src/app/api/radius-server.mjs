@@ -19,8 +19,11 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const server = dgram.createSocket('udp4')
 
-function onlyDigits(value) {
-  return String(value || '').replace(/\D/g, '')
+function normalizeMac(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, ':')
 }
 
 function sendRadiusResponse(packet, code, rinfo, extraAttributes = []) {
@@ -52,28 +55,24 @@ server.on('message', async (msg, rinfo) => {
     return
   }
 
-  const rawUsername = packet.attributes['User-Name']
-  const rawPassword = packet.attributes['User-Password']
-  const callingStationId = packet.attributes['Calling-Station-Id'] || ''
-  const nasIp = packet.attributes['NAS-IP-Address'] || ''
-  const calledStationId = packet.attributes['Called-Station-Id'] || ''
-  const nasIdentifier = packet.attributes['NAS-Identifier'] || ''
-
-  const telefone = onlyDigits(rawUsername)
-  const cpf = onlyDigits(rawPassword)
-  const mac = String(callingStationId || '').trim()
+  const radiusUsername = String(packet.attributes['User-Name'] || '').trim()
+  const radiusPassword = String(packet.attributes['User-Password'] || '').trim()
+  const incomingMac = normalizeMac(packet.attributes['Calling-Station-Id'] || '')
+  const nasIp = String(packet.attributes['NAS-IP-Address'] || '').trim()
+  const calledStationId = String(packet.attributes['Called-Station-Id'] || '').trim()
+  const nasIdentifier = String(packet.attributes['NAS-Identifier'] || '').trim()
 
   console.log('--- Access-Request ---')
   console.log('Origem:', `${rinfo.address}:${rinfo.port}`)
-  console.log('Telefone:', telefone)
-  console.log('CPF:', cpf ? '[recebido]' : '[vazio]')
-  console.log('MAC:', mac || '[não enviado]')
+  console.log('radius_username:', radiusUsername || '[vazio]')
+  console.log('radius_password:', radiusPassword ? '[recebido]' : '[vazio]')
+  console.log('MAC:', incomingMac || '[não enviado]')
   console.log('NAS-IP:', nasIp || '[não enviado]')
   console.log('Called-Station-Id:', calledStationId || '[não enviado]')
   console.log('NAS-Identifier:', nasIdentifier || '[não enviado]')
 
-  if (!telefone || !cpf) {
-    console.log('Access-Reject: telefone ou CPF ausentes')
+  if (!radiusUsername || !radiusPassword) {
+    console.log('Access-Reject: credenciais vazias')
     sendRadiusResponse(packet, 'Access-Reject', rinfo, [
       ['Reply-Message', 'Credenciais inválidas'],
     ])
@@ -84,8 +83,8 @@ server.on('message', async (msg, rinfo) => {
     const { data: lead, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('telefone', telefone)
-      .eq('cpf', cpf)
+      .eq('radius_username', radiusUsername)
+      .eq('radius_password', radiusPassword)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -99,20 +98,30 @@ server.on('message', async (msg, rinfo) => {
     }
 
     if (!lead) {
-      console.log('Access-Reject: lead não encontrado')
+      console.log('Access-Reject: credencial não encontrada')
       sendRadiusResponse(packet, 'Access-Reject', rinfo, [
-        ['Reply-Message', 'Usuário não encontrado'],
+        ['Reply-Message', 'Credencial não encontrada'],
       ])
       return
     }
 
-    // Atualiza dados úteis do lead
+    const leadMac = normalizeMac(lead.mac_address || '')
+
+    if (leadMac && incomingMac && leadMac !== incomingMac) {
+      console.log(`Access-Reject: MAC divergente. Esperado ${leadMac}, recebido ${incomingMac}`)
+      sendRadiusResponse(packet, 'Access-Reject', rinfo, [
+        ['Reply-Message', 'Dispositivo não autorizado'],
+      ])
+      return
+    }
+
     const updatePayload = {
-      mac_address: mac || lead.mac_address || null,
+      mac_address: leadMac || incomingMac || null,
+      radius_used: true,
+      radius_last_auth_at: new Date().toISOString(),
       radius_last_nas_ip: nasIp || null,
       radius_last_called_station_id: calledStationId || null,
       radius_last_nas_identifier: nasIdentifier || null,
-      radius_last_auth_at: new Date().toISOString(),
     }
 
     await supabase
@@ -120,12 +129,12 @@ server.on('message', async (msg, rinfo) => {
       .update(updatePayload)
       .eq('id', lead.id)
 
-    console.log('Access-Accept: acesso liberado para', telefone)
+    console.log('Access-Accept: acesso liberado para', radiusUsername)
 
     sendRadiusResponse(packet, 'Access-Accept', rinfo, [
       ['Reply-Message', 'Acesso liberado'],
-      ['Session-Timeout', 1200], // 20 minutos
-      ['Idle-Timeout', 300],     // 5 minutos sem uso
+      ['Session-Timeout', 1200],
+      ['Idle-Timeout', 300],
     ])
   } catch (error) {
     console.error('Erro inesperado no RADIUS:', error)
