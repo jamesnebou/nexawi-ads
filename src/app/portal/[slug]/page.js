@@ -25,6 +25,7 @@ const supabase = createClient(
 
 const ETAPAS = {
   LOADING: 'loading',
+  CPF_RAPIDO: 'cpf_rapido',
   CADASTRO: 'cadastro',
   ANUNCIO: 'anuncio',
   CTA: 'cta',
@@ -45,6 +46,13 @@ function gerarStringAleatoria(tamanho = 24) {
   return resultado
 }
 
+function normalizeMac(value = '') {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, ':')
+}
+
 function gerarCredenciaisRadius(macAddress = '') {
   const macLimpo = String(macAddress || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
   const sufixo = gerarStringAleatoria(6).toUpperCase()
@@ -55,21 +63,35 @@ function gerarCredenciaisRadius(macAddress = '') {
   }
 }
 
+function getMesAtualRange() {
+  const agora = new Date()
+  const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0)
+  const fim = new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 0, 0, 0, 0)
+
+  return {
+    inicio: inicio.toISOString(),
+    fim: fim.toISOString(),
+  }
+}
+
 export default function Portal() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
 
-  const macParam = searchParams.get('mac') || ''
+  const macParam = normalizeMac(searchParams.get('mac') || '')
   const linkOrigParam = searchParams.get('link-orig') || ''
   const linkLoginOnlyParam = searchParams.get('link-login-only') || ''
+  const connectedParam = searchParams.get('connected') || ''
 
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
+  const [leadRapido, setLeadRapido] = useState(null)
   const [anuncioAtual, setAnuncioAtual] = useState(null)
   const [anuncios, setAnuncios] = useState([])
   const [anunciosExibidos, setAnunciosExibidos] = useState([])
   const [contador, setContador] = useState(0)
   const [salvando, setSalvando] = useState(false)
+  const [salvandoCpfRapido, setSalvandoCpfRapido] = useState(false)
   const [leadId, setLeadId] = useState(null)
   const [ipAddress, setIpAddress] = useState('0.0.0.0')
   const [macAddress, setMacAddress] = useState('')
@@ -79,6 +101,8 @@ export default function Portal() {
   const [modalAberto, setModalAberto] = useState(null)
   const [radiusUsername, setRadiusUsername] = useState('')
   const [radiusPassword, setRadiusPassword] = useState('')
+  const [cpfRapido, setCpfRapido] = useState('')
+  const [erroCpfRapido, setErroCpfRapido] = useState('')
 
   const [form, setForm] = useState({
     nome: '',
@@ -109,27 +133,26 @@ export default function Portal() {
           })
           .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
-        const lastConnection = localStorage.getItem('nexawi_last_connection')
-        if (lastConnection) {
-          const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
-          const tempoUsoMs = 20 * 60 * 1000
-          const tempoTotalCicloMs = 30 * 60 * 1000
+        const hotspotData = await carregarHotspotEAnuncios()
+        if (!hotspotData || !isMounted) return
 
-          if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
-            const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
-            setTempoEspera(minutosRestantes)
-            setEtapa(ETAPAS.BLOQUEADO)
-            return
-          }
-
-          if (tempoPassadoMs >= tempoTotalCicloMs) {
-            localStorage.removeItem('nexawi_last_connection')
-            localStorage.removeItem('nexawi_radius_username')
-            localStorage.removeItem('nexawi_radius_password')
-          }
+        if (connectedParam === '1') {
+          setEtapa(ETAPAS.ACESSO)
+          return
         }
 
-        await buscarHotspot()
+        const bloqueado = verificarCooldown()
+        if (bloqueado) return
+
+        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
+
+        if (leadDoMes) {
+          setLeadRapido(leadDoMes)
+          setEtapa(ETAPAS.CPF_RAPIDO)
+          return
+        }
+
+        setEtapa(ETAPAS.CADASTRO)
       } catch (error) {
         console.error('Erro na inicialização do portal:', error)
         if (isMounted) setEtapa(ETAPAS.ERRO)
@@ -141,7 +164,7 @@ export default function Portal() {
     return () => {
       isMounted = false
     }
-  }, [slug, macParam, linkOrigParam, linkLoginOnlyParam])
+  }, [slug, macParam, linkOrigParam, linkLoginOnlyParam, connectedParam])
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
@@ -182,6 +205,128 @@ export default function Portal() {
       if (timeoutId) clearTimeout(timeoutId)
     }
   }, [etapa, anuncios, ipAddress, anunciosExibidos])
+
+  function verificarCooldown() {
+    const lastConnection = localStorage.getItem('nexawi_last_connection')
+    if (!lastConnection) return false
+
+    const tempoPassadoMs = Date.now() - parseInt(lastConnection, 10)
+    const tempoUsoMs = 20 * 60 * 1000
+    const tempoTotalCicloMs = 30 * 60 * 1000
+
+    if (tempoPassadoMs >= tempoUsoMs && tempoPassadoMs < tempoTotalCicloMs) {
+      const minutosRestantes = Math.ceil((tempoTotalCicloMs - tempoPassadoMs) / 60000)
+      setTempoEspera(minutosRestantes)
+      setEtapa(ETAPAS.BLOQUEADO)
+      return true
+    }
+
+    if (tempoPassadoMs >= tempoTotalCicloMs) {
+      localStorage.removeItem('nexawi_last_connection')
+      localStorage.removeItem('nexawi_radius_username')
+      localStorage.removeItem('nexawi_radius_password')
+    }
+
+    return false
+  }
+
+  async function carregarHotspotEAnuncios() {
+    try {
+      let hotspotData = null
+
+      const { data: porSlug, error: erroSlug } = await supabase
+        .from('hotspots')
+        .select('*')
+        .eq('slug', slug)
+        .single()
+
+      if (!erroSlug && porSlug) {
+        hotspotData = porSlug
+      } else {
+        const { data: porNome, error: erroNome } = await supabase
+          .from('hotspots')
+          .select('*')
+          .eq('nome', slug)
+          .single()
+
+        if (!erroNome && porNome) {
+          hotspotData = porNome
+        }
+      }
+
+      if (!hotspotData) {
+        setEtapa(ETAPAS.ERRO)
+        return null
+      }
+
+      setHotspot(hotspotData)
+
+      const { data: vinculos, error: erroVinculos } = await supabase
+        .from('anuncio_hotspots')
+        .select('anuncio_id')
+        .eq('hotspot_id', hotspotData.id)
+
+      if (erroVinculos) {
+        console.error('Erro ao buscar vínculos de anúncios:', erroVinculos)
+        setAnuncios([])
+        return hotspotData
+      }
+
+      if (vinculos && vinculos.length > 0) {
+        const anuncioIds = vinculos.map((v) => v.anuncio_id)
+
+        const { data: anunciosData, error: erroAnuncios } = await supabase
+          .from('anuncios')
+          .select('*')
+          .in('id', anuncioIds)
+          .eq('ativo', true)
+
+        if (erroAnuncios) {
+          console.error('Erro ao buscar anúncios:', erroAnuncios)
+          setAnuncios([])
+        } else {
+          setAnuncios(anunciosData || [])
+        }
+      } else {
+        setAnuncios([])
+      }
+
+      return hotspotData
+    } catch (error) {
+      console.error('Erro ao carregar hotspot:', error)
+      setEtapa(ETAPAS.ERRO)
+      return null
+    }
+  }
+
+  async function buscarLeadRapidoDoMes(hotspotId, mac) {
+    try {
+      if (!hotspotId || !mac) return null
+
+      const { inicio, fim } = getMesAtualRange()
+
+      const { data, error } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('hotspot_id', hotspotId)
+        .eq('mac_address', mac)
+        .gte('created_at', inicio)
+        .lt('created_at', fim)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) {
+        console.error('Erro ao buscar lead rápido:', error)
+        return null
+      }
+
+      return data || null
+    } catch (error) {
+      console.error('Erro inesperado ao buscar lead rápido:', error)
+      return null
+    }
+  }
 
   function sortearAnuncioSemRepetir() {
     if (anuncios.length === 0) return null
@@ -233,75 +378,6 @@ export default function Portal() {
       }
     } catch (err) {
       console.error('Erro silencioso ao registrar clique:', err)
-    }
-  }
-
-  async function buscarHotspot() {
-    try {
-      let hotspotData = null
-
-      const { data: porSlug, error: erroSlug } = await supabase
-        .from('hotspots')
-        .select('*')
-        .eq('slug', slug)
-        .single()
-
-      if (!erroSlug && porSlug) {
-        hotspotData = porSlug
-      } else {
-        const { data: porNome, error: erroNome } = await supabase
-          .from('hotspots')
-          .select('*')
-          .eq('nome', slug)
-          .single()
-
-        if (!erroNome && porNome) {
-          hotspotData = porNome
-        }
-      }
-
-      if (!hotspotData) {
-        setEtapa(ETAPAS.ERRO)
-        return
-      }
-
-      setHotspot(hotspotData)
-
-      const { data: vinculos, error: erroVinculos } = await supabase
-        .from('anuncio_hotspots')
-        .select('anuncio_id')
-        .eq('hotspot_id', hotspotData.id)
-
-      if (erroVinculos) {
-        console.error('Erro ao buscar vínculos de anúncios:', erroVinculos)
-        setAnuncios([])
-        setEtapa(ETAPAS.CADASTRO)
-        return
-      }
-
-      if (vinculos && vinculos.length > 0) {
-        const anuncioIds = vinculos.map((v) => v.anuncio_id)
-
-        const { data: anunciosData, error: erroAnuncios } = await supabase
-          .from('anuncios')
-          .select('*')
-          .in('id', anuncioIds)
-          .eq('ativo', true)
-
-        if (erroAnuncios) {
-          console.error('Erro ao buscar anúncios:', erroAnuncios)
-          setAnuncios([])
-        } else {
-          setAnuncios(anunciosData || [])
-        }
-      } else {
-        setAnuncios([])
-      }
-
-      setEtapa(ETAPAS.CADASTRO)
-    } catch (error) {
-      console.error('Erro em buscarHotspot:', error)
-      setEtapa(ETAPAS.ERRO)
     }
   }
 
@@ -399,7 +475,7 @@ export default function Portal() {
         setEtapa(ETAPAS.ANUNCIO)
         registrarVisualizacao(anuncioSorteado.id, ipAddress)
       } else {
-        await handleLiberarInternet(linkOrig || linkOrigParam || 'http://google.com')
+        await handleLiberarInternet(`${window.location.origin}/portal/${slug}?connected=1`)
       }
     } catch (error) {
       console.error('Erro ao salvar lead:', error)
@@ -409,12 +485,65 @@ export default function Portal() {
     }
   }
 
-  async function handleCtaClick(clicou, destinoFinal = '') {
+  async function handleCpfRapido(e) {
+    e.preventDefault()
+
+    setErroCpfRapido('')
+
+    const cpfLimpo = String(cpfRapido).replace(/\D/g, '')
+
+    if (!validateCpf(cpfLimpo)) {
+      setErroCpfRapido('CPF inválido')
+      return
+    }
+
+    if (!leadRapido) {
+      setErroCpfRapido('Cadastro não encontrado para este dispositivo')
+      return
+    }
+
+    if (String(leadRapido.cpf || '').replace(/\D/g, '') !== cpfLimpo) {
+      setErroCpfRapido('CPF não confere com este dispositivo')
+      return
+    }
+
+    setSalvandoCpfRapido(true)
+
+    try {
+      setLeadId(leadRapido.id)
+      setRadiusUsername(leadRapido.radius_username)
+      setRadiusPassword(leadRapido.radius_password)
+
+      localStorage.setItem('nexawi_radius_username', leadRapido.radius_username)
+      localStorage.setItem('nexawi_radius_password', leadRapido.radius_password)
+
+      const anuncioSorteado = sortearAnuncioSemRepetir()
+
+      if (anuncioSorteado) {
+        setAnuncioAtual(anuncioSorteado)
+        setEtapa(ETAPAS.ANUNCIO)
+        registrarVisualizacao(anuncioSorteado.id, ipAddress)
+      } else {
+        await handleLiberarInternet(`${window.location.origin}/portal/${slug}?connected=1`)
+      }
+    } catch (error) {
+      console.error('Erro no CPF rápido:', error)
+      setErroCpfRapido('Não foi possível continuar')
+    } finally {
+      setSalvandoCpfRapido(false)
+    }
+  }
+
+  async function handleCtaClick(clicou, destinoExterno = '') {
     if (clicou && anuncioAtual) {
       await registrarClique(anuncioAtual.id, ipAddress)
     }
 
-    await handleLiberarInternet(destinoFinal || linkOrig || linkOrigParam || 'http://google.com')
+    const destinoFinal = clicou && destinoExterno
+      ? destinoExterno
+      : `${window.location.origin}/portal/${slug}?connected=1`
+
+    await handleLiberarInternet(destinoFinal)
   }
 
   async function handleLiberarInternet(destinoFinal = '') {
@@ -432,6 +561,10 @@ export default function Portal() {
       }
 
       localStorage.setItem('nexawi_last_connection', Date.now().toString())
+
+      if (!destinoFinal) {
+        destinoFinal = `${window.location.origin}/portal/${slug}?connected=1`
+      }
 
       setEtapa(ETAPAS.ACESSO)
 
@@ -454,7 +587,7 @@ export default function Portal() {
         const dstInput = document.createElement('input')
         dstInput.type = 'hidden'
         dstInput.name = 'dst'
-        dstInput.value = destinoFinal || 'http://google.com'
+        dstInput.value = destinoFinal
 
         const popupInput = document.createElement('input')
         popupInput.type = 'hidden'
@@ -518,6 +651,56 @@ export default function Portal() {
           </div>
           <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
           <p className="text-gray-500">Não foi possível carregar as configurações deste ponto de acesso.</p>
+        </div>
+      )}
+
+      {etapa === ETAPAS.CPF_RAPIDO && (
+        <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+            <div className="flex justify-center mb-8 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <img
+                  src="/Nexa-logo.png"
+                  alt="Nexa Logo"
+                  className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
+              </div>
+            </div>
+
+            <div className="text-center mb-10">
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bem-vindo de volta</h1>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+                Digite apenas seu CPF para continuar.
+              </p>
+            </div>
+
+            <form onSubmit={handleCpfRapido} className="space-y-4">
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+                </div>
+                <input
+                  type="text"
+                  value={cpfRapido}
+                  onChange={(e) => setCpfRapido(e.target.value)}
+                  className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                  placeholder="Digite seu CPF"
+                />
+                {erroCpfRapido && <span className="text-red-400 text-xs mt-1 ml-2 block">{erroCpfRapido}</span>}
+              </div>
+
+              <button
+                type="submit"
+                disabled={salvandoCpfRapido}
+                className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+              >
+                {salvandoCpfRapido ? <Loader2 size={20} className="animate-spin" /> : <>Continuar <ArrowRight size={18} /></>}
+              </button>
+            </form>
+          </div>
         </div>
       )}
 
@@ -710,7 +893,7 @@ export default function Portal() {
 
                 <button
                   type="button"
-                  onClick={() => handleCtaClick(false, linkOrig || linkOrigParam || 'http://google.com')}
+                  onClick={() => handleCtaClick(false)}
                   className="w-full py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
                 >
                   Não, obrigado. Ir para o Wi-Fi
