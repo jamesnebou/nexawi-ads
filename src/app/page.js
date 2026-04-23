@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { ChevronDown } from 'lucide-react'; // Importe o ícone ChevronDown
 
 // Componente Modal
 const Modal = ({ isOpen, onClose, title, children }) => {
@@ -25,6 +26,71 @@ const Modal = ({ isOpen, onClose, title, children }) => {
     </div>
   );
 };
+
+
+
+
+/// Componente individual de item do FAQ
+const FAQItem = ({ question, answer }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border-b border-white/10 py-4">
+      <button
+        className="flex justify-between items-center w-full text-left text-lg font-semibold text-white hover:text-[#6be12f] transition-colors"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {question}
+        <ChevronDown
+          className={`h-5 w-5 transform transition-transform duration-300 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+        />
+      </button>
+      {isOpen && (
+        <div className="mt-2 text-gray-400 text-sm md:text-base leading-relaxed animate-fade-in-up">
+          {answer}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Lista de perguntas e respostas do FAQ
+const faqs = [
+  {
+    question: 'O que é o Wi-Fi Patrocinado da NexaWi ADS?',
+    answer: 'É uma solução inovadora que transforma o Wi-Fi gratuito do seu estabelecimento em um canal de marketing. Seus clientes acessam a internet após visualizar um anúncio da sua marca, gerando visibilidade e dados valiosos para o seu negócio.',
+  },
+  {
+    question: 'Como a NexaWi ADS pode ajudar meu negócio a crescer?',
+    answer: 'Ao anunciar na nossa rede, você alcança um público altamente segmentado e engajado, que está fisicamente presente em locais estratégicos. Isso aumenta o reconhecimento da sua marca, gera tráfego qualificado para seu site ou loja física e permite a coleta de leads para futuras campanhas.',
+  },
+  {
+    question: 'Quais são os benefícios de anunciar com a NexaWi ADS?',
+    answer: 'Os principais benefícios incluem: aumento da visibilidade da marca, geração de leads qualificados, segmentação precisa do público, acesso a dados de comportamento do consumidor, campanhas de marketing localizadas e um excelente retorno sobre o investimento (ROI).',
+  },
+  {
+    question: 'Como funciona a segmentação de público?',
+    answer: 'Nossa plataforma permite segmentar seu público com base em localização geográfica (onde o hotspot está instalado), dados demográficos (se coletados no cadastro do Wi-Fi), interesses e comportamento de navegação, garantindo que seu anúncio seja visto pelas pessoas certas.',
+  },
+  {
+    question: 'Posso acompanhar o desempenho dos meus anúncios?',
+    answer: 'Sim! Oferecemos um painel de controle intuitivo onde você pode acompanhar em tempo real métricas importantes como número de visualizações, cliques (CTAs), tempo de exibição e dados de engajamento dos seus anúncios.',
+  },
+  {
+    question: 'Qual o custo para anunciar?',
+    answer: 'Nossos planos são flexíveis e adaptados às suas necessidades e orçamento. Entre em contato conosco para solicitar uma proposta personalizada e descobrir a melhor solução para sua marca.',
+  },
+  {
+    question: 'Como faço para começar a anunciar?',
+    answer: 'É simples! Preencha nosso formulário de contato, e um de nossos especialistas entrará em contato para entender suas necessidades, apresentar as melhores opções e configurar sua primeira campanha.',
+  },
+];
+
+// --- FIM DO CÓDIGO DO FAQ ---
+
+
 
 const handleSubmitContact = async (e) => {
   e.preventDefault();
@@ -642,6 +708,202 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+ {/* Seção de Benefícios */}
+        <section
+          id="beneficios"
+          className="relative z-10 px-6 py-16 md:py-20 max-w-7xl mx-auto text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700"
+        >
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-4 leading-tight">
+            Por que anunciar com a{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#8cf059] to-[#46a31a]">
+              NexaWi ADS
+            </span>
+            ?
+          </h2>
+          <p className="text-base sm:text-lg text-gray-400 mb-12 max-w-3xl mx-auto leading-relaxed">
+            Mais do que um anúncio, uma estratégia inteligente para o seu
+            negócio.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 md:gap-12">
+            {/* Benefício 1 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-100">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-target"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="6" />
+                  <circle cx="12" cy="12" r="2" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Público Altamente Segmentado
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Seu anúncio é exibido para pessoas que estão fisicamente
+                próximas ao seu negócio, aumentando a relevância e a chance de
+                conversão.
+              </p>
+            </div>
+
+            {/* Benefício 2 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-200">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-trending-up"
+                >
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+                  <polyline points="16 7 22 7 22 13" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Aumento de Visibilidade e Vendas
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Transforme o tempo de espera do cliente em oportunidade de
+                venda, apresentando sua marca de forma impactante e direta.
+              </p>
+            </div>
+
+            {/* Benefício 3 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-300">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-bar-chart-2"
+                >
+                  <line x1="18" x2="18" y1="20" y2="10" />
+                  <line x1="12" x2="12" y1="20" y2="4" />
+                  <line x1="6" x2="6" y1="20" y2="14" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Métricas e Resultados Reais
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Acompanhe o desempenho dos seus anúncios com relatórios
+                detalhados, otimizando suas campanhas para o máximo ROI.
+              </p>
+            </div>
+
+            {/* Benefício 4 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-400">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-users"
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Geração de Leads Qualificados
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Capture dados de contato de clientes interessados, construindo
+                sua base de leads para futuras ações de marketing.
+              </p>
+            </div>
+
+            {/* Benefício 5 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-500">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-map-pin"
+                >
+                  <path d="M12 12a5 5 0 1 0 0-10a5 5 0 0 0 0 10Z" />
+                  <path d="M12 22s-8-4-8-10a8 8 0 0 1 16 0c0 6-8 10-8 10Z" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Marketing Localizado e Eficaz
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Alcance consumidores no momento e local certos, quando estão
+                mais propensos a interagir com ofertas e serviços locais.
+              </p>
+            </div>
+
+            {/* Benefício 6 */}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-6 sm:p-8 text-center reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700 delay-600">
+              <div className="w-16 h-16 flex items-center justify-center rounded-full bg-gradient-to-br from-[#8cf059] to-[#46a31a] text-black text-3xl font-bold mb-6 mx-auto shadow-[0_0_20px_rgba(107,225,47,0.6)]">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="lucide lucide-dollar-sign"
+                >
+                  <line x1="12" x2="12" y1="2" y2="22" />
+                  <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                </svg>
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">
+                Excelente Retorno sobre Investimento
+              </h3>
+              <p className="text-gray-400 text-base leading-relaxed">
+                Com um custo-benefício superior às mídias tradicionais, você
+                maximiza seu investimento em publicidade com resultados
+                mensuráveis.
+              </p>
+            </div>
+          </div>
+        </section>
+
+
         {/* Planos */}
         <section
           id="planos"
@@ -1077,6 +1339,40 @@ export default function LandingPage() {
           </div>
         </section>
 
+
+ {/* SEÇÃO DE FAQ em caixa de videro */}
+        <section className="relative z-20 py-16 md:py-24">
+  <div className="max-w-4xl mx-auto px-6 ">   
+    <div className=" bg-white/5 bg-opacity-20 border border-[#6be12f] rounded-3xl p-8 md:p-12 shadow-1xl ">
+     
+      {/* SEÇÃO DE FAQ dentro da seção caixa de videro */}
+        <section
+          id="faq"
+          className="relative z-10 px-6 py-16 md:py-20 max-w-7xl mx-auto reveal-on-scroll opacity-0 translate-y-8 transition-all duration-700"
+        >
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight mb-12 text-center leading-tight">
+            Perguntas Frequentes
+          </h2>
+
+          <div className="max-w-3xl mx-auto">
+            {faqs.map((item, index) => (
+              <FAQItem key={index} question={item.question} answer={item.answer} />
+            ))}
+          </div>
+        </section>
+      <div className="flex justify-center">
+        <a
+          href="#contato"
+          className="px-8 py-4 bg-[#6be12f] text-black font-extrabold rounded-xl shadow-[0_0_20px_rgba(107,225,47,0.6)] hover:shadow-[0_0_50px_rgba(107,225,47,0.6)] transition-all duration-300 hover:-translate-y-1"
+        >
+          Fale com um dos nossos consultores!
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+
+
         {/* Footer */}
         <footer className="border-t border-white/10 bg-black/50 backdrop-blur-md py-4 mt-16 md:mt-20">
           <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -1086,7 +1382,7 @@ export default function LandingPage() {
                 className="flex items-center transition-transform duration-300 hover:scale-105 hover:opacity-80"
               >
                 <img
-                  src="/Nexa-logo.png"
+                  src="/NexaWI-logo-simplificada.png"
                   alt="Logo da Empresa"
                   className="h-14 md:h-20 w-auto object-contain"
                 />
@@ -1144,6 +1440,10 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
+
+
+
+      
 
       {/* Modals */}
       <Modal
