@@ -666,7 +666,8 @@ export default function LandingPage() {
                 Ideal para Prestadores de Serviços local.
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
-                R$ 147
+                <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 300</p>
+                <p>R$ 147</p>
                 <span className="text-lg sm:text-xl text-gray-500 font-medium">
                   /mês
                 </span>
@@ -770,7 +771,8 @@ export default function LandingPage() {
                   Para negócios com bom fluxo que querem impacto real e rápido.
                 </p>
                 <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
-                  R$ 247
+                  <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 500</p>
+                  <p>R$ 247</p>
                   <span className="text-lg sm:text-xl text-gray-400 font-medium">
                     /mês
                   </span>
@@ -911,7 +913,8 @@ export default function LandingPage() {
                 Para dominar a cidade e capturar contatos com exclusividade no seu nincho.
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
-                R$ 597
+                <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 1.200</p>
+                <p>R$ 597</p>
                 <span className="text-lg sm:text-xl text-gray-500 font-medium">
                   /mês
                 </span>
