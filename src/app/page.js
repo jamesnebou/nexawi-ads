@@ -657,20 +657,20 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-stretch">
-            {/* Vitrine */}
+            {/* Básico */}
             <div className="p-7 sm:p-8 md:p-10 rounded-3xl bg-white/[0.02] backdrop-blur-xl border border-white/10 hover:border-white/30 transition-all duration-300 hover:-translate-y-2 flex flex-col">
               <h3 className="text-xl sm:text-2xl font-bold mb-2 text-white">
-                Vitrine
+                Básico
               </h3>
               <p className="text-gray-400 mb-6 md:mb-8 min-h-[3rem] text-sm md:text-base">
                 Ideal para Prestadores de Serviços local.
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
                 <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 300</p>
-                <p>R$ 147</p>
-                <span className="text-lg sm:text-xl text-gray-500 font-medium">
+                <p>R$ 147<span className="text-lg sm:text-xl text-gray-500 font-medium">
                   /mês
-                </span>
+                </span></p>
+                
               </div>
               <ul className="space-y-4 md:space-y-5 mb-6 md:mb-10 text-gray-300 font-medium text-sm md:text-base flex-1">
                 <li className="flex items-center gap-3">
@@ -744,7 +744,7 @@ export default function LandingPage() {
                 rel="noopener noreferrer"
                 className="w-full py-3.5 sm:py-4 rounded-xl border border-white/20 hover:bg-white/10 transition-all duration-300 font-bold text-base sm:text-lg text-center block"
               >
-                Assinar Vitrine
+                Assinar o Básico
               </a>
             </div>
 
@@ -772,10 +772,10 @@ export default function LandingPage() {
                 </p>
                 <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
                   <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 500</p>
-                  <p>R$ 247</p>
-                  <span className="text-lg sm:text-xl text-gray-400 font-medium">
+                  <p>R$ 247<span className="text-lg sm:text-xl text-gray-400 font-medium">
                     /mês
-                  </span>
+                  </span></p>
+                  
                 </div>
 
                 <ul className="space-y-4 md:space-y-5 mb-6 md:mb-10 text-gray-200 font-medium text-sm md:text-base flex-1">
@@ -914,10 +914,10 @@ export default function LandingPage() {
               </p>
               <div className="text-4xl sm:text-5xl font-black mb-6 md:mb-8 text-white">
                 <p className="text-lg sm:text-xl font-light line-through text-gray-500">de R$ 1.200</p>
-                <p>R$ 597</p>
-                <span className="text-lg sm:text-xl text-gray-500 font-medium">
+                <p>R$ 597<span className="text-lg sm:text-xl text-gray-500 font-medium">
                   /mês
-                </span>
+                </span></p>
+                
               </div>
               <ul className="space-y-4 md:space-y-5 mb-6 md:mb-10 text-gray-300 font-medium text-sm md:text-base flex-1">
                 <li className="flex items-center gap-3">
