@@ -369,11 +369,40 @@ export default function LandingPage() {
               </a>
             </div>
 
-            {/* Badge Prova Social */}
-            <div className="relative overflow-hidden mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 bg-white/5 border border-white/10 backdrop-blur-md px-4 sm:px-8 md:px-12 py-5 rounded-2xl shadow-2xl w-full sm:w-auto mx-auto lg:mx-0">
+            
+          </div>
+
+          {/* Coluna Direita: Mockup */}
+          <div
+            className="flex-1 flex justify-center lg:justify-end relative"
+            style={{ animation: "float 6s ease-in-out infinite" }}
+          >
+            <div className="absolute inset-0 bg-[#6be12f]/20 blur-[100px] rounded-full" />
+            <img
+              src="/mockup-celular.png"
+              alt="Mockup do Sistema"
+              className="relative z-10 w-full max-w-[320px] sm:max-w-[350px] md:max-w-[400px] h-auto object-contain drop-shadow-2xl"
+            />
+          </div>
+        </main>
+
+        {/* Alta Conversão */}
+        <section
+          id="alta-conversao"
+          className="relative z-10 py-20 md:py-32 px-6 max-w-7xl mx-auto"
+        >
+          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
+
+
+            
+            {/* Imagem */}
+            <div className="w-full md:w-1/2 relative">
+              <div className="absolute inset-0 bg-[#6be12f]/10 blur-[80px] rounded-full" />
+              {/* Badge Prova Social */}
+            <div className=" relative overflow-hidden mt-8 sm:mt-12 flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-12 bg-white/5 border border-white/10 backdrop-blur-md px-4 sm:px-8 md:px-12 py-5 rounded-2xl shadow-2xl w-full sm:w-auto mx-auto lg:mx-0">
               <div
                 className="absolute top-0 left-0 h-full w-[80px] bg-gradient-to-r from-transparent via-white/20 to-transparent pointer-events-none"
-                style={{ animation: "sweep 3s ease-in-out infinite alternate" }}
+                style={{animation: "sweep 3s ease-in-out infinite alternate" }}
               />
 
               {/* Pessoas Online */}
@@ -411,31 +440,7 @@ export default function LandingPage() {
                 </p>
               </div>
             </div>
-          </div>
-
-          {/* Coluna Direita: Mockup */}
-          <div
-            className="flex-1 flex justify-center lg:justify-end relative"
-            style={{ animation: "float 6s ease-in-out infinite" }}
-          >
-            <div className="absolute inset-0 bg-[#6be12f]/20 blur-[100px] rounded-full" />
-            <img
-              src="/mockup-celular.png"
-              alt="Mockup do Sistema"
-              className="relative z-10 w-full max-w-[320px] sm:max-w-[350px] md:max-w-[400px] h-auto object-contain drop-shadow-2xl"
-            />
-          </div>
-        </main>
-
-        {/* Alta Conversão */}
-        <section
-          id="alta-conversao"
-          className="relative z-10 py-20 md:py-32 px-6 max-w-7xl mx-auto"
-        >
-          <div className="flex flex-col md:flex-row items-center gap-10 md:gap-16">
-            {/* Imagem */}
-            <div className="w-full md:w-1/2 relative">
-              <div className="absolute inset-0 bg-[#6be12f]/10 blur-[80px] rounded-full" />
+            <p> </p>
               <div className="relative aspect-[4/3] rounded-[2rem] overflow-hidden border border-white/10 shadow-2xl group">
                 <img
                   src="/ambiente-real.jpg"
