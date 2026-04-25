@@ -59,12 +59,16 @@ const FAQItem = ({ question, answer }) => {
 // Lista de perguntas e respostas do FAQ
 const faqs = [
   {
-    question: 'O que é o Wi-Fi Patrocinado da NexaWi ADS?',
-    answer: 'É uma solução inovadora que transforma o Wi-Fi gratuito do seu estabelecimento em um canal de marketing. Seus clientes acessam a internet após visualizar um anúncio da sua marca, gerando visibilidade e dados valiosos para o seu negócio.',
+    question: 'O que realmente é o Wi-Fi Grátis da NexaWi ADS?',
+    answer: 'É uma solução inovadora que transforma o Wi-Fi gratuito em um canal de marketing. Um ecossistema de manipulação de mídia geolocalizada, focada em mostrar a sua empresa a pessoas que querem utilizar uma  internet de alta velocidade em vias de grande circulação. Seus clientes acessam a internet após visualizar um anúncio da sua marca, gerando visibilidade e dados valiosos para o seu negócio.',
+  },
+  {
+    question: 'Como eu vou aparecer para o meu cliente, se eu aderir ser Nexa?',
+    answer: 'A NexaWi oferece internet totalmente gratuita nos pricipais pontos da cidade, o seu cliente que não quer utilizar os seus dados móveis ou está sem intenet, acessa essa rede e precisa assistir um anúncio da sua empresa para ter a internet liberada. Assim coletamos os dados dela e se torna um Lead de alto potencial para seu negócio.',
   },
   {
     question: 'Como a NexaWi ADS pode ajudar meu negócio a crescer?',
-    answer: 'Ao anunciar na nossa rede, você alcança um público altamente segmentado e engajado, que está fisicamente presente em locais estratégicos. Isso aumenta o reconhecimento da sua marca, gera tráfego qualificado para seu site ou loja física e permite a coleta de leads para futuras campanhas.',
+    answer: 'Ao anunciar na nossa rede, você alcança um público altamente segmentado e engajado, que está fisicamente presente em locais estratégicos e ao lado do seu negócio. Isso aumenta o reconhecimento da sua marca, gera tráfego qualificado para seu site ou loja física e permite a coleta de leads para futuras campanhas.',
   },
   {
     question: 'Quais são os benefícios de anunciar com a NexaWi ADS?',
