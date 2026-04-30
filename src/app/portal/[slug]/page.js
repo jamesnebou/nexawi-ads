@@ -17,6 +17,7 @@ import {
   X,
   Shield,
 } from 'lucide-react'
+import { controlApiFetch } from '@/lib/control-api-client'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -74,7 +75,41 @@ function getMesAtualRange() {
   }
 }
 
-function AvisoTempoConexao() {
+
+
+function formatDurationLabel(totalSeconds = 0) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+
+  const parts = []
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}min`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+
+  return parts.join(' ')
+}
+
+async function fetchPortalConfig() {
+  const response = await fetch('/api/portal-config', { cache: 'no-store' })
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Falha ao carregar configuração do portal')
+  }
+
+  return (
+    data.config || {
+      portal_tempo_acesso_segundos: 1200,
+      portal_tempo_bloqueio_segundos: 600,
+      portal_intervalo_anuncio_segundos: 600,
+    }
+  )
+}
+
+
+function AvisoTempoConexao({ tempoAcessoSegundos, tempoBloqueioSegundos }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#0a0a0a] px-4 py-4 mt-6">
       <div className="absolute inset-0 bg-gradient-to-r from-[#6be12f]/[0.06] via-transparent to-[#6be12f]/[0.04] pointer-events-none" />
@@ -93,9 +128,9 @@ function AvisoTempoConexao() {
           </p>
 
           <p className="text-sm text-gray-300 leading-relaxed">
-            Você terá <span className="text-white font-bold">20 minutos de internet liberada</span>.
+            Você terá <span className="text-white font-bold">{formatDurationLabel(tempoAcessoSegundos)} de internet liberada</span>.
             <br />
-            Após esse período, o acesso ficará em <span className="text-white font-bold">pausa por 10 minutos</span> antes de uma nova liberação.
+            Após esse período, o acesso ficará em <span className="text-white font-bold">pausa por {formatDurationLabel(tempoBloqueioSegundos)}</span> antes de uma nova liberação.
           </p>
         </div>
       </div>
@@ -127,6 +162,12 @@ export default function Portal() {
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
+
+  const [portalConfig, setPortalConfig] = useState({
+  portal_tempo_acesso_segundos: 1200,
+  portal_tempo_bloqueio_segundos: 600,
+  portal_intervalo_anuncio_segundos: 600,
+})
 
   const [form, setForm] = useState({
     nome: '',
@@ -238,71 +279,68 @@ export default function Portal() {
   }
 
   async function consultarStatusSessao(hotspotSlug, clientMac) {
-    try {
-      if (!hotspotSlug || !clientMac) {
-        return { state: 'idle', remainingSeconds: 0 }
-      }
-
-      const response = await fetch('/api/control/session/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hotspotSlug,
-          clientMac,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Falha ao consultar status da sessão')
-      }
-
-      return data.status || { state: 'idle', remainingSeconds: 0 }
-    } catch (error) {
-      throw error
-    }
-  }
-
-  async function autorizarSessaoNoBackend(currentLeadId) {
-    if (!hotspot?.slug && !slug) {
-      throw new Error('Hotspot não carregado')
+  try {
+    if (!hotspotSlug || !clientMac) {
+      return { state: 'idle', remainingSeconds: 0 }
     }
 
-    if (!currentLeadId) {
-      throw new Error('leadId não encontrado para autorizar')
-    }
-
-    if (!macAddress) {
-      throw new Error('MAC do cliente não encontrado')
-    }
-
-    const response = await fetch('/api/control/session/authorize', {
+    const response = await controlApiFetch('/api/control/session/status', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        hotspotSlug: hotspot?.slug || slug,
-        leadId: currentLeadId,
-        clientMac: macAddress,
-        clientIp: ipAddress,
+        hotspotSlug,
+        clientMac,
       }),
     })
 
     const data = await response.json()
 
     if (!response.ok) {
-      if (response.status === 409 && data?.status?.state === 'cooldown') {
-        const minutos = Math.ceil((data.status.remainingSeconds || 0) / 60)
-        setTempoEspera(minutos)
-        setEtapa(ETAPAS.BLOQUEADO)
-        return null
-      }
-
-      throw new Error(data.error || 'Falha ao autorizar sessão')
+      throw new Error(data.error || 'Falha ao consultar status da sessão')
     }
 
-    return data
+    return data.status || { state: 'idle', remainingSeconds: 0 }
+  } catch (error) {
+    throw error
   }
+}
+
+  async function autorizarSessaoNoBackend(currentLeadId) {
+  if (!hotspot?.slug && !slug) {
+    throw new Error('Hotspot não carregado')
+  }
+
+  if (!currentLeadId) {
+    throw new Error('leadId não encontrado para autorizar')
+  }
+
+  if (!macAddress) {
+    throw new Error('MAC do cliente não encontrado')
+  }
+
+  const response = await controlApiFetch('/api/control/session/authorize', {
+    method: 'POST',
+    body: JSON.stringify({
+      hotspotSlug: hotspot?.slug || slug,
+      leadId: currentLeadId,
+      clientMac: macAddress,
+      clientIp: ipAddress,
+    }),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    if (response.status === 409 && data?.status?.state === 'cooldown') {
+      setTempoEspera(data.status.remainingSeconds || 0)
+      setEtapa(ETAPAS.BLOQUEADO)
+      return null
+    }
+
+    throw new Error(data.error || 'Falha ao autorizar sessão')
+  }
+
+  return data
+}
 
   function sortearAnuncioSemRepetir() {
     if (anuncios.length === 0) return null
@@ -419,8 +457,7 @@ export default function Portal() {
       const statusAtual = await consultarStatusSessao(hotspotSlug, macAddress)
 
       if (statusAtual.state === 'cooldown') {
-        const minutos = Math.ceil((statusAtual.remainingSeconds || 0) / 60)
-        setTempoEspera(minutos)
+        setTempoEspera(statusAtual.remainingSeconds || 0)
         setEtapa(ETAPAS.BLOQUEADO)
         return
       }
@@ -566,6 +603,12 @@ export default function Portal() {
           })
           .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
 
+         const configPublica = await fetchPortalConfig()
+         if (isMounted && configPublica) {
+         setPortalConfig(configPublica)
+         }
+
+
         const hotspotData = await carregarHotspotEAnuncios()
         if (!hotspotData || !isMounted) return
 
@@ -627,24 +670,24 @@ export default function Portal() {
   }, [etapa, anuncioAtual, leadId, macAddress, hotspot, ipAddress])
 
   useEffect(() => {
-    let timeoutId
+  let timeoutId
 
-    if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
-      timeoutId = setTimeout(() => {
-        const anuncioSorteado = sortearAnuncioSemRepetir()
-        if (anuncioSorteado) {
-          setAnuncioAtual(anuncioSorteado)
-          setInternetLiberadaNaCta(false)
-          setEtapa(ETAPAS.ANUNCIO)
-          registrarVisualizacao(anuncioSorteado.id, ipAddress)
-        }
-      }, 10 * 60 * 1000)
-    }
+  if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
+    timeoutId = setTimeout(() => {
+      const anuncioSorteado = sortearAnuncioSemRepetir()
+      if (anuncioSorteado) {
+        setAnuncioAtual(anuncioSorteado)
+        setInternetLiberadaNaCta(false)
+        setEtapa(ETAPAS.ANUNCIO)
+        registrarVisualizacao(anuncioSorteado.id, ipAddress)
+      }
+    }, Math.max(1, Number(portalConfig.portal_intervalo_anuncio_segundos || 600)) * 1000)
+  }
 
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [etapa, anuncios, ipAddress, anunciosExibidos])
+  return () => {
+    if (timeoutId) clearTimeout(timeoutId)
+  }
+}, [etapa, anuncios, ipAddress, anunciosExibidos, portalConfig.portal_intervalo_anuncio_segundos])
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -675,7 +718,7 @@ export default function Portal() {
             <div className="bg-[#0a0a0a] rounded-2xl p-4 border border-white/[0.05]">
               <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Tempo Restante</p>
               <p className="text-3xl font-light text-white">
-                {tempoEspera} <span className="text-base text-gray-500">min</span>
+                {formatDurationLabel(tempoEspera)}
               </p>
             </div>
           </div>
@@ -725,7 +768,10 @@ export default function Portal() {
                 Digite apenas seu CPF para continuar.
               </p>
 
-              <AvisoTempoConexao />
+              <AvisoTempoConexao
+               tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+               tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+              />
             </div>
 
             <form onSubmit={handleCpfRapido} className="space-y-4">
@@ -776,7 +822,10 @@ export default function Portal() {
                 Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
               </p>
 
-              <AvisoTempoConexao />
+              <AvisoTempoConexao
+               tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+               tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+              />
             </div>
 
             <form onSubmit={handleCadastro} className="space-y-4">

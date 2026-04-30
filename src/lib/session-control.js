@@ -1,11 +1,9 @@
 import { supabaseAdmin } from './supabase-admin'
 import { normalizeMac } from './routeros-rest'
+import { getGlobalRuntimeConfig } from './portal-runtime-config'
 
-export const SESSION_MINUTES = Number(process.env.NEXAWI_SESSION_MINUTES || 20)
-export const COOLDOWN_MINUTES = Number(process.env.NEXAWI_COOLDOWN_MINUTES || 10)
-
-function addMinutes(date, minutes) {
-  return new Date(date.getTime() + minutes * 60 * 1000)
+function addSeconds(date, seconds) {
+  return new Date(date.getTime() + seconds * 1000)
 }
 
 export async function resolveHotspotBySlug(slug) {
@@ -96,7 +94,11 @@ export async function createPendingSession({ hotspotId, hotspotSlug, leadId, cli
 
 export async function markSessionAuthorized(sessionId, routerBindingId = null) {
   const now = new Date()
-  const expiresAt = addMinutes(now, SESSION_MINUTES).toISOString()
+  const runtimeConfig = await getGlobalRuntimeConfig()
+  const expiresAt = addSeconds(
+    now,
+    runtimeConfig.portal_tempo_acesso_segundos
+  ).toISOString()
 
   const { data, error } = await supabaseAdmin
     .from('auth_sessions')
@@ -117,7 +119,11 @@ export async function markSessionAuthorized(sessionId, routerBindingId = null) {
 
 export async function markSessionCooldown(sessionId) {
   const now = new Date()
-  const cooldownUntil = addMinutes(now, COOLDOWN_MINUTES).toISOString()
+  const runtimeConfig = await getGlobalRuntimeConfig()
+  const cooldownUntil = addSeconds(
+    now,
+    runtimeConfig.portal_tempo_bloqueio_segundos
+  ).toISOString()
 
   const { data, error } = await supabaseAdmin
     .from('auth_sessions')

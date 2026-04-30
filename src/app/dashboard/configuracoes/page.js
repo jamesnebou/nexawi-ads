@@ -2,20 +2,254 @@
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { Building2, Globe, Shield, Bell, Lock, Check, Save } from 'lucide-react'
+import {
+  Building2,
+  Globe,
+  Shield,
+  Bell,
+  Lock,
+  Check,
+  Save,
+  TimerReset,
+  BadgeDollarSign,
+} from 'lucide-react'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 )
 
+const HERO_IMAGE_BUCKET = 'landing-assets'
+
 const abas = [
   { id: 'empresa', label: 'Empresa', icon: Building2, desc: 'Dados comerciais' },
-  { id: 'portal', label: 'Portal', icon: Globe, desc: 'Aparência do Wi-Fi' },
+  { id: 'portal', label: 'Portal', icon: Globe, desc: 'Aparência, tempos e preços' },
   { id: 'lgpd', label: 'LGPD', icon: Shield, desc: 'Termos de uso' },
   { id: 'notificacoes', label: 'Notificações', icon: Bell, desc: 'Avisos e alertas' },
   { id: 'seguranca', label: 'Segurança', icon: Lock, desc: 'Senha de acesso' },
 ]
+
+const DEFAULT_FORM = {
+  nome_empresa: '',
+  cnpj: '',
+  email_contato: '',
+  telefone_contato: '',
+  endereco: '',
+  titulo_portal: '',
+  texto_boas_vindas: '',
+  cor_principal: '#22c55e',
+  texto_lgpd: '',
+  email_notificacoes: '',
+  notificar_novos_leads: true,
+  notificar_relatorios: true,
+
+  portal_tempo_acesso_horas: '0',
+  portal_tempo_acesso_minutos: '20',
+  portal_tempo_acesso_segundos: '0',
+
+  portal_tempo_bloqueio_horas: '0',
+  portal_tempo_bloqueio_minutos: '10',
+  portal_tempo_bloqueio_segundos: '0',
+
+  portal_intervalo_anuncio_horas: '0',
+  portal_intervalo_anuncio_minutos: '10',
+  portal_intervalo_anuncio_segundos: '0',
+
+  preco_basico_mensal_padrao: '147',
+  preco_basico_anual_padrao: '1470',
+  preco_comercial_mensal_padrao: '247',
+  preco_comercial_anual_padrao: '2470',
+  preco_vip_mensal_padrao: '597',
+  preco_vip_anual_padrao: '5970',
+  mostrar_preco_ancora_padrao: false,
+  preco_ancora_basico_mensal_padrao: '',
+  preco_ancora_basico_anual_padrao: '',
+  preco_ancora_comercial_mensal_padrao: '',
+  preco_ancora_comercial_anual_padrao: '',
+  preco_ancora_vip_mensal_padrao: '',
+  preco_ancora_vip_anual_padrao: '',
+
+  hero_imagem_url_padrao: '',
+
+  hero_titulo_linha_1_padrao: '',
+hero_titulo_linha_2_padrao: '',
+hero_titulo_linha_3_padrao: '',
+hero_subtitulo_linha_1_padrao: '',
+hero_subtitulo_linha_2_padrao: '',
+hero_titulo_linha_2_estilo_padrao: 'gradiente',
+}
+
+function sanitizeIntegerInput(value) {
+  return String(value || '').replace(/\D/g, '')
+}
+
+function moneyToNullableNumber(value) {
+  const normalized = String(value || '')
+    .replace(/\s/g, '')
+    .replace(',', '.')
+    .trim()
+
+  if (!normalized) return null
+
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return null
+  return parsed
+}
+
+
+function secondsToParts(totalSeconds = 0) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+
+  return {
+    hours: String(hours),
+    minutes: String(minutes),
+    seconds: String(seconds),
+  }
+}
+
+function partsToSeconds(hours, minutes, seconds) {
+  const h = Number(hours || 0)
+  const m = Number(minutes || 0)
+  const s = Number(seconds || 0)
+  return Math.max(0, h * 3600 + m * 60 + s)
+}
+
+function moneyToString(value, fallback = '0') {
+  if (value === null || value === undefined || value === '') return fallback
+  return String(value)
+}
+
+function moneyToNumber(value, fallback = 0) {
+  const normalized = String(value || '')
+    .replace(/\s/g, '')
+    .replace(',', '.')
+    .trim()
+
+  const parsed = Number(normalized)
+  if (!Number.isFinite(parsed)) return fallback
+  return parsed
+}
+
+function InputTempo({ label, prefix, form, setForm }) {
+  return (
+    <div className="rounded-[2rem] border border-white/[0.05] bg-[#050505] p-6 shadow-inner">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+          <TimerReset size={18} className="text-[#6be12f]" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white tracking-tight">{label}</p>
+          <p className="text-xs text-neutral-500 font-medium">Horas, minutos e segundos</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4">
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+            Horas
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={form[`${prefix}_horas`]}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                [`${prefix}_horas`]: sanitizeIntegerInput(e.target.value),
+              })
+            }
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+            Minutos
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={form[`${prefix}_minutos`]}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                [`${prefix}_minutos`]: sanitizeIntegerInput(e.target.value),
+              })
+            }
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+            Segundos
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={form[`${prefix}_segundos`]}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                [`${prefix}_segundos`]: sanitizeIntegerInput(e.target.value),
+              })
+            }
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function InputPreco({ label, mensalKey, anualKey, form, setForm }) {
+  return (
+    <div className="rounded-[2rem] border border-white/[0.05] bg-[#050505] p-6 shadow-inner">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+          <BadgeDollarSign size={18} className="text-[#6be12f]" />
+        </div>
+        <div>
+          <p className="text-sm font-bold text-white tracking-tight">{label}</p>
+          <p className="text-xs text-neutral-500 font-medium">Valores editáveis para campanhas e promoções</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+            Plano Mensal
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={form[mensalKey]}
+            onChange={(e) => setForm({ ...form, [mensalKey]: e.target.value })}
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+            placeholder="Ex: 147"
+          />
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+            Plano Anual
+          </label>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={form[anualKey]}
+            onChange={(e) => setForm({ ...form, [anualKey]: e.target.value })}
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-4 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+            placeholder="Ex: 1470"
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState('empresa')
@@ -24,7 +258,6 @@ export default function Configuracoes() {
   const [salvo, setSalvo] = useState(false)
   const [configId, setConfigId] = useState(null)
 
-  // Estados de Senha
   const [senhaAtual, setSenhaAtual] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
@@ -32,20 +265,30 @@ export default function Configuracoes() {
   const [salvandoSenha, setSalvandoSenha] = useState(false)
   const [senhaOk, setSenhaOk] = useState(false)
 
-  const [form, setForm] = useState({
-    nome_empresa: '', cnpj: '', email_contato: '', telefone_contato: '', endereco: '',
-    titulo_portal: '', texto_boas_vindas: '', cor_principal: '#22c55e',
-    texto_lgpd: '',
-    email_notificacoes: '', notificar_novos_leads: true, notificar_relatorios: true
-  })
+  const [form, setForm] = useState(DEFAULT_FORM)
 
-  useEffect(() => { buscarConfiguracoes() }, [])
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false)
+
+  useEffect(() => {
+    buscarConfiguracoes()
+  }, [])
 
   async function buscarConfiguracoes() {
     setCarregando(true)
-    const { data } = await supabase.from('configuracoes').select('*').limit(1).single()
+
+    const { data } = await supabase
+      .from('configuracoes')
+      .select('*')
+      .limit(1)
+      .single()
+
     if (data) {
       setConfigId(data.id)
+
+      const acesso = secondsToParts(data.portal_tempo_acesso_segundos ?? 1200)
+      const bloqueio = secondsToParts(data.portal_tempo_bloqueio_segundos ?? 600)
+      const anuncio = secondsToParts(data.portal_intervalo_anuncio_segundos ?? 600)
+
       setForm({
         nome_empresa: data.nome_empresa || '',
         cnpj: data.cnpj || '',
@@ -58,44 +301,212 @@ export default function Configuracoes() {
         texto_lgpd: data.texto_lgpd || '',
         email_notificacoes: data.email_notificacoes || '',
         notificar_novos_leads: data.notificar_novos_leads ?? true,
-        notificar_relatorios: data.notificar_relatorios ?? true
+        notificar_relatorios: data.notificar_relatorios ?? true,
+
+        portal_tempo_acesso_horas: acesso.hours,
+        portal_tempo_acesso_minutos: acesso.minutes,
+        portal_tempo_acesso_segundos: acesso.seconds,
+
+        portal_tempo_bloqueio_horas: bloqueio.hours,
+        portal_tempo_bloqueio_minutos: bloqueio.minutes,
+        portal_tempo_bloqueio_segundos: bloqueio.seconds,
+
+        portal_intervalo_anuncio_horas: anuncio.hours,
+        portal_intervalo_anuncio_minutos: anuncio.minutes,
+        portal_intervalo_anuncio_segundos: anuncio.seconds,
+
+        preco_basico_mensal_padrao: moneyToString(data.preco_basico_mensal_padrao, '147'),
+        preco_basico_anual_padrao: moneyToString(data.preco_basico_anual_padrao, '1470'),
+        preco_comercial_mensal_padrao: moneyToString(data.preco_comercial_mensal_padrao, '247'),
+        preco_comercial_anual_padrao: moneyToString(data.preco_comercial_anual_padrao, '2470'),
+        preco_vip_mensal_padrao: moneyToString(data.preco_vip_mensal_padrao, '597'),
+        preco_vip_anual_padrao: moneyToString(data.preco_vip_anual_padrao, '5970'),
+        mostrar_preco_ancora_padrao: data.mostrar_preco_ancora_padrao ?? false,
+
+        preco_ancora_basico_mensal_padrao: moneyToString(data.preco_ancora_basico_mensal_padrao, ''),
+        preco_ancora_basico_anual_padrao: moneyToString(data.preco_ancora_basico_anual_padrao, ''),
+        preco_ancora_comercial_mensal_padrao: moneyToString(data.preco_ancora_comercial_mensal_padrao, ''),
+        preco_ancora_comercial_anual_padrao: moneyToString(data.preco_ancora_comercial_anual_padrao, ''),
+        preco_ancora_vip_mensal_padrao: moneyToString(data.preco_ancora_vip_mensal_padrao, ''),
+        preco_ancora_vip_anual_padrao: moneyToString(data.preco_ancora_vip_anual_padrao, ''),
+
+        hero_imagem_url_padrao: data.hero_imagem_url_padrao || '',
+
+        hero_titulo_linha_1_padrao: data.hero_titulo_linha_1_padrao || '',
+hero_titulo_linha_2_padrao: data.hero_titulo_linha_2_padrao || '',
+hero_titulo_linha_3_padrao: data.hero_titulo_linha_3_padrao || '',
+hero_subtitulo_linha_1_padrao: data.hero_subtitulo_linha_1_padrao || '',
+hero_subtitulo_linha_2_padrao: data.hero_subtitulo_linha_2_padrao || '',
+
+hero_titulo_linha_2_estilo_padrao: data.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+
       })
     }
+
     setCarregando(false)
   }
 
   async function salvarConfiguracoes() {
+  try {
     setSalvando(true)
     setSalvo(false)
-    if (configId) {
-      await supabase.from('configuracoes').update(form).eq('id', configId)
-    } else {
-      const { data } = await supabase.from('configuracoes').insert([form]).select()
-      if (data) setConfigId(data[0].id)
+
+    const payload = {
+      nome_empresa: form.nome_empresa,
+      cnpj: form.cnpj,
+      email_contato: form.email_contato,
+      telefone_contato: form.telefone_contato,
+      endereco: form.endereco,
+      titulo_portal: form.titulo_portal,
+      texto_boas_vindas: form.texto_boas_vindas,
+      cor_principal: form.cor_principal,
+      texto_lgpd: form.texto_lgpd,
+      email_notificacoes: form.email_notificacoes,
+      notificar_novos_leads: form.notificar_novos_leads,
+      notificar_relatorios: form.notificar_relatorios,
+
+      portal_tempo_acesso_segundos: partsToSeconds(
+        form.portal_tempo_acesso_horas,
+        form.portal_tempo_acesso_minutos,
+        form.portal_tempo_acesso_segundos
+      ),
+      portal_tempo_bloqueio_segundos: partsToSeconds(
+        form.portal_tempo_bloqueio_horas,
+        form.portal_tempo_bloqueio_minutos,
+        form.portal_tempo_bloqueio_segundos
+      ),
+      portal_intervalo_anuncio_segundos: partsToSeconds(
+        form.portal_intervalo_anuncio_horas,
+        form.portal_intervalo_anuncio_minutos,
+        form.portal_intervalo_anuncio_segundos
+      ),
+
+      preco_basico_mensal_padrao: moneyToNumber(form.preco_basico_mensal_padrao, 147),
+      preco_basico_anual_padrao: moneyToNumber(form.preco_basico_anual_padrao, 1470),
+      preco_comercial_mensal_padrao: moneyToNumber(form.preco_comercial_mensal_padrao, 247),
+      preco_comercial_anual_padrao: moneyToNumber(form.preco_comercial_anual_padrao, 2470),
+      preco_vip_mensal_padrao: moneyToNumber(form.preco_vip_mensal_padrao, 597),
+      preco_vip_anual_padrao: moneyToNumber(form.preco_vip_anual_padrao, 5970),
+      mostrar_preco_ancora_padrao: form.mostrar_preco_ancora_padrao,
+
+      preco_ancora_basico_mensal_padrao: moneyToNullableNumber(form.preco_ancora_basico_mensal_padrao),
+      preco_ancora_basico_anual_padrao: moneyToNullableNumber(form.preco_ancora_basico_anual_padrao),
+
+      preco_ancora_comercial_mensal_padrao: moneyToNullableNumber(form.preco_ancora_comercial_mensal_padrao),
+      preco_ancora_comercial_anual_padrao: moneyToNullableNumber(form.preco_ancora_comercial_anual_padrao),
+
+      preco_ancora_vip_mensal_padrao: moneyToNullableNumber(form.preco_ancora_vip_mensal_padrao),
+      preco_ancora_vip_anual_padrao: moneyToNullableNumber(form.preco_ancora_vip_anual_padrao),
+
+      hero_imagem_url_padrao: form.hero_imagem_url_padrao || null,
+      hero_titulo_linha_1_padrao: form.hero_titulo_linha_1_padrao || null,
+hero_titulo_linha_2_padrao: form.hero_titulo_linha_2_padrao || null,
+hero_titulo_linha_3_padrao: form.hero_titulo_linha_3_padrao || null,
+hero_subtitulo_linha_1_padrao: form.hero_subtitulo_linha_1_padrao || null,
+hero_subtitulo_linha_2_padrao: form.hero_subtitulo_linha_2_padrao || null,
+
+hero_titulo_linha_2_estilo_padrao: form.hero_titulo_linha_2_estilo_padrao || 'gradiente',
     }
-    setSalvando(false)
+
+    let result
+
+    if (configId) {
+      result = await supabase
+        .from('configuracoes')
+        .update(payload)
+        .eq('id', configId)
+        .select()
+        .single()
+    } else {
+      result = await supabase
+        .from('configuracoes')
+        .insert([payload])
+        .select()
+        .single()
+    }
+
+    if (result.error) {
+      throw result.error
+    }
+
+    if (result.data?.id) {
+      setConfigId(result.data.id)
+    }
+
     setSalvo(true)
     setTimeout(() => setSalvo(false), 3000)
+  } catch (error) {
+    console.error('Erro ao salvar configurações:', error)
+    alert(`Erro ao salvar configurações: ${error.message || 'erro desconhecido'}`)
+  } finally {
+    setSalvando(false)
   }
+}
+
+//Adicionar imagem ao banco de dados para alterar pelo Dash
+async function uploadHeroImagePadrao(file) {
+  if (!file) return
+
+  try {
+    setUploadingHeroImage(true)
+
+    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
+    const fileName = `hero-global-${Date.now()}.${fileExt}`
+    const filePath = `hero/${fileName}`
+
+    const { error: uploadError } = await supabase.storage
+      .from(HERO_IMAGE_BUCKET)
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: true,
+        contentType: file.type || undefined,
+      })
+
+    if (uploadError) {
+      throw uploadError
+    }
+
+    const { data } = supabase.storage
+      .from(HERO_IMAGE_BUCKET)
+      .getPublicUrl(filePath)
+
+    setForm((prev) => ({
+      ...prev,
+      hero_imagem_url_padrao: data.publicUrl,
+    }))
+  } catch (error) {
+    console.error('Erro ao enviar imagem do hero:', error)
+    alert(`Erro ao enviar imagem: ${error.message || 'erro desconhecido'}`)
+  } finally {
+    setUploadingHeroImage(false)
+  }
+}
 
   async function alterarSenha() {
     setErroSenha('')
     setSenhaOk(false)
+
     if (novaSenha.length < 6) {
       setErroSenha('A nova senha deve ter pelo menos 6 caracteres.')
       return
     }
+
     if (novaSenha !== confirmarSenha) {
       setErroSenha('As senhas não coincidem.')
       return
     }
+
     setSalvandoSenha(true)
+
     const { error } = await supabase.auth.updateUser({ password: novaSenha })
+
     setSalvandoSenha(false)
+
     if (error) {
       setErroSenha('Erro ao alterar senha. Tente novamente.')
     } else {
       setSenhaOk(true)
+      setSenhaAtual('')
       setNovaSenha('')
       setConfirmarSenha('')
       setTimeout(() => setSenhaOk(false), 3000)
@@ -115,14 +526,16 @@ export default function Configuracoes() {
 
   return (
     <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
-
-      {/* Luz ambiente de fundo */}
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 relative z-10">
         <div>
-          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">Configurações</h1>
-          <p className="text-sm text-neutral-500 mt-2 font-medium">Gerencie as preferências e a identidade do seu sistema</p>
+          <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">
+            Configurações
+          </h1>
+          <p className="text-sm text-neutral-500 mt-2 font-medium">
+            Gerencie preferências, tempos do portal e preços padrão
+          </p>
         </div>
 
         {abaAtiva !== 'seguranca' && (
@@ -134,36 +547,49 @@ export default function Configuracoes() {
             {salvando ? (
               <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
             ) : salvo ? (
-              <><Check size={18} strokeWidth={2.5} /> Salvo com sucesso!</>
+              <>
+                <Check size={18} strokeWidth={2.5} /> Salvo com sucesso!
+              </>
             ) : (
-              <><Save size={18} strokeWidth={2.5} /> Salvar Alterações</>
+              <>
+                <Save size={18} strokeWidth={2.5} /> Salvar Alterações
+              </>
             )}
           </button>
         )}
       </header>
 
       <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-[0_20px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl relative z-10">
-
-        {/* Sidebar de Abas */}
         <div className="w-full md:w-80 flex-shrink-0 bg-white/[0.01] border-b md:border-b-0 md:border-r border-white/[0.05] p-6 space-y-3">
           {abas.map((aba) => {
             const Icon = aba.icon
             const ativo = abaAtiva === aba.id
+
             return (
               <button
                 key={aba.id}
                 onClick={() => setAbaAtiva(aba.id)}
                 className={`w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-left transition-all duration-300 group ${
-                  ativo 
-                    ? 'bg-white/[0.05] border border-white/[0.05] shadow-sm' 
+                  ativo
+                    ? 'bg-white/[0.05] border border-white/[0.05] shadow-sm'
                     : 'hover:bg-white/[0.02] border border-transparent'
                 }`}
               >
-                <div className={`p-3 rounded-xl transition-colors duration-300 ${ativo ? 'bg-[#6be12f]/10 text-[#6be12f] border border-[#6be12f]/20 shadow-inner' : 'bg-[#050505] text-neutral-500 border border-white/[0.05] group-hover:text-neutral-300 shadow-inner'}`}>
+                <div
+                  className={`p-3 rounded-xl transition-colors duration-300 ${
+                    ativo
+                      ? 'bg-[#6be12f]/10 text-[#6be12f] border border-[#6be12f]/20 shadow-inner'
+                      : 'bg-[#050505] text-neutral-500 border border-white/[0.05] group-hover:text-neutral-300 shadow-inner'
+                  }`}
+                >
                   <Icon size={20} />
                 </div>
                 <div>
-                  <p className={`text-sm font-bold tracking-wide ${ativo ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-300'}`}>
+                  <p
+                    className={`text-sm font-bold tracking-wide ${
+                      ativo ? 'text-white' : 'text-neutral-500 group-hover:text-neutral-300'
+                    }`}
+                  >
                     {aba.label}
                   </p>
                   <p className="text-xs text-neutral-600 mt-1 font-medium">{aba.desc}</p>
@@ -173,48 +599,73 @@ export default function Configuracoes() {
           })}
         </div>
 
-        {/* Conteúdo da Aba */}
         <div className="flex-1 p-8 sm:p-12">
-
           {abaAtiva === 'empresa' && (
             <div className="space-y-8 max-w-3xl animate-fade-in-up">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Dados da Empresa</h2>
-                <p className="text-sm text-neutral-500 font-medium">Informações comerciais que aparecerão nos relatórios e rodapés.</p>
+                <p className="text-sm text-neutral-500 font-medium">
+                  Informações comerciais que aparecerão nos relatórios e rodapés.
+                </p>
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nome da Empresa</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Nome da Empresa
+                  </label>
                   <input
-                    type="text" value={form.nome_empresa} onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })}
+                    type="text"
+                    value={form.nome_empresa}
+                    onChange={(e) => setForm({ ...form, nome_empresa: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">CNPJ</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    CNPJ
+                  </label>
                   <input
-                    type="text" value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                    type="text"
+                    value={form.cnpj}
+                    onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Telefone de Contato</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Telefone de Contato
+                  </label>
                   <input
-                    type="text" value={form.telefone_contato} onChange={(e) => setForm({ ...form, telefone_contato: e.target.value })}
+                    type="text"
+                    value={form.telefone_contato}
+                    onChange={(e) => setForm({ ...form, telefone_contato: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">E-mail de Contato</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    E-mail de Contato
+                  </label>
                   <input
-                    type="email" value={form.email_contato} onChange={(e) => setForm({ ...form, email_contato: e.target.value })}
+                    type="email"
+                    value={form.email_contato}
+                    onChange={(e) => setForm({ ...form, email_contato: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Endereço Completo</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Endereço Completo
+                  </label>
                   <input
-                    type="text" value={form.endereco} onChange={(e) => setForm({ ...form, endereco: e.target.value })}
+                    type="text"
+                    value={form.endereco}
+                    onChange={(e) => setForm({ ...form, endereco: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
@@ -223,44 +674,315 @@ export default function Configuracoes() {
           )}
 
           {abaAtiva === 'portal' && (
-            <div className="space-y-8 max-w-3xl animate-fade-in-up">
+            <div className="space-y-8 max-w-5xl animate-fade-in-up">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Aparência do Portal Wi-Fi</h2>
-                <p className="text-sm text-neutral-500 font-medium">Personalize como os clientes verão a tela de login da rede.</p>
+                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Portal Wi-Fi e Ofertas</h2>
+                <p className="text-sm text-neutral-500 font-medium">
+                  Edite aparência, tempos do portal e preços padrão da landing.
+                </p>
               </div>
+
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Título do Portal</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Título do Portal
+                  </label>
                   <input
-                    type="text" placeholder="Ex: Wi-Fi Grátis - Minha Empresa"
-                    value={form.titulo_portal} onChange={(e) => setForm({ ...form, titulo_portal: e.target.value })}
+                    type="text"
+                    placeholder="Ex: Wi-Fi Grátis - Minha Empresa"
+                    value={form.titulo_portal}
+                    onChange={(e) => setForm({ ...form, titulo_portal: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Texto de Boas-vindas</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Texto de Boas-vindas
+                  </label>
                   <textarea
-                    rows={4} placeholder="Ex: Cadastre-se para acessar a internet gratuitamente."
-                    value={form.texto_boas_vindas} onChange={(e) => setForm({ ...form, texto_boas_vindas: e.target.value })}
+                    rows={4}
+                    placeholder="Ex: Cadastre-se para acessar a internet gratuitamente."
+                    value={form.texto_boas_vindas}
+                    onChange={(e) => setForm({ ...form, texto_boas_vindas: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all resize-none shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cor Principal (Botões e Destaques)</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Cor Principal (Botões e Destaques)
+                  </label>
                   <div className="flex items-center gap-5">
                     <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/[0.1] shadow-inner flex-shrink-0 bg-[#050505]">
                       <input
-                        type="color" value={form.cor_principal} onChange={(e) => setForm({ ...form, cor_principal: e.target.value })}
+                        type="color"
+                        value={form.cor_principal}
+                        onChange={(e) => setForm({ ...form, cor_principal: e.target.value })}
                         className="absolute -top-4 -left-4 w-24 h-24 cursor-pointer"
                       />
                     </div>
                     <input
-                      type="text" value={form.cor_principal} onChange={(e) => setForm({ ...form, cor_principal: e.target.value })}
+                      type="text"
+                      value={form.cor_principal}
+                      onChange={(e) => setForm({ ...form, cor_principal: e.target.value })}
                       className="w-36 bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all uppercase shadow-inner font-mono"
                     />
                   </div>
                 </div>
               </div>
+
+              {/*Adiçao de imagem*/}
+              <div className="pt-4 border-t border-white/[0.05]">
+  <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Imagem lateral do Hero</h3>
+
+  <div className="rounded-[2rem] border border-white/[0.05] bg-[#050505] p-6 shadow-inner">
+    <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-6 items-start">
+      <div className="rounded-3xl border border-white/[0.08] bg-[#0a0a0a] p-4 flex items-center justify-center min-h-[260px]">
+        <img
+          src={form.hero_imagem_url_padrao || '/mockup-celular.png'}
+          alt="Preview Hero"
+          className="w-full max-w-[180px] h-auto object-contain drop-shadow-2xl"
+        />
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+            URL da imagem
+          </label>
+          <input
+            type="text"
+            value={form.hero_imagem_url_padrao}
+            onChange={(e) => setForm({ ...form, hero_imagem_url_padrao: e.target.value })}
+            className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3">
+          <label className="inline-flex items-center justify-center px-5 py-4 rounded-2xl bg-[#6be12f] text-black font-bold cursor-pointer hover:bg-[#8cf059] transition-all">
+            {uploadingHeroImage ? 'Enviando imagem...' : 'Enviar nova imagem'}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) uploadHeroImagePadrao(file)
+              }}
+            />
+          </label>
+
+          <button
+            type="button"
+            onClick={() => setForm({ ...form, hero_imagem_url_padrao: '' })}
+            className="px-5 py-4 rounded-2xl border border-white/[0.08] text-white font-bold hover:bg-white/[0.03] transition-all"
+          >
+            Remover imagem customizada
+          </button>
+        </div>
+
+        <p className="text-sm text-neutral-500 leading-relaxed">
+          Essa é a imagem lateral da landing principal. No próximo CRUD de cidades, cada cidade também poderá ter a própria imagem.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+{/*Responsável por criar a seleção do estilo do titulo*/}
+
+<div className="pt-4 border-t border-white/[0.05]">
+  <h3 className="text-lg font-bold text-white mb-6 tracking-tight">
+    Título e subtítulo do Hero
+  </h3>
+
+  <div className="grid grid-cols-1 gap-4">
+    <input
+      type="text"
+      value={form.hero_titulo_linha_1_padrao}
+      onChange={(e) => setForm({ ...form, hero_titulo_linha_1_padrao: e.target.value })}
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+      placeholder="Título 01 - branco"
+    />
+
+    <input
+      type="text"
+      value={form.hero_titulo_linha_2_padrao}
+      onChange={(e) => setForm({ ...form, hero_titulo_linha_2_padrao: e.target.value })}
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+      placeholder="Título 02"
+    />
+
+
+<div>
+  <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+    Estilo do Título 02
+  </label>
+
+  <select
+    value={form.hero_titulo_linha_2_estilo_padrao}
+    onChange={(e) =>
+      setForm({ ...form, hero_titulo_linha_2_estilo_padrao: e.target.value })
+    }
+    className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+  >
+    <option value="gradiente">Verde com gradiente</option>
+    <option value="faixa">Texto preto com faixa verde</option>
+  </select>
+</div>
+
+    <select
+      value={form.hero_titulo_linha_2_estilo_padrao}
+      onChange={(e) =>
+        setForm({ ...form, hero_titulo_linha_2_estilo_padrao: e.target.value })
+      }
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+    >
+      <option value="gradiente">Verde com gradiente</option>
+      <option value="faixa">Texto preto com faixa verde</option>
+    </select>
+
+    <input
+      type="text"
+      value={form.hero_titulo_linha_3_padrao}
+      onChange={(e) => setForm({ ...form, hero_titulo_linha_3_padrao: e.target.value })}
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+      placeholder="Título 03 - branco"
+    />
+
+    <textarea
+      rows={3}
+      value={form.hero_subtitulo_linha_1_padrao}
+      onChange={(e) => setForm({ ...form, hero_subtitulo_linha_1_padrao: e.target.value })}
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white resize-none"
+      placeholder="Subtítulo 01 - branco sólido"
+    />
+
+    <textarea
+      rows={3}
+      value={form.hero_subtitulo_linha_2_padrao}
+      onChange={(e) => setForm({ ...form, hero_subtitulo_linha_2_padrao: e.target.value })}
+      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white resize-none"
+      placeholder="Subtítulo 02 - branco com transparência"
+    />
+  </div>
+</div>
+
+
+              <div className="pt-4 border-t border-white/[0.05]">
+                <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Tempos do Portal</h3>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <InputTempo
+                    label="Tempo de acesso à internet"
+                    prefix="portal_tempo_acesso"
+                    form={form}
+                    setForm={setForm}
+                  />
+                  <InputTempo
+                    label="Tempo de bloqueio / cooldown"
+                    prefix="portal_tempo_bloqueio"
+                    form={form}
+                    setForm={setForm}
+                  />
+                  <InputTempo
+                    label="Intervalo para novo anúncio"
+                    prefix="portal_intervalo_anuncio"
+                    form={form}
+                    setForm={setForm}
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-white/[0.05]">
+                <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Preços Padrão da Landing</h3>
+
+                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                  <InputPreco
+                    label="Plano Básico"
+                    mensalKey="preco_basico_mensal_padrao"
+                    anualKey="preco_basico_anual_padrao"
+                    form={form}
+                    setForm={setForm}
+                  />
+                  <InputPreco
+                    label="Plano Comercial"
+                    mensalKey="preco_comercial_mensal_padrao"
+                    anualKey="preco_comercial_anual_padrao"
+                    form={form}
+                    setForm={setForm}
+                  />
+                  <InputPreco
+                    label="Plano VIP / Exclusividade"
+                    mensalKey="preco_vip_mensal_padrao"
+                    anualKey="preco_vip_anual_padrao"
+                    form={form}
+                    setForm={setForm}
+                  />
+                </div>
+              </div>
+
+
+              <div className="pt-4 border-t border-white/[0.05]">
+  <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Preço Âncora</h3>
+
+  <div
+    onClick={() =>
+      setForm({ ...form, mostrar_preco_ancora_padrao: !form.mostrar_preco_ancora_padrao })
+    }
+    className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group mb-6"
+  >
+    <div>
+      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
+        Exibir preço âncora na landing
+      </p>
+      <p className="text-sm text-neutral-500 mt-1 font-medium">
+        Ative para mostrar o preço riscado acima do valor principal
+      </p>
+    </div>
+
+    <div
+      className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${
+        form.mostrar_preco_ancora_padrao ? 'bg-[#6be12f]' : 'bg-neutral-800'
+      }`}
+    >
+      <div
+        className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${
+          form.mostrar_preco_ancora_padrao ? 'left-8' : 'left-1'
+        }`}
+      />
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+    <InputPreco
+      label="Âncora Plano Básico"
+      mensalKey="preco_ancora_basico_mensal_padrao"
+      anualKey="preco_ancora_basico_anual_padrao"
+      form={form}
+      setForm={setForm}
+    />
+    <InputPreco
+      label="Âncora Plano Comercial"
+      mensalKey="preco_ancora_comercial_mensal_padrao"
+      anualKey="preco_ancora_comercial_anual_padrao"
+      form={form}
+      setForm={setForm}
+    />
+    <InputPreco
+      label="Âncora Plano VIP / Exclusividade"
+      mensalKey="preco_ancora_vip_mensal_padrao"
+      anualKey="preco_ancora_vip_anual_padrao"
+      form={form}
+      setForm={setForm}
+    />
+  </div>
+</div>
+
+
+
             </div>
           )}
 
@@ -268,12 +990,18 @@ export default function Configuracoes() {
             <div className="space-y-8 max-w-4xl flex flex-col h-full animate-fade-in-up">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Termos de Uso e LGPD</h2>
-                <p className="text-sm text-neutral-500 font-medium">Defina o texto legal que os usuários precisam aceitar para usar a rede.</p>
+                <p className="text-sm text-neutral-500 font-medium">
+                  Defina o texto legal que os usuários precisam aceitar para usar a rede.
+                </p>
               </div>
+
               <div className="flex-1 flex flex-col">
-                <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Texto Completo dos Termos</label>
+                <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Texto Completo dos Termos
+                </label>
                 <textarea
-                  value={form.texto_lgpd} onChange={(e) => setForm({ ...form, texto_lgpd: e.target.value })}
+                  value={form.texto_lgpd}
+                  onChange={(e) => setForm({ ...form, texto_lgpd: e.target.value })}
                   className="w-full flex-1 min-h-[400px] bg-[#050505] border border-white/[0.05] rounded-2xl px-6 py-6 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all resize-none custom-scrollbar leading-relaxed shadow-inner"
                   placeholder="Insira aqui os termos de uso, política de privacidade e adequação à LGPD..."
                 />
@@ -285,44 +1013,77 @@ export default function Configuracoes() {
             <div className="space-y-8 max-w-3xl animate-fade-in-up">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Alertas e Notificações</h2>
-                <p className="text-sm text-neutral-500 font-medium">Configure como e quando você deseja ser avisado pelo sistema.</p>
+                <p className="text-sm text-neutral-500 font-medium">
+                  Configure como e quando você deseja ser avisado pelo sistema.
+                </p>
               </div>
+
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">E-mail para Receber Alertas</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    E-mail para Receber Alertas
+                  </label>
                   <input
-                    type="email" placeholder="seu@email.com"
-                    value={form.email_notificacoes} onChange={(e) => setForm({ ...form, email_notificacoes: e.target.value })}
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={form.email_notificacoes}
+                    onChange={(e) => setForm({ ...form, email_notificacoes: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
 
                 <div className="pt-4 space-y-4">
-                  {/* Toggle 1 */}
                   <div
-                    onClick={() => setForm({ ...form, notificar_novos_leads: !form.notificar_novos_leads })}
+                    onClick={() =>
+                      setForm({ ...form, notificar_novos_leads: !form.notificar_novos_leads })
+                    }
                     className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
-                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">Novos leads capturados</p>
-                      <p className="text-sm text-neutral-500 mt-1 font-medium">Receber um resumo diário de novos cadastros na rede</p>
+                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
+                        Novos leads capturados
+                      </p>
+                      <p className="text-sm text-neutral-500 mt-1 font-medium">
+                        Receber um resumo diário de novos cadastros na rede
+                      </p>
                     </div>
-                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_novos_leads ? 'bg-[#6be12f]' : 'bg-neutral-800'}`}>
-                      <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${form.notificar_novos_leads ? 'left-8' : 'left-1'}`} />
+                    <div
+                      className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${
+                        form.notificar_novos_leads ? 'bg-[#6be12f]' : 'bg-neutral-800'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${
+                          form.notificar_novos_leads ? 'left-8' : 'left-1'
+                        }`}
+                      />
                     </div>
                   </div>
 
-                  {/* Toggle 2 */}
                   <div
-                    onClick={() => setForm({ ...form, notificar_relatorios: !form.notificar_relatorios })}
+                    onClick={() =>
+                      setForm({ ...form, notificar_relatorios: !form.notificar_relatorios })
+                    }
                     className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
-                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">Relatórios automáticos</p>
-                      <p className="text-sm text-neutral-500 mt-1 font-medium">Receber relatórios de desempenho conforme o intervalo do plano</p>
+                      <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
+                        Relatórios automáticos
+                      </p>
+                      <p className="text-sm text-neutral-500 mt-1 font-medium">
+                        Receber relatórios de desempenho conforme o intervalo do plano
+                      </p>
                     </div>
-                    <div className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${form.notificar_relatorios ? 'bg-[#6be12f]' : 'bg-neutral-800'}`}>
-                      <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${form.notificar_relatorios ? 'left-8' : 'left-1'}`} />
+                    <div
+                      className={`w-14 h-7 rounded-full transition-colors duration-300 relative shadow-inner ${
+                        form.notificar_relatorios ? 'bg-[#6be12f]' : 'bg-neutral-800'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all duration-300 shadow-md ${
+                          form.notificar_relatorios ? 'left-8' : 'left-1'
+                        }`}
+                      />
                     </div>
                   </div>
                 </div>
@@ -334,22 +1095,34 @@ export default function Configuracoes() {
             <div className="space-y-8 max-w-md animate-fade-in-up">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Segurança da Conta</h2>
-                <p className="text-sm text-neutral-500 font-medium">Atualize sua senha de acesso ao painel administrativo.</p>
+                <p className="text-sm text-neutral-500 font-medium">
+                  Atualize sua senha de acesso ao painel administrativo.
+                </p>
               </div>
+
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nova senha</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Nova senha
+                  </label>
                   <input
-                    type="password" placeholder="Mínimo 6 caracteres"
-                    value={novaSenha} onChange={(e) => setNovaSenha(e.target.value)}
+                    type="password"
+                    placeholder="Mínimo 6 caracteres"
+                    value={novaSenha}
+                    onChange={(e) => setNovaSenha(e.target.value)}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Confirmar nova senha</label>
+                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                    Confirmar nova senha
+                  </label>
                   <input
-                    type="password" placeholder="Repita a nova senha"
-                    value={confirmarSenha} onChange={(e) => setConfirmarSenha(e.target.value)}
+                    type="password"
+                    placeholder="Repita a nova senha"
+                    value={confirmarSenha}
+                    onChange={(e) => setConfirmarSenha(e.target.value)}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
@@ -359,9 +1132,12 @@ export default function Configuracoes() {
                     <p className="text-sm font-bold text-red-400 text-center">{erroSenha}</p>
                   </div>
                 )}
+
                 {senhaOk && (
                   <div className="p-4 bg-[#6be12f]/10 border border-[#6be12f]/20 rounded-2xl">
-                    <p className="text-sm font-bold text-[#8cf059] text-center">Senha alterada com sucesso!</p>
+                    <p className="text-sm font-bold text-[#8cf059] text-center">
+                      Senha alterada com sucesso!
+                    </p>
                   </div>
                 )}
 
@@ -373,7 +1149,9 @@ export default function Configuracoes() {
                   {salvandoSenha ? (
                     <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <><Lock size={18} /> Atualizar Senha</>
+                    <>
+                      <Lock size={18} /> Atualizar Senha
+                    </>
                   )}
                 </button>
               </div>
@@ -382,7 +1160,9 @@ export default function Configuracoes() {
         </div>
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
@@ -392,11 +1172,14 @@ export default function Configuracoes() {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
         .animate-fade-in-up {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
-      `}} />
+      `,
+        }}
+      />
     </main>
   )
 }
