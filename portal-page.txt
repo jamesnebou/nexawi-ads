@@ -75,7 +75,38 @@ function getMesAtualRange() {
   }
 }
 
-function AvisoAcessoPorInatividade() {
+function formatDurationLabel(totalSeconds = 0) {
+  const safe = Math.max(0, Number(totalSeconds) || 0)
+  const hours = Math.floor(safe / 3600)
+  const minutes = Math.floor((safe % 3600) / 60)
+  const seconds = safe % 60
+
+  const parts = []
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}min`)
+  if (seconds > 0 || parts.length === 0) parts.push(`${seconds}s`)
+
+  return parts.join(' ')
+}
+
+async function fetchPortalConfig() {
+  const response = await fetch('/api/portal-config', { cache: 'no-store' })
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Falha ao carregar configuração do portal')
+  }
+
+  return (
+    data.config || {
+      portal_tempo_acesso_segundos: 1200,
+      portal_tempo_bloqueio_segundos: 600,
+      portal_intervalo_anuncio_segundos: 600,
+    }
+  )
+}
+
+function AvisoTempoConexao({ tempoAcessoSegundos, tempoBloqueioSegundos }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#0a0a0a] px-4 py-4 mt-6">
       <div className="absolute inset-0 bg-gradient-to-r from-[#6be12f]/[0.06] via-transparent to-[#6be12f]/[0.04] pointer-events-none" />
@@ -90,13 +121,13 @@ function AvisoAcessoPorInatividade() {
 
         <div className="flex-1">
           <p className="text-[11px] uppercase tracking-[0.22em] text-[#6be12f] font-bold mb-2">
-            Acesso liberado após o anúncio
+            Aviso importante
           </p>
 
           <p className="text-sm text-gray-300 leading-relaxed">
-            Você não será desconectado por tempo fixo.
+            Você terá <span className="text-white font-bold">{formatDurationLabel(tempoAcessoSegundos)} de internet liberada</span>.
             <br />
-            Caso fique sem internet após um período parado, basta desligar e ligar o Wi-Fi e entrar novamente.
+            Após esse período, o acesso ficará em <span className="text-white font-bold">pausa por {formatDurationLabel(tempoBloqueioSegundos)}</span> antes de uma nova liberação.
           </p>
         </div>
       </div>
@@ -121,12 +152,19 @@ export default function Portal() {
   const [leadId, setLeadId] = useState(null)
   const [ipAddress, setIpAddress] = useState('0.0.0.0')
   const [macAddress, setMacAddress] = useState('')
+  const [tempoEspera, setTempoEspera] = useState(0)
   const [modalAberto, setModalAberto] = useState(null)
   const [cpfRapido, setCpfRapido] = useState('')
   const [erroCpfRapido, setErroCpfRapido] = useState('')
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
+
+  const [portalConfig, setPortalConfig] = useState({
+    portal_tempo_acesso_segundos: 1200,
+    portal_tempo_bloqueio_segundos: 600,
+    portal_intervalo_anuncio_segundos: 600,
+  })
 
   const [form, setForm] = useState({
     nome: '',
@@ -327,6 +365,7 @@ export default function Portal() {
 
     if (!response.ok) {
       if (response.status === 409 && data?.status?.state === 'cooldown') {
+        setTempoEspera(data.status.remainingSeconds || 0)
         setEtapa(ETAPAS.BLOQUEADO)
         return null
       }
@@ -449,6 +488,7 @@ export default function Portal() {
       const statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
 
       if (statusAtual.state === 'cooldown') {
+        setTempoEspera(statusAtual.remainingSeconds || 0)
         setEtapa(ETAPAS.BLOQUEADO)
         return
       }
@@ -633,6 +673,11 @@ export default function Portal() {
           }
         }
 
+        const configPublica = await fetchPortalConfig()
+        if (isMounted && configPublica) {
+          setPortalConfig(configPublica)
+        }
+
         const hotspotData = await carregarHotspotEAnuncios()
         if (!hotspotData || !isMounted) return
 
@@ -660,6 +705,7 @@ export default function Portal() {
         }
 
         if (statusAtual.state === 'cooldown') {
+          setTempoEspera(statusAtual.remainingSeconds || 0)
           setEtapa(ETAPAS.BLOQUEADO)
           return
         }
@@ -708,6 +754,28 @@ export default function Portal() {
     }
   }, [etapa, anuncioAtual, leadRapido])
 
+  useEffect(() => {
+    let timeoutId
+
+    if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
+      timeoutId = setTimeout(() => {
+        const anuncioSorteado = sortearAnuncioSemRepetir()
+        const resolvedIp = getClientIp()
+
+        if (anuncioSorteado) {
+          setAnuncioAtual(anuncioSorteado)
+          setInternetLiberadaNaCta(false)
+          setEtapa(ETAPAS.ANUNCIO)
+          registrarVisualizacao(anuncioSorteado.id, resolvedIp)
+        }
+      }, Math.max(1, Number(portalConfig.portal_intervalo_anuncio_segundos || 600)) * 1000)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [etapa, anuncios, anunciosExibidos, portalConfig.portal_intervalo_anuncio_segundos])
+
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none"></div>
@@ -730,14 +798,14 @@ export default function Portal() {
                 <Clock size={32} className="text-red-500" />
               </div>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Acesso pausado</h1>
+            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Tempo Esgotado</h1>
             <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-              Sua conexão precisa ser renovada. Desligue e ligue seu Wi-Fi, acesse a rede novamente e siga o fluxo do portal.
+              Você já utilizou seu tempo limite de conexão. Para garantir o acesso a todos, aguarde o tempo de carência.
             </p>
             <div className="bg-[#0a0a0a] rounded-2xl p-4 border border-white/[0.05]">
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Orientação</p>
-              <p className="text-sm font-medium text-white leading-relaxed">
-                Volte para o Wi-Fi NexaWi para liberar uma nova conexão.
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Tempo Restante</p>
+              <p className="text-3xl font-light text-white">
+                {formatDurationLabel(tempoEspera)}
               </p>
             </div>
           </div>
@@ -787,7 +855,10 @@ export default function Portal() {
                 Digite apenas seu CPF para continuar.
               </p>
 
-              <AvisoAcessoPorInatividade />
+              <AvisoTempoConexao
+                tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+                tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+              />
             </div>
 
             <form onSubmit={handleCpfRapido} className="space-y-4">
@@ -838,7 +909,10 @@ export default function Portal() {
                 Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
               </p>
 
-              <AvisoAcessoPorInatividade />
+              <AvisoTempoConexao
+                tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+                tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+              />
             </div>
 
             <form onSubmit={handleCadastro} className="space-y-4">
@@ -1045,27 +1119,9 @@ export default function Portal() {
             </div>
 
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Conectado!</h1>
-            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+            <p className="text-gray-500 text-sm mb-10 leading-relaxed">
               Sua internet foi liberada com sucesso. Aproveite a conexão em <strong className="text-gray-300">{hotspot?.nome}</strong>.
             </p>
-
-            <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/25 bg-[#6be12f]/[0.06] px-4 py-4 mb-8 text-left">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#6be12f]/[0.08] via-transparent to-transparent pointer-events-none" />
-              <div className="relative flex items-start gap-3">
-                <div className="mt-0.5 w-8 h-8 rounded-full bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0">
-                  <ShieldCheck size={16} className="text-[#6be12f]" />
-                </div>
-
-                <div>
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-[#6be12f] font-bold mb-2">
-                    Observação importante
-                  </p>
-                  <p className="text-sm text-white leading-relaxed font-medium">
-                    Se ficar sem internet, é porque ficou inativo. Desligue e ligue seu Wi-Fi e entre novamente.
-                  </p>
-                </div>
-              </div>
-            </div>
 
             <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/[0.02] border border-white/[0.05]">
               <div className="w-2 h-2 rounded-full animate-pulse bg-[#6be12f] shadow-[0_0_10px_rgba(34,197,94,0.8)]" />
@@ -1099,8 +1155,8 @@ export default function Portal() {
                 <>
                   <p><strong>1. Aceitação dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, você concorda com estes termos. O acesso é fornecido de forma gratuita mediante a visualização de anúncios publicitários.</p>
                   <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lícitos. É estritamente proibido o uso para download de conteúdo ilegal, pirataria, ataques cibernéticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
-                  <p><strong>3. Exibição de Anúncios:</strong> O acesso gratuito à internet pode ser condicionado à visualização de anúncios no momento de entrada ou retorno à rede. A NexaWi ADS não interrompe intencionalmente a navegação ativa para exibir campanhas no meio do uso.</p>
-                  <p><strong>4. Renovação de Acesso:</strong> Para garantir a qualidade da rede para todos os usuários, a sessão poderá ser encerrada em casos de inatividade, perda de alcance do sinal ou necessidade técnica do ponto de acesso. Nesses casos, uma nova autenticação poderá ser exigida.</p>
+                  <p><strong>3. Exibição de Anúncios:</strong> O acesso contínuo à internet está condicionado à exibição periódica de anúncios. O sistema poderá interromper a navegação temporariamente para a exibição de novas campanhas.</p>
+                  <p><strong>4. Limite de Conexão:</strong> Para garantir a qualidade da rede para todos os usuários, a sessão possui um limite de tempo. Após esse período, uma nova autenticação poderá ser exigida, respeitando o tempo de carência estabelecido pelo estabelecimento.</p>
                   <p><strong>5. Isenção de Responsabilidade:</strong> A NexaWi ADS e o estabelecimento parceiro não se responsabilizam por falhas na conexão, perda de dados ou danos causados por malwares durante o uso da rede aberta. Recomendamos o uso de conexões seguras (HTTPS) para transações sensíveis.</p>
                 </>
               ) : (
