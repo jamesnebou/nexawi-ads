@@ -1,3 +1,4 @@
+import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
 import { ensureBypassBinding, normalizeMac } from '@/lib/routeros-rest'
 import {
@@ -12,9 +13,15 @@ import {
   computeStatusFromSession,
 } from '@/lib/session-control'
 
+const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
+
 export const runtime = 'nodejs'
 
 export async function POST(request) {
+  if (CONTROL_API_MODE === 'proxy') {
+  return proxyControlRequest(request, '/api/control/session/authorize', 'POST')
+}
+
   try {
     const body = await request.json()
     const hotspotSlug = String(body.hotspotSlug || '').trim()

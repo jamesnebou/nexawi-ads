@@ -73,30 +73,67 @@ export async function ensureBypassBinding({ macAddress, comment }) {
     throw new Error('MAC inválido para binding')
   }
 
-  const bindings = await listHotspotBindings()
-
-  const existing = bindings.find(
-    (item) =>
-      normalizeMac(item['mac-address']) === mac &&
-      item.server === hotspotServer &&
-      item.type === 'bypassed'
-  )
-
-  if (existing) {
-    return existing
+  const payload = {
+    'mac-address': mac,
+    server: hotspotServer,
+    type: 'bypassed',
+    disabled: false,
+    comment: comment || '',
   }
 
-  const created = await routerosFetch('/ip/hotspot/ip-binding', {
-    method: 'PUT',
-    body: {
-      'mac-address': mac,
-      server: hotspotServer,
-      type: 'bypassed',
-      comment: comment || '',
-    },
-  })
+  const bindings = await listHotspotBindings()
 
-  return created
+  // procura qualquer binding existente para o MAC,
+  // independentemente do server atual
+  const existing = bindings.find(
+    (item) => normalizeMac(item['mac-address']) === mac
+  )
+
+  if (existing?.['.id']) {
+    await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(existing['.id'])}`, {
+      method: 'PATCH',
+      body: payload,
+    })
+
+    return {
+      ...existing,
+      ...payload,
+      '.id': existing['.id'],
+    }
+  }
+
+  try {
+    return await routerosFetch('/ip/hotspot/ip-binding', {
+      method: 'PUT',
+      body: payload,
+    })
+  } catch (error) {
+    const message = String(error?.message || '')
+
+    if (!message.includes('such client already exists')) {
+      throw error
+    }
+
+    const retryBindings = await listHotspotBindings()
+    const retryExisting = retryBindings.find(
+      (item) => normalizeMac(item['mac-address']) === mac
+    )
+
+    if (!retryExisting?.['.id']) {
+      throw error
+    }
+
+    await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(retryExisting['.id'])}`, {
+      method: 'PATCH',
+      body: payload,
+    })
+
+    return {
+      ...retryExisting,
+      ...payload,
+      '.id': retryExisting['.id'],
+    }
+  }
 }
 
 export async function removeBypassBindings({ macAddress }) {

@@ -75,8 +75,6 @@ function getMesAtualRange() {
   }
 }
 
-
-
 function formatDurationLabel(totalSeconds = 0) {
   const safe = Math.max(0, Number(totalSeconds) || 0)
   const hours = Math.floor(safe / 3600)
@@ -107,7 +105,6 @@ async function fetchPortalConfig() {
     }
   )
 }
-
 
 function AvisoTempoConexao({ tempoAcessoSegundos, tempoBloqueioSegundos }) {
   return (
@@ -164,10 +161,10 @@ export default function Portal() {
   const [erroDetalhe, setErroDetalhe] = useState('')
 
   const [portalConfig, setPortalConfig] = useState({
-  portal_tempo_acesso_segundos: 1200,
-  portal_tempo_bloqueio_segundos: 600,
-  portal_intervalo_anuncio_segundos: 600,
-})
+    portal_tempo_acesso_segundos: 1200,
+    portal_tempo_bloqueio_segundos: 600,
+    portal_intervalo_anuncio_segundos: 600,
+  })
 
   const [form, setForm] = useState({
     nome: '',
@@ -179,6 +176,27 @@ export default function Portal() {
 
   const [erros, setErros] = useState({})
   const intervaloAnuncioRef = useRef(null)
+  const leadIdRef = useRef(null)
+
+  useEffect(() => {
+    leadIdRef.current = leadId
+  }, [leadId])
+
+  const DEV_CLIENT_MAC = '8A:B7:BF:86:72:4D'
+  const DEV_CLIENT_IP = '192.168.88.252'
+
+  const isLocalhost =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1')
+
+  function getClientMac(customMac = '') {
+    return normalizeMac(customMac || macAddress || macParam || (isLocalhost ? DEV_CLIENT_MAC : ''))
+  }
+
+  function getClientIp(customIp = '') {
+    return String(customIp || ipAddress || (isLocalhost ? DEV_CLIENT_IP : '')).trim()
+  }
 
   function falhar(etiqueta, erro = '') {
     const detalhe =
@@ -278,69 +296,85 @@ export default function Portal() {
     }
   }
 
-  async function consultarStatusSessao(hotspotSlug, clientMac) {
-  try {
-    if (!hotspotSlug || !clientMac) {
-      return { state: 'idle', remainingSeconds: 0 }
+  async function consultarStatusSessao(hotspotSlug, clientMac = '') {
+    try {
+      const resolvedMac = getClientMac(clientMac)
+
+      if (!hotspotSlug || !resolvedMac) {
+        return { state: 'idle', remainingSeconds: 0 }
+      }
+
+      const response = await controlApiFetch('/api/control/session/status', {
+        method: 'POST',
+        body: JSON.stringify({
+          hotspotSlug,
+          clientMac: resolvedMac,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Falha ao consultar status da sessão')
+      }
+
+      return data.status || { state: 'idle', remainingSeconds: 0 }
+    } catch (error) {
+      throw error
+    }
+  }
+
+  async function autorizarSessaoNoBackend(explicitLeadId = null) {
+    const hotspotSlug = hotspot?.slug || slug
+    const resolvedMac = getClientMac()
+    const resolvedIp = getClientIp()
+    const resolvedLeadId =
+      explicitLeadId ||
+      leadIdRef.current ||
+      leadId ||
+      leadRapido?.id ||
+      null
+
+    if (!hotspotSlug) {
+      throw new Error('Hotspot não carregado')
     }
 
-    const response = await controlApiFetch('/api/control/session/status', {
+    if (!resolvedLeadId) {
+      throw new Error('leadId não encontrado para autorizar')
+    }
+
+    if (!resolvedMac) {
+      throw new Error('MAC do cliente não encontrado')
+    }
+
+    if (!resolvedIp) {
+      throw new Error('IP do cliente não encontrado')
+    }
+
+    const response = await controlApiFetch('/api/control/session/authorize', {
       method: 'POST',
       body: JSON.stringify({
         hotspotSlug,
-        clientMac,
+        leadId: resolvedLeadId,
+        clientMac: resolvedMac,
+        clientIp: resolvedIp,
       }),
     })
 
     const data = await response.json()
 
     if (!response.ok) {
-      throw new Error(data.error || 'Falha ao consultar status da sessão')
+      if (response.status === 409 && data?.status?.state === 'cooldown') {
+        setTempoEspera(data.status.remainingSeconds || 0)
+        setEtapa(ETAPAS.BLOQUEADO)
+        return null
+      }
+
+      throw new Error(data.error || 'Falha ao autorizar sessão')
     }
 
-    return data.status || { state: 'idle', remainingSeconds: 0 }
-  } catch (error) {
-    throw error
+    return data
   }
-}
-
-  async function autorizarSessaoNoBackend(currentLeadId) {
-  if (!hotspot?.slug && !slug) {
-    throw new Error('Hotspot não carregado')
-  }
-
-  if (!currentLeadId) {
-    throw new Error('leadId não encontrado para autorizar')
-  }
-
-  if (!macAddress) {
-    throw new Error('MAC do cliente não encontrado')
-  }
-
-  const response = await controlApiFetch('/api/control/session/authorize', {
-    method: 'POST',
-    body: JSON.stringify({
-      hotspotSlug: hotspot?.slug || slug,
-      leadId: currentLeadId,
-      clientMac: macAddress,
-      clientIp: ipAddress,
-    }),
-  })
-
-  const data = await response.json()
-
-  if (!response.ok) {
-    if (response.status === 409 && data?.status?.state === 'cooldown') {
-      setTempoEspera(data.status.remainingSeconds || 0)
-      setEtapa(ETAPAS.BLOQUEADO)
-      return null
-    }
-
-    throw new Error(data.error || 'Falha ao autorizar sessão')
-  }
-
-  return data
-}
 
   function sortearAnuncioSemRepetir() {
     if (anuncios.length === 0) return null
@@ -444,17 +478,14 @@ export default function Portal() {
     return Object.keys(novosErros).length === 0
   }
 
-  async function concluirAnuncioComAutorizacao() {
+  async function concluirAnuncioComAutorizacao(explicitLeadId = null) {
     try {
-      if (!leadId) {
-        throw new Error('leadId ausente ao finalizar o anúncio')
-      }
-
       setLoadingTexto('Liberando sua conexão...')
       setEtapa(ETAPAS.LOADING)
 
       const hotspotSlug = hotspot?.slug || slug
-      const statusAtual = await consultarStatusSessao(hotspotSlug, macAddress)
+      const resolvedMac = getClientMac()
+      const statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
 
       if (statusAtual.state === 'cooldown') {
         setTempoEspera(statusAtual.remainingSeconds || 0)
@@ -462,9 +493,26 @@ export default function Portal() {
         return
       }
 
-      if (statusAtual.state !== 'authorized') {
-        await autorizarSessaoNoBackend(leadId)
+      if (statusAtual.state === 'authorized') {
+        setInternetLiberadaNaCta(true)
+        setLoadingTexto('Conectando à rede...')
+        setEtapa(ETAPAS.CTA)
+        return
       }
+
+      const resolvedLeadId =
+        explicitLeadId ||
+        leadIdRef.current ||
+        leadId ||
+        leadRapido?.id ||
+        null
+
+      if (!resolvedLeadId) {
+        throw new Error('leadId ausente ao finalizar o anúncio')
+      }
+
+      const autorizacao = await autorizarSessaoNoBackend(resolvedLeadId)
+      if (!autorizacao) return
 
       setInternetLiberadaNaCta(true)
       setLoadingTexto('Conectando à rede...')
@@ -484,7 +532,9 @@ export default function Portal() {
       const anuncioSorteado = sortearAnuncioSemRepetir()
       const telefoneLimpo = String(form.telefone).replace(/\D/g, '')
       const cpfLimpo = String(form.cpf).replace(/\D/g, '')
-      const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(macAddress)
+      const resolvedMac = getClientMac()
+      const resolvedIp = getClientIp()
+      const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(resolvedMac)
 
       const { data, error } = await supabase
         .from('leads')
@@ -496,8 +546,8 @@ export default function Portal() {
           cpf: cpfLimpo,
           aceite_lgpd: form.aceite_lgpd,
           anuncio_id: anuncioSorteado ? anuncioSorteado.id : null,
-          mac_address: macAddress || null,
-          ip_address: ipAddress || null,
+          mac_address: resolvedMac || null,
+          ip_address: resolvedIp || null,
           radius_username: radiusUsername,
           radius_password: radiusPassword,
           radius_used: false,
@@ -508,14 +558,18 @@ export default function Portal() {
       if (error) throw error
 
       setLeadId(data.id)
+      leadIdRef.current = data.id
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
+        setInternetLiberadaNaCta(false)
         setEtapa(ETAPAS.ANUNCIO)
-        registrarVisualizacao(anuncioSorteado.id, ipAddress)
+        registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
-        await autorizarSessaoNoBackend(data.id)
-        setEtapa(ETAPAS.ACESSO)
+        const autorizacao = await autorizarSessaoNoBackend(data.id)
+        if (autorizacao) {
+          setEtapa(ETAPAS.ACESSO)
+        }
       }
     } catch (error) {
       falhar('Erro ao salvar lead', error)
@@ -549,16 +603,21 @@ export default function Portal() {
 
     try {
       setLeadId(leadRapido.id)
+      leadIdRef.current = leadRapido.id
 
       const anuncioSorteado = sortearAnuncioSemRepetir()
+      const resolvedIp = getClientIp()
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
+        setInternetLiberadaNaCta(false)
         setEtapa(ETAPAS.ANUNCIO)
-        registrarVisualizacao(anuncioSorteado.id, ipAddress)
+        registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
-        await autorizarSessaoNoBackend(leadRapido.id)
-        setEtapa(ETAPAS.ACESSO)
+        const autorizacao = await autorizarSessaoNoBackend(leadRapido.id)
+        if (autorizacao) {
+          setEtapa(ETAPAS.ACESSO)
+        }
       }
     } catch (error) {
       falhar('Erro no CPF rápido', error)
@@ -571,8 +630,10 @@ export default function Portal() {
     try {
       if (!internetLiberadaNaCta) return
 
+      const resolvedIp = getClientIp()
+
       if (clicou && anuncioAtual) {
-        await registrarClique(anuncioAtual.id, ipAddress)
+        await registrarClique(anuncioAtual.id, resolvedIp)
       }
 
       if (clicou && destinoExterno) {
@@ -594,43 +655,67 @@ export default function Portal() {
         if (!isMounted) return
 
         setLoadingTexto('Conectando à rede...')
-        setMacAddress(macParam)
 
-        fetch('https://api.ipify.org?format=json')
-          .then((res) => res.json())
-          .then((data) => {
+        const resolvedMac = getClientMac()
+        const resolvedIp = getClientIp()
+
+        setMacAddress(resolvedMac)
+
+        if (isLocalhost) {
+          setIpAddress(resolvedIp)
+        } else {
+          try {
+            const res = await fetch('https://api.ipify.org?format=json')
+            const data = await res.json()
             if (isMounted) setIpAddress(data.ip)
-          })
-          .catch(() => console.log('Erro ao buscar IP, usando padrão.'))
+          } catch {
+            if (isMounted) setIpAddress('')
+          }
+        }
 
-         const configPublica = await fetchPortalConfig()
-         if (isMounted && configPublica) {
-         setPortalConfig(configPublica)
-         }
-
+        const configPublica = await fetchPortalConfig()
+        if (isMounted && configPublica) {
+          setPortalConfig(configPublica)
+        }
 
         const hotspotData = await carregarHotspotEAnuncios()
         if (!hotspotData || !isMounted) return
 
         const hotspotSlug = hotspotData.slug || slug
-        const statusAtual = await consultarStatusSessao(hotspotSlug, macParam)
+
+        let statusAtual = { state: 'idle', remainingSeconds: 0 }
+
+        try {
+          statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
+        } catch (error) {
+          console.warn('Falha ao consultar status da sessão na inicialização:', error)
+        }
 
         if (statusAtual.state === 'authorized') {
+          const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, resolvedMac)
+
+          if (leadDoMes) {
+            setLeadRapido(leadDoMes)
+            setLeadId(leadDoMes.id)
+            leadIdRef.current = leadDoMes.id
+          }
+
           setEtapa(ETAPAS.ACESSO)
           return
         }
 
         if (statusAtual.state === 'cooldown') {
-          const minutos = Math.ceil((statusAtual.remainingSeconds || 0) / 60)
-          setTempoEspera(minutos)
+          setTempoEspera(statusAtual.remainingSeconds || 0)
           setEtapa(ETAPAS.BLOQUEADO)
           return
         }
 
-        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, macParam)
+        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, resolvedMac)
 
         if (leadDoMes) {
           setLeadRapido(leadDoMes)
+          setLeadId(leadDoMes.id)
+          leadIdRef.current = leadDoMes.id
           setEtapa(ETAPAS.CPF_RAPIDO)
           return
         }
@@ -656,7 +741,7 @@ export default function Portal() {
         setContador((prev) => {
           if (prev <= 1) {
             clearInterval(intervaloAnuncioRef.current)
-            concluirAnuncioComAutorizacao()
+            concluirAnuncioComAutorizacao(leadIdRef.current || leadRapido?.id || null)
             return 0
           }
           return prev - 1
@@ -667,27 +752,29 @@ export default function Portal() {
     return () => {
       if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
     }
-  }, [etapa, anuncioAtual, leadId, macAddress, hotspot, ipAddress])
+  }, [etapa, anuncioAtual, leadRapido])
 
   useEffect(() => {
-  let timeoutId
+    let timeoutId
 
-  if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
-    timeoutId = setTimeout(() => {
-      const anuncioSorteado = sortearAnuncioSemRepetir()
-      if (anuncioSorteado) {
-        setAnuncioAtual(anuncioSorteado)
-        setInternetLiberadaNaCta(false)
-        setEtapa(ETAPAS.ANUNCIO)
-        registrarVisualizacao(anuncioSorteado.id, ipAddress)
-      }
-    }, Math.max(1, Number(portalConfig.portal_intervalo_anuncio_segundos || 600)) * 1000)
-  }
+    if (etapa === ETAPAS.ACESSO && anuncios.length > 0) {
+      timeoutId = setTimeout(() => {
+        const anuncioSorteado = sortearAnuncioSemRepetir()
+        const resolvedIp = getClientIp()
 
-  return () => {
-    if (timeoutId) clearTimeout(timeoutId)
-  }
-}, [etapa, anuncios, ipAddress, anunciosExibidos, portalConfig.portal_intervalo_anuncio_segundos])
+        if (anuncioSorteado) {
+          setAnuncioAtual(anuncioSorteado)
+          setInternetLiberadaNaCta(false)
+          setEtapa(ETAPAS.ANUNCIO)
+          registrarVisualizacao(anuncioSorteado.id, resolvedIp)
+        }
+      }, Math.max(1, Number(portalConfig.portal_intervalo_anuncio_segundos || 600)) * 1000)
+    }
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId)
+    }
+  }, [etapa, anuncios, anunciosExibidos, portalConfig.portal_intervalo_anuncio_segundos])
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -769,8 +856,8 @@ export default function Portal() {
               </p>
 
               <AvisoTempoConexao
-               tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
-               tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+                tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+                tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
               />
             </div>
 
@@ -823,8 +910,8 @@ export default function Portal() {
               </p>
 
               <AvisoTempoConexao
-               tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
-               tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
+                tempoAcessoSegundos={portalConfig.portal_tempo_acesso_segundos}
+                tempoBloqueioSegundos={portalConfig.portal_tempo_bloqueio_segundos}
               />
             </div>
 
