@@ -42,6 +42,33 @@ function normalizeMac(value = '') {
     .replace(/-/g, ':')
 }
 
+function normalizarUrlDestino(url = '') {
+  const valor = String(url || '').trim()
+
+  if (!valor) return ''
+
+  if (
+    valor.startsWith('http://') ||
+    valor.startsWith('https://') ||
+    valor.startsWith('mailto:') ||
+    valor.startsWith('tel:')
+  ) {
+    return valor
+  }
+
+  if (valor.startsWith('wa.me/') || valor.startsWith('api.whatsapp.com/')) {
+    return `https://${valor}`
+  }
+
+  if (/^\d{10,15}$/.test(valor.replace(/\D/g, ''))) {
+    const telefone = valor.replace(/\D/g, '')
+    return `https://wa.me/55${telefone}`
+  }
+
+  return `https://${valor}`
+}
+
+
 function gerarStringAleatoria(tamanho = 24) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
   const bytes = new Uint32Array(tamanho)
@@ -596,9 +623,13 @@ export default function Portal() {
       }
 
       if (clicou && destinoExterno) {
-        window.location.href = destinoExterno
-        return
-      }
+  const urlNormalizada = normalizarUrlDestino(destinoExterno)
+
+  if (urlNormalizada) {
+    window.location.assign(urlNormalizada)
+    return
+  }
+}
 
       setEtapa(ETAPAS.ACESSO)
     } catch (error) {
