@@ -94,7 +94,6 @@ function AvisoAcessoPorInatividade() {
           </p>
 
           <p className="text-sm text-gray-300 leading-relaxed">
-            Você não será desconectado por tempo fixo.
             <br />
             Caso fique sem internet após um período parado, basta desligar e ligar o Wi-Fi e entrar novamente.
           </p>
@@ -781,7 +780,7 @@ export default function Portal() {
             </div>
 
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">O seu dispositivo já está cadastrado. Valide com o CPF...</h1>
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bom ter você novamente...</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
                 Digite apenas seu CPF para continuar.
