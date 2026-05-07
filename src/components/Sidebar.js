@@ -37,6 +37,7 @@ const menu = [
   { label: 'Planos', path: '/dashboard/planos', icon: Package },
   { label: 'Leads', path: '/dashboard/leads', icon: UserPlus },
   { label: 'Relatório de Acesso', path: '/dashboard/relatorios/acesso', icon: BarChart2 },
+  { label: 'Auditoria', path: '/dashboard/auditoria', icon: ClipboardList },
   { label: 'Cidades', path: '/dashboard/cidades', icon: MapPin },
   { label: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
 ]
