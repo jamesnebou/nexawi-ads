@@ -11,11 +11,16 @@
 //
 // Agora:
 // Dashboard → API admin → valida admin → service_role → Supabase
+//
+// Auditoria:
+// - Registra criação, edição, ativação, pausa e exclusão de anúncios.
+// - Registra alterações de vínculos com hotspots.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -55,6 +60,7 @@ function sanitizarAnuncioPayload(anuncio = {}) {
 function validarAnuncio(payload, hotspotIds = []) {
   if (!payload.titulo) return 'Título da campanha é obrigatório'
   if (!payload.cliente_id) return 'Cliente responsável é obrigatório'
+
   if (!Array.isArray(hotspotIds) || hotspotIds.length === 0) {
     return 'Selecione pelo menos um hotspot'
   }
@@ -88,6 +94,69 @@ async function buscarMetricasDoAnuncio(anuncioId) {
   return {
     views: viewsCount || 0,
     clicks: clicksCount || 0,
+  }
+}
+
+async function buscarAnuncioBasico(anuncioId) {
+  const { data, error } = await supabaseAdmin
+    .from('anuncios')
+    .select(`
+      id,
+      titulo,
+      descricao,
+      media_url,
+      tipo_media,
+      url_destino,
+      duracao_segundos,
+      ativo,
+      cliente_id,
+      estado,
+      cidade,
+      created_at
+    `)
+    .eq('id', anuncioId)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
+}
+
+async function buscarHotspotIdsDoAnuncio(anuncioId) {
+  const { data, error } = await supabaseAdmin
+    .from('anuncio_hotspots')
+    .select('hotspot_id')
+    .eq('anuncio_id', anuncioId)
+
+  if (error) throw error
+
+  return (data || [])
+    .map((item) => item.hotspot_id)
+    .filter(Boolean)
+}
+
+async function contarEventosDoAnuncio(anuncioId) {
+  const [
+    { count: viewsCount, error: viewsError },
+    { count: clicksCount, error: clicksError },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from('anuncio_views')
+      .select('*', { count: 'exact', head: true })
+      .eq('anuncio_id', anuncioId),
+
+    supabaseAdmin
+      .from('anuncio_clicks')
+      .select('*', { count: 'exact', head: true })
+      .eq('anuncio_id', anuncioId),
+  ])
+
+  if (viewsError) throw viewsError
+  if (clicksError) throw clicksError
+
+  return {
+    views_removidas: viewsCount || 0,
+    clicks_removidos: clicksCount || 0,
   }
 }
 
@@ -275,14 +344,33 @@ export async function POST(request) {
         )
       }
 
+      const anuncioAntes = await buscarAnuncioBasico(id)
+
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .update({ ativo })
         .eq('id', id)
-        .select('id, ativo')
+        .select('id, titulo, ativo, cliente_id, tipo_media')
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: ativo ? 'activate' : 'pause',
+        entity: 'anuncios',
+        entityId: data.id,
+        description: ativo ? 'Ativou um anúncio' : 'Pausou um anúncio',
+        metadata: {
+          anuncio_id: data.id,
+          titulo: data.titulo || anuncioAntes?.titulo || '',
+          cliente_id: data.cliente_id || anuncioAntes?.cliente_id || null,
+          tipo_media: data.tipo_media || anuncioAntes?.tipo_media || '',
+          ativo_anterior: anuncioAntes?.ativo ?? null,
+          ativo_atual: data.ativo,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -301,10 +389,31 @@ export async function POST(request) {
         )
       }
 
+      const anuncioAntes = await buscarAnuncioBasico(id)
+      const hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(id)
+      const eventosAntes = await contarEventosDoAnuncio(id)
+
       // Remove vínculos e métricas antes do anúncio para evitar erro de FK.
-      await supabaseAdmin.from('anuncio_hotspots').delete().eq('anuncio_id', id)
-      await supabaseAdmin.from('anuncio_views').delete().eq('anuncio_id', id)
-      await supabaseAdmin.from('anuncio_clicks').delete().eq('anuncio_id', id)
+      const { error: linksDeleteError } = await supabaseAdmin
+        .from('anuncio_hotspots')
+        .delete()
+        .eq('anuncio_id', id)
+
+      if (linksDeleteError) throw linksDeleteError
+
+      const { error: viewsDeleteError } = await supabaseAdmin
+        .from('anuncio_views')
+        .delete()
+        .eq('anuncio_id', id)
+
+      if (viewsDeleteError) throw viewsDeleteError
+
+      const { error: clicksDeleteError } = await supabaseAdmin
+        .from('anuncio_clicks')
+        .delete()
+        .eq('anuncio_id', id)
+
+      if (clicksDeleteError) throw clicksDeleteError
 
       const { error } = await supabaseAdmin
         .from('anuncios')
@@ -312,6 +421,26 @@ export async function POST(request) {
         .eq('id', id)
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'anuncios',
+        entityId: id,
+        description: 'Excluiu um anúncio',
+        metadata: {
+          anuncio_id: id,
+          titulo: anuncioAntes?.titulo || '',
+          cliente_id: anuncioAntes?.cliente_id || null,
+          tipo_media: anuncioAntes?.tipo_media || '',
+          ativo_anterior: anuncioAntes?.ativo ?? null,
+          hotspot_ids_anteriores: hotspotIdsAntes,
+          quantidade_hotspots_vinculados: hotspotIdsAntes.length,
+          views_removidas: eventosAntes.views_removidas,
+          clicks_removidos: eventosAntes.clicks_removidos,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -334,6 +463,8 @@ export async function POST(request) {
     }
 
     let anuncioId = null
+    let anuncioAntes = null
+    let hotspotIdsAntes = []
 
     if (action === 'update') {
       anuncioId = String(body.id || '').trim()
@@ -345,11 +476,14 @@ export async function POST(request) {
         )
       }
 
+      anuncioAntes = await buscarAnuncioBasico(anuncioId)
+      hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(anuncioId)
+
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .update(payload)
         .eq('id', anuncioId)
-        .select('id')
+        .select('*')
         .single()
 
       if (error) throw error
@@ -366,7 +500,7 @@ export async function POST(request) {
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .insert([payload])
-        .select('id')
+        .select('*')
         .single()
 
       if (error) throw error
@@ -390,6 +524,37 @@ export async function POST(request) {
 
       if (linksError) throw linksError
     }
+
+    const anuncioAtual = await buscarAnuncioBasico(anuncioId)
+
+    await logAdminAction({
+      request,
+      adminUser: auth.user,
+      action: action === 'update' ? 'update' : 'create',
+      entity: 'anuncios',
+      entityId: anuncioId,
+      description: action === 'update' ? 'Atualizou um anúncio' : 'Criou um novo anúncio',
+      metadata: {
+        anuncio_id: anuncioId,
+        titulo_anterior: anuncioAntes?.titulo || null,
+        titulo_atual: anuncioAtual?.titulo || payload.titulo,
+        cliente_id_anterior: anuncioAntes?.cliente_id || null,
+        cliente_id_atual: anuncioAtual?.cliente_id || payload.cliente_id,
+        tipo_media_anterior: anuncioAntes?.tipo_media || null,
+        tipo_media_atual: anuncioAtual?.tipo_media || payload.tipo_media,
+        ativo_anterior: anuncioAntes?.ativo ?? null,
+        ativo_atual: anuncioAtual?.ativo ?? payload.ativo,
+        duracao_anterior: anuncioAntes?.duracao_segundos || null,
+        duracao_atual: anuncioAtual?.duracao_segundos || payload.duracao_segundos,
+        estado_anterior: anuncioAntes?.estado || null,
+        estado_atual: anuncioAtual?.estado || payload.estado,
+        cidade_anterior: anuncioAntes?.cidade || null,
+        cidade_atual: anuncioAtual?.cidade || payload.cidade,
+        hotspot_ids_anteriores: hotspotIdsAntes,
+        hotspot_ids_atuais: hotspotIds,
+        alterou_vinculos_hotspots: JSON.stringify(hotspotIdsAntes.sort()) !== JSON.stringify([...hotspotIds].sort()),
+      },
+    })
 
     return NextResponse.json({
       ok: true,
