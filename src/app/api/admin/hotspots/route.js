@@ -5,11 +5,15 @@
 //
 // Agora:
 // Dashboard → API admin → valida admin → service_role → Supabase
+//
+// Auditoria:
+// - Registra criação, edição e exclusão de hotspots.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -127,12 +131,39 @@ export async function POST(request) {
         )
       }
 
+      // Busca dados básicos antes de excluir para registrar auditoria.
+      const { data: hotspotAntes, error: hotspotAntesError } = await supabaseAdmin
+        .from('hotspots')
+        .select('id, nome, slug, status, cidade, estado, endereco, parceiro')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (hotspotAntesError) throw hotspotAntesError
+
       const { error } = await supabaseAdmin
         .from('hotspots')
         .delete()
         .eq('id', id)
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'hotspots',
+        entityId: id,
+        description: 'Excluiu um hotspot',
+        metadata: {
+          hotspot_id: id,
+          nome: hotspotAntes?.nome || '',
+          slug: hotspotAntes?.slug || '',
+          status_anterior: hotspotAntes?.status || '',
+          cidade: hotspotAntes?.cidade || '',
+          estado: hotspotAntes?.estado || '',
+          parceiro: hotspotAntes?.parceiro || '',
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -160,6 +191,15 @@ export async function POST(request) {
         )
       }
 
+      // Busca dados básicos antes da alteração para comparação no log.
+      const { data: hotspotAntes, error: hotspotAntesError } = await supabaseAdmin
+        .from('hotspots')
+        .select('id, nome, slug, status, cidade, estado, endereco, parceiro')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (hotspotAntesError) throw hotspotAntesError
+
       // Atualiza o hotspot pelo servidor.
       const { data, error } = await supabaseAdmin
         .from('hotspots')
@@ -169,6 +209,30 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'update',
+        entity: 'hotspots',
+        entityId: data.id,
+        description: 'Atualizou um hotspot',
+        metadata: {
+          hotspot_id: data.id,
+          nome_anterior: hotspotAntes?.nome || '',
+          nome_atual: data.nome,
+          slug_anterior: hotspotAntes?.slug || '',
+          slug_atual: data.slug,
+          status_anterior: hotspotAntes?.status || '',
+          status_atual: data.status,
+          cidade_anterior: hotspotAntes?.cidade || '',
+          cidade_atual: data.cidade,
+          estado_anterior: hotspotAntes?.estado || '',
+          estado_atual: data.estado,
+          parceiro_anterior: hotspotAntes?.parceiro || '',
+          parceiro_atual: data.parceiro,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -186,6 +250,24 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'create',
+        entity: 'hotspots',
+        entityId: data.id,
+        description: 'Criou um novo hotspot',
+        metadata: {
+          hotspot_id: data.id,
+          nome: data.nome,
+          slug: data.slug,
+          status: data.status,
+          cidade: data.cidade,
+          estado: data.estado,
+          parceiro: data.parceiro,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
