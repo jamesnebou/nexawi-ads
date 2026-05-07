@@ -7,7 +7,13 @@
 // - auth.users
 //
 // Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Dashboard → API admin → valida admin → valida permissão → service_role → Supabase
+//
+// Permissões aplicadas:
+// - GET clientes: clientes.view
+// - Criar cliente: clientes.create
+// - Editar cliente: clientes.update
+// - Excluir cliente: clientes.delete
 //
 // Auditoria:
 // - Registra criação, edição e exclusão de clientes.
@@ -37,6 +43,16 @@ function sanitizeBusca(value = '') {
     .trim()
     .replace(/[%,()]/g, ' ')
     .replace(/\s+/g, ' ')
+}
+
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
 }
 
 function sanitizarClientePayload(cliente = {}) {
@@ -83,7 +99,11 @@ function validarCliente(payload) {
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  // Para listar clientes, o admin precisa ter permissão de visualização.
+  const auth = await requireAdmin(request, {
+    module: 'clientes',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -127,6 +147,7 @@ export async function GET(request) {
       ok: true,
       clientes: clientes || [],
       planos: planos || [],
+      permissions: auth.permissions?.clientes || {},
     })
   } catch (error) {
     return NextResponse.json(
@@ -140,6 +161,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  // Primeiro valida se é admin ativo.
+  // A permissão específica será validada conforme a ação: create/update/delete.
   const auth = await requireAdmin(request)
 
   if (auth.errorResponse) {
@@ -151,6 +174,11 @@ export async function POST(request) {
     const action = String(body.action || '').trim()
 
     if (action === 'delete') {
+      // Para excluir cliente, precisa de clientes.delete.
+      if (!auth.canAccess('clientes', 'delete')) {
+        return permissaoNegada('clientes', 'delete')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -210,6 +238,11 @@ export async function POST(request) {
     }
 
     if (action === 'update') {
+      // Para editar cliente, precisa de clientes.update.
+      if (!auth.canAccess('clientes', 'update')) {
+        return permissaoNegada('clientes', 'update')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -266,6 +299,11 @@ export async function POST(request) {
     }
 
     if (action === 'create') {
+      // Para criar cliente, precisa de clientes.create.
+      if (!auth.canAccess('clientes', 'create')) {
+        return permissaoNegada('clientes', 'create')
+      }
+
       // Cria credenciais de acesso do cliente pelo servidor.
       // Senha inicial: CPF/CNPJ, mantendo o comportamento atual.
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
