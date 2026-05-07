@@ -3,7 +3,8 @@
 // src/app/dashboard/equipe/page.js
 // ============================================================
 // Tela de Equipe/Admins.
-// Permite ao master controlar cargos, status e permissões.
+// Agora com permissões granulares por módulo e ação:
+// Ver, Criar, Editar, Excluir, Exportar, Ativar, Pausar, Marcar Pago.
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -19,10 +20,10 @@ import {
   Eye,
   Headphones,
   DollarSign,
-  Settings,
-  Lock,
   Check,
   X,
+  Lock,
+  Sparkles,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -44,18 +45,15 @@ const roleIcons = {
   viewer: Eye,
 }
 
-const permissionLabels = {
-  dashboard: 'Dashboard',
-  clientes: 'Clientes',
-  hotspots: 'Hotspots',
-  anuncios: 'Anúncios',
-  financeiro: 'Financeiro',
-  planos: 'Planos',
-  leads: 'Leads',
-  relatorios: 'Relatórios',
-  auditoria: 'Auditoria',
-  configuracoes: 'Configurações',
-  usuarios_admin: 'Equipe/Admins',
+const actionLabels = {
+  view: 'Ver',
+  create: 'Criar',
+  update: 'Editar',
+  delete: 'Excluir',
+  export: 'Exportar',
+  activate: 'Ativar',
+  pause: 'Pausar',
+  mark_paid: 'Marcar pago',
 }
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
@@ -75,10 +73,18 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await response.json()
+  const text = await response.text()
+
+  let data = null
+
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Erro na API administrativa')
+    throw new Error(data?.error || 'Erro na API administrativa')
   }
 
   return data
@@ -87,7 +93,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 export default function EquipePage() {
   const [admins, setAdmins] = useState([])
   const [roles, setRoles] = useState(['master', 'admin', 'suporte', 'financeiro', 'viewer'])
-  const [permissoes, setPermissoes] = useState([])
+  const [modules, setModules] = useState([])
   const [loading, setLoading] = useState(true)
   const [salvando, setSalvando] = useState('')
   const [busca, setBusca] = useState('')
@@ -109,7 +115,7 @@ export default function EquipePage() {
 
       setAdmins(data.admins || [])
       setRoles(data.roles || roles)
-      setPermissoes(data.permissoes || [])
+      setModules(data.modules || [])
     } catch (error) {
       console.error('Erro ao buscar equipe:', error)
       toast.error(error.message || 'Erro ao carregar equipe.')
@@ -128,13 +134,17 @@ export default function EquipePage() {
     )
   }
 
-  function togglePermissao(admin, key) {
+  function togglePermissao(admin, moduleKey, actionKey) {
     const current = admin.permissions || {}
+    const currentModule = current[moduleKey] || {}
 
     atualizarAdminLocal(admin.user_id, {
       permissions: {
         ...current,
-        [key]: !current[key],
+        [moduleKey]: {
+          ...currentModule,
+          [actionKey]: !Boolean(currentModule[actionKey]),
+        },
       },
     })
   }
@@ -198,6 +208,7 @@ export default function EquipePage() {
 
   const adminsFiltrados = admins.filter((admin) => {
     const term = busca.toLowerCase().trim()
+
     if (!term) return true
 
     return (
@@ -231,7 +242,7 @@ export default function EquipePage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              Controle master de administradores, cargos e permissões
+              Controle master de administradores, cargos e permissões por ação
             </p>
           </div>
 
@@ -246,18 +257,20 @@ export default function EquipePage() {
 
         <form
           onSubmit={adicionarAdmin}
-          className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-5 mb-8 grid grid-cols-1 lg:grid-cols-4 gap-4"
+          className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-5 mb-8 grid grid-cols-1 xl:grid-cols-[2fr_1fr_220px] gap-4 items-end"
         >
-          <div className="lg:col-span-2">
+          <div>
             <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-3">
               Adicionar administrador existente
             </label>
+
             <input
               value={novoAdmin.email}
               onChange={(e) => setNovoAdmin({ ...novoAdmin, email: e.target.value })}
               placeholder="email@dominio.com"
               className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-700 focus:outline-none focus:border-[#6be12f]/40"
             />
+
             <p className="text-xs text-neutral-600 mt-2">
               O usuário precisa existir em Supabase Authentication &gt; Users.
             </p>
@@ -267,6 +280,7 @@ export default function EquipePage() {
             <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-3">
               Cargo
             </label>
+
             <select
               value={novoAdmin.role}
               onChange={(e) => setNovoAdmin({ ...novoAdmin, role: e.target.value })}
@@ -280,20 +294,19 @@ export default function EquipePage() {
             </select>
           </div>
 
-          <div className="flex items-end">
-            <button
-              type="submit"
-              disabled={salvando === 'novo'}
-              className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 text-black font-extrabold py-4 rounded-2xl text-sm flex items-center justify-center gap-2 transition-all"
-            >
-              <UserPlus size={17} />
-              Adicionar
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={salvando === 'novo'}
+            className="h-[54px] w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 text-black font-extrabold rounded-2xl text-base flex items-center justify-center gap-2 transition-all shadow-[0_0_26px_rgba(107,225,47,0.18)]"
+          >
+            <UserPlus size={19} />
+            Adicionar
+          </button>
         </form>
 
         <div className="relative mb-8">
           <Search size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-neutral-600" />
+
           <input
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
@@ -307,7 +320,7 @@ export default function EquipePage() {
             <div className="w-14 h-14 border-t-2 border-[#6be12f]/60 rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="space-y-6">
             {adminsFiltrados.map((admin) => {
               const RoleIcon = roleIcons[admin.role] || ShieldCheck
 
@@ -316,7 +329,7 @@ export default function EquipePage() {
                   key={admin.user_id}
                   className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] p-6 hover:border-white/[0.1] transition-all"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 mb-6">
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5 mb-6">
                     <div className="flex items-center gap-4 min-w-0">
                       <div className="w-12 h-12 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0">
                         <RoleIcon size={21} className="text-[#8cf059]" />
@@ -326,13 +339,14 @@ export default function EquipePage() {
                         <p className="text-white font-bold truncate">
                           {admin.email}
                         </p>
+
                         <p className="text-xs text-neutral-500 mt-1">
                           {admin.active ? 'Ativo' : 'Inativo'} · {roleLabels[admin.role] || admin.role}
                         </p>
                       </div>
                     </div>
 
-                    <span
+                    <div
                       className={`text-[10px] uppercase tracking-widest font-extrabold px-3 py-1.5 rounded-lg border w-fit ${
                         admin.active
                           ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20'
@@ -340,10 +354,10 @@ export default function EquipePage() {
                       }`}
                     >
                       {admin.active ? 'Ativo' : 'Bloqueado'}
-                    </span>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-7">
                     <div>
                       <label className="block text-xs font-bold uppercase tracking-widest text-neutral-500 mb-3">
                         Cargo
@@ -390,33 +404,51 @@ export default function EquipePage() {
                     </div>
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-7">
                     <div className="flex items-center gap-2 mb-4">
                       <Lock size={15} className="text-neutral-500" />
+
                       <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
-                        Permissões
+                        Permissões por módulo e ação
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {permissoes.map((key) => {
-                        const ativo = Boolean(admin.permissions?.[key])
+                    <div className="space-y-3">
+                      {modules.map((modulo) => (
+                        <div
+                          key={modulo.key}
+                          className="bg-white/[0.015] border border-white/[0.05] rounded-2xl p-4"
+                        >
+                          <div className="flex items-center gap-2 mb-3">
+                            <Sparkles size={14} className="text-[#8cf059]" />
 
-                        return (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => togglePermissao(admin, key)}
-                            className={`px-3 py-2.5 rounded-xl text-[11px] font-bold border transition-all ${
-                              ativo
-                                ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20'
-                                : 'bg-white/[0.02] text-neutral-500 border-white/[0.05]'
-                            }`}
-                          >
-                            {permissionLabels[key] || key}
-                          </button>
-                        )
-                      })}
+                            <p className="text-sm font-extrabold text-white">
+                              {modulo.label}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-2">
+                            {modulo.actions.map((actionKey) => {
+                              const ativo = Boolean(admin.permissions?.[modulo.key]?.[actionKey])
+
+                              return (
+                                <button
+                                  key={`${modulo.key}-${actionKey}`}
+                                  type="button"
+                                  onClick={() => togglePermissao(admin, modulo.key, actionKey)}
+                                  className={`px-3 py-2.5 rounded-xl text-[11px] font-bold border transition-all ${
+                                    ativo
+                                      ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20'
+                                      : 'bg-[#050505] text-neutral-500 border-white/[0.05] hover:text-white'
+                                  }`}
+                                >
+                                  {actionLabels[actionKey] || actionKey}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
