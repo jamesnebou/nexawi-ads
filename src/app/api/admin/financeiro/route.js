@@ -1,0 +1,471 @@
+// src/app/api/admin/financeiro/route.js
+// ============================================================
+// API administrativa segura para a aba Financeiro.
+// Substitui o acesso direto do navegador às tabelas:
+// - pagamentos
+// - clientes
+// - planos
+//
+// Agora:
+// Dashboard → API admin → valida admin → service_role → Supabase
+// ============================================================
+
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+import { requireAdmin } from '@/lib/admin-api-auth'
+
+export const runtime = 'nodejs'
+
+const STATUS_VALIDOS = [
+  'Pendente',
+  'Pago',
+  'Vencido',
+  'Cancelado',
+  'Em negociação',
+  'Isento',
+  'Estornado',
+]
+
+const METODOS_VALIDOS = [
+  'PIX',
+  'Cartão de Crédito',
+  'Boleto',
+  'Dinheiro',
+  'Transferência',
+  'Outro',
+]
+
+function limparTexto(value = '') {
+  return String(value || '').trim()
+}
+
+function sanitizeBusca(value = '') {
+  // Evita quebrar filtros e remove caracteres problemáticos.
+  return String(value || '')
+    .trim()
+    .replace(/[%,()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .toLowerCase()
+}
+
+function hojeISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function inicioMesAtual() {
+  const hoje = new Date()
+  return new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().slice(0, 10)
+}
+
+function fimMesAtual() {
+  const hoje = new Date()
+  return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().slice(0, 10)
+}
+
+function isDataVencida(dataVencimento) {
+  if (!dataVencimento) return false
+
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+
+  const vencimento = new Date(`${dataVencimento}T12:00:00`)
+  vencimento.setHours(0, 0, 0, 0)
+
+  return vencimento < hoje
+}
+
+function statusCalculado(pagamento) {
+  // Mantém status especiais como estão.
+  if (['Pago', 'Cancelado', 'Isento', 'Estornado', 'Em negociação'].includes(pagamento.status)) {
+    return pagamento.status
+  }
+
+  // Se está pendente e passou do vencimento, exibimos como vencido.
+  if (pagamento.status === 'Pendente' && isDataVencida(pagamento.data_vencimento)) {
+    return 'Vencido'
+  }
+
+  return pagamento.status || 'Pendente'
+}
+
+function sanitizarPagamentoPayload(pagamento = {}) {
+  const valor = Number(String(pagamento.valor || '').replace(',', '.'))
+
+  const status = STATUS_VALIDOS.includes(pagamento.status)
+    ? pagamento.status
+    : 'Pendente'
+
+  const metodo = pagamento.metodo_pagamento && METODOS_VALIDOS.includes(pagamento.metodo_pagamento)
+    ? pagamento.metodo_pagamento
+    : pagamento.metodo_pagamento
+      ? 'Outro'
+      : null
+
+  const payload = {
+    cliente_id: pagamento.cliente_id ? String(pagamento.cliente_id) : '',
+    plano_id: pagamento.plano_id ? String(pagamento.plano_id) : null,
+    valor: Number.isFinite(valor) ? valor : 0,
+    data_vencimento: pagamento.data_vencimento || '',
+    data_pagamento: pagamento.data_pagamento || null,
+    metodo_pagamento: metodo,
+    status,
+    observacao: limparTexto(pagamento.observacao) || null,
+  }
+
+  // Regra de conveniência:
+  // Se marcou como pago e não informou data, coloca hoje.
+  if (payload.status === 'Pago' && !payload.data_pagamento) {
+    payload.data_pagamento = hojeISO()
+  }
+
+  // Se não está pago, data_pagamento não deve ser obrigatória.
+  if (payload.status !== 'Pago' && !payload.data_pagamento) {
+    payload.data_pagamento = null
+  }
+
+  return payload
+}
+
+function validarPagamento(payload) {
+  if (!payload.cliente_id) return 'Cliente é obrigatório'
+  if (!payload.valor || payload.valor <= 0) return 'Valor precisa ser maior que zero'
+  if (!payload.data_vencimento) return 'Data de vencimento é obrigatória'
+  return ''
+}
+
+function aplicarFiltroPeriodo(pagamentos, periodo) {
+  const hoje = new Date()
+  hoje.setHours(0, 0, 0, 0)
+
+  const inicioMes = inicioMesAtual()
+  const fimMes = fimMesAtual()
+
+  if (periodo === 'mes_atual') {
+    return pagamentos.filter((p) =>
+      p.data_vencimento >= inicioMes &&
+      p.data_vencimento <= fimMes
+    )
+  }
+
+  if (periodo === 'ultimos_30') {
+    const dataInicio = new Date()
+    dataInicio.setDate(dataInicio.getDate() - 30)
+    const isoInicio = dataInicio.toISOString().slice(0, 10)
+
+    return pagamentos.filter((p) => p.data_vencimento >= isoInicio)
+  }
+
+  if (periodo === 'proximos_30') {
+    const dataFim = new Date()
+    dataFim.setDate(dataFim.getDate() + 30)
+    const isoFim = dataFim.toISOString().slice(0, 10)
+    const isoHoje = hoje.toISOString().slice(0, 10)
+
+    return pagamentos.filter((p) =>
+      p.data_vencimento >= isoHoje &&
+      p.data_vencimento <= isoFim
+    )
+  }
+
+  return pagamentos
+}
+
+function calcularMetricas({ pagamentosTodos, clientes }) {
+  const inicioMes = inicioMesAtual()
+  const fimMes = fimMesAtual()
+  const hoje = hojeISO()
+
+  const pagamentosComStatus = pagamentosTodos.map((p) => ({
+    ...p,
+    status_calculado: statusCalculado(p),
+  }))
+
+  const recebidosMes = pagamentosComStatus.filter((p) =>
+    p.status === 'Pago' &&
+    p.data_pagamento &&
+    p.data_pagamento >= inicioMes &&
+    p.data_pagamento <= fimMes
+  )
+
+  const previstosMes = pagamentosComStatus.filter((p) =>
+    p.data_vencimento &&
+    p.data_vencimento >= inicioMes &&
+    p.data_vencimento <= fimMes &&
+    !['Cancelado', 'Estornado'].includes(p.status)
+  )
+
+  const pendentesMes = pagamentosComStatus.filter((p) =>
+    p.status_calculado === 'Pendente' &&
+    p.data_vencimento &&
+    p.data_vencimento >= inicioMes &&
+    p.data_vencimento <= fimMes
+  )
+
+  const vencidos = pagamentosComStatus.filter((p) =>
+    p.status_calculado === 'Vencido'
+  )
+
+  const recebidosHoje = pagamentosComStatus.filter((p) =>
+    p.status === 'Pago' &&
+    p.data_pagamento === hoje
+  )
+
+  const clientesAtivos = (clientes || []).filter((c) => c.status === 'Ativo')
+
+  const mrr = clientesAtivos.reduce((acc, cliente) => {
+    const preco = Number(cliente.planos?.preco || 0)
+    return acc + preco
+  }, 0)
+
+  const clientesComPlano = clientesAtivos.filter((c) => Number(c.planos?.preco || 0) > 0)
+  const ticketMedio = clientesComPlano.length > 0 ? mrr / clientesComPlano.length : 0
+
+  const clientesInadimplentes = new Set(
+    vencidos
+      .map((p) => p.cliente_id)
+      .filter(Boolean)
+  ).size
+
+  return {
+    recebidoMes: recebidosMes.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+    previstoMes: previstosMes.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+    pendenteMes: pendentesMes.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+    vencidoTotal: vencidos.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+    recebidoHoje: recebidosHoje.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+    mrr,
+    ticketMedio,
+    clientesInadimplentes,
+    totalPagamentos: pagamentosComStatus.length,
+  }
+}
+
+export async function GET(request) {
+  const auth = await requireAdmin(request)
+
+  if (auth.errorResponse) {
+    return auth.errorResponse
+  }
+
+  try {
+    const { searchParams } = new URL(request.url)
+
+    const busca = sanitizeBusca(searchParams.get('busca') || '')
+    const status = searchParams.get('status') || 'Todos'
+    const periodo = searchParams.get('periodo') || 'todos'
+
+    const [
+      { data: clientes, error: clientesError },
+      { data: planos, error: planosError },
+      { data: pagamentos, error: pagamentosError },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('clientes')
+        .select('id, nome, status, plano_id, planos(id, nome, preco)')
+        .order('nome'),
+
+      supabaseAdmin
+        .from('planos')
+        .select('id, nome, preco')
+        .order('nome'),
+
+      supabaseAdmin
+        .from('pagamentos')
+        .select('*, clientes(id, nome), planos(id, nome, preco)')
+        .order('data_vencimento', { ascending: false }),
+    ])
+
+    if (clientesError) throw clientesError
+    if (planosError) throw planosError
+    if (pagamentosError) throw pagamentosError
+
+    const pagamentosComStatus = (pagamentos || []).map((p) => ({
+      ...p,
+      status_calculado: statusCalculado(p),
+    }))
+
+    const metricas = calcularMetricas({
+      pagamentosTodos: pagamentosComStatus,
+      clientes: clientes || [],
+    })
+
+    let filtrados = aplicarFiltroPeriodo(pagamentosComStatus, periodo)
+
+    if (status !== 'Todos') {
+      filtrados = filtrados.filter((p) => p.status_calculado === status)
+    }
+
+    if (busca) {
+      filtrados = filtrados.filter((p) => {
+        const cliente = String(p.clientes?.nome || '').toLowerCase()
+        const plano = String(p.planos?.nome || '').toLowerCase()
+        const valor = String(p.valor || '').toLowerCase()
+        const metodo = String(p.metodo_pagamento || '').toLowerCase()
+        const obs = String(p.observacao || '').toLowerCase()
+
+        return (
+          cliente.includes(busca) ||
+          plano.includes(busca) ||
+          valor.includes(busca) ||
+          metodo.includes(busca) ||
+          obs.includes(busca)
+        )
+      })
+    }
+
+    return NextResponse.json({
+      ok: true,
+      pagamentos: filtrados,
+      clientes: clientes || [],
+      planos: planos || [],
+      metricas,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Erro ao buscar financeiro',
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request) {
+  const auth = await requireAdmin(request)
+
+  if (auth.errorResponse) {
+    return auth.errorResponse
+  }
+
+  try {
+    const body = await request.json()
+    const action = String(body.action || '').trim()
+
+    if (action === 'delete') {
+      const id = String(body.id || '').trim()
+
+      if (!id) {
+        return NextResponse.json(
+          { ok: false, error: 'ID do pagamento é obrigatório' },
+          { status: 400 }
+        )
+      }
+
+      const { error } = await supabaseAdmin
+        .from('pagamentos')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      return NextResponse.json({
+        ok: true,
+        message: 'Pagamento excluído com sucesso',
+      })
+    }
+
+    if (action === 'mark_paid') {
+      const id = String(body.id || '').trim()
+
+      if (!id) {
+        return NextResponse.json(
+          { ok: false, error: 'ID do pagamento é obrigatório' },
+          { status: 400 }
+        )
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('pagamentos')
+        .update({
+          status: 'Pago',
+          data_pagamento: hojeISO(),
+          metodo_pagamento: body.metodo_pagamento || 'PIX',
+        })
+        .eq('id', id)
+        .select('*, clientes(id, nome), planos(id, nome, preco)')
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        ok: true,
+        pagamento: {
+          ...data,
+          status_calculado: statusCalculado(data),
+        },
+        message: 'Pagamento marcado como pago',
+      })
+    }
+
+    const payload = sanitizarPagamentoPayload(body.pagamento || {})
+    const erroValidacao = validarPagamento(payload)
+
+    if (erroValidacao) {
+      return NextResponse.json(
+        { ok: false, error: erroValidacao },
+        { status: 400 }
+      )
+    }
+
+    if (action === 'update') {
+      const id = String(body.id || '').trim()
+
+      if (!id) {
+        return NextResponse.json(
+          { ok: false, error: 'ID do pagamento é obrigatório' },
+          { status: 400 }
+        )
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from('pagamentos')
+        .update(payload)
+        .eq('id', id)
+        .select('*, clientes(id, nome), planos(id, nome, preco)')
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        ok: true,
+        pagamento: {
+          ...data,
+          status_calculado: statusCalculado(data),
+        },
+        message: 'Pagamento atualizado com sucesso',
+      })
+    }
+
+    if (action === 'create') {
+      const { data, error } = await supabaseAdmin
+        .from('pagamentos')
+        .insert([payload])
+        .select('*, clientes(id, nome), planos(id, nome, preco)')
+        .single()
+
+      if (error) throw error
+
+      return NextResponse.json({
+        ok: true,
+        pagamento: {
+          ...data,
+          status_calculado: statusCalculado(data),
+        },
+        message: 'Pagamento registrado com sucesso',
+      })
+    }
+
+    return NextResponse.json(
+      { ok: false, error: 'Ação inválida' },
+      { status: 400 }
+    )
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Erro ao salvar financeiro',
+      },
+      { status: 500 }
+    )
+  }
+}
