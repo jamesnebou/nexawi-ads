@@ -408,22 +408,7 @@ ciclo_cobranca: 'mensal',
     </span>
   </div>
 
-  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-    {ciclosCobranca.map((ciclo) => (
-      <button
-        key={ciclo.value}
-        type="button"
-        onClick={() => setForm({ ...form, ciclo_cobranca: ciclo.value })}
-        className={`px-3 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${
-          form.ciclo_cobranca === ciclo.value
-            ? 'bg-[#6be12f] text-black shadow-[0_0_20px_rgba(107,225,47,0.25)]'
-            : 'bg-[#050505] text-neutral-500 hover:text-white hover:bg-white/[0.03] border border-white/[0.05]'
-        }`}
-      >
-        {ciclo.label}
-      </button>
-    ))}
-  </div>
+  
 
   {/* Alternador dentro do modal.
       Define se o plano será mensal, trimestral, semestral ou anual. */}
