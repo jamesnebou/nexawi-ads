@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Wifi, Plus, Search, Pencil, Trash2, X, Check, MapPin } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado.
+// As operações sensíveis agora passam por /api/admin/hotspots.
+const supabase = createBrowserSupabaseClient()
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
 
@@ -16,6 +15,38 @@ const corStatus = (status) => {
   if (status === 'Ativo') return 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
   if (status === 'Inativo') return 'bg-red-500/10 text-red-400 border border-red-500/20'
   return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20' // Manutenção
+}
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
 }
 
 export default function Hotspots() {
@@ -61,23 +92,27 @@ export default function Hotspots() {
     buscarDados()
   }, [busca, filtroStatus])
 
-  async function buscarDados() {
+    async function buscarDados() {
     setCarregando(true)
-    let query = supabase.from('hotspots').select('*').order('created_at', { ascending: false })
 
-    if (filtroStatus !== 'Todos') query = query.eq('status', filtroStatus)
-    if (busca) query = query.or(`nome.ilike.%${busca}%,cidade.ilike.%${busca}%,parceiro.ilike.%${busca}%`)
+    try {
+      // Agora a aba Hotspots não busca mais direto na tabela hotspots.
+      // Ela chama uma API protegida, que valida admin e usa service_role no servidor.
+      const params = new URLSearchParams()
 
-    const { data, error } = await query
-    if (error) {
+      if (busca) params.set('busca', busca)
+      if (filtroStatus) params.set('status', filtroStatus)
+
+      const data = await adminApiFetch(`/api/admin/hotspots?${params.toString()}`)
+
+      setHotspots(data.hotspots || [])
+    } catch (error) {
       console.error('Erro ao buscar hotspots:', error)
-      toast.error('Erro ao carregar hotspots.')
-    } else {
-      setHotspots(data || [])
+      toast.error(error.message || 'Erro ao carregar hotspots.')
+    } finally {
+      setCarregando(false)
     }
-    setCarregando(false)
   }
-
   function abrirModal(hotspot = null) {
     if (hotspot) {
       setHotspotSelecionado(hotspot)
@@ -101,34 +136,69 @@ export default function Hotspots() {
     setHotspotSelecionado(null)
   }
 
-  async function salvarHotspot() {
-    if (!form.nome.trim()) return
+    async function salvarHotspot() {
+    if (!form.nome.trim()) {
+      toast.error('Informe o nome do hotspot.')
+      return
+    }
+
     setSalvando(true)
 
-    const { error } = hotspotSelecionado
-      ? await supabase.from('hotspots').update(form).eq('id', hotspotSelecionado.id)
-      : await supabase.from('hotspots').insert([form])
+    try {
+      if (hotspotSelecionado) {
+        // Atualização via API protegida.
+        await adminApiFetch('/api/admin/hotspots', {
+          method: 'POST',
+          body: {
+            action: 'update',
+            id: hotspotSelecionado.id,
+            hotspot: form,
+          },
+        })
 
-    if (error) {
-      console.error('Erro ao salvar hotspot:', error)
-      toast.error('Erro ao salvar hotspot.')
-    } else {
-      toast.success(hotspotSelecionado ? 'Hotspot atualizado!' : 'Hotspot criado!')
+        toast.success('Hotspot atualizado!')
+      } else {
+        // Criação via API protegida.
+        await adminApiFetch('/api/admin/hotspots', {
+          method: 'POST',
+          body: {
+            action: 'create',
+            hotspot: form,
+          },
+        })
+
+        toast.success('Hotspot criado!')
+      }
+
       await buscarDados()
       fecharModal()
+    } catch (error) {
+      console.error('Erro ao salvar hotspot:', error)
+      toast.error(error.message || 'Erro ao salvar hotspot.')
+    } finally {
+      setSalvando(false)
     }
-    setSalvando(false)
   }
 
-  async function excluirHotspot(id) {
-    const { error } = await supabase.from('hotspots').delete().eq('id', id)
-    if (error) {
-      console.error('Erro ao excluir hotspot:', error)
-      toast.error('Erro ao excluir hotspot.')
-    } else {
+    async function excluirHotspot(id) {
+    try {
+      // Exclusão via API protegida.
+      // Atenção: se houver anúncios, leads ou sessões vinculadas,
+      // o banco pode impedir a exclusão por integridade referencial.
+      await adminApiFetch('/api/admin/hotspots', {
+        method: 'POST',
+        body: {
+          action: 'delete',
+          id,
+        },
+      })
+
       toast.success('Hotspot excluído com sucesso!')
       setConfirmDelete(null)
       await buscarDados()
+    } catch (error) {
+      console.error('Erro ao excluir hotspot:', error)
+      toast.error(error.message || 'Erro ao excluir hotspot. Verifique se há vínculos com anúncios, leads ou sessões.')
     }
   }
 

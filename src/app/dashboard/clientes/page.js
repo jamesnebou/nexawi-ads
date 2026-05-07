@@ -100,25 +100,27 @@ export default function Clientes() {
     buscarDados()
   }, [busca, filtroStatus])
 
-  async function buscarDados() {
+    async function buscarDados() {
     setCarregando(true)
 
-    const { data: planosData } = await supabase.from('planos').select('id, nome').order('nome')
-    if (planosData) setPlanos(planosData)
+    try {
+      // Agora a aba Clientes não busca mais direto nas tabelas.
+      // Ela chama a API protegida, que valida o admin e usa service_role no servidor.
+      const params = new URLSearchParams()
 
-    let query = supabase.from('clientes').select('*, planos(nome)').order('created_at', { ascending: false })
+      if (busca) params.set('busca', busca)
+      if (filtroStatus) params.set('status', filtroStatus)
 
-    if (filtroStatus !== 'Todos') query = query.eq('status', filtroStatus)
-    if (busca) query = query.or(`nome.ilike.%${busca}%,nome_empresa.ilike.%${busca}%,email.ilike.%${busca}%,cpf_cnpj.ilike.%${busca}%`)
+      const data = await adminApiFetch(`/api/admin/clientes?${params.toString()}`)
 
-    const { data, error } = await query
-    if (error) {
+      setPlanos(data.planos || [])
+      setClientes(data.clientes || [])
+    } catch (error) {
       console.error('Erro ao buscar clientes:', error)
-      toast.error('Erro ao carregar clientes.')
-    } else {
-      setClientes(data || [])
+      toast.error(error.message || 'Erro ao carregar clientes.')
+    } finally {
+      setCarregando(false)
     }
-    setCarregando(false)
   }
 
   const validarCpfCnpj = (valor) => {
@@ -198,43 +200,60 @@ export default function Clientes() {
     setClienteSelecionado(null)
   }
 
-  async function salvarCliente() {
+    async function salvarCliente() {
     if (cpfCnpjError || telefoneError || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError) {
       toast.error('Corrija os erros no formulário antes de salvar.')
       return
     }
-    // E-mail agora é obrigatório na validação
-    if (!form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim() || !form.email.trim()) {
+
+    // E-mail agora continua obrigatório, mas a criação do usuário Auth
+    // será feita no servidor, não mais pelo navegador.
+    if (
+      !form.nome.trim() ||
+      !form.nome_empresa.trim() ||
+      !form.nome_responsavel.trim() ||
+      !form.telefone.trim() ||
+      !form.cpf_cnpj.trim() ||
+      !form.email.trim()
+    ) {
       toast.error('Preencha todos os campos obrigatórios, incluindo o E-mail.')
       return
     }
 
     setSalvando(true)
-    const dadosParaSalvar = { ...form, plano_id: form.plano_id || null }
+
+    const dadosParaSalvar = {
+      ...form,
+      plano_id: form.plano_id || null,
+    }
 
     try {
       if (clienteSelecionado) {
-        // Apenas atualiza os dados na tabela (não mexe na senha aqui)
-        const { error } = await supabase.from('clientes').update(dadosParaSalvar).eq('id', clienteSelecionado.id)
-        if (error) throw error
-        toast.success('Cliente atualizado com sucesso!')
-      } else {
-        // 1. CRIA O USUÁRIO NO SUPABASE AUTH (Login: Email / Senha: CPF)
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: form.email,
-          password: form.cpf_cnpj,
+        // Atualização via API protegida.
+        await adminApiFetch('/api/admin/clientes', {
+          method: 'POST',
+          body: {
+            action: 'update',
+            id: clienteSelecionado.id,
+            cliente: dadosParaSalvar,
+          },
         })
 
-        if (authError) {
-          throw new Error('Erro ao criar credenciais de acesso: ' + authError.message)
-        }
-
-        // 2. SALVA OS DADOS NA TABELA CLIENTES
-        const { error } = await supabase.from('clientes').insert([dadosParaSalvar])
-        if (error) throw error
+        toast.success('Cliente atualizado com sucesso!')
+      } else {
+        // Criação via API protegida.
+        // A API cria o usuário no Supabase Auth e depois salva na tabela clientes.
+        await adminApiFetch('/api/admin/clientes', {
+          method: 'POST',
+          body: {
+            action: 'create',
+            cliente: dadosParaSalvar,
+          },
+        })
 
         toast.success('Cliente cadastrado e acesso criado com sucesso!')
       }
+
       fecharModal()
       buscarDados()
     } catch (error) {
@@ -245,16 +264,25 @@ export default function Clientes() {
     }
   }
 
-  async function excluirCliente(id) {
+    async function excluirCliente(id) {
     try {
-      const { error } = await supabase.from('clientes').delete().eq('id', id)
-      if (error) throw error
+      // Exclusão via API protegida.
+      // Não exclui o usuário do Supabase Auth por enquanto.
+      // Se quiser, depois criamos vínculo cliente → auth_user_id para remover ambos.
+      await adminApiFetch('/api/admin/clientes', {
+        method: 'POST',
+        body: {
+          action: 'delete',
+          id,
+        },
+      })
+
       toast.success('Cliente excluído com sucesso!')
       setConfirmDelete(null)
       buscarDados()
     } catch (error) {
       console.error('Erro ao excluir:', error)
-      toast.error('Erro ao excluir cliente. Verifique se há dependências.')
+      toast.error(error.message || 'Erro ao excluir cliente. Verifique se há dependências.')
     }
   }
 
