@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 import {
   User,
   Mail,
@@ -19,10 +18,6 @@ import {
 } from 'lucide-react'
 import { controlApiFetch } from '@/lib/control-api-client'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
 
 const ETAPAS = {
   LOADING: 'loading',
@@ -73,6 +68,28 @@ function normalizarUrlDestino(url = '') {
   }
 
   return `https://${valor}`
+}
+
+
+// Chamada padrão para as APIs seguras do portal.
+// Assim o componente público não acessa mais tabelas sensíveis direto no Supabase.
+async function portalApiFetch(path, payload = {}) {
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    cache: 'no-store',
+    body: JSON.stringify(payload),
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || `Falha na API ${path}`)
+  }
+
+  return data
 }
 
 
@@ -209,91 +226,46 @@ export default function Portal() {
   }
 
   async function carregarHotspotEAnuncios() {
-    try {
-      let hotspotData = null
+  try {
+    const data = await portalApiFetch('/api/portal/bootstrap', {
+      slug,
+    })
 
-      const { data: porSlug, error: erroSlug } = await supabase
-        .from('hotspots')
-        .select('*')
-        .eq('slug', slug)
-        .single()
-
-      if (!erroSlug && porSlug) {
-        hotspotData = porSlug
-      } else {
-        const { data: porNome, error: erroNome } = await supabase
-          .from('hotspots')
-          .select('*')
-          .eq('nome', slug)
-          .single()
-
-        if (!erroNome && porNome) {
-          hotspotData = porNome
-        }
-      }
-
-      if (!hotspotData) {
-        falhar('Hotspot não encontrado', `slug recebido: ${slug}`)
-        return null
-      }
-
-      setHotspot(hotspotData)
-
-      const { data: vinculos, error: erroVinculos } = await supabase
-        .from('anuncio_hotspots')
-        .select('anuncio_id')
-        .eq('hotspot_id', hotspotData.id)
-
-      if (erroVinculos) {
-        throw erroVinculos
-      }
-
-      if (vinculos && vinculos.length > 0) {
-        const anuncioIds = vinculos.map((v) => v.anuncio_id)
-
-        const { data: anunciosData, error: erroAnuncios } = await supabase
-          .from('anuncios')
-          .select('*')
-          .in('id', anuncioIds)
-          .eq('ativo', true)
-
-        if (erroAnuncios) throw erroAnuncios
-        setAnuncios(anunciosData || [])
-      } else {
-        setAnuncios([])
-      }
-
-      return hotspotData
-    } catch (error) {
-      falhar('Erro ao carregar hotspot', error)
+    if (!data.hotspot) {
+      falhar('Hotspot não encontrado', `slug recebido: ${slug}`)
       return null
     }
+
+    setHotspot(data.hotspot)
+    setAnuncios(data.anuncios || [])
+
+    return data.hotspot
+  } catch (error) {
+    falhar('Erro ao carregar hotspot', error)
+    return null
   }
+}
 
   async function buscarLeadRapidoDoMes(hotspotId, mac) {
-    try {
-      if (!hotspotId || !mac) return null
+  try {
+    if (!hotspotId || !mac) return null
 
-      const { inicio, fim } = getMesAtualRange()
+    const data = await portalApiFetch('/api/portal/lead/quick', {
+      hotspotId,
+      macAddress: mac,
+    })
 
-      const { data, error } = await supabase
-        .from('leads')
-        .select('*')
-        .eq('hotspot_id', hotspotId)
-        .eq('mac_address', mac)
-        .gte('created_at', inicio)
-        .lt('created_at', fim)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+    if (!data.found || !data.lead) return null
 
-      if (error) throw error
-      return data || null
-    } catch (error) {
-      console.error('Erro ao buscar lead rápido:', error)
-      return null
+    return {
+      id: data.lead.id,
+      nome: data.lead.nome || '',
     }
+  } catch (error) {
+    console.error('Erro ao buscar lead rápido:', error)
+    return null
   }
+}
 
   async function consultarStatusSessao(hotspotSlug, clientMac = '') {
     try {
@@ -390,47 +362,24 @@ export default function Portal() {
   }
 
   async function registrarVisualizacao(anuncioId, ip) {
-    try {
-      const hoje = new Date().toISOString().split('T')[0]
-      const { data: existing } = await supabase
-        .from('anuncio_views')
-        .select('id')
-        .eq('anuncio_id', anuncioId)
-        .eq('ip_address', ip)
-        .gte('timestamp', `${hoje}T00:00:00.000Z`)
-        .limit(1)
-
-      if (!existing || existing.length === 0) {
-        await supabase.from('anuncio_views').insert([{ anuncio_id: anuncioId, ip_address: ip }])
-      }
-    } catch (err) {
-      console.error('Erro silencioso ao registrar view:', err)
-    }
+  try {
+    await portalApiFetch('/api/portal/view', {
+      anuncioId,
+      ipAddress: ip,
+    })
+  } catch (err) {
+    console.error('Erro silencioso ao registrar view:', err)
   }
+}
 
   async function registrarClique(anuncioId, ip, tipoAcao = 'open', urlDestino = '') {
   try {
-    if (!anuncioId) return
-
-    const hoje = new Date().toISOString().split('T')[0]
-
-    const { data: existing } = await supabase
-      .from('anuncio_clicks')
-      .select('id')
-      .eq('anuncio_id', anuncioId)
-      .eq('ip_address', ip)
-      .eq('tipo_acao', tipoAcao)
-      .gte('timestamp', `${hoje}T00:00:00.000Z`)
-      .limit(1)
-
-    if (!existing || existing.length === 0) {
-      await supabase.from('anuncio_clicks').insert([{
-        anuncio_id: anuncioId,
-        ip_address: ip,
-        tipo_acao: tipoAcao,
-        url_destino: urlDestino || null,
-      }])
-    }
+    await portalApiFetch('/api/portal/click', {
+      anuncioId,
+      ipAddress: ip,
+      tipoAcao,
+      urlDestino,
+    })
   } catch (err) {
     console.error('Erro silencioso ao registrar clique:', err)
   }
@@ -542,29 +491,22 @@ export default function Portal() {
       const resolvedIp = getClientIp()
       const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(resolvedMac)
 
-      const { data, error } = await supabase
-        .from('leads')
-        .insert([{
-          hotspot_id: hotspot.id,
-          nome: form.nome,
-          email: form.email,
-          telefone: telefoneLimpo,
-          cpf: cpfLimpo,
-          aceite_lgpd: form.aceite_lgpd,
-          anuncio_id: anuncioSorteado ? anuncioSorteado.id : null,
-          mac_address: resolvedMac || null,
-          ip_address: resolvedIp || null,
-          radius_username: radiusUsername,
-          radius_password: radiusPassword,
-          radius_used: false,
-        }])
-        .select()
-        .single()
+      // Salva o lead por API server-side.
+// Assim CPF, telefone, e-mail, MAC e IP não dependem mais de permissão pública na tabela leads.
+const data = await portalApiFetch('/api/portal/lead', {
+  hotspotId: hotspot.id,
+  nome: form.nome,
+  email: form.email,
+  telefone: telefoneLimpo,
+  cpf: cpfLimpo,
+  aceiteLgpd: form.aceite_lgpd,
+  anuncioId: anuncioSorteado ? anuncioSorteado.id : null,
+  macAddress: resolvedMac || null,
+  ipAddress: resolvedIp || null,
+})
 
-      if (error) throw error
-
-      setLeadId(data.id)
-      leadIdRef.current = data.id
+      setLeadId(data.leadId)
+leadIdRef.current = data.leadId
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
@@ -572,8 +514,8 @@ export default function Portal() {
         setEtapa(ETAPAS.ANUNCIO)
         registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
-        const autorizacao = await autorizarSessaoNoBackend(data.id)
-        if (autorizacao) {
+       const autorizacao = await autorizarSessaoNoBackend(data.leadId)
+       if (autorizacao) {
           setEtapa(ETAPAS.ACESSO)
         }
       }

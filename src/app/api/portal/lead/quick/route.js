@@ -1,0 +1,79 @@
+// src/app/api/portal/lead/quick/route.js
+// ============================================================
+// API segura para verificar se existe cadastro recente no mês.
+// Não devolve CPF, telefone ou e-mail.
+// Só diz se existe lead para aquele hotspot + MAC.
+// ============================================================
+
+import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
+
+export const runtime = 'nodejs'
+
+function normalizeMac(value = '') {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/-/g, ':')
+}
+
+function getMesAtualRange() {
+  const agora = new Date()
+  const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0)
+  const fim = new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 0, 0, 0, 0)
+
+  return {
+    inicio: inicio.toISOString(),
+    fim: fim.toISOString(),
+  }
+}
+
+export async function POST(request) {
+  try {
+    const body = await request.json()
+
+    const hotspotId = String(body.hotspotId || '').trim()
+    const macAddress = normalizeMac(body.macAddress || '')
+
+    if (!hotspotId || !macAddress) {
+      return NextResponse.json({
+        ok: true,
+        found: false,
+      })
+    }
+
+    const { inicio, fim } = getMesAtualRange()
+
+    const { data, error } = await supabaseAdmin
+      .from('leads')
+      .select('id, nome')
+      .eq('hotspot_id', hotspotId)
+      .eq('mac_address', macAddress)
+      .gte('created_at', inicio)
+      .lt('created_at', fim)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (error) throw error
+
+    return NextResponse.json({
+      ok: true,
+      found: Boolean(data),
+      lead: data
+        ? {
+            id: data.id,
+            nome: data.nome || '',
+          }
+        : null,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Erro no CPF rápido',
+      },
+      { status: 500 }
+    )
+  }
+}
