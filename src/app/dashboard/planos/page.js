@@ -389,10 +389,41 @@ ciclo_cobranca: 'mensal',
                 <X size={20} />
               </button>
             </div>
-<div>
-  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-    Ciclo de Cobrança
-  </label>
+{/* Ciclo de cobrança
+    Área separada, mais respirada e responsiva.
+    No celular fica em 2 colunas; no desktop em 4 colunas. */}
+<div className="bg-white/[0.015] border border-white/[0.05] rounded-3xl p-4 sm:p-5">
+  <div className="flex items-center justify-between gap-3 mb-4">
+    <div>
+      <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">
+        Ciclo de Cobrança
+      </label>
+      <p className="text-xs text-neutral-600 mt-1">
+        Escolha como este plano será vendido
+      </p>
+    </div>
+
+    <span className="hidden sm:inline-flex text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20">
+      {cicloLabel(form.ciclo_cobranca)}
+    </span>
+  </div>
+
+  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+    {ciclosCobranca.map((ciclo) => (
+      <button
+        key={ciclo.value}
+        type="button"
+        onClick={() => setForm({ ...form, ciclo_cobranca: ciclo.value })}
+        className={`px-3 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all duration-300 ${
+          form.ciclo_cobranca === ciclo.value
+            ? 'bg-[#6be12f] text-black shadow-[0_0_20px_rgba(107,225,47,0.25)]'
+            : 'bg-[#050505] text-neutral-500 hover:text-white hover:bg-white/[0.03] border border-white/[0.05]'
+        }`}
+      >
+        {ciclo.label}
+      </button>
+    ))}
+  </div>
 
   {/* Alternador dentro do modal.
       Define se o plano será mensal, trimestral, semestral ou anual. */}
@@ -413,7 +444,7 @@ ciclo_cobranca: 'mensal',
     ))}
   </div>
 </div>
-            <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
+            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nome do Plano *</label>
                 <input
@@ -481,7 +512,7 @@ ciclo_cobranca: 'mensal',
               </div>
             </div>
 
-            <div className="flex gap-4 p-8 border-t border-white/[0.05] bg-white/[0.01] rounded-b-[2.5rem] flex-shrink-0">
+            <div className="flex flex-col sm:flex-row gap-4 p-6 sm:p-8 border-t border-white/[0.05] bg-white/[0.01] rounded-b-[2.5rem] flex-shrink-0">
               <button
                 onClick={fecharModal}
                 className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
