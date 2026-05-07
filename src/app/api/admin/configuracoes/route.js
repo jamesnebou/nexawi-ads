@@ -6,11 +6,11 @@
 // Agora:
 // Dashboard → API admin → valida admin → service_role → Supabase
 //
-// Importante:
-// - Sempre busca a configuração mais recente.
-// - Sempre salva texto_lgpd.
-// - Se já existir configuração, atualiza.
-// - Se não existir, cria.
+// Correção importante:
+// - GET apenas busca a configuração global.
+// - POST cria/atualiza a configuração global.
+// - A variável payload só existe dentro do POST.
+// - O texto LGPD sempre é salvo e recuperado.
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -31,26 +31,40 @@ function nullableTexto(value = '') {
 function numeroOuPadrao(value, fallback = 0) {
   const parsed = Number(value)
 
-  if (!Number.isFinite(parsed)) return fallback
+  if (!Number.isFinite(parsed)) {
+    return fallback
+  }
 
   return parsed
 }
 
 function numeroOuNull(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
   const parsed = Number(value)
 
-  if (!Number.isFinite(parsed)) return null
+  if (!Number.isFinite(parsed)) {
+    return null
+  }
 
   return parsed
 }
 
 function booleano(value, fallback = false) {
-  if (typeof value === 'boolean') return value
+  if (typeof value === 'boolean') {
+    return value
+  }
+
   return fallback
 }
 
 function sanitizarPayload(config = {}) {
   return {
+    // Chave fixa para garantir que exista apenas uma configuração principal.
+    config_key: 'global',
+
     nome_empresa: limparTexto(config.nome_empresa),
     cnpj: limparTexto(config.cnpj),
     email_contato: limparTexto(config.email_contato),
@@ -61,9 +75,8 @@ function sanitizarPayload(config = {}) {
     texto_boas_vindas: limparTexto(config.texto_boas_vindas),
     cor_principal: limparTexto(config.cor_principal) || '#22c55e',
 
-    // Campo principal da LGPD.
-    // Mantemos como string completa, sem transformar em null,
-    // para garantir que o texto salvo permaneça exatamente como você digitou.
+    // LGPD:
+    // Mantemos como string completa para preservar exatamente o texto salvo.
     texto_lgpd: String(config.texto_lgpd || ''),
 
     email_notificacoes: limparTexto(config.email_notificacoes),
@@ -104,22 +117,36 @@ function sanitizarPayload(config = {}) {
   }
 }
 
-async function buscarConfiguracaoMaisRecente() {
-  // Agora existe apenas uma configuração global.
-  // Isso evita carregar uma linha vazia ou criar duplicadas.
-  const { data, error } = await supabaseAdmin
-  .from('configuracoes')
-  .upsert(payload, { onConflict: 'config_key' })
-  .select('*')
-  .single()
+async function buscarConfiguracaoGlobal() {
+  // Busca sempre a configuração global.
+  // Se a tabela ainda tiver linhas antigas sem config_key, fazemos fallback para a mais recente.
+  const { data: configGlobal, error: globalError } = await supabaseAdmin
+    .from('configuracoes')
+    .select('*')
+    .eq('config_key', 'global')
+    .maybeSingle()
 
-if (error) throw error
+  if (globalError) {
+    throw globalError
+  }
 
-return NextResponse.json({
-  ok: true,
-  config: data,
-  message: 'Configurações salvas com sucesso',
-})
+  if (configGlobal) {
+    return configGlobal
+  }
+
+  // Fallback para projetos que ainda tenham configuração antiga sem config_key.
+  const { data: configAntiga, error: antigaError } = await supabaseAdmin
+    .from('configuracoes')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (antigaError) {
+    throw antigaError
+  }
+
+  return configAntiga || null
 }
 
 export async function GET(request) {
@@ -130,7 +157,7 @@ export async function GET(request) {
   }
 
   try {
-    const config = await buscarConfiguracaoMaisRecente()
+    const config = await buscarConfiguracaoGlobal()
 
     return NextResponse.json({
       ok: true,
@@ -156,42 +183,23 @@ export async function POST(request) {
 
   try {
     const body = await request.json()
-    const payload = {
-  config_key: 'global',
-  ...sanitizarPayload(body.config || {}),
-}
 
-    // Preferimos atualizar o ID enviado pelo front.
-    // Se não vier ID, buscamos a configuração mais recente.
-    let configId = String(body.configId || '').trim()
+    // payload existe somente aqui dentro do POST.
+    const payload = sanitizarPayload(body.config || {})
 
-    if (!configId) {
-      const atual = await buscarConfiguracaoMaisRecente()
-      configId = atual?.id || ''
+    const { data, error } = await supabaseAdmin
+      .from('configuracoes')
+      .upsert(payload, { onConflict: 'config_key' })
+      .select('*')
+      .single()
+
+    if (error) {
+      throw error
     }
-
-    let result
-
-    if (configId) {
-      result = await supabaseAdmin
-        .from('configuracoes')
-        .update(payload)
-        .eq('id', configId)
-        .select('*')
-        .single()
-    } else {
-      result = await supabaseAdmin
-        .from('configuracoes')
-        .insert([payload])
-        .select('*')
-        .single()
-    }
-
-    if (result.error) throw result.error
 
     return NextResponse.json({
       ok: true,
-      config: result.data,
+      config: data,
       message: 'Configurações salvas com sucesso',
     })
   } catch (error) {
