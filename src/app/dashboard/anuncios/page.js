@@ -446,33 +446,51 @@ export default function Anuncios() {
 >
 
                 {/* Esquerda: Mídia (Proporção 9:16) */}
-                <div className="relative w-full lg:w-[150px] lg:min-w-[150px] h-[260px] sm:h-[320px] lg:h-full bg-[#050505] flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden">
-                  {anuncio.media_url ? (
-                    anuncio.tipo_media === 'video' ? (
-                      <video src={anuncio.media_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" muted loop playsInline autoPlay />
-                    ) : (
-                      <img src={anuncio.media_url} alt={anuncio.titulo} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" />
-                    )
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <ImageIcon size={32} className="text-gray-800" />
-                    </div>
-                  )}
+                {/* Mídia do anúncio
+    Mobile: fica em cima, centralizada e na proporção vertical 9:16.
+    Desktop: volta para o layout lateral estreito como antes. */}
+<div className="relative w-full flex justify-center bg-[#050505] border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden lg:w-[150px] lg:min-w-[150px] lg:h-full lg:block">
+  <div className="relative w-full max-w-[220px] aspect-[9/16] bg-[#050505] overflow-hidden lg:max-w-none lg:w-full lg:h-full lg:aspect-auto">
+    {anuncio.media_url ? (
+      anuncio.tipo_media === 'video' ? (
+        <video
+          src={anuncio.media_url}
+          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
+          muted
+          loop
+          playsInline
+          autoPlay
+        />
+      ) : (
+        <img
+          src={anuncio.media_url}
+          alt={anuncio.titulo}
+          className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
+        />
+      )
+    ) : (
+      <div className="w-full h-full flex items-center justify-center">
+        <ImageIcon size={32} className="text-gray-800" />
+      </div>
+    )}
 
-                  {/* Gradiente e Badges */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90"></div>
-                  <div className="absolute top-3 left-3">
-                    <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                      <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-[#8cf059] animate-pulse' : 'bg-red-400'}`}></div>
-                      {anuncio.ativo ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </div>
-                  {anuncio.tipo_media === 'video' && (
-                    <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md p-1.5 rounded-lg border border-white/[0.05]">
-                      <VideoIcon size={14} className="text-white" />
-                    </div>
-                  )}
-                </div>
+    {/* Gradiente e Badges */}
+    <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90"></div>
+
+    <div className="absolute top-3 left-3">
+      <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+        <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-[#8cf059] animate-pulse' : 'bg-red-400'}`}></div>
+        {anuncio.ativo ? 'Ativo' : 'Inativo'}
+      </span>
+    </div>
+
+    {anuncio.tipo_media === 'video' && (
+      <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md p-1.5 rounded-lg border border-white/[0.05]">
+        <VideoIcon size={14} className="text-white" />
+      </div>
+    )}
+  </div>
+</div>
 
                 {/* Direita: Informações */}
                 <div className="p-5 flex flex-col flex-1 min-w-0 relative z-10 text-center lg:text-left">
