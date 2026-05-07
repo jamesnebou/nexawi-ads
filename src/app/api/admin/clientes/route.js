@@ -8,11 +8,16 @@
 //
 // Agora:
 // Dashboard → API admin → valida admin → service_role → Supabase
+//
+// Auditoria:
+// - Registra criação, edição e exclusão de clientes.
+// - Não salva CPF/CNPJ, telefone ou dados sensíveis no log.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -155,12 +160,38 @@ export async function POST(request) {
         )
       }
 
+      // Busca dados básicos antes de excluir para registrar auditoria.
+      // Não buscamos CPF/CNPJ nem telefone para evitar expor dados sensíveis no log.
+      const { data: clienteAntes, error: clienteAntesError } = await supabaseAdmin
+        .from('clientes')
+        .select('id, nome, nome_empresa, email, status')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (clienteAntesError) throw clienteAntesError
+
       const { error } = await supabaseAdmin
         .from('clientes')
         .delete()
         .eq('id', id)
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'clientes',
+        entityId: id,
+        description: 'Excluiu um cliente',
+        metadata: {
+          cliente_id: id,
+          nome: clienteAntes?.nome || '',
+          nome_empresa: clienteAntes?.nome_empresa || '',
+          email: clienteAntes?.email || '',
+          status_anterior: clienteAntes?.status || '',
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -188,6 +219,15 @@ export async function POST(request) {
         )
       }
 
+      // Busca dados básicos antes da alteração para comparação no log.
+      const { data: clienteAntes, error: clienteAntesError } = await supabaseAdmin
+        .from('clientes')
+        .select('id, nome, nome_empresa, email, status, plano_id, cidade, estado')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (clienteAntesError) throw clienteAntesError
+
       const { data, error } = await supabaseAdmin
         .from('clientes')
         .update(payload)
@@ -196,6 +236,27 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'update',
+        entity: 'clientes',
+        entityId: data.id,
+        description: 'Atualizou um cliente',
+        metadata: {
+          cliente_id: data.id,
+          nome: data.nome,
+          nome_empresa: data.nome_empresa,
+          email: data.email,
+          status_anterior: clienteAntes?.status || '',
+          status_atual: data.status,
+          plano_id_anterior: clienteAntes?.plano_id || null,
+          plano_id_atual: data.plano_id || null,
+          cidade: data.cidade,
+          estado: data.estado,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -207,7 +268,7 @@ export async function POST(request) {
     if (action === 'create') {
       // Cria credenciais de acesso do cliente pelo servidor.
       // Senha inicial: CPF/CNPJ, mantendo o comportamento atual.
-      const { error: authError } = await supabaseAdmin.auth.admin.createUser({
+      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email: payload.email,
         password: payload.cpf_cnpj,
         email_confirm: true,
@@ -229,6 +290,26 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'create',
+        entity: 'clientes',
+        entityId: data.id,
+        description: 'Criou um novo cliente',
+        metadata: {
+          cliente_id: data.id,
+          auth_user_id: authData?.user?.id || null,
+          nome: data.nome,
+          nome_empresa: data.nome_empresa,
+          email: data.email,
+          status: data.status,
+          plano_id: data.plano_id || null,
+          cidade: data.cidade,
+          estado: data.estado,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
