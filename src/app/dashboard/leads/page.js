@@ -1,13 +1,44 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Search, Download, UserPlus, Wifi, Shield, ShieldOff, MonitorPlay } from 'lucide-react'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado.
+// As consultas sensíveis agora passam por /api/admin/leads.
+const supabase = createBrowserSupabaseClient()
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
 
 export default function Leads() {
   const [leads, setLeads] = useState([])
@@ -18,46 +49,78 @@ export default function Leads() {
   const [filtroHotspot, setFiltroHotspot] = useState('Todos')
   const [filtroLgpd, setFiltroLgpd] = useState('Todos')
 
-  useEffect(() => { buscarDados() }, [])
+  // Recarrega os dados quando os filtros mudam.
+// Agora os filtros são aplicados no servidor pela API admin.
+useEffect(() => {
+  buscarDados()
+}, [busca, filtroHotspot, filtroLgpd])
 
   async function buscarDados() {
-    setLoading(true)
-    // AGORA BUSCA TAMBÉM OS ANÚNCIOS
-    const [{ data: leadsData }, { data: hotspotsData }, { data: anunciosData }] = await Promise.all([
-      supabase.from('leads').select('*').order('created_at', { ascending: false }),
-      supabase.from('hotspots').select('id, nome').order('nome'),
-      supabase.from('anuncios').select('id, titulo')
-    ])
-    setLeads(leadsData || [])
-    setHotspots(hotspotsData || [])
-    setAnuncios(anunciosData || [])
+  setLoading(true)
+
+  try {
+    // A aba Leads agora não consulta mais leads/hotspots/anuncios direto no Supabase.
+    // Ela chama a API protegida, que valida admin e usa service_role no servidor.
+    const params = new URLSearchParams()
+
+    if (busca) params.set('busca', busca)
+    if (filtroHotspot) params.set('hotspot', filtroHotspot)
+    if (filtroLgpd) params.set('lgpd', filtroLgpd)
+
+    const data = await adminApiFetch(`/api/admin/leads?${params.toString()}`)
+
+    setLeads(data.leads || [])
+    setHotspots(data.hotspots || [])
+    setAnuncios(data.anuncios || [])
+  } catch (error) {
+    console.error('Erro ao buscar leads:', error)
+    alert(error.message || 'Erro ao carregar leads.')
+  } finally {
     setLoading(false)
   }
+}
 
   function exportarCSV() {
-    const linhas = [
-      // CABEÇALHO ATUALIZADO
-      ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
-      ...leadsFiltrados.map(l => [
-        l.nome || '',
-        l.email || '',
-        l.telefone || '',
-        l.cpf || '',
-        nomeHotspot(l.hotspot_id),
-        nomeAnuncio(l.anuncio_id), // NOVA COLUNA NO CSV
-        l.aceite_lgpd ? 'Sim' : 'Não',
-        new Date(l.created_at).toLocaleString('pt-BR')
-      ])
-    ]
-    const csvContent = "data:text/csv;charset=utf-8," + linhas.map(e => e.join(",")).join("\n")
-    const encodedUri = encodeURI(csvContent)
-    const link = document.createElement("a")
-    link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `leads_${new Date().toISOString().slice(0,10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+  // Exportação CSV melhorada para Excel:
+  // - Usa ponto e vírgula, que costuma abrir melhor no Excel PT-BR.
+  // - Usa BOM UTF-8 para manter acentos.
+  // - Escapa aspas para não quebrar células.
+  function csvCell(value) {
+    const text = String(value ?? '')
+    return `"${text.replace(/"/g, '""')}"`
   }
+
+  const linhas = [
+    ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
+    ...leadsFiltrados.map((l) => [
+      l.nome || '',
+      l.email || '',
+      l.telefone || '',
+      l.cpf || '',
+      nomeHotspot(l.hotspot_id),
+      nomeAnuncio(l.anuncio_id),
+      l.aceite_lgpd ? 'Sim' : 'Não',
+      new Date(l.created_at).toLocaleString('pt-BR'),
+    ]),
+  ]
+
+  const csvContent = '\uFEFF' + linhas
+    .map((linha) => linha.map(csvCell).join(';'))
+    .join('\n')
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+
+  const link = document.createElement('a')
+  link.setAttribute('href', url)
+  link.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.csv`)
+
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+
+  URL.revokeObjectURL(url)
+}
 
   const nomeHotspot = (id) => hotspots.find(h => h.id === id)?.nome || 'Desconhecido'
 
@@ -67,21 +130,9 @@ export default function Leads() {
     return anuncios.find(a => a.id === id)?.titulo || 'Anúncio excluído'
   }
 
-  const leadsFiltrados = leads.filter((l) => {
-    const termo = busca.toLowerCase()
-    const buscaOk = l.nome?.toLowerCase().includes(termo) ||
-      l.email?.toLowerCase().includes(termo) ||
-      l.telefone?.includes(termo) ||
-      l.cpf?.includes(termo)
-
-    const lgpdOk = filtroLgpd === 'Todos' || 
-      (filtroLgpd === 'Aceito' && l.aceite_lgpd) || 
-      (filtroLgpd === 'Não aceito' && !l.aceite_lgpd)
-
-    const hotspotOk = filtroHotspot === 'Todos' || l.hotspot_id === filtroHotspot
-
-    return buscaOk && lgpdOk && hotspotOk
-  })
+  // Os filtros agora são aplicados no servidor pela API admin.
+// Mantemos este nome para não precisar alterar toda a tabela e a exportação.
+const leadsFiltrados = leads
 
   return (
     <>
