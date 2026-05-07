@@ -30,7 +30,16 @@ export default function Login() {
   const [carregando, setCarregando] = useState(false)
   const [erro, setErro] = useState('')
 
-  useEffect(() => {
+    useEffect(() => {
+    // Se veio do logout, não redireciona automaticamente.
+    // Isso permite trocar de administrador.
+    const params = new URLSearchParams(window.location.search)
+    const veioDoLogout = params.get('logout') === '1'
+
+    if (veioDoLogout) {
+      return
+    }
+
     // Se já existir sessão válida, manda direto para a dashboard premium.
     async function verificarSessao() {
       const { data } = await supabase.auth.getSession()

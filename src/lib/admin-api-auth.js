@@ -1,24 +1,25 @@
 // src/lib/admin-api-auth.js
 // ============================================================
 // Helper de autenticação e autorização para APIs administrativas.
-// Objetivo:
-// - Ler o token enviado pelo navegador.
-// - Validar o usuário no Supabase Auth.
-// - Confirmar se ele está na tabela public.admin_users.
-// - Verificar se o admin está ativo.
-// - Carregar role e permissões.
-// - Permitir bloqueio por permissão específica nas APIs.
+// Agora suporta:
+// - admin ativo/inativo
+// - cargo: master, admin, suporte, financeiro, viewer
+// - permissões granulares por módulo e ação
+//
+// Exemplos:
+// requireAdmin(request)
+// requireAdmin(request, { requireMaster: true })
+// requireAdmin(request, { permission: 'hotspots.view' })
+// requireAdmin(request, { module: 'hotspots', action: 'delete' })
 //
 // Compatibilidade:
-// APIs antigas que usam requireAdmin(request) continuam funcionando.
-// APIs novas podem usar requireAdmin(request, { permission: 'financeiro' })
-// ou requireAdmin(request, { requireMaster: true })
+// APIs antigas que usam apenas requireAdmin(request) continuam funcionando.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-const TODAS_PERMISSOES = [
+const MODULOS = [
   'dashboard',
   'clientes',
   'hotspots',
@@ -32,77 +33,77 @@ const TODAS_PERMISSOES = [
   'usuarios_admin',
 ]
 
-// Permissões padrão por cargo.
-// Depois, o campo permissions do banco pode sobrescrever individualmente.
+const ACOES_PADRAO = ['view', 'create', 'update', 'delete', 'export']
+
 const PERMISSOES_POR_CARGO = {
   master: {
-    dashboard: true,
-    clientes: true,
-    hotspots: true,
-    anuncios: true,
-    financeiro: true,
-    planos: true,
-    leads: true,
-    relatorios: true,
-    auditoria: true,
-    configuracoes: true,
-    usuarios_admin: true,
+    dashboard: { view: true },
+    clientes: { view: true, create: true, update: true, delete: true, export: true },
+    hotspots: { view: true, create: true, update: true, delete: true, export: true },
+    anuncios: { view: true, create: true, update: true, delete: true, activate: true, pause: true, export: true },
+    financeiro: { view: true, create: true, update: true, delete: true, mark_paid: true, export: true },
+    planos: { view: true, create: true, update: true, delete: true },
+    leads: { view: true, delete: true, export: true },
+    relatorios: { view: true, export: true },
+    auditoria: { view: true, export: true },
+    configuracoes: { view: true, update: true },
+    usuarios_admin: { view: true, create: true, update: true, delete: true },
   },
 
   admin: {
-    dashboard: true,
-    clientes: true,
-    hotspots: true,
-    anuncios: true,
-    financeiro: true,
-    planos: true,
-    leads: true,
-    relatorios: true,
-    auditoria: true,
-    configuracoes: true,
-    usuarios_admin: false,
+    dashboard: { view: true },
+    clientes: { view: true, create: true, update: true, delete: false, export: true },
+    hotspots: { view: true, create: true, update: true, delete: false, export: true },
+    anuncios: { view: true, create: true, update: true, delete: false, activate: true, pause: true, export: true },
+    financeiro: { view: true, create: true, update: true, delete: false, mark_paid: true, export: true },
+    planos: { view: true, create: true, update: true, delete: false },
+    leads: { view: true, delete: false, export: true },
+    relatorios: { view: true, export: true },
+    auditoria: { view: true, export: false },
+    configuracoes: { view: true, update: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false },
   },
 
   suporte: {
-    dashboard: true,
-    clientes: true,
-    hotspots: true,
-    anuncios: true,
-    financeiro: false,
-    planos: false,
-    leads: true,
-    relatorios: true,
-    auditoria: false,
-    configuracoes: false,
-    usuarios_admin: false,
+    dashboard: { view: true },
+    clientes: { view: true, create: true, update: true, delete: false, export: false },
+    hotspots: { view: true, create: true, update: true, delete: false, export: false },
+    anuncios: { view: true, create: true, update: true, delete: false, activate: true, pause: true, export: false },
+    financeiro: { view: false, create: false, update: false, delete: false, mark_paid: false, export: false },
+    planos: { view: false, create: false, update: false, delete: false },
+    leads: { view: true, delete: false, export: false },
+    relatorios: { view: true, export: false },
+    auditoria: { view: false, export: false },
+    configuracoes: { view: false, update: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false },
   },
 
   financeiro: {
-    dashboard: true,
-    clientes: true,
-    hotspots: false,
-    anuncios: false,
-    financeiro: true,
-    planos: true,
-    leads: false,
-    relatorios: true,
-    auditoria: false,
-    configuracoes: false,
-    usuarios_admin: false,
+    dashboard: { view: true },
+    clientes: { view: true, create: false, update: false, delete: false, export: true },
+    hotspots: { view: false, create: false, update: false, delete: false, export: false },
+    anuncios: { view: false, create: false, update: false, delete: false, activate: false, pause: false, export: false },
+    financeiro: { view: true, create: true, update: true, delete: false, mark_paid: true, export: true },
+    planos: { view: true, create: false, update: false, delete: false },
+    leads: { view: false, delete: false, export: false },
+    relatorios: { view: true, export: true },
+    auditoria: { view: false, export: false },
+    configuracoes: { view: false, update: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false },
   },
 
   viewer: {
-    dashboard: true,
-    clientes: false,
-    hotspots: false,
-    anuncios: false,
-    financeiro: false,
-    planos: false,
-    leads: true,
-    relatorios: true,
-    auditoria: false,
-    configuracoes: false,
-    usuarios_admin: false,
+    dashboard: { view: true },
+    clientes: { view: false, create: false, update: false, delete: false, export: false },
+    hotspots: { view: false, create: false, update: false, delete: false, export: false },
+    anuncios: { view: false, create: false, update: false, delete: false, activate: false, pause: false, export: false },
+    financeiro: { view: false, create: false, update: false, delete: false, mark_paid: false, export: false },
+    planos: { view: false, create: false, update: false, delete: false },
+    leads: { view: true, delete: false, export: false },
+    relatorios: { view: true, export: false },
+    auditoria: { view: false, export: false },
+    configuracoes: { view: false, update: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false },
   },
 }
 
@@ -114,25 +115,6 @@ function getBearerToken(request) {
   }
 
   return authHeader.slice(7).trim()
-}
-
-function normalizarPermissoes(role = 'admin', permissions = {}) {
-  const permissoesPadrao = PERMISSOES_POR_CARGO[role] || PERMISSOES_POR_CARGO.admin
-  const permissoesBanco = permissions && typeof permissions === 'object' ? permissions : {}
-
-  const resultado = {}
-
-  TODAS_PERMISSOES.forEach((permissao) => {
-    // Se o banco definir true/false, ele manda.
-    // Se não definir, usa o padrão do cargo.
-    if (typeof permissoesBanco[permissao] === 'boolean') {
-      resultado[permissao] = permissoesBanco[permissao]
-    } else {
-      resultado[permissao] = Boolean(permissoesPadrao[permissao])
-    }
-  })
-
-  return resultado
 }
 
 function criarRespostaErro(error, status = 403) {
@@ -147,10 +129,87 @@ function criarRespostaErro(error, status = 403) {
   }
 }
 
+function normalizarPermissoes(role = 'admin', permissions = {}) {
+  const base = PERMISSOES_POR_CARGO[role] || PERMISSOES_POR_CARGO.admin
+  const banco = permissions && typeof permissions === 'object' ? permissions : {}
+
+  const resultado = {}
+
+  MODULOS.forEach((modulo) => {
+    const baseModulo = base[modulo] || {}
+    const bancoModulo = banco[modulo]
+
+    resultado[modulo] = {}
+
+    // Compatibilidade com modelo antigo:
+    // permissions: { hotspots: true }
+    // vira permissão total básica naquele módulo.
+    if (typeof bancoModulo === 'boolean') {
+      const acoes = new Set([
+        ...Object.keys(baseModulo),
+        ...ACOES_PADRAO,
+      ])
+
+      acoes.forEach((acao) => {
+        resultado[modulo][acao] = bancoModulo
+      })
+
+      return
+    }
+
+    const bancoModuloObj = bancoModulo && typeof bancoModulo === 'object'
+      ? bancoModulo
+      : {}
+
+    const acoes = new Set([
+      ...Object.keys(baseModulo),
+      ...Object.keys(bancoModuloObj),
+      ...ACOES_PADRAO,
+    ])
+
+    acoes.forEach((acao) => {
+      if (typeof bancoModuloObj[acao] === 'boolean') {
+        resultado[modulo][acao] = bancoModuloObj[acao]
+      } else {
+        resultado[modulo][acao] = Boolean(baseModulo[acao])
+      }
+    })
+  })
+
+  return resultado
+}
+
+function parsePermission(permission = '') {
+  const text = String(permission || '').trim()
+
+  if (!text) {
+    return {
+      module: '',
+      action: '',
+    }
+  }
+
+  if (text.includes('.')) {
+    const [module, action] = text.split('.')
+
+    return {
+      module,
+      action: action || 'view',
+    }
+  }
+
+  return {
+    module: text,
+    action: 'view',
+  }
+}
+
 export async function requireAdmin(request, options = {}) {
   try {
     const {
       permission = '',
+      module = '',
+      action = 'view',
       requireMaster = false,
     } = options
 
@@ -160,7 +219,6 @@ export async function requireAdmin(request, options = {}) {
       return criarRespostaErro('Sessão não encontrada', 401)
     }
 
-    // Valida o token JWT do usuário logado.
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token)
 
     if (userError || !userData?.user) {
@@ -169,7 +227,6 @@ export async function requireAdmin(request, options = {}) {
 
     const user = userData.user
 
-    // Confere se o usuário logado é admin e carrega perfil administrativo.
     const { data: adminData, error: adminError } = await supabaseAdmin
       .from('admin_users')
       .select('user_id, email, role, active, permissions, created_at, updated_at')
@@ -190,7 +247,6 @@ export async function requireAdmin(request, options = {}) {
 
     const role = adminData.role || 'admin'
     const isMaster = role === 'master'
-
     const permissions = normalizarPermissoes(role, adminData.permissions)
 
     const adminProfile = {
@@ -204,19 +260,42 @@ export async function requireAdmin(request, options = {}) {
       updated_at: adminData.updated_at || null,
     }
 
-    function canAccess(permissao) {
-      if (!permissao) return true
+    function canAccess(modulo, acao = 'view') {
+      if (!modulo) return true
       if (isMaster) return true
 
-      return Boolean(permissions[permissao])
+      return Boolean(permissions?.[modulo]?.[acao])
+    }
+
+    function canView(modulo) {
+      return canAccess(modulo, 'view')
+    }
+
+    function canCreate(modulo) {
+      return canAccess(modulo, 'create')
+    }
+
+    function canUpdate(modulo) {
+      return canAccess(modulo, 'update')
+    }
+
+    function canDelete(modulo) {
+      return canAccess(modulo, 'delete')
     }
 
     if (requireMaster && !isMaster) {
       return criarRespostaErro('Apenas o administrador master pode executar esta ação', 403)
     }
 
-    if (permission && !canAccess(permission)) {
-      return criarRespostaErro(`Sem permissão para acessar: ${permission}`, 403)
+    const parsed = parsePermission(permission)
+    const moduloSolicitado = module || parsed.module
+    const acaoSolicitada = action || parsed.action || 'view'
+
+    if (moduloSolicitado && !canAccess(moduloSolicitado, acaoSolicitada)) {
+      return criarRespostaErro(
+        `Sem permissão para ${acaoSolicitada} em ${moduloSolicitado}`,
+        403
+      )
     }
 
     return {
@@ -226,6 +305,10 @@ export async function requireAdmin(request, options = {}) {
       permissions,
       isMaster,
       canAccess,
+      canView,
+      canCreate,
+      canUpdate,
+      canDelete,
       errorResponse: null,
     }
   } catch (error) {
