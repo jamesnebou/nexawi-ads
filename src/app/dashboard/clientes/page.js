@@ -1,14 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Search, Plus, Pencil, Trash2, X, Check, Building, User, Users, Mail, Phone, MapPin, CreditCard, Briefcase } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado.
+// As operações sensíveis agora passam por /api/admin/clientes.
+const supabase = createBrowserSupabaseClient()
 
 const statusCores = {
   'Ativo': 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
@@ -18,6 +17,38 @@ const statusCores = {
 }
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Inadimplente', 'Cancelado']
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
 
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
