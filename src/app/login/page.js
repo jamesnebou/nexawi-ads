@@ -1,97 +1,162 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import Image from 'next/image'
-import { signIn } from '@/lib/auth'
+// src/app/login/page.js
+// ============================================================
+// Login principal da NexaWi ADS.
+// Este é o login correto para acessar a dashboard premium.
+//
+// Fluxo correto:
+// /login → autentica no Supabase → redireciona para /dashboard
+//
+// Importante:
+// Não redirecionar mais para /admin, pois /admin é painel antigo.
+// ============================================================
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { Mail, Lock, Loader2, ShieldCheck } from 'lucide-react'
+
+const supabase = createBrowserSupabaseClient()
+
+export default function Login() {
   const router = useRouter()
+
+  const [form, setForm] = useState({
+    email: '',
+    senha: '',
+  })
+
+  const [carregando, setCarregando] = useState(false)
+  const [erro, setErro] = useState('')
+
+  useEffect(() => {
+    // Se já existir sessão válida, manda direto para a dashboard premium.
+    async function verificarSessao() {
+      const { data } = await supabase.auth.getSession()
+
+      if (data?.session?.access_token) {
+        router.replace('/dashboard')
+      }
+    }
+
+    verificarSessao()
+  }, [router])
 
   async function handleLogin(e) {
     e.preventDefault()
-    setLoading(true)
-    setError('')
 
-    // Supondo que signIn retorna { data, error }
-    const { data, error } = await signIn(email, password)
+    setCarregando(true)
+    setErro('')
 
-    if (error) {
-      setError('E-mail ou senha incorretos. Tente novamente.')
-      setLoading(false)
-      return
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: form.email.trim().toLowerCase(),
+        password: form.senha,
+      })
+
+      if (error) {
+        setErro('E-mail ou senha incorretos.')
+        setCarregando(false)
+        return
+      }
+
+      // Atualiza a sessão no navegador e manda para a dashboard premium.
+      router.refresh()
+      router.replace('/dashboard')
+    } catch (error) {
+      console.error('Erro ao fazer login:', error)
+      setErro('Erro inesperado ao fazer login. Tente novamente.')
+      setCarregando(false)
     }
-
-    router.push('/dashboard')
   }
 
   return (
-    <div className="min-h-screen bg-gray-950 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-12"> {/* Adicionado py-12 para espaçamento vertical em telas pequenas */}
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Fundo premium */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(107,225,47,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(107,225,47,0.08),transparent_30%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
+      <div className="relative z-10 w-full max-w-md">
         <div className="text-center mb-8">
-          <Image
-            src="/Nexa-logo.png"
-            alt="Sua Logo"
-            width={200} // Largura padrão para telas pequenas
-            height={100} // Altura padrão para telas pequenas
-            sizes="(max-width: 640px) 200px, 280px" // Define largura para diferentes breakpoints
-            priority
-            className="mx-auto object-contain w-[200px] sm:w-[280px] h-auto" // Ajusta largura da imagem com Tailwind
-          />
-          <p className="text-gray-400 mt-4 text-sm sm:text-base">Painel Administrativo ADS</p> {/* Ajuste de tamanho de texto */}
+          <div className="mx-auto mb-5 w-20 h-20 rounded-3xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center shadow-[0_0_35px_rgba(107,225,47,0.18)]">
+            <ShieldCheck size={34} className="text-[#6be12f]" />
+          </div>
+
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            NexaWi ADS
+          </h1>
+
+          <p className="text-neutral-500 mt-2 text-sm font-medium">
+            Acesse sua dashboard administrativa
+          </p>
         </div>
 
-        <div className="bg-gray-900 rounded-2xl p-6 sm:p-8 border border-gray-800"> {/* Ajuste de padding */}
-          <h2 className="text-white text-xl sm:text-2xl font-semibold mb-6">Entrar na sua conta</h2> {/* Ajuste de tamanho de título */}
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3 mb-4">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div>
-              <label className="text-gray-400 text-sm mb-1 block">E-mail</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#8cf059] transition-colors"
-                placeholder="seu@email.com"
-                required
-              />
-            </div>
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-[2rem] p-7 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+          <form onSubmit={handleLogin} className="space-y-5">
+            {erro && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-2xl px-4 py-3 text-red-300 text-sm">
+                {erro}
+              </div>
+            )}
 
             <div>
-              <label className="text-gray-400 text-sm mb-1 block">Senha</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-[#8cf059] transition-colors"
-                placeholder="••••••••"
-                required
-              />
+              <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                E-mail
+              </label>
+
+              <div className="relative">
+                <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" />
+
+                <input
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl pl-11 pr-4 py-4 text-sm text-white placeholder-neutral-700 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/40 focus:border-[#6be12f]/40 transition-all"
+                  placeholder="contato@nexawi.com.br"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                Senha
+              </label>
+
+              <div className="relative">
+                <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" />
+
+                <input
+                  type="password"
+                  required
+                  value={form.senha}
+                  onChange={(e) => setForm({ ...form, senha: e.target.value })}
+                  className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl pl-11 pr-4 py-4 text-sm text-white placeholder-neutral-700 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/40 focus:border-[#6be12f]/40 transition-all"
+                  placeholder="Digite sua senha"
+                />
+              </div>
             </div>
 
             <button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:bg-green-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-3 text-sm transition-colors mt-2"
+              disabled={carregando}
+              className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold py-4 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(107,225,47,0.25)] hover:-translate-y-0.5"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {carregando ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                'Entrar na Dashboard'
+              )}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-gray-600 text-xs mt-6">
-          Sua Empresa © 2026 — Todos os direitos reservados
+        <p className="text-center text-xs text-neutral-600 mt-6">
+          Acesso restrito aos administradores da NexaWi ADS.
         </p>
       </div>
     </div>
