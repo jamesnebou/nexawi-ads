@@ -1,16 +1,49 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Plus, Search, X } from 'lucide-react'
 import dynamic from 'next/dynamic';
 
 const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search), { ssr: false });
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
+
+// Cliente Supabase usado apenas para pegar a sessão do admin logado
+// e enviar arquivo por URL assinada. As operações sensíveis de banco
+// agora passam por /api/admin/anuncios.
+const supabase = createBrowserSupabaseClient()
 
 export default function Anuncios() {
   const [anuncios, setAnuncios] = useState([])
@@ -73,120 +106,33 @@ export default function Anuncios() {
     buscarDados()
   }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType, filterEstado, filterCidade])
 
-  async function buscarDados() {
+    async function buscarDados() {
     setCarregando(true)
 
-    const { data: clientesData, error: clientesError } = await supabase
-      .from('clientes')
-      .select('id, nome, estado, cidade')
-      .order('nome', { ascending: true })
-    if (clientesError) console.error('Erro ao buscar clientes:', clientesError)
-    if (JSON.stringify(clientesData) !== JSON.stringify(clientes)) {
-      setClientes(clientesData || [])
-    }
+    try {
+      // Agora a aba Anúncios não busca mais direto nas tabelas.
+      // Ela chama a API protegida, que valida admin e usa service_role no servidor.
+      const params = new URLSearchParams()
 
-    const { data: hotspotsData, error: hotspotsError } = await supabase
-      .from('hotspots')
-      .select('id, nome, status, cliente_id, estado, cidade')
-      .eq('status', 'Ativo')
-      .order('nome', { ascending: true })
-    if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
+      if (searchTerm) params.set('searchTerm', searchTerm)
+      if (filterStatus) params.set('filterStatus', filterStatus)
+      if (filterHotspotId) params.set('filterHotspotId', filterHotspotId)
+      if (filterClientId) params.set('filterClientId', filterClientId)
+      if (filterMediaType) params.set('filterMediaType', filterMediaType)
+      if (filterEstado) params.set('filterEstado', filterEstado)
+      if (filterCidade) params.set('filterCidade', filterCidade)
 
-    const hotspotsComClientes = hotspotsData ? hotspotsData.map(hotspot => {
-      const cliente = clientesData?.find(c => c.id === hotspot.cliente_id);
-      return {
-        ...hotspot,
-        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null
-      };
-    }) : [];
+      const data = await adminApiFetch(`/api/admin/anuncios?${params.toString()}`)
 
-    setHotspots(hotspotsComClientes || [])
-
-    let selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, estado, cidade, clientes(id, nome), anuncio_hotspots(hotspots(id, nome))';
-    if (filterClientId) {
-      selectString = 'id, titulo, descricao, media_url, tipo_media, url_destino, duracao_segundos, ativo, created_at, cliente_id, estado, cidade, clientes!inner(id, nome), anuncio_hotspots(hotspots(id, nome))';
-    }
-
-    let query = supabase
-      .from('anuncios')
-      .select(selectString)
-      .order('created_at', { ascending: false })
-
-    if (filterStatus === 'ativo') {
-      query = query.eq('ativo', true)
-    } else if (filterStatus === 'inativo') {
-      query = query.eq('ativo', false)
-    }
-
-    if (filterHotspotId) {
-      query = query.filter('anuncio_hotspots.hotspot_id', 'eq', filterHotspotId);
-    }
-
-    if (filterClientId) {
-      query = query.filter('clientes.id', 'eq', filterClientId);
-    }
-
-    if (filterMediaType === 'imagem') {
-      query = query.eq('tipo_media', 'imagem')
-    } else if (filterMediaType === 'video') {
-      query = query.eq('tipo_media', 'video')
-    }
-
-    if (filterEstado) {
-      query = query.eq('estado', filterEstado)
-    }
-    if (filterCidade) {
-      query = query.eq('cidade', filterCidade)
-    }
-
-    if (searchTerm) {
-      query = query.or(`titulo.ilike.%${searchTerm}%,descricao.ilike.%${searchTerm}%`)
-    }
-
-    const { data: anunciosData, error: anunciosError } = await query
-    if (anunciosError) {
-      console.error('Erro ao buscar anúncios:', anunciosError)
-      alert('Erro ao carregar anúncios. Por favor, tente novamente.')
+      setClientes(data.clientes || [])
+      setHotspots(data.hotspots || [])
+      setAnuncios(data.anuncios || [])
+    } catch (error) {
+      console.error('Erro ao buscar anúncios:', error)
+      alert(error.message || 'Erro ao carregar anúncios. Por favor, tente novamente.')
+    } finally {
       setCarregando(false)
-      return
     }
-
-    const anunciosComHotspotsEClientes = anunciosData.map(anuncio => {
-      const clienteDoAnuncio = clientesData?.find(c => c.id === anuncio.cliente_id);
-      const hotspotNomes = anuncio.anuncio_hotspots
-        .map(ah => ah.hotspots?.nome)
-        .filter(Boolean);
-
-      return {
-        ...anuncio,
-        hotspot_nomes: hotspotNomes,
-        cliente: clienteDoAnuncio || anuncio.clientes
-      };
-    });
-
-    const anunciosComMetricas = await Promise.all(anunciosComHotspotsEClientes.map(async (anuncio) => {
-      const { count: viewsCount, error: viewsError } = await supabase
-        .from('anuncio_views')
-        .select('*', { count: 'exact', head: true })
-        .eq('anuncio_id', anuncio.id)
-
-      const { count: clicksCount, error: clicksError } = await supabase
-        .from('anuncio_clicks')
-        .select('*', { count: 'exact', head: true })
-        .eq('anuncio_id', anuncio.id)
-
-      if (viewsError) console.error('Erro ao buscar views:', viewsError)
-      if (clicksError) console.error('Erro ao buscar clicks:', clicksError)
-
-      return {
-        ...anuncio,
-        views: viewsCount || 0,
-        clicks: clicksCount || 0,
-      }
-    }))
-
-    setAnuncios(anunciosComMetricas || [])
-    setCarregando(false)
   }
 
   function abrirModal(anuncio = null) {
@@ -246,141 +192,141 @@ export default function Anuncios() {
     );
   };
 
-  async function salvar() {
+
+    async function enviarMidiaPorUploadAssinado(file) {
+    // Esta função substitui o upload direto com permissão pública.
+    // Agora o front pede uma URL assinada para a API admin e usa essa autorização temporária.
+    if (!file) return null
+
+    const uploadInfo = await adminApiFetch('/api/admin/anuncios/upload-url', {
+      method: 'POST',
+      body: {
+        filename: file.name,
+        contentType: file.type,
+      },
+    })
+
+    const { error: uploadError } = await supabase
+      .storage
+      .from('anuncios')
+      .uploadToSignedUrl(uploadInfo.path, uploadInfo.token, file, {
+        contentType: file.type,
+        upsert: false,
+      })
+
+    if (uploadError) {
+      throw new Error(`Erro ao enviar mídia: ${uploadError.message}`)
+    }
+
+    return {
+      mediaUrl: uploadInfo.publicUrl,
+      tipoMedia: uploadInfo.tipoMedia,
+    }
+  }
+
+    async function salvar() {
     if (!form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0) {
-      alert('Por favor, preencha todos os campos obrigatórios: Título, Cliente e selecione pelo menos um Hotspot.');
-      return;
+      alert('Por favor, preencha todos os campos obrigatórios: Título, Cliente e selecione pelo menos um Hotspot.')
+      return
     }
 
     setSalvando(true)
     setUploading(true)
 
-    let mediaUrlToSave = form.media_url
-    let mediaTypeToSave = form.tipo_media
+    try {
+      let mediaUrlToSave = form.media_url
+      let mediaTypeToSave = form.tipo_media
 
-    if (selectedFile) {
-      const fileExtension = selectedFile.name.split('.').pop()
-      const isVideo = selectedFile.type.startsWith('video/')
-      const filePath = `anuncios/${Date.now()}.${fileExtension}`
+      // Upload seguro por URL assinada.
+      // Se o usuário selecionou um arquivo novo, enviamos antes de salvar o anúncio.
+      if (selectedFile) {
+        const uploadResult = await enviarMidiaPorUploadAssinado(selectedFile)
 
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('anuncios')
-        .upload(filePath, selectedFile, {
-          cacheControl: '3600',
-          upsert: false,
+        mediaUrlToSave = uploadResult.mediaUrl
+        mediaTypeToSave = uploadResult.tipoMedia
+      }
+
+      setUploading(false)
+
+      const dataToSave = {
+        ...form,
+        media_url: mediaUrlToSave,
+        tipo_media: mediaTypeToSave,
+        cliente_id: selectedClientInModal,
+      }
+
+      if (anuncioEditando) {
+        await adminApiFetch('/api/admin/anuncios', {
+          method: 'POST',
+          body: {
+            action: 'update',
+            id: anuncioEditando.id,
+            anuncio: dataToSave,
+            hotspotIds: selectedHotspotIds,
+          },
         })
-
-      if (uploadError) {
-        console.error('Erro ao fazer upload da mídia:', uploadError)
-        alert('Erro ao fazer upload da mídia. Por favor, tente novamente.')
-        setSalvando(false)
-        setUploading(false)
-        return
+      } else {
+        await adminApiFetch('/api/admin/anuncios', {
+          method: 'POST',
+          body: {
+            action: 'create',
+            anuncio: dataToSave,
+            hotspotIds: selectedHotspotIds,
+          },
+        })
       }
 
-      const { data: publicUrlData } = supabase.storage
-        .from('anuncios')
-        .getPublicUrl(filePath)
-
-      mediaUrlToSave = publicUrlData.publicUrl
-      mediaTypeToSave = isVideo ? 'video' : 'imagem'
-    }
-
-    setUploading(false)
-
-    const dataToSave = {
-      ...form,
-      media_url: mediaUrlToSave,
-      tipo_media: mediaTypeToSave,
-      cliente_id: selectedClientInModal,
-    }
-
-    let anuncioId;
-
-    if (anuncioEditando) {
-      const { data, error: updateError } = await supabase.from('anuncios').update(dataToSave).eq('id', anuncioEditando.id).select('id').single();
-      if (updateError) {
-        console.error('Erro ao atualizar anúncio:', updateError)
-        alert('Erro ao atualizar anúncio. Por favor, tente novamente.')
-        setSalvando(false);
-        return;
-      }
-      anuncioId = data.id;
-
-      const { error: deleteOldLinksError } = await supabase
-        .from('anuncio_hotspots')
-        .delete()
-        .eq('anuncio_id', anuncioId);
-
-      if (deleteOldLinksError) {
-        console.error('Erro ao remover vínculos antigos de hotspot:', deleteOldLinksError);
-        alert('Erro ao atualizar vínculos de hotspot. Por favor, tente novamente.');
-        setSalvando(false);
-        return;
-      }
-    } else {
-      const { data, error: insertError } = await supabase.from('anuncios').insert([dataToSave]).select('id').single();
-      if (insertError) {
-        console.error('Erro ao criar anúncio:', insertError)
-        alert('Erro ao criar anúncio. Por favor, tente novamente.')
-        setSalvando(false);
-        return;
-      }
-      anuncioId = data.id;
-    }
-
-    const hotspotLinks = selectedHotspotIds.map(hotspot_id => ({
-      anuncio_id: anuncioId,
-      hotspot_id: hotspot_id,
-    }));
-
-    if (hotspotLinks.length > 0) {
-      const { error: insertLinksError } = await supabase
-        .from('anuncio_hotspots')
-        .insert(hotspotLinks);
-
-      if (insertLinksError) {
-        console.error('Erro ao vincular hotspots ao anúncio:', insertLinksError);
-        alert('Erro ao vincular hotspots ao anúncio. Por favor, tente novamente.');
-        setSalvando(false);
-        return;
-      }
-    }
-
-    setSalvando(false)
-    fecharModal()
-    buscarDados()
-  }
-
-  async function toggleAtivo(anuncio) {
-    const novoStatus = !anuncio.ativo;
-    const { error } = await supabase
-      .from('anuncios')
-      .update({ ativo: novoStatus })
-      .eq('id', anuncio.id);
-
-    if (error) {
-      console.error('Erro ao alternar status do anúncio:', error);
-      alert('Erro ao alternar status do anúncio. Por favor, tente novamente.');
-    } else {
-      buscarDados();
+      setSalvando(false)
+      fecharModal()
+      buscarDados()
+    } catch (error) {
+      console.error('Erro ao salvar anúncio:', error)
+      alert(error.message || 'Erro ao salvar anúncio. Por favor, tente novamente.')
+      setSalvando(false)
+      setUploading(false)
     }
   }
 
-  async function excluir(id) {
+    async function toggleAtivo(anuncio) {
+    const novoStatus = !anuncio.ativo
+
+    try {
+      // Altera status via API protegida.
+      await adminApiFetch('/api/admin/anuncios', {
+        method: 'POST',
+        body: {
+          action: 'toggle',
+          id: anuncio.id,
+          ativo: novoStatus,
+        },
+      })
+
+      buscarDados()
+    } catch (error) {
+      console.error('Erro ao alternar status do anúncio:', error)
+      alert(error.message || 'Erro ao alternar status do anúncio. Por favor, tente novamente.')
+    }
+  }
+
+    async function excluir(id) {
     if (!window.confirm('Tem certeza que deseja excluir este anúncio?')) {
-      return;
+      return
     }
-    const { error } = await supabase
-      .from('anuncios')
-      .delete()
-      .eq('id', id);
 
-    if (error) {
-      console.error('Erro ao excluir anúncio:', error);
-      alert('Erro ao excluir anúncio. Por favor, tente novamente.');
-    } else {
-      buscarDados();
+    try {
+      // Exclusão via API protegida.
+      await adminApiFetch('/api/admin/anuncios', {
+        method: 'POST',
+        body: {
+          action: 'delete',
+          id,
+        },
+      })
+
+      buscarDados()
+    } catch (error) {
+      console.error('Erro ao excluir anúncio:', error)
+      alert(error.message || 'Erro ao excluir anúncio. Por favor, tente novamente.')
     }
   }
 
@@ -493,10 +439,14 @@ export default function Anuncios() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
             {anuncios.map((anuncio, index) => (
-              <div key={anuncio.id} className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden flex flex-row hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] h-[280px] animate-fade-in-up" style={{ animationDelay: `${index * 0.05}s` }}>
+              <div
+  key={anuncio.id}
+  className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden flex flex-col lg:flex-row hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] h-auto lg:h-[280px] animate-fade-in-up"
+  style={{ animationDelay: `${index * 0.05}s` }}
+>
 
                 {/* Esquerda: Mídia (Proporção 9:16) */}
-                <div className="relative w-[150px] min-w-[150px] h-full bg-[#050505] flex-shrink-0 border-r border-white/[0.05] overflow-hidden">
+                <div className="relative w-full lg:w-[150px] lg:min-w-[150px] h-[260px] sm:h-[320px] lg:h-full bg-[#050505] flex-shrink-0 border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden">
                   {anuncio.media_url ? (
                     anuncio.tipo_media === 'video' ? (
                       <video src={anuncio.media_url} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" muted loop playsInline autoPlay />
@@ -525,10 +475,10 @@ export default function Anuncios() {
                 </div>
 
                 {/* Direita: Informações */}
-                <div className="p-5 flex flex-col flex-1 min-w-0 relative z-10">
+                <div className="p-5 flex flex-col flex-1 min-w-0 relative z-10 text-center lg:text-left">
 
                   {/* 1. Título */}
-                  <h3 className="text-white font-semibold text-lg mb-1.5 truncate group-hover:text-[#8cf059] transition-colors duration-300" title={anuncio.titulo}>
+                  <h3 className="text-white font-semibold text-lg mb-1.5 line-clamp-2 lg:truncate group-hover:text-[#8cf059] transition-colors duration-300" title={anuncio.titulo}>
                     {anuncio.titulo}
                   </h3>
 
@@ -538,10 +488,10 @@ export default function Anuncios() {
                   </p>
 
                   {/* 3. Hotspots (Um abaixo do outro) */}
-                  <div className="flex flex-col gap-2 mb-2 overflow-y-auto custom-scrollbar flex-1 pr-2">
+                  <div className="flex flex-col items-center lg:items-start gap-2 mb-4 lg:mb-2 overflow-visible lg:overflow-y-auto custom-scrollbar flex-none lg:flex-1 pr-0 lg:pr-2">
                     {anuncio.hotspot_nomes && anuncio.hotspot_nomes.length > 0 ? (
                       anuncio.hotspot_nomes.map((nome, idx) => (
-                        <div key={idx} className="flex items-start gap-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors">
+                        <div key={idx} className="flex items-start justify-center lg:justify-start gap-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors max-w-full">
                           <MapPin size={12} className="text-[#6be12f]/70 mt-0.5 flex-shrink-0" />
                           <span className="truncate leading-tight">{nome}</span>
                         </div>
@@ -555,7 +505,7 @@ export default function Anuncios() {
                   <div className="mt-auto pt-4 border-t border-white/[0.05]">
 
                     {/* 4. Localização (Nova Linha) Inteligente */}
-                  <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 truncate pr-2">
+                  <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-between gap-2 text-xs text-gray-500 mb-4">
                   <MapPin size={12} className="text-gray-600 flex-shrink-0" />
                   <span className="truncate font-medium text-gray-400">
                   {(anuncio.cidade || anuncio.cliente?.cidade) && (anuncio.estado || anuncio.cliente?.estado)
@@ -566,7 +516,7 @@ export default function Anuncios() {
 
                     {/* 5. Cliente e Tempo (Mesma linha) */}
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-4">
-                      <div className="flex items-center gap-2 truncate pr-2">
+                      <div className="flex items-center justify-center lg:justify-start gap-2 truncate pr-0 lg:pr-2">
                         <User size={12} className="text-gray-600 flex-shrink-0" />
                         <span className="truncate font-medium text-gray-400">{anuncio.cliente?.nome || 'N/A'}</span>
                       </div>
@@ -577,22 +527,22 @@ export default function Anuncios() {
                     </div>
 
                     {/* 6. Botões (Centralizados) */}
-                    <div className="flex justify-center items-center gap-2 w-full">
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 w-full">
                       <button
                         onClick={() => toggleAtivo(anuncio)}
-                        className={`flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] hover:bg-[#6be12f]/20'}`}
+                        className={`w-full sm:flex-1 text-[11px] py-2 rounded-xlfont-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] hover:bg-[#6be12f]/20'}`}
                       >
                         {anuncio.ativo ? 'Pausar' : 'Ativar'}
                       </button>
                       <button
                         onClick={() => abrirModal(anuncio)}
-                        className="flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white transition-all duration-300"
+                        className="w-full sm:flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white transition-all duration-300"
                       >
                         Editar
                       </button>
                       <button
                         onClick={() => excluir(anuncio.id)}
-                        className="flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-red-500/5 border border-red-500/10 text-red-500/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
+                        className="w-full sm:flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-red-500/5 border border-red-500/10 text-red-500/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
                       >
                         Excluir
                       </button>
