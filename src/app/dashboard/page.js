@@ -642,7 +642,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Copiaram o link</p>
                       <p className="text-4xl font-light text-white tracking-tight mt-3">{interacoesAnuncios.linksCopiados}</p>
-                      <p className="text-xs text-gray-600 mt-2">Ação registrada como tipo_acao = copy</p>
+                      <p className="text-xs text-gray-600 mt-2">Pessoas que copiaram o link</p>
                     </div>
 
                     <div className="w-12 h-12 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
@@ -659,7 +659,7 @@ export default function Dashboard() {
                     <div>
                       <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Tentaram abrir</p>
                       <p className="text-4xl font-light text-white tracking-tight mt-3">{interacoesAnuncios.tentativasAbrir}</p>
-                      <p className="text-xs text-gray-600 mt-2">Ações open e open_attempt</p>
+                      <p className="text-xs text-gray-600 mt-2">Pessoas que tentaram click direto</p>
                     </div>
 
                     <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
