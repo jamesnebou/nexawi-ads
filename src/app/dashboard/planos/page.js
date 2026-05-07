@@ -373,14 +373,23 @@ ciclo_cobranca: 'mensal',
       {/* Modal de Criação/Edição Premium */}
       {modalAberto && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-2xl shadow-[0_20px_40px_rgba(0,0,0,0.5)] flex flex-col max-h-[90vh]">
 
             <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-white/[0.02] flex items-center justify-center border border-white/[0.05]">
                   <Package size={18} className="text-neutral-400" />
                 </div>
-                <div>
+                
+                <h2 className="text-2xl font-bold text-white tracking-tight">
+                  {planoSelecionado ? 'Editar Plano' : 'Novo Plano'}
+                </h2>
+              </div>
+              <button onClick={fecharModal} className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+<div>
   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
     Ciclo de Cobrança
   </label>
@@ -404,15 +413,6 @@ ciclo_cobranca: 'mensal',
     ))}
   </div>
 </div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">
-                  {planoSelecionado ? 'Editar Plano' : 'Novo Plano'}
-                </h2>
-              </div>
-              <button onClick={fecharModal} className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-
             <div className="p-8 space-y-6 overflow-y-auto custom-scrollbar">
               <div>
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nome do Plano *</label>
