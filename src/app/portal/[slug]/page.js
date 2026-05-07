@@ -526,32 +526,49 @@ leadIdRef.current = data.leadId
     }
   }
 
-  async function handleCpfRapido(e) {
+    async function handleCpfRapido(e) {
     e.preventDefault()
+
+    // Limpa mensagens antigas antes de validar novamente.
     setErroCpfRapido('')
 
+    // Remove tudo que não for número.
+    // Importante: CPF precisa continuar como string para não perder zero à esquerda.
     const cpfLimpo = String(cpfRapido).replace(/\D/g, '')
 
+    // Validação básica feita no navegador só para evitar envio de CPF inválido.
+    // A comparação com o CPF salvo no banco acontece somente no servidor.
     if (!validateCpf(cpfLimpo)) {
       setErroCpfRapido('CPF inválido')
       return
     }
 
-    if (!leadRapido) {
+    // Se não existe lead rápido encontrado para este MAC/hotspot,
+    // não faz sentido tentar validar CPF rápido.
+    if (!leadRapido?.id) {
       setErroCpfRapido('Cadastro não encontrado para este dispositivo')
-      return
-    }
-
-    if (String(leadRapido.cpf || '').replace(/\D/g, '') !== cpfLimpo) {
-      setErroCpfRapido('CPF não confere com este dispositivo')
       return
     }
 
     setSalvandoCpfRapido(true)
 
     try {
-      setLeadId(leadRapido.id)
-      leadIdRef.current = leadRapido.id
+      // Validação segura server-side:
+      // O CPF é enviado para a API, comparado no servidor e não fica exposto no front-end.
+      const validacao = await portalApiFetch('/api/portal/cpf-rapido', {
+        hotspotId: hotspot.id,
+        macAddress: getClientMac(),
+        cpf: cpfLimpo,
+      })
+
+      if (!validacao.ok || !validacao.leadId) {
+        setErroCpfRapido('CPF não confere com este dispositivo')
+        return
+      }
+
+      // A partir daqui usamos somente o leadId validado pelo servidor.
+      setLeadId(validacao.leadId)
+      leadIdRef.current = validacao.leadId
 
       const anuncioSorteado = sortearAnuncioSemRepetir()
       const resolvedIp = getClientIp()
@@ -560,14 +577,25 @@ leadIdRef.current = data.leadId
         setAnuncioAtual(anuncioSorteado)
         setInternetLiberadaNaCta(false)
         setEtapa(ETAPAS.ANUNCIO)
+
+        // Registro de visualização agora deve passar pela API segura.
         registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
-        const autorizacao = await autorizarSessaoNoBackend(leadRapido.id)
+        const autorizacao = await autorizarSessaoNoBackend(validacao.leadId)
+
         if (autorizacao) {
           setEtapa(ETAPAS.ACESSO)
         }
       }
     } catch (error) {
+      const mensagem = error?.message || ''
+
+      // Mensagem amigável para o usuário quando o CPF não bate com o cadastro.
+      if (mensagem.includes('CPF') || mensagem.includes('confere')) {
+        setErroCpfRapido('CPF não confere com este dispositivo')
+        return
+      }
+
       falhar('Erro no CPF rápido', error)
     } finally {
       setSalvandoCpfRapido(false)
