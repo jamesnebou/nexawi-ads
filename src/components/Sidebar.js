@@ -1,7 +1,14 @@
 'use client'
 
+// Sidebar principal da dashboard premium NexaWi ADS.
+// Correções:
+// - O botão sair agora manda para /logout, que encerra a sessão corretamente.
+// - Mostra o e-mail do administrador logado em uma caixinha verde com blur.
+// - Corrige o destaque do menu "Visão Geral" para não ficar ativo em todas as páginas.
+
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { signOut } from '@/lib/auth'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import Image from 'next/image'
 import {
   LayoutDashboard,
@@ -15,7 +22,11 @@ import {
   Megaphone,
   BarChart2,
   MapPin,
+  Mail,
+  ShieldCheck,
 } from 'lucide-react'
+
+const supabase = createBrowserSupabaseClient()
 
 const menu = [
   { label: 'Visão Geral', path: '/dashboard', icon: LayoutDashboard },
@@ -34,10 +45,39 @@ export default function Sidebar({ onClose }) {
   const pathname = usePathname()
   const router = useRouter()
 
-  async function handleSignOut() {
-    await signOut()
-    router.push('/login')
+  const [userEmail, setUserEmail] = useState('Carregando...')
+
+  useEffect(() => {
+    async function carregarUsuarioLogado() {
+      const { data, error } = await supabase.auth.getUser()
+
+      if (error || !data?.user?.email) {
+        setUserEmail('Sessão não identificada')
+        return
+      }
+
+      setUserEmail(data.user.email)
+    }
+
+    carregarUsuarioLogado()
+
+    // Mantém o e-mail atualizado caso a sessão mude.
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user?.email || 'Sessão não identificada')
+    })
+
+    return () => {
+      authListener?.subscription?.unsubscribe()
+    }
+  }, [])
+
+  function handleSignOut() {
     if (onClose) onClose()
+
+    // Logout oficial.
+    // A página /logout faz supabase.auth.signOut(),
+    // limpa tokens locais e manda para /login?logout=1.
+    router.push('/logout')
   }
 
   return (
@@ -61,7 +101,14 @@ export default function Sidebar({ onClose }) {
       <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar relative z-10">
         {menu.map((item) => {
           const Icon = item.icon
-          const active = pathname === item.path || pathname?.startsWith(`${item.path}/`)
+
+          // Corrige destaque:
+          // /dashboard só fica ativo na visão geral.
+          // As outras rotas ficam ativas também em subpáginas.
+          const active =
+            item.path === '/dashboard'
+              ? pathname === '/dashboard'
+              : pathname === item.path || pathname?.startsWith(`${item.path}/`)
 
           return (
             <button
@@ -94,7 +141,34 @@ export default function Sidebar({ onClose }) {
         })}
       </nav>
 
-      <div className="p-6 border-t border-white/[0.05] relative z-10 bg-[#050505]">
+      <div className="p-6 border-t border-white/[0.05] relative z-10 bg-[#050505] space-y-4">
+        {/* Caixa do usuário logado */}
+        <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(107,225,47,0.08)]">
+          <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#6be12f]/20 blur-2xl pointer-events-none" />
+
+          <div className="relative z-10 flex items-start gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#050505]/70 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0 shadow-inner">
+              <ShieldCheck size={18} className="text-[#8cf059]" />
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-widest font-extrabold text-[#8cf059] mb-1">
+                Admin logado
+              </p>
+
+              <div className="flex items-center gap-1.5 min-w-0">
+                <Mail size={13} className="text-[#8cf059] flex-shrink-0" />
+                <p
+                  className="text-xs font-bold text-white truncate"
+                  title={userEmail}
+                >
+                  {userEmail}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <button
           onClick={handleSignOut}
           className="group w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold tracking-wide text-gray-500 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent transition-all duration-300"
