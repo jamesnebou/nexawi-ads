@@ -105,16 +105,21 @@ function sanitizarPayload(config = {}) {
 }
 
 async function buscarConfiguracaoMaisRecente() {
+  // Agora existe apenas uma configuração global.
+  // Isso evita carregar uma linha vazia ou criar duplicadas.
   const { data, error } = await supabaseAdmin
-    .from('configuracoes')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .maybeSingle()
+  .from('configuracoes')
+  .upsert(payload, { onConflict: 'config_key' })
+  .select('*')
+  .single()
 
-  if (error) throw error
+if (error) throw error
 
-  return data || null
+return NextResponse.json({
+  ok: true,
+  config: data,
+  message: 'Configurações salvas com sucesso',
+})
 }
 
 export async function GET(request) {
@@ -151,7 +156,10 @@ export async function POST(request) {
 
   try {
     const body = await request.json()
-    const payload = sanitizarPayload(body.config || {})
+    const payload = {
+  config_key: 'global',
+  ...sanitizarPayload(body.config || {}),
+}
 
     // Preferimos atualizar o ID enviado pelo front.
     // Se não vier ID, buscamos a configuração mais recente.
