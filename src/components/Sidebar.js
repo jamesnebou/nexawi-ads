@@ -143,30 +143,33 @@ export default function Sidebar({ onClose }) {
 
       <div className="p-6 border-t border-white/[0.05] relative z-10 bg-[#050505] space-y-4">
         {/* Caixa do usuário logado */}
-        <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-4 backdrop-blur-xl shadow-[0_0_30px_rgba(107,225,47,0.08)]">
+        <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-3.5 backdrop-blur-xl shadow-[0_0_30px_rgba(107,225,47,0.08)]">
           <div className="absolute -right-8 -top-8 w-24 h-24 rounded-full bg-[#6be12f]/20 blur-2xl pointer-events-none" />
 
-          <div className="relative z-10 flex items-start gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-[#050505]/70 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0 shadow-inner">
-              <ShieldCheck size={18} className="text-[#8cf059]" />
-            </div>
+          <div className="relative z-10 flex flex-col items-start gap-3">
+  {/* Ícone menor para não competir com o texto */}
+  <div className="w-8 h-8 rounded-xl bg-[#050505]/70 border border-[#6be12f]/20 flex items-center justify-center shadow-inner">
+    <ShieldCheck size={15} className="text-[#8cf059]" />
+  </div>
 
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-widest font-extrabold text-[#8cf059] mb-1">
-                Admin logado
-              </p>
+  <div className="w-full min-w-0">
+    <p className="text-[10px] uppercase tracking-widest font-extrabold text-[#8cf059] mb-2">
+      Admin logado
+    </p>
 
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Mail size={13} className="text-[#8cf059] flex-shrink-0" />
-                <p
-                  className="text-xs font-bold text-white truncate"
-                  title={userEmail}
-                >
-                  {userEmail}
-                </p>
-              </div>
-            </div>
-          </div>
+    {/* E-mail abaixo, ocupando a largura total da caixa */}
+    <div className="flex items-start gap-2 w-full min-w-0">
+      <Mail size={12} className="text-[#8cf059] flex-shrink-0 mt-0.5" />
+
+      <p
+        className="text-[11px] leading-snug font-bold text-white break-all"
+        title={userEmail}
+      >
+        {userEmail}
+      </p>
+    </div>
+  </div>
+</div>
         </div>
 
         <button
