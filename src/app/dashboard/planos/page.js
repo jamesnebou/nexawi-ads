@@ -1,16 +1,64 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Package, Plus, Pencil, Trash2, X, Check, Star, Users, RefreshCw, UserCheck } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado.
+// As operações sensíveis agora passam por /api/admin/planos.
+const supabase = createBrowserSupabaseClient()
 
 const intervalos = ['diario', 'semanal', 'mensal']
+
+const ciclosCobranca = [
+  { value: 'mensal', label: 'Mensal', sufixo: 'por mês' },
+  { value: 'trimestral', label: 'Trimestral', sufixo: 'por trimestre' },
+  { value: 'semestral', label: 'Semestral', sufixo: 'por semestre' },
+  { value: 'anual', label: 'Anual', sufixo: 'por ano' },
+]
+
+function cicloLabel(ciclo) {
+  return ciclosCobranca.find((item) => item.value === ciclo)?.label || 'Mensal'
+}
+
+function cicloSufixo(ciclo) {
+  return ciclosCobranca.find((item) => item.value === ciclo)?.sufixo || 'por mês'
+}
+
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
+
 
 export default function Planos() {
   const [planos, setPlanos] = useState([])
@@ -20,50 +68,60 @@ export default function Planos() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
   const [form, setForm] = useState({
-    nome: '', preco: '', max_criativos: '', max_pontos: '', intervalo_relatorio: 'mensal'
+    nome: '',
+preco: '',
+max_criativos: '',
+max_pontos: '',
+intervalo_relatorio: 'mensal',
+ciclo_cobranca: 'mensal',
   })
+  const [cicloSelecionado, setCicloSelecionado] = useState('mensal')
 
-  useEffect(() => { buscarDados() }, [])
+  useEffect(() => {
+  buscarDados()
+}, [cicloSelecionado])
 
   async function buscarDados() {
-    setCarregando(true)
+  setCarregando(true)
 
-    // 1. Busca os planos
-    const { data: planosData } = await supabase.from('planos').select('*').order('preco', { ascending: true })
+  try {
+    // Agora a aba Planos não busca mais direto nas tabelas.
+    // Ela chama a API protegida, que valida admin e usa service_role no servidor.
+    const params = new URLSearchParams()
+    params.set('ciclo', cicloSelecionado)
 
-    // 2. Busca os clientes para fazer a contagem (traz apenas o plano_id para ficar leve e rápido)
-    const { data: clientesData } = await supabase.from('clientes').select('plano_id')
+    const data = await adminApiFetch(`/api/admin/planos?${params.toString()}`)
 
-    // 3. Cruza os dados e conta quantos clientes cada plano tem
-    if (planosData) {
-      const planosComContagem = planosData.map(plano => {
-        const contagem = clientesData ? clientesData.filter(c => c.plano_id === plano.id).length : 0;
-        return {
-          ...plano,
-          quantidade_clientes: contagem
-        }
-      })
-      setPlanos(planosComContagem)
-    } else {
-      setPlanos([])
-    }
-
+    setPlanos(data.planos || [])
+  } catch (error) {
+    console.error('Erro ao buscar planos:', error)
+    toast.error(error.message || 'Erro ao carregar planos.')
+  } finally {
     setCarregando(false)
   }
+}
 
   function abrirModal(plano = null) {
     if (plano) {
       setPlanoSelecionado(plano)
       setForm({
-        nome: plano.nome || '',
-        preco: plano.preco || '',
-        max_criativos: plano.max_criativos || '',
-        max_pontos: plano.max_pontos || '',
-        intervalo_relatorio: plano.intervalo_relatorio || 'mensal'
-      })
+  nome: '',
+  preco: '',
+  max_criativos: '',
+  max_pontos: '',
+  intervalo_relatorio: 'mensal',
+  ciclo_cobranca: cicloSelecionado,
+})
     } else {
       setPlanoSelecionado(null)
-      setForm({ nome: '', preco: '', max_criativos: '', max_pontos: '', intervalo_relatorio: 'mensal' })
+      setForm({
+  nome: '',
+  preco: '',
+  max_criativos: '',
+  max_pontos: '',
+  intervalo_relatorio: 'mensal',
+  ciclo_cobranca: cicloSelecionado,
+})
     }
     setModalAberto(true)
   }
@@ -74,35 +132,73 @@ export default function Planos() {
   }
 
   async function salvarPlano() {
-    if (!form.nome.trim() || !form.preco) return
-    setSalvando(true)
+  if (!form.nome.trim() || !form.preco) {
+    toast.error('Informe o nome e o preço do plano.')
+    return
+  }
 
+  setSalvando(true)
+
+  try {
     const payload = {
       ...form,
-      preco: parseFloat(form.preco),
-      max_criativos: parseInt(form.max_criativos) || 0,
-      max_pontos: parseInt(form.max_pontos) || 0
+      preco: form.preco,
+      max_criativos: form.max_criativos || 0,
+      max_pontos: form.max_pontos || 0,
+      ciclo_cobranca: form.ciclo_cobranca || cicloSelecionado,
     }
 
     if (planoSelecionado) {
-      await supabase.from('planos').update(payload).eq('id', planoSelecionado.id)
+      await adminApiFetch('/api/admin/planos', {
+        method: 'POST',
+        body: {
+          action: 'update',
+          id: planoSelecionado.id,
+          plano: payload,
+        },
+      })
+
       toast.success('Plano atualizado com sucesso!')
     } else {
-      await supabase.from('planos').insert([payload])
+      await adminApiFetch('/api/admin/planos', {
+        method: 'POST',
+        body: {
+          action: 'create',
+          plano: payload,
+        },
+      })
+
       toast.success('Plano criado com sucesso!')
     }
 
     await buscarDados()
-    setSalvando(false)
     fecharModal()
+  } catch (error) {
+    console.error('Erro ao salvar plano:', error)
+    toast.error(error.message || 'Erro ao salvar plano.')
+  } finally {
+    setSalvando(false)
   }
+}
 
   async function excluirPlano(id) {
-    await supabase.from('planos').delete().eq('id', id)
+  try {
+    await adminApiFetch('/api/admin/planos', {
+      method: 'POST',
+      body: {
+        action: 'delete',
+        id,
+      },
+    })
+
     toast.success('Plano excluído!')
     setConfirmDelete(null)
     await buscarDados()
+  } catch (error) {
+    console.error('Erro ao excluir plano:', error)
+    toast.error(error.message || 'Erro ao excluir plano.')
   }
+}
 
   return (
     <>
@@ -110,7 +206,7 @@ export default function Planos() {
         position="top-right" 
         toastOptions={{ 
           style: { background: '#0a0a0a', color: '#fff', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#0a0a0a' } },
+          success: { iconTheme: { primary: '#6be12f', secondary: '#0a0a0a' } },
           error: { iconTheme: { primary: '#ef4444', secondary: '#0a0a0a' } }
         }} 
       />
@@ -129,13 +225,34 @@ export default function Planos() {
             <p className="text-sm text-neutral-500 mt-2 font-medium">Gerencie os pacotes de assinatura do sistema</p>
           </div>
 
-          <button
-            onClick={() => abrirModal()}
-            className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-          >
-            <Plus size={18} strokeWidth={2.5} />
-            Novo Plano
-          </button>
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4">
+  {/* Alternador de ciclo de cobrança no topo.
+      Permite visualizar rapidamente planos mensais, trimestrais, semestrais e anuais. */}
+  <div className="flex bg-[#0a0a0a] border border-white/[0.05] rounded-2xl p-1.5 shadow-inner overflow-x-auto">
+    {ciclosCobranca.map((ciclo) => (
+      <button
+        key={ciclo.value}
+        type="button"
+        onClick={() => setCicloSelecionado(ciclo.value)}
+        className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 whitespace-nowrap ${
+          cicloSelecionado === ciclo.value
+            ? 'bg-[#6be12f] text-black shadow-[0_0_20px_rgba(107,225,47,0.25)]'
+            : 'text-neutral-500 hover:text-white hover:bg-white/[0.03]'
+        }`}
+      >
+        {ciclo.label}
+      </button>
+    ))}
+  </div>
+
+  <button
+    onClick={() => abrirModal()}
+    className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+  >
+    <Plus size={18} strokeWidth={2.5} />
+    Novo Plano
+  </button>
+</div>
         </div>
 
         {carregando ? (
@@ -199,7 +316,15 @@ export default function Planos() {
                     <span className="text-2xl text-neutral-500 font-bold mr-1">R$</span>
                     {Number(plano.preco).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
-                  <p className="text-xs text-neutral-500 mt-2 uppercase tracking-widest font-bold">por mês</p>
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+  <p className="text-xs text-neutral-500 uppercase tracking-widest font-bold">
+    {cicloSufixo(plano.ciclo_cobranca)}
+  </p>
+
+  <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20">
+    {cicloLabel(plano.ciclo_cobranca)}
+  </span>
+</div>
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-white/[0.05] mt-auto relative z-10">
@@ -255,6 +380,30 @@ export default function Planos() {
                 <div className="w-10 h-10 rounded-full bg-white/[0.02] flex items-center justify-center border border-white/[0.05]">
                   <Package size={18} className="text-neutral-400" />
                 </div>
+                <div>
+  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+    Ciclo de Cobrança
+  </label>
+
+  {/* Alternador dentro do modal.
+      Define se o plano será mensal, trimestral, semestral ou anual. */}
+  <div className="grid grid-cols-2 gap-2 bg-[#050505] border border-white/[0.05] rounded-2xl p-2 shadow-inner">
+    {ciclosCobranca.map((ciclo) => (
+      <button
+        key={ciclo.value}
+        type="button"
+        onClick={() => setForm({ ...form, ciclo_cobranca: ciclo.value })}
+        className={`px-4 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all duration-300 ${
+          form.ciclo_cobranca === ciclo.value
+            ? 'bg-[#6be12f] text-black shadow-[0_0_20px_rgba(107,225,47,0.25)]'
+            : 'text-neutral-500 hover:text-white hover:bg-white/[0.03]'
+        }`}
+      >
+        {ciclo.label}
+      </button>
+    ))}
+  </div>
+</div>
                 <h2 className="text-2xl font-bold text-white tracking-tight">
                   {planoSelecionado ? 'Editar Plano' : 'Novo Plano'}
                 </h2>
