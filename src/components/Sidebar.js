@@ -141,7 +141,9 @@ export default function Sidebar({ onClose }) {
         })}
       </nav>
 
-      <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 backdrop-blur-xl shadow-[0_0_24px_rgba(107,225,47,0.06)]">
+      <div className="p-6 border-t border-white/[0.05] relative z-10 bg-[#050505] space-y-4">
+        {/* Caixa do usuário logado */}
+        <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 backdrop-blur-xl shadow-[0_0_24px_rgba(107,225,47,0.06)]">
   <div className="absolute -right-8 -top-8 w-20 h-20 rounded-full bg-[#6be12f]/15 blur-2xl pointer-events-none" />
 
   <div className="relative z-10 min-w-0">
@@ -165,6 +167,18 @@ export default function Sidebar({ onClose }) {
     </div>
   </div>
 </div>
+
+        <button
+          onClick={handleSignOut}
+          className="group w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold tracking-wide text-gray-500 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent transition-all duration-300"
+        >
+          <LogOut
+            size={20}
+            className="group-hover:-translate-x-1 transition-transform duration-300"
+          />
+          Sair do Sistema
+        </button>
+      </div>
 
       <style
         dangerouslySetInnerHTML={{
