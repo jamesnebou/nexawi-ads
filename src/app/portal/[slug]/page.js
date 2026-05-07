@@ -161,9 +161,10 @@ export default function Portal() {
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
   const [urlCliente, setUrlCliente] = useState('')
+  const [linkCopiado, setLinkCopiado] = useState(false)
+  const [copiandoLink, setCopiandoLink] = useState(false)
 
-
-
+  
   const [form, setForm] = useState({
     nome: '',
     email: '',
@@ -407,24 +408,33 @@ export default function Portal() {
     }
   }
 
-  async function registrarClique(anuncioId, ip) {
-    try {
-      const hoje = new Date().toISOString().split('T')[0]
-      const { data: existing } = await supabase
-        .from('anuncio_clicks')
-        .select('id')
-        .eq('anuncio_id', anuncioId)
-        .eq('ip_address', ip)
-        .gte('timestamp', `${hoje}T00:00:00.000Z`)
-        .limit(1)
+  async function registrarClique(anuncioId, ip, tipoAcao = 'open', urlDestino = '') {
+  try {
+    if (!anuncioId) return
 
-      if (!existing || existing.length === 0) {
-        await supabase.from('anuncio_clicks').insert([{ anuncio_id: anuncioId, ip_address: ip }])
-      }
-    } catch (err) {
-      console.error('Erro silencioso ao registrar clique:', err)
+    const hoje = new Date().toISOString().split('T')[0]
+
+    const { data: existing } = await supabase
+      .from('anuncio_clicks')
+      .select('id')
+      .eq('anuncio_id', anuncioId)
+      .eq('ip_address', ip)
+      .eq('tipo_acao', tipoAcao)
+      .gte('timestamp', `${hoje}T00:00:00.000Z`)
+      .limit(1)
+
+    if (!existing || existing.length === 0) {
+      await supabase.from('anuncio_clicks').insert([{
+        anuncio_id: anuncioId,
+        ip_address: ip,
+        tipo_acao: tipoAcao,
+        url_destino: urlDestino || null,
+      }])
     }
+  } catch (err) {
+    console.error('Erro silencioso ao registrar clique:', err)
   }
+}
 
   const validatePhoneNumber = (phone) => {
     const cleanedPhone = String(phone).replace(/\D/g, '')
@@ -629,8 +639,8 @@ export default function Portal() {
     const resolvedIp = getClientIp()
 
     if (clicou && anuncioAtual) {
-      await registrarClique(anuncioAtual.id, resolvedIp)
-    }
+  await registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', destinoExterno)
+}
 
     if (clicou && destinoExterno) {
       const urlNormalizada = normalizarUrlDestino(destinoExterno)
@@ -645,6 +655,42 @@ export default function Portal() {
     setEtapa(ETAPAS.ACESSO)
   } catch (error) {
     falhar('Erro na CTA', error)
+  }
+}
+
+async function handleCopiarLinkCliente() {
+  try {
+    if (!urlCliente) return
+
+    setCopiandoLink(true)
+
+    try {
+      await navigator.clipboard.writeText(urlCliente)
+    } catch {
+      const textarea = document.createElement('textarea')
+      textarea.value = urlCliente
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
+
+    if (anuncioAtual) {
+      await registrarClique(anuncioAtual.id, getClientIp(), 'copy', urlCliente)
+    }
+
+    setLinkCopiado(true)
+
+    setTimeout(() => {
+      setLinkCopiado(false)
+    }, 3000)
+  } catch (error) {
+    falhar('Erro ao copiar link do cliente', error)
+  } finally {
+    setCopiandoLink(false)
   }
 }
 
@@ -1096,15 +1142,45 @@ export default function Portal() {
       </p>
 
       {urlCliente ? (
-        <a
-          href={urlCliente}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-        >
-          Abrir página do cliente <ArrowRight size={18} />
-        </a>
-      ) : null}
+  <div className="flex flex-col gap-4">
+    <button
+      type="button"
+      onClick={handleCopiarLinkCliente}
+      disabled={copiandoLink}
+      className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+    >
+      {copiandoLink ? (
+        <>
+          <Loader2 size={18} className="animate-spin" />
+          Copiando...
+        </>
+      ) : linkCopiado ? (
+        <>
+          <CheckCircle2 size={18} />
+          Link copiado!
+        </>
+      ) : (
+        <>
+          Copiar link da oferta <ArrowRight size={18} />
+        </>
+      )}
+    </button>
+
+    <a
+      href={urlCliente}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => {
+        if (anuncioAtual) {
+          registrarClique(anuncioAtual.id, getClientIp(), 'open', urlCliente)
+        }
+      }}
+      className="w-full py-4 rounded-2xl font-medium text-sm text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all duration-300 border border-white/[0.05] flex items-center justify-center gap-2"
+    >
+      Tentar abrir página do cliente <ArrowRight size={16} />
+    </a>
+  </div>
+) : null}
 
       <button
         type="button"
@@ -1115,8 +1191,9 @@ export default function Portal() {
       </button>
 
       <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
-        Caso a página não abra automaticamente, toque e segure no botão ou abra pelo navegador do celular.
-      </p>
+  Alguns celulares fecham automaticamente esta tela após liberar o Wi-Fi.
+  Se a página não abrir, copie o link e cole no navegador do seu celular.
+</p>
     </div>
   </div>
 )}
