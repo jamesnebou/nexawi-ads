@@ -24,6 +24,7 @@ import {
   MapPin,
   Mail,
   ShieldCheck,
+  ClipboardList,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
