@@ -25,6 +25,7 @@ import {
   Mail,
   ShieldCheck,
   ClipboardList,
+  Crown,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -39,6 +40,7 @@ const menu = [
   { label: 'Leads', path: '/dashboard/leads', icon: UserPlus },
   { label: 'Relatório de Acesso', path: '/dashboard/relatorios/acesso', icon: BarChart2 },
   { label: 'Auditoria', path: '/dashboard/auditoria', icon: ClipboardList },
+  { label: 'Equipe', path: '/dashboard/equipe', icon: Crown },
   { label: 'Cidades', path: '/dashboard/cidades', icon: MapPin },
   { label: 'Configurações', path: '/dashboard/configuracoes', icon: Settings },
 ]
