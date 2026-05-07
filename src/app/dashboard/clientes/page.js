@@ -1,23 +1,63 @@
 'use client'
 
+// src/app/dashboard/clientes/page.js
+// ============================================================
+// Aba Clientes da dashboard NexaWi ADS.
+//
+// Agora esta tela respeita as permissões retornadas pela API:
+// - clientes.view: permite visualizar a lista
+// - clientes.create: mostra botão Novo Cliente e permite cadastrar
+// - clientes.update: mostra botão Editar e permite salvar alterações
+// - clientes.delete: mostra botão Excluir e permite abrir confirmação
+// - clientes.export: reservado para exportação futura
+//
+// Importante:
+// - A segurança real fica na API /api/admin/clientes.
+// - Esta tela apenas melhora a experiência visual, escondendo ações
+//   que o administrador não pode executar.
+// ============================================================
+
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { Search, Plus, Pencil, Trash2, X, Check, Building, User, Users, Mail, Phone, MapPin, CreditCard, Briefcase } from 'lucide-react'
+import {
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
+  Check,
+  Building,
+  User,
+  Users,
+  Mail,
+  Phone,
+  MapPin,
+  CreditCard,
+  Briefcase,
+  Lock,
+} from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { logAdminAction } from '@/lib/admin-audit-log'
 
 // Cliente Supabase usado apenas para pegar a sessão do admin logado.
 // As operações sensíveis agora passam por /api/admin/clientes.
 const supabase = createBrowserSupabaseClient()
 
 const statusCores = {
-  'Ativo': 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
-  'Inativo': 'bg-red-500/10 text-red-400 border border-red-500/20',
-  'Inadimplente': 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-  'Cancelado': 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
+  Ativo: 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
+  Inativo: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  Inadimplente: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+  Cancelado: 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
 }
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Inadimplente', 'Cancelado']
+
+const permissoesIniciais = {
+  view: false,
+  create: false,
+  update: false,
+  delete: false,
+  export: false,
+}
 
 // ============================================================
 // Chamada padrão para APIs administrativas.
@@ -42,10 +82,18 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await response.json()
+  const text = await response.text()
+
+  let data = null
+
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Erro na API administrativa')
+    throw new Error(data?.error || 'Erro na API administrativa')
   }
 
   return data
@@ -54,6 +102,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [planos, setPlanos] = useState([])
+  const [permissions, setPermissions] = useState(permissoesIniciais)
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('Todos')
@@ -62,13 +111,22 @@ export default function Clientes() {
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
-  // --- NOVOS STATES PARA O IBGE ---
+  // Estados e cidades via IBGE.
   const [estadosIBGE, setEstadosIBGE] = useState([])
   const [cidadesIBGE, setCidadesIBGE] = useState([])
 
   const [form, setForm] = useState({
-    nome: '', nome_empresa: '', nome_responsavel: '', email: '', telefone: '',
-    cpf_cnpj: '', endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo'
+    nome: '',
+    nome_empresa: '',
+    nome_responsavel: '',
+    email: '',
+    telefone: '',
+    cpf_cnpj: '',
+    endereco: '',
+    cidade: '',
+    estado: '',
+    plano_id: '',
+    status: 'Ativo',
   })
 
   const [cpfCnpjError, setCpfCnpjError] = useState('')
@@ -77,31 +135,36 @@ export default function Clientes() {
   const [nomeEmpresaError, setNomeEmpresaError] = useState('')
   const [nomeResponsavelError, setNomeResponsavelError] = useState('')
 
-  // --- EFEITOS DO IBGE ---
+  const canCreate = Boolean(permissions.create)
+  const canUpdate = Boolean(permissions.update)
+  const canDelete = Boolean(permissions.delete)
+  const canExport = Boolean(permissions.export)
+  const showActionsColumn = canUpdate || canDelete
+
   useEffect(() => {
-    fetch("https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome")
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
       .then((res) => res.json())
       .then((dados) => setEstadosIBGE(dados))
-      .catch(err => console.error("Erro ao buscar estados:", err));
-  }, []);
+      .catch((err) => console.error('Erro ao buscar estados:', err))
+  }, [])
 
   useEffect(() => {
     if (!form.estado) {
-      setCidadesIBGE([]);
-      return;
+      setCidadesIBGE([])
+      return
     }
+
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.estado}/municipios`)
       .then((res) => res.json())
       .then((dados) => setCidadesIBGE(dados))
-      .catch(err => console.error("Erro ao buscar cidades:", err));
-  }, [form.estado]);
-
+      .catch((err) => console.error('Erro ao buscar cidades:', err))
+  }, [form.estado])
 
   useEffect(() => {
     buscarDados()
   }, [busca, filtroStatus])
 
-    async function buscarDados() {
+  async function buscarDados() {
     setCarregando(true)
 
     try {
@@ -116,6 +179,10 @@ export default function Clientes() {
 
       setPlanos(data.planos || [])
       setClientes(data.clientes || [])
+      setPermissions({
+        ...permissoesIniciais,
+        ...(data.permissions || {}),
+      })
     } catch (error) {
       console.error('Erro ao buscar clientes:', error)
       toast.error(error.message || 'Erro ao carregar clientes.')
@@ -126,17 +193,21 @@ export default function Clientes() {
 
   const validarCpfCnpj = (valor) => {
     const numeros = valor.replace(/\D/g, '')
+
     if (numeros.length > 0 && numeros.length !== 11 && numeros.length !== 14) {
       return 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
     }
+
     return ''
   }
 
   const validarTelefone = (valor) => {
     const numeros = valor.replace(/\D/g, '')
+
     if (numeros.length > 0 && numeros.length < 10) {
       return 'Telefone inválido. Inclua o DDD.'
     }
+
     return ''
   }
 
@@ -144,6 +215,7 @@ export default function Clientes() {
     if (valor.trim().length > 0 && valor.trim().length < 3) {
       return `${campo} deve ter pelo menos 3 caracteres.`
     }
+
     return ''
   }
 
@@ -173,21 +245,48 @@ export default function Clientes() {
   }
 
   function abrirModal(cliente = null) {
+    if (cliente && !canUpdate) {
+      toast.error('Você não tem permissão para editar clientes.')
+      return
+    }
+
+    if (!cliente && !canCreate) {
+      toast.error('Você não tem permissão para criar clientes.')
+      return
+    }
+
     if (cliente) {
       setClienteSelecionado(cliente)
       setForm({
-        nome: cliente.nome || '', nome_empresa: cliente.nome_empresa || '', nome_responsavel: cliente.nome_responsavel || '',
-        email: cliente.email || '', telefone: cliente.telefone || '', cpf_cnpj: cliente.cpf_cnpj || '',
-        endereco: cliente.endereco || '', cidade: cliente.cidade || '', estado: cliente.estado || '',
-        plano_id: cliente.plano_id || '', status: cliente.status || 'Ativo'
+        nome: cliente.nome || '',
+        nome_empresa: cliente.nome_empresa || '',
+        nome_responsavel: cliente.nome_responsavel || '',
+        email: cliente.email || '',
+        telefone: cliente.telefone || '',
+        cpf_cnpj: cliente.cpf_cnpj || '',
+        endereco: cliente.endereco || '',
+        cidade: cliente.cidade || '',
+        estado: cliente.estado || '',
+        plano_id: cliente.plano_id || '',
+        status: cliente.status || 'Ativo',
       })
     } else {
       setClienteSelecionado(null)
       setForm({
-        nome: '', nome_empresa: '', nome_responsavel: '', email: '', telefone: '',
-        cpf_cnpj: '', endereco: '', cidade: '', estado: '', plano_id: '', status: 'Ativo'
+        nome: '',
+        nome_empresa: '',
+        nome_responsavel: '',
+        email: '',
+        telefone: '',
+        cpf_cnpj: '',
+        endereco: '',
+        cidade: '',
+        estado: '',
+        plano_id: '',
+        status: 'Ativo',
       })
     }
+
     setCpfCnpjError('')
     setTelefoneError('')
     setNomeEmpresarioError('')
@@ -201,14 +300,22 @@ export default function Clientes() {
     setClienteSelecionado(null)
   }
 
-    async function salvarCliente() {
+  async function salvarCliente() {
+    if (clienteSelecionado && !canUpdate) {
+      toast.error('Você não tem permissão para editar clientes.')
+      return
+    }
+
+    if (!clienteSelecionado && !canCreate) {
+      toast.error('Você não tem permissão para criar clientes.')
+      return
+    }
+
     if (cpfCnpjError || telefoneError || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError) {
       toast.error('Corrija os erros no formulário antes de salvar.')
       return
     }
 
-    // E-mail agora continua obrigatório, mas a criação do usuário Auth
-    // será feita no servidor, não mais pelo navegador.
     if (
       !form.nome.trim() ||
       !form.nome_empresa.trim() ||
@@ -265,7 +372,21 @@ export default function Clientes() {
     }
   }
 
-    async function excluirCliente(id) {
+  function solicitarExclusaoCliente(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir clientes.')
+      return
+    }
+
+    setConfirmDelete(id)
+  }
+
+  async function excluirCliente(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir clientes.')
+      return
+    }
+
     try {
       // Exclusão via API protegida.
       // Não exclui o usuário do Supabase Auth por enquanto.
@@ -289,27 +410,55 @@ export default function Clientes() {
 
   return (
     <>
-      <Toaster 
-        position="top-right" 
-        toastOptions={{ 
-          style: { background: '#0a0a0a', color: '#fff', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.1)' },
-          success: { iconTheme: { primary: '#22c55e', secondary: '#0a0a0a' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#0a0a0a' } }
-        }} 
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#0a0a0a',
+            color: '#fff',
+            borderRadius: '16px',
+            border: '1px solid rgba(255,255,255,0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#22c55e',
+              secondary: '#0a0a0a',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#0a0a0a',
+            },
+          },
+        }}
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-
-        {/* Header e Controles */}
+        {/* Header e controles */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">Clientes</h1>
-            <p className="text-sm text-neutral-500 mt-1.5 font-medium">Gerencie sua base de clientes e empresas</p>
+            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">
+              Clientes
+            </h1>
+            <p className="text-sm text-neutral-500 mt-1.5 font-medium">
+              Gerencie sua base de clientes e empresas
+            </p>
+
+            {!canCreate && !canUpdate && !canDelete && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+                <Lock size={14} className="text-neutral-500" />
+                Modo leitura: você pode visualizar, mas não alterar clientes.
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="relative w-full sm:w-72 group/input">
-              <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+              <Search
+                size={18}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300"
+              />
               <input
                 type="text"
                 placeholder="Buscar cliente, empresa, CPF..."
@@ -325,21 +474,31 @@ export default function Clientes() {
                 onChange={(e) => setFiltroStatus(e.target.value)}
                 className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer shadow-inner"
               >
-                <option value="Todos" className="bg-[#0a0a0a]">Todos os Status</option>
-                {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#0a0a0a]">{s}</option>)}
+                <option value="Todos" className="bg-[#0a0a0a]">
+                  Todos os Status
+                </option>
+                {statusOpcoes.map((status) => (
+                  <option key={status} value={status} className="bg-[#0a0a0a]">
+                    {status}
+                  </option>
+                ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
               </div>
             </div>
 
-            <button
-              onClick={() => abrirModal()}
-              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              Novo Cliente
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => abrirModal()}
+                className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                Novo Cliente
+              </button>
+            )}
           </div>
         </div>
 
@@ -347,7 +506,7 @@ export default function Clientes() {
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
-              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin" />
               <Users className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
@@ -356,11 +515,22 @@ export default function Clientes() {
             <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center mb-6 border border-white/[0.05]">
               <Users size={32} className="text-neutral-600" />
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">Nenhum cliente encontrado</h3>
-            <p className="text-sm text-neutral-500 mb-8 max-w-md">Você ainda não tem clientes cadastrados ou nenhum resultado corresponde à sua busca.</p>
-            <button onClick={() => abrirModal()} className="bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.05] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center gap-2">
-              <Plus size={18} /> Cadastrar primeiro cliente
-            </button>
+            <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">
+              Nenhum cliente encontrado
+            </h3>
+            <p className="text-sm text-neutral-500 mb-8 max-w-md">
+              Você ainda não tem clientes cadastrados ou nenhum resultado corresponde à sua busca.
+            </p>
+
+            {canCreate && (
+              <button
+                onClick={() => abrirModal()}
+                className="bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.05] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Cadastrar primeiro cliente
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
@@ -368,12 +538,26 @@ export default function Clientes() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.05] bg-white/[0.01]">
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">Empresa / Contato</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">Comunicação</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">Localização</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">Plano / Resp.</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">Status</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right">Ações</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Empresa / Contato
+                    </th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Comunicação
+                    </th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Localização
+                    </th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Plano / Resp.
+                    </th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Status
+                    </th>
+                    {showActionsColumn && (
+                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right">
+                        Ações
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/[0.02]">
@@ -385,13 +569,17 @@ export default function Clientes() {
                             {cliente.nome?.charAt(0).toUpperCase() || '?'}
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors">{cliente.nome || '—'}</p>
+                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors">
+                              {cliente.nome || '—'}
+                            </p>
                             <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1">
-                              <Building size={12} className="text-neutral-600" /> {cliente.nome_empresa || '—'}
+                              <Building size={12} className="text-neutral-600" />
+                              {cliente.nome_empresa || '—'}
                             </p>
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-5">
                         <div className="flex flex-col gap-2">
                           <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
@@ -400,46 +588,66 @@ export default function Clientes() {
                           </div>
                           <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
                             <Mail size={14} className="text-neutral-600" />
-                            <span className="text-xs font-medium truncate max-w-[150px]" title={cliente.email}>{cliente.email || '—'}</span>
+                            <span className="text-xs font-medium truncate max-w-[150px]" title={cliente.email}>
+                              {cliente.email || '—'}
+                            </span>
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-2.5 text-neutral-400 mb-1.5">
                           <MapPin size={14} className="text-neutral-600" />
-                          <span className="text-xs font-bold">{cliente.cidade || '—'}, {cliente.estado || '—'}</span>
+                          <span className="text-xs font-bold">
+                            {cliente.cidade || '—'}, {cliente.estado || '—'}
+                          </span>
                         </div>
-                        <p className="text-xs text-neutral-600 truncate max-w-[180px] font-medium" title={cliente.endereco}>{cliente.endereco || '—'}</p>
-                      </td>
-                      <td className="px-6 py-5">
-                        <p className="text-sm font-bold text-neutral-300">{cliente.planos?.nome || 'Sem plano'}</p>
-                        <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 font-medium">
-                          <User size={12} className="text-neutral-600" /> {cliente.nome_responsavel || '—'}
+                        <p className="text-xs text-neutral-600 truncate max-w-[180px] font-medium" title={cliente.endereco}>
+                          {cliente.endereco || '—'}
                         </p>
                       </td>
+
+                      <td className="px-6 py-5">
+                        <p className="text-sm font-bold text-neutral-300">
+                          {cliente.planos?.nome || 'Sem plano'}
+                        </p>
+                        <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 font-medium">
+                          <User size={12} className="text-neutral-600" />
+                          {cliente.nome_responsavel || '—'}
+                        </p>
+                      </td>
+
                       <td className="px-6 py-5">
                         <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${statusCores[cliente.status] || 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]'}`}>
                           {cliente.status || 'Desconhecido'}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
-                          <button
-                            onClick={() => abrirModal(cliente)}
-                            className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
-                            title="Editar cliente"
-                          >
-                            <Pencil size={16} />
-                          </button>
-                          <button
-                            onClick={() => setConfirmDelete(cliente.id)}
-                            className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
-                            title="Excluir cliente"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+
+                      {showActionsColumn && (
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                            {canUpdate && (
+                              <button
+                                onClick={() => abrirModal(cliente)}
+                                className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
+                                title="Editar cliente"
+                              >
+                                <Pencil size={16} />
+                              </button>
+                            )}
+
+                            {canDelete && (
+                              <button
+                                onClick={() => solicitarExclusaoCliente(cliente.id)}
+                                className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
+                                title="Excluir cliente"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -449,29 +657,41 @@ export default function Clientes() {
         )}
       </div>
 
-      {/* Modal de Criação/Edição Premium */}
+      {/* Modal de criação/edição */}
       {modalAberto && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-4xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-
             <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
               <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">{clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}</h2>
-                <p className="text-sm text-neutral-500 mt-1.5 font-medium">Preencha os dados da empresa e do contato principal</p>
+                <h2 className="text-2xl font-bold text-white tracking-tight">
+                  {clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1.5 font-medium">
+                  Preencha os dados da empresa e do contato principal
+                </p>
               </div>
-              <button onClick={fecharModal} className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
+              <button
+                onClick={fecharModal}
+                className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors"
+              >
                 <X size={20} />
               </button>
             </div>
 
             <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto custom-scrollbar flex-grow">
-              {/* Campo: Empresário */}
               <div>
-                <label htmlFor="nome" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Empresário *</label>
+                <label htmlFor="nome" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Empresário *
+                </label>
                 <div className="relative group/input">
                   <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="nome" name="nome" value={form.nome} onChange={handleChange} placeholder="Nome completo"
+                    type="text"
+                    id="nome"
+                    name="nome"
+                    value={form.nome}
+                    onChange={handleChange}
+                    placeholder="Nome completo"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
@@ -479,13 +699,19 @@ export default function Clientes() {
                 {nomeEmpresarioError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeEmpresarioError}</p>}
               </div>
 
-              {/* Campo: Empresa */}
               <div>
-                <label htmlFor="nome_empresa" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Empresa *</label>
+                <label htmlFor="nome_empresa" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Empresa *
+                </label>
                 <div className="relative group/input">
                   <Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="nome_empresa" name="nome_empresa" value={form.nome_empresa} onChange={handleChange} placeholder="Nome do negócio"
+                    type="text"
+                    id="nome_empresa"
+                    name="nome_empresa"
+                    value={form.nome_empresa}
+                    onChange={handleChange}
+                    placeholder="Nome do negócio"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
@@ -493,13 +719,19 @@ export default function Clientes() {
                 {nomeEmpresaError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeEmpresaError}</p>}
               </div>
 
-              {/* Campo: Responsável */}
               <div>
-                <label htmlFor="nome_responsavel" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Responsável pela Venda *</label>
+                <label htmlFor="nome_responsavel" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Responsável pela Venda *
+                </label>
                 <div className="relative group/input">
                   <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="nome_responsavel" name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} placeholder="Quem fechou o negócio"
+                    type="text"
+                    id="nome_responsavel"
+                    name="nome_responsavel"
+                    value={form.nome_responsavel}
+                    onChange={handleChange}
+                    placeholder="Quem fechou o negócio"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
@@ -507,13 +739,20 @@ export default function Clientes() {
                 {nomeResponsavelError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeResponsavelError}</p>}
               </div>
 
-              {/* Campo: CPF/CNPJ */}
               <div>
-                <label htmlFor="cpf_cnpj" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">CPF/CNPJ *</label>
+                <label htmlFor="cpf_cnpj" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  CPF/CNPJ *
+                </label>
                 <div className="relative group/input">
                   <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="cpf_cnpj" name="cpf_cnpj" value={form.cpf_cnpj} onChange={handleChange} placeholder="Apenas números" maxLength={14}
+                    type="text"
+                    id="cpf_cnpj"
+                    name="cpf_cnpj"
+                    value={form.cpf_cnpj}
+                    onChange={handleChange}
+                    placeholder="Apenas números"
+                    maxLength={14}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
@@ -521,26 +760,39 @@ export default function Clientes() {
                 {cpfCnpjError && <p className="text-red-400 text-xs mt-2 font-medium">{cpfCnpjError}</p>}
               </div>
 
-              {/* Campo: Email (AGORA OBRIGATÓRIO) */}
               <div>
-                <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Email (Login) *</label>
+                <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Email (Login) *
+                </label>
                 <div className="relative group/input">
                   <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="email" id="email" name="email" value={form.email} onChange={handleChange} placeholder="contato@empresa.com"
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={form.email}
+                    onChange={handleChange}
+                    placeholder="contato@empresa.com"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
                 </div>
               </div>
 
-              {/* Campo: Telefone */}
               <div>
-                <label htmlFor="telefone" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Telefone / WhatsApp *</label>
+                <label htmlFor="telefone" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Telefone / WhatsApp *
+                </label>
                 <div className="relative group/input">
                   <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="telefone" name="telefone" value={form.telefone} onChange={handleChange} placeholder="DDD + Número" maxLength={11}
+                    type="text"
+                    id="telefone"
+                    name="telefone"
+                    value={form.telefone}
+                    onChange={handleChange}
+                    placeholder="DDD + Número"
+                    maxLength={11}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                     required
                   />
@@ -548,46 +800,65 @@ export default function Clientes() {
                 {telefoneError && <p className="text-red-400 text-xs mt-2 font-medium">{telefoneError}</p>}
               </div>
 
-              {/* Campo: Endereço */}
               <div className="md:col-span-2">
-                <label htmlFor="endereco" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Endereço Completo</label>
+                <label htmlFor="endereco" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Endereço Completo
+                </label>
                 <div className="relative group/input">
                   <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                   <input
-                    type="text" id="endereco" name="endereco" value={form.endereco} onChange={handleChange} placeholder="Rua, número, complemento, bairro"
+                    type="text"
+                    id="endereco"
+                    name="endereco"
+                    value={form.endereco}
+                    onChange={handleChange}
+                    placeholder="Rua, número, complemento, bairro"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
                   />
                 </div>
               </div>
 
-              {/* Campo: Estado (IBGE) */}
               <div>
-                <label htmlFor="estado" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Estado</label>
+                <label htmlFor="estado" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Estado
+                </label>
                 <div className="relative group/select">
                   <select
-                    id="estado" name="estado" value={form.estado} onChange={handleChange}
+                    id="estado"
+                    name="estado"
+                    value={form.estado}
+                    onChange={handleChange}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
-                    <option value="" className="bg-[#050505]">Selecione o UF</option>
-                    {estadosIBGE.map(estado => (
+                    <option value="" className="bg-[#050505]">
+                      Selecione o UF
+                    </option>
+                    {estadosIBGE.map((estado) => (
                       <option key={estado.id} value={estado.sigla} className="bg-[#050505]">
                         {estado.nome} ({estado.sigla})
                       </option>
                     ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
                 </div>
               </div>
 
-              {/* Campo: Cidade (IBGE com Datalist) */}
               <div>
-                <label htmlFor="cidade" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Cidade</label>
+                <label htmlFor="cidade" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Cidade
+                </label>
                 <input
                   list="lista-cidades-ibge"
-                  type="text" id="cidade" name="cidade" value={form.cidade} onChange={handleChange} 
-                  placeholder={form.estado ? "Digite para buscar a cidade" : "Selecione o estado primeiro"}
+                  type="text"
+                  id="cidade"
+                  name="cidade"
+                  value={form.cidade}
+                  onChange={handleChange}
+                  placeholder={form.estado ? 'Digite para buscar a cidade' : 'Selecione o estado primeiro'}
                   disabled={!form.estado}
                   className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                 />
@@ -598,35 +869,57 @@ export default function Clientes() {
                 </datalist>
               </div>
 
-              {/* Campo: Plano */}
               <div>
-                <label htmlFor="plano_id" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Plano Contratado</label>
+                <label htmlFor="plano_id" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Plano Contratado
+                </label>
                 <div className="relative group/select">
                   <select
-                    id="plano_id" name="plano_id" value={form.plano_id} onChange={handleChange}
+                    id="plano_id"
+                    name="plano_id"
+                    value={form.plano_id}
+                    onChange={handleChange}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
-                    <option value="" className="bg-[#050505]">Sem plano vinculado</option>
-                    {planos.map(plano => <option key={plano.id} value={plano.id} className="bg-[#050505]">{plano.nome}</option>)}
+                    <option value="" className="bg-[#050505]">
+                      Sem plano vinculado
+                    </option>
+                    {planos.map((plano) => (
+                      <option key={plano.id} value={plano.id} className="bg-[#050505]">
+                        {plano.nome}
+                      </option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
                 </div>
               </div>
 
-              {/* Campo: Status */}
               <div>
-                <label htmlFor="status" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Status da Conta</label>
+                <label htmlFor="status" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Status da Conta
+                </label>
                 <div className="relative group/select">
                   <select
-                    id="status" name="status" value={form.status} onChange={handleChange}
+                    id="status"
+                    name="status"
+                    value={form.status}
+                    onChange={handleChange}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
                   >
-                    {statusOpcoes.map(s => <option key={s} value={s} className="bg-[#050505]">{s}</option>)}
+                    {statusOpcoes.map((status) => (
+                      <option key={status} value={status} className="bg-[#050505]">
+                        {status}
+                      </option>
+                    ))}
                   </select>
                   <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                    </svg>
                   </div>
                 </div>
               </div>
@@ -641,13 +934,29 @@ export default function Clientes() {
               </button>
               <button
                 onClick={salvarCliente}
-                disabled={salvando || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError || telefoneError || cpfCnpjError || !form.nome.trim() || !form.nome_empresa.trim() || !form.nome_responsavel.trim() || !form.telefone.trim() || !form.cpf_cnpj.trim() || !form.email.trim()}
+                disabled={
+                  salvando ||
+                  nomeEmpresarioError ||
+                  nomeEmpresaError ||
+                  nomeResponsavelError ||
+                  telefoneError ||
+                  cpfCnpjError ||
+                  !form.nome.trim() ||
+                  !form.nome_empresa.trim() ||
+                  !form.nome_responsavel.trim() ||
+                  !form.telefone.trim() ||
+                  !form.cpf_cnpj.trim() ||
+                  !form.email.trim()
+                }
                 className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
                 {salvando ? (
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <><Check size={18} strokeWidth={2.5} /> {clienteSelecionado ? 'Salvar Alterações' : 'Cadastrar Cliente'}</>
+                  <>
+                    <Check size={18} strokeWidth={2.5} />
+                    {clienteSelecionado ? 'Salvar Alterações' : 'Cadastrar Cliente'}
+                  </>
                 )}
               </button>
             </div>
@@ -655,20 +964,30 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Modal de Confirmação de Exclusão Premium */}
-      {confirmDelete && (
+      {/* Modal de confirmação de exclusão */}
+      {confirmDelete && canDelete && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
               <Trash2 size={32} className="text-red-500" />
             </div>
-            <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">Excluir cliente?</h2>
-            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">Esta ação não pode ser desfeita. Todos os pagamentos e dados vinculados serão perdidos permanentemente.</p>
+            <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">
+              Excluir cliente?
+            </h2>
+            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
+              Esta ação não pode ser desfeita. Todos os pagamentos e dados vinculados serão perdidos permanentemente.
+            </p>
             <div className="flex gap-4">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
+              >
                 Cancelar
               </button>
-              <button onClick={() => excluirCliente(confirmDelete)} className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:-translate-y-1">
+              <button
+                onClick={() => excluirCliente(confirmDelete)}
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:-translate-y-1"
+              >
                 Sim, Excluir
               </button>
             </div>
@@ -676,8 +995,7 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Estilo para a barra de rolagem do modal */}
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
