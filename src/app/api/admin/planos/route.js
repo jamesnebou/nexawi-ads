@@ -7,11 +7,16 @@
 //
 // Agora:
 // Dashboard → API admin → valida admin → service_role → Supabase
+//
+// Auditoria:
+// - Registra criação, edição e exclusão de planos.
+// - Impede exclusão de plano com clientes vinculados.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -133,6 +138,15 @@ export async function POST(request) {
         )
       }
 
+      // Busca o plano antes de excluir para registrar no log.
+      const { data: planoAntes, error: planoAntesError } = await supabaseAdmin
+        .from('planos')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (planoAntesError) throw planoAntesError
+
       const { data: clientesVinculados, error: clientesError } = await supabaseAdmin
         .from('clientes')
         .select('id')
@@ -157,6 +171,24 @@ export async function POST(request) {
         .eq('id', id)
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'planos',
+        entityId: id,
+        description: 'Excluiu um plano',
+        metadata: {
+          plano_id: id,
+          nome: planoAntes?.nome || '',
+          preco: planoAntes?.preco || 0,
+          ciclo_cobranca: planoAntes?.ciclo_cobranca || '',
+          intervalo_relatorio: planoAntes?.intervalo_relatorio || '',
+          max_criativos: planoAntes?.max_criativos || 0,
+          max_pontos: planoAntes?.max_pontos || 0,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -184,6 +216,15 @@ export async function POST(request) {
         )
       }
 
+      // Busca o plano antes da alteração para comparação no log.
+      const { data: planoAntes, error: planoAntesError } = await supabaseAdmin
+        .from('planos')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (planoAntesError) throw planoAntesError
+
       const { data, error } = await supabaseAdmin
         .from('planos')
         .update(payload)
@@ -192,6 +233,30 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'update',
+        entity: 'planos',
+        entityId: data.id,
+        description: 'Atualizou um plano',
+        metadata: {
+          plano_id: data.id,
+          nome_anterior: planoAntes?.nome || '',
+          nome_atual: data.nome,
+          preco_anterior: planoAntes?.preco || 0,
+          preco_atual: data.preco,
+          ciclo_anterior: planoAntes?.ciclo_cobranca || '',
+          ciclo_atual: data.ciclo_cobranca,
+          intervalo_relatorio_anterior: planoAntes?.intervalo_relatorio || '',
+          intervalo_relatorio_atual: data.intervalo_relatorio,
+          max_criativos_anterior: planoAntes?.max_criativos || 0,
+          max_criativos_atual: data.max_criativos,
+          max_pontos_anterior: planoAntes?.max_pontos || 0,
+          max_pontos_atual: data.max_pontos,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -208,6 +273,24 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'create',
+        entity: 'planos',
+        entityId: data.id,
+        description: 'Criou um novo plano',
+        metadata: {
+          plano_id: data.id,
+          nome: data.nome,
+          preco: data.preco,
+          ciclo_cobranca: data.ciclo_cobranca,
+          intervalo_relatorio: data.intervalo_relatorio,
+          max_criativos: data.max_criativos,
+          max_pontos: data.max_pontos,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
