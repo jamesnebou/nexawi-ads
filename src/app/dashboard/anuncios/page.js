@@ -450,7 +450,7 @@ export default function Anuncios() {
     Mobile: fica em cima, centralizada e na proporção vertical 9:16.
     Desktop: volta para o layout lateral estreito como antes. */}
 <div className="relative w-full flex justify-center bg-[#050505] border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden lg:w-[150px] lg:min-w-[150px] lg:h-full lg:block">
-  <div className="relative w-full max-w-[220px] aspect-[9/16] bg-[#050505] overflow-hidden lg:max-w-none lg:w-full lg:h-full lg:aspect-auto">
+  <div className="relative w-full max-w-[260px] aspect-[9/16] bg-[#050505] overflow-hidden lg:max-w-none lg:w-full lg:h-full lg:aspect-auto">
     {anuncio.media_url ? (
       anuncio.tipo_media === 'video' ? (
         <video
