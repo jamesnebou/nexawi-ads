@@ -30,6 +30,7 @@ const ETAPAS = {
   CADASTRO: 'cadastro',
   ANUNCIO: 'anuncio',
   CTA: 'cta',
+  ABRIR_CLIENTE: 'abrir_cliente',
   ACESSO: 'acesso',
   BLOQUEADO: 'bloqueado',
   ERRO: 'erro',
@@ -41,6 +42,7 @@ function normalizeMac(value = '') {
     .toUpperCase()
     .replace(/-/g, ':')
 }
+
 
 function normalizarUrlDestino(url = '') {
   const valor = String(url || '').trim()
@@ -60,9 +62,14 @@ function normalizarUrlDestino(url = '') {
     return `https://${valor}`
   }
 
-  if (/^\d{10,15}$/.test(valor.replace(/\D/g, ''))) {
-    const telefone = valor.replace(/\D/g, '')
-    return `https://wa.me/55${telefone}`
+  const somenteNumeros = valor.replace(/\D/g, '')
+
+  if (/^\d{10,15}$/.test(somenteNumeros)) {
+    const telefoneComPais = somenteNumeros.startsWith('55')
+      ? somenteNumeros
+      : `55${somenteNumeros}`
+
+    return `https://wa.me/${telefoneComPais}`
   }
 
   return `https://${valor}`
@@ -153,6 +160,9 @@ export default function Portal() {
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
+  const [urlCliente, setUrlCliente] = useState('')
+
+
 
   const [form, setForm] = useState({
     nome: '',
@@ -613,29 +623,30 @@ export default function Portal() {
   }
 
   async function handleCtaClick(clicou, destinoExterno = '') {
-    try {
-      if (!internetLiberadaNaCta) return
+  try {
+    if (!internetLiberadaNaCta) return
 
-      const resolvedIp = getClientIp()
+    const resolvedIp = getClientIp()
 
-      if (clicou && anuncioAtual) {
-        await registrarClique(anuncioAtual.id, resolvedIp)
+    if (clicou && anuncioAtual) {
+      await registrarClique(anuncioAtual.id, resolvedIp)
+    }
+
+    if (clicou && destinoExterno) {
+      const urlNormalizada = normalizarUrlDestino(destinoExterno)
+
+      if (urlNormalizada) {
+        setUrlCliente(urlNormalizada)
+        setEtapa(ETAPAS.ABRIR_CLIENTE)
+        return
       }
+    }
 
-      if (clicou && destinoExterno) {
-  const urlNormalizada = normalizarUrlDestino(destinoExterno)
-
-  if (urlNormalizada) {
-    window.location.assign(urlNormalizada)
-    return
+    setEtapa(ETAPAS.ACESSO)
+  } catch (error) {
+    falhar('Erro na CTA', error)
   }
 }
-
-      setEtapa(ETAPAS.ACESSO)
-    } catch (error) {
-      falhar('Erro na CTA', error)
-    }
-  }
 
   useEffect(() => {
     let isMounted = true
@@ -1051,6 +1062,68 @@ export default function Portal() {
           </div>
         </div>
       )}
+
+
+
+      {etapa === ETAPAS.ABRIR_CLIENTE && (
+  <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
+    <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+      <div className="flex justify-center mb-8 group cursor-pointer">
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+          <img
+            src="/Nexa-logo.png"
+            alt="Nexa Logo"
+            className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
+        </div>
+      </div>
+
+      <div className="relative w-20 h-20 mx-auto mb-8">
+        <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
+        <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
+          <ArrowRight size={34} className="text-black" />
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
+        Oferta liberada!
+      </h1>
+
+      <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+        Sua internet já foi conectada. Agora toque no botão abaixo para abrir a página do anunciante.
+      </p>
+
+      {urlCliente ? (
+        <a
+          href={urlCliente}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+        >
+          Abrir página do cliente <ArrowRight size={18} />
+        </a>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => setEtapa(ETAPAS.ACESSO)}
+        className="w-full mt-4 py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
+      >
+        Continuar usando o Wi-Fi
+      </button>
+
+      <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
+        Caso a página não abra automaticamente, toque e segure no botão ou abra pelo navegador do celular.
+      </p>
+    </div>
+  </div>
+)}
+
+
+
+
 
       {etapa === ETAPAS.ACESSO && (
         <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
