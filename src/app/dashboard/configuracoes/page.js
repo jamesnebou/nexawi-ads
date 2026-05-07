@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import {
   Building2,
   Globe,
@@ -14,10 +14,10 @@ import {
   BadgeDollarSign,
 } from 'lucide-react'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado,
+// alterar senha e enviar arquivo usando URL assinada.
+// As configurações agora passam por /api/admin/configuracoes.
+const supabase = createBrowserSupabaseClient()
 
 const HERO_IMAGE_BUCKET = 'landing-assets'
 
@@ -251,6 +251,38 @@ function InputPreco({ label, mensalKey, anualKey, form, setForm }) {
   )
 }
 
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
+
 export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState('empresa')
   const [carregando, setCarregando] = useState(true)
@@ -273,214 +305,210 @@ export default function Configuracoes() {
     buscarConfiguracoes()
   }, [])
 
-  async function buscarConfiguracoes() {
+    async function buscarConfiguracoes() {
     setCarregando(true)
 
-    const { data } = await supabase
-      .from('configuracoes')
-      .select('*')
-      .limit(1)
-      .single()
+    try {
+      // Agora as configurações não são lidas direto pelo navegador.
+      // A API admin busca a configuração mais recente com service_role.
+      const resposta = await adminApiFetch('/api/admin/configuracoes')
+      const data = resposta.config
 
-    if (data) {
-      setConfigId(data.id)
+      if (data) {
+        setConfigId(data.id)
 
-      const acesso = secondsToParts(data.portal_tempo_acesso_segundos ?? 1200)
-      const bloqueio = secondsToParts(data.portal_tempo_bloqueio_segundos ?? 600)
-      const anuncio = secondsToParts(data.portal_intervalo_anuncio_segundos ?? 600)
+        const acesso = secondsToParts(data.portal_tempo_acesso_segundos ?? 1200)
+        const bloqueio = secondsToParts(data.portal_tempo_bloqueio_segundos ?? 600)
+        const anuncio = secondsToParts(data.portal_intervalo_anuncio_segundos ?? 600)
 
-      setForm({
-        nome_empresa: data.nome_empresa || '',
-        cnpj: data.cnpj || '',
-        email_contato: data.email_contato || '',
-        telefone_contato: data.telefone_contato || '',
-        endereco: data.endereco || '',
-        titulo_portal: data.titulo_portal || '',
-        texto_boas_vindas: data.texto_boas_vindas || '',
-        cor_principal: data.cor_principal || '#22c55e',
-        texto_lgpd: data.texto_lgpd || '',
-        email_notificacoes: data.email_notificacoes || '',
-        notificar_novos_leads: data.notificar_novos_leads ?? true,
-        notificar_relatorios: data.notificar_relatorios ?? true,
+        setForm({
+          nome_empresa: data.nome_empresa || '',
+          cnpj: data.cnpj || '',
+          email_contato: data.email_contato || '',
+          telefone_contato: data.telefone_contato || '',
+          endereco: data.endereco || '',
+          titulo_portal: data.titulo_portal || '',
+          texto_boas_vindas: data.texto_boas_vindas || '',
+          cor_principal: data.cor_principal || '#22c55e',
 
-        portal_tempo_acesso_horas: acesso.hours,
-        portal_tempo_acesso_minutos: acesso.minutes,
-        portal_tempo_acesso_segundos: acesso.seconds,
+          // LGPD sempre vem do banco.
+          // Se estiver vazio, mantém vazio; se você salvou texto, ele volta aqui.
+          texto_lgpd: data.texto_lgpd || '',
 
-        portal_tempo_bloqueio_horas: bloqueio.hours,
-        portal_tempo_bloqueio_minutos: bloqueio.minutes,
-        portal_tempo_bloqueio_segundos: bloqueio.seconds,
+          email_notificacoes: data.email_notificacoes || '',
+          notificar_novos_leads: data.notificar_novos_leads ?? true,
+          notificar_relatorios: data.notificar_relatorios ?? true,
 
-        portal_intervalo_anuncio_horas: anuncio.hours,
-        portal_intervalo_anuncio_minutos: anuncio.minutes,
-        portal_intervalo_anuncio_segundos: anuncio.seconds,
+          portal_tempo_acesso_horas: acesso.hours,
+          portal_tempo_acesso_minutos: acesso.minutes,
+          portal_tempo_acesso_segundos: acesso.seconds,
 
-        preco_basico_mensal_padrao: moneyToString(data.preco_basico_mensal_padrao, '147'),
-        preco_basico_anual_padrao: moneyToString(data.preco_basico_anual_padrao, '1470'),
-        preco_comercial_mensal_padrao: moneyToString(data.preco_comercial_mensal_padrao, '247'),
-        preco_comercial_anual_padrao: moneyToString(data.preco_comercial_anual_padrao, '2470'),
-        preco_vip_mensal_padrao: moneyToString(data.preco_vip_mensal_padrao, '597'),
-        preco_vip_anual_padrao: moneyToString(data.preco_vip_anual_padrao, '5970'),
-        mostrar_preco_ancora_padrao: data.mostrar_preco_ancora_padrao ?? false,
+          portal_tempo_bloqueio_horas: bloqueio.hours,
+          portal_tempo_bloqueio_minutos: bloqueio.minutes,
+          portal_tempo_bloqueio_segundos: bloqueio.seconds,
 
-        preco_ancora_basico_mensal_padrao: moneyToString(data.preco_ancora_basico_mensal_padrao, ''),
-        preco_ancora_basico_anual_padrao: moneyToString(data.preco_ancora_basico_anual_padrao, ''),
-        preco_ancora_comercial_mensal_padrao: moneyToString(data.preco_ancora_comercial_mensal_padrao, ''),
-        preco_ancora_comercial_anual_padrao: moneyToString(data.preco_ancora_comercial_anual_padrao, ''),
-        preco_ancora_vip_mensal_padrao: moneyToString(data.preco_ancora_vip_mensal_padrao, ''),
-        preco_ancora_vip_anual_padrao: moneyToString(data.preco_ancora_vip_anual_padrao, ''),
+          portal_intervalo_anuncio_horas: anuncio.hours,
+          portal_intervalo_anuncio_minutos: anuncio.minutes,
+          portal_intervalo_anuncio_segundos: anuncio.seconds,
 
-        hero_imagem_url_padrao: data.hero_imagem_url_padrao || '',
+          preco_basico_mensal_padrao: moneyToString(data.preco_basico_mensal_padrao, '147'),
+          preco_basico_anual_padrao: moneyToString(data.preco_basico_anual_padrao, '1470'),
+          preco_comercial_mensal_padrao: moneyToString(data.preco_comercial_mensal_padrao, '247'),
+          preco_comercial_anual_padrao: moneyToString(data.preco_comercial_anual_padrao, '2470'),
+          preco_vip_mensal_padrao: moneyToString(data.preco_vip_mensal_padrao, '597'),
+          preco_vip_anual_padrao: moneyToString(data.preco_vip_anual_padrao, '5970'),
+          mostrar_preco_ancora_padrao: data.mostrar_preco_ancora_padrao ?? false,
 
-        hero_titulo_linha_1_padrao: data.hero_titulo_linha_1_padrao || '',
-hero_titulo_linha_2_padrao: data.hero_titulo_linha_2_padrao || '',
-hero_titulo_linha_3_padrao: data.hero_titulo_linha_3_padrao || '',
-hero_subtitulo_linha_1_padrao: data.hero_subtitulo_linha_1_padrao || '',
-hero_subtitulo_linha_2_padrao: data.hero_subtitulo_linha_2_padrao || '',
+          preco_ancora_basico_mensal_padrao: moneyToString(data.preco_ancora_basico_mensal_padrao, ''),
+          preco_ancora_basico_anual_padrao: moneyToString(data.preco_ancora_basico_anual_padrao, ''),
+          preco_ancora_comercial_mensal_padrao: moneyToString(data.preco_ancora_comercial_mensal_padrao, ''),
+          preco_ancora_comercial_anual_padrao: moneyToString(data.preco_ancora_comercial_anual_padrao, ''),
+          preco_ancora_vip_mensal_padrao: moneyToString(data.preco_ancora_vip_mensal_padrao, ''),
+          preco_ancora_vip_anual_padrao: moneyToString(data.preco_ancora_vip_anual_padrao, ''),
 
-hero_titulo_linha_2_estilo_padrao: data.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+          hero_imagem_url_padrao: data.hero_imagem_url_padrao || '',
 
-      })
+          hero_titulo_linha_1_padrao: data.hero_titulo_linha_1_padrao || '',
+          hero_titulo_linha_2_padrao: data.hero_titulo_linha_2_padrao || '',
+          hero_titulo_linha_3_padrao: data.hero_titulo_linha_3_padrao || '',
+          hero_subtitulo_linha_1_padrao: data.hero_subtitulo_linha_1_padrao || '',
+          hero_subtitulo_linha_2_padrao: data.hero_subtitulo_linha_2_padrao || '',
+          hero_titulo_linha_2_estilo_padrao: data.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+        })
+      }
+    } catch (error) {
+      console.error('Erro ao buscar configurações:', error)
+      alert(`Erro ao buscar configurações: ${error.message || 'erro desconhecido'}`)
+    } finally {
+      setCarregando(false)
     }
-
-    setCarregando(false)
   }
 
-  async function salvarConfiguracoes() {
-  try {
-    setSalvando(true)
-    setSalvo(false)
+    async function salvarConfiguracoes() {
+    try {
+      setSalvando(true)
+      setSalvo(false)
 
-    const payload = {
-      nome_empresa: form.nome_empresa,
-      cnpj: form.cnpj,
-      email_contato: form.email_contato,
-      telefone_contato: form.telefone_contato,
-      endereco: form.endereco,
-      titulo_portal: form.titulo_portal,
-      texto_boas_vindas: form.texto_boas_vindas,
-      cor_principal: form.cor_principal,
-      texto_lgpd: form.texto_lgpd,
-      email_notificacoes: form.email_notificacoes,
-      notificar_novos_leads: form.notificar_novos_leads,
-      notificar_relatorios: form.notificar_relatorios,
+      const payload = {
+        nome_empresa: form.nome_empresa,
+        cnpj: form.cnpj,
+        email_contato: form.email_contato,
+        telefone_contato: form.telefone_contato,
+        endereco: form.endereco,
+        titulo_portal: form.titulo_portal,
+        texto_boas_vindas: form.texto_boas_vindas,
+        cor_principal: form.cor_principal,
 
-      portal_tempo_acesso_segundos: partsToSeconds(
-        form.portal_tempo_acesso_horas,
-        form.portal_tempo_acesso_minutos,
-        form.portal_tempo_acesso_segundos
-      ),
-      portal_tempo_bloqueio_segundos: partsToSeconds(
-        form.portal_tempo_bloqueio_horas,
-        form.portal_tempo_bloqueio_minutos,
-        form.portal_tempo_bloqueio_segundos
-      ),
-      portal_intervalo_anuncio_segundos: partsToSeconds(
-        form.portal_intervalo_anuncio_horas,
-        form.portal_intervalo_anuncio_minutos,
-        form.portal_intervalo_anuncio_segundos
-      ),
+        // LGPD sempre enviada para a API.
+        // Isso garante que, ao salvar, o texto fique persistido.
+        texto_lgpd: form.texto_lgpd,
 
-      preco_basico_mensal_padrao: moneyToNumber(form.preco_basico_mensal_padrao, 147),
-      preco_basico_anual_padrao: moneyToNumber(form.preco_basico_anual_padrao, 1470),
-      preco_comercial_mensal_padrao: moneyToNumber(form.preco_comercial_mensal_padrao, 247),
-      preco_comercial_anual_padrao: moneyToNumber(form.preco_comercial_anual_padrao, 2470),
-      preco_vip_mensal_padrao: moneyToNumber(form.preco_vip_mensal_padrao, 597),
-      preco_vip_anual_padrao: moneyToNumber(form.preco_vip_anual_padrao, 5970),
-      mostrar_preco_ancora_padrao: form.mostrar_preco_ancora_padrao,
+        email_notificacoes: form.email_notificacoes,
+        notificar_novos_leads: form.notificar_novos_leads,
+        notificar_relatorios: form.notificar_relatorios,
 
-      preco_ancora_basico_mensal_padrao: moneyToNullableNumber(form.preco_ancora_basico_mensal_padrao),
-      preco_ancora_basico_anual_padrao: moneyToNullableNumber(form.preco_ancora_basico_anual_padrao),
+        portal_tempo_acesso_segundos: partsToSeconds(
+          form.portal_tempo_acesso_horas,
+          form.portal_tempo_acesso_minutos,
+          form.portal_tempo_acesso_segundos
+        ),
+        portal_tempo_bloqueio_segundos: partsToSeconds(
+          form.portal_tempo_bloqueio_horas,
+          form.portal_tempo_bloqueio_minutos,
+          form.portal_tempo_bloqueio_segundos
+        ),
+        portal_intervalo_anuncio_segundos: partsToSeconds(
+          form.portal_intervalo_anuncio_horas,
+          form.portal_intervalo_anuncio_minutos,
+          form.portal_intervalo_anuncio_segundos
+        ),
 
-      preco_ancora_comercial_mensal_padrao: moneyToNullableNumber(form.preco_ancora_comercial_mensal_padrao),
-      preco_ancora_comercial_anual_padrao: moneyToNullableNumber(form.preco_ancora_comercial_anual_padrao),
+        preco_basico_mensal_padrao: moneyToNumber(form.preco_basico_mensal_padrao, 147),
+        preco_basico_anual_padrao: moneyToNumber(form.preco_basico_anual_padrao, 1470),
+        preco_comercial_mensal_padrao: moneyToNumber(form.preco_comercial_mensal_padrao, 247),
+        preco_comercial_anual_padrao: moneyToNumber(form.preco_comercial_anual_padrao, 2470),
+        preco_vip_mensal_padrao: moneyToNumber(form.preco_vip_mensal_padrao, 597),
+        preco_vip_anual_padrao: moneyToNumber(form.preco_vip_anual_padrao, 5970),
+        mostrar_preco_ancora_padrao: form.mostrar_preco_ancora_padrao,
 
-      preco_ancora_vip_mensal_padrao: moneyToNullableNumber(form.preco_ancora_vip_mensal_padrao),
-      preco_ancora_vip_anual_padrao: moneyToNullableNumber(form.preco_ancora_vip_anual_padrao),
+        preco_ancora_basico_mensal_padrao: moneyToNullableNumber(form.preco_ancora_basico_mensal_padrao),
+        preco_ancora_basico_anual_padrao: moneyToNullableNumber(form.preco_ancora_basico_anual_padrao),
+        preco_ancora_comercial_mensal_padrao: moneyToNullableNumber(form.preco_ancora_comercial_mensal_padrao),
+        preco_ancora_comercial_anual_padrao: moneyToNullableNumber(form.preco_ancora_comercial_anual_padrao),
+        preco_ancora_vip_mensal_padrao: moneyToNullableNumber(form.preco_ancora_vip_mensal_padrao),
+        preco_ancora_vip_anual_padrao: moneyToNullableNumber(form.preco_ancora_vip_anual_padrao),
 
-      hero_imagem_url_padrao: form.hero_imagem_url_padrao || null,
-      hero_titulo_linha_1_padrao: form.hero_titulo_linha_1_padrao || null,
-hero_titulo_linha_2_padrao: form.hero_titulo_linha_2_padrao || null,
-hero_titulo_linha_3_padrao: form.hero_titulo_linha_3_padrao || null,
-hero_subtitulo_linha_1_padrao: form.hero_subtitulo_linha_1_padrao || null,
-hero_subtitulo_linha_2_padrao: form.hero_subtitulo_linha_2_padrao || null,
+        hero_imagem_url_padrao: form.hero_imagem_url_padrao || null,
+        hero_titulo_linha_1_padrao: form.hero_titulo_linha_1_padrao || null,
+        hero_titulo_linha_2_padrao: form.hero_titulo_linha_2_padrao || null,
+        hero_titulo_linha_3_padrao: form.hero_titulo_linha_3_padrao || null,
+        hero_subtitulo_linha_1_padrao: form.hero_subtitulo_linha_1_padrao || null,
+        hero_subtitulo_linha_2_padrao: form.hero_subtitulo_linha_2_padrao || null,
+        hero_titulo_linha_2_estilo_padrao: form.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+      }
 
-hero_titulo_linha_2_estilo_padrao: form.hero_titulo_linha_2_estilo_padrao || 'gradiente',
-    }
-
-    let result
-
-    if (configId) {
-      result = await supabase
-        .from('configuracoes')
-        .update(payload)
-        .eq('id', configId)
-        .select()
-        .single()
-    } else {
-      result = await supabase
-        .from('configuracoes')
-        .insert([payload])
-        .select()
-        .single()
-    }
-
-    if (result.error) {
-      throw result.error
-    }
-
-    if (result.data?.id) {
-      setConfigId(result.data.id)
-    }
-
-    setSalvo(true)
-    setTimeout(() => setSalvo(false), 3000)
-  } catch (error) {
-    console.error('Erro ao salvar configurações:', error)
-    alert(`Erro ao salvar configurações: ${error.message || 'erro desconhecido'}`)
-  } finally {
-    setSalvando(false)
-  }
-}
-
-//Adicionar imagem ao banco de dados para alterar pelo Dash
-async function uploadHeroImagePadrao(file) {
-  if (!file) return
-
-  try {
-    setUploadingHeroImage(true)
-
-    const fileExt = file.name.split('.').pop()?.toLowerCase() || 'png'
-    const fileName = `hero-global-${Date.now()}.${fileExt}`
-    const filePath = `hero/${fileName}`
-
-    const { error: uploadError } = await supabase.storage
-      .from(HERO_IMAGE_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: true,
-        contentType: file.type || undefined,
+      // Salva pela API admin.
+      // A API decide se atualiza a config existente ou cria uma nova.
+      const resposta = await adminApiFetch('/api/admin/configuracoes', {
+        method: 'POST',
+        body: {
+          configId,
+          config: payload,
+        },
       })
 
-    if (uploadError) {
-      throw uploadError
+      if (resposta.config?.id) {
+        setConfigId(resposta.config.id)
+      }
+
+      setSalvo(true)
+      setTimeout(() => setSalvo(false), 3000)
+    } catch (error) {
+      console.error('Erro ao salvar configurações:', error)
+      alert(`Erro ao salvar configurações: ${error.message || 'erro desconhecido'}`)
+    } finally {
+      setSalvando(false)
     }
-
-    const { data } = supabase.storage
-      .from(HERO_IMAGE_BUCKET)
-      .getPublicUrl(filePath)
-
-    setForm((prev) => ({
-      ...prev,
-      hero_imagem_url_padrao: data.publicUrl,
-    }))
-  } catch (error) {
-    console.error('Erro ao enviar imagem do hero:', error)
-    alert(`Erro ao enviar imagem: ${error.message || 'erro desconhecido'}`)
-  } finally {
-    setUploadingHeroImage(false)
   }
-}
+
+  // Upload seguro da imagem do Hero usando URL assinada.
+  // O navegador não faz upload público direto; ele pede autorização temporária à API admin.
+  async function uploadHeroImagePadrao(file) {
+    if (!file) return
+
+    try {
+      setUploadingHeroImage(true)
+
+      const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url', {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          contentType: file.type,
+        },
+      })
+
+      const { error: uploadError } = await supabase.storage
+        .from(HERO_IMAGE_BUCKET)
+        .uploadToSignedUrl(uploadInfo.path, uploadInfo.token, file, {
+          contentType: file.type || undefined,
+          upsert: false,
+        })
+
+      if (uploadError) {
+        throw uploadError
+      }
+
+      setForm((prev) => ({
+        ...prev,
+        hero_imagem_url_padrao: uploadInfo.publicUrl,
+      }))
+    } catch (error) {
+      console.error('Erro ao enviar imagem do hero:', error)
+      alert(`Erro ao enviar imagem: ${error.message || 'erro desconhecido'}`)
+    } finally {
+      setUploadingHeroImage(false)
+    }
+  }
 
   async function alterarSenha() {
     setErroSenha('')
@@ -826,23 +854,13 @@ async function uploadHeroImagePadrao(file) {
     onChange={(e) =>
       setForm({ ...form, hero_titulo_linha_2_estilo_padrao: e.target.value })
     }
-    className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+   className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
   >
     <option value="gradiente">Verde com gradiente</option>
     <option value="faixa">Texto preto com faixa verde</option>
   </select>
 </div>
 
-    <select
-      value={form.hero_titulo_linha_2_estilo_padrao}
-      onChange={(e) =>
-        setForm({ ...form, hero_titulo_linha_2_estilo_padrao: e.target.value })
-      }
-      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
-    >
-      <option value="gradiente">Verde com gradiente</option>
-      <option value="faixa">Texto preto com faixa verde</option>
-    </select>
 
     <input
       type="text"
