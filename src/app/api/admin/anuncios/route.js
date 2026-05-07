@@ -10,7 +10,15 @@
 // - hotspots
 //
 // Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Dashboard → API admin → valida admin → valida permissão → service_role → Supabase
+//
+// Permissões aplicadas:
+// - GET anúncios: anuncios.view
+// - Criar anúncio: anuncios.create
+// - Editar anúncio: anuncios.update
+// - Excluir anúncio: anuncios.delete
+// - Ativar anúncio: anuncios.activate
+// - Pausar anúncio: anuncios.pause
 //
 // Auditoria:
 // - Registra criação, edição, ativação, pausa e exclusão de anúncios.
@@ -31,11 +39,20 @@ function limparTexto(value = '') {
 }
 
 function sanitizeBusca(value = '') {
-  // Evita quebrar a sintaxe do filtro .or do PostgREST.
   return String(value || '')
     .trim()
     .replace(/[%,()]/g, ' ')
     .replace(/\s+/g, ' ')
+}
+
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
 }
 
 function sanitizarAnuncioPayload(anuncio = {}) {
@@ -161,7 +178,10 @@ async function contarEventosDoAnuncio(anuncioId) {
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'anuncios',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -178,7 +198,6 @@ export async function GET(request) {
     const filterEstado = searchParams.get('filterEstado') || ''
     const filterCidade = searchParams.get('filterCidade') || ''
 
-    // Clientes usados nos filtros e no modal.
     const { data: clientes, error: clientesError } = await supabaseAdmin
       .from('clientes')
       .select('id, nome, estado, cidade')
@@ -186,7 +205,6 @@ export async function GET(request) {
 
     if (clientesError) throw clientesError
 
-    // Hotspots ativos usados nos filtros e vínculos do anúncio.
     const { data: hotspotsData, error: hotspotsError } = await supabaseAdmin
       .from('hotspots')
       .select('id, nome, status, cliente_id, estado, cidade')
@@ -206,7 +224,6 @@ export async function GET(request) {
 
     let anuncioIdsFiltradosPorHotspot = null
 
-    // Filtro por hotspot é feito buscando primeiro os anúncios vinculados.
     if (filterHotspotId) {
       const { data: vinculos, error: vinculosError } = await supabaseAdmin
         .from('anuncio_hotspots')
@@ -225,11 +242,11 @@ export async function GET(request) {
           clientes: clientes || [],
           hotspots,
           anuncios: [],
+          permissions: auth.permissions?.anuncios || {},
         })
       }
     }
 
-    // Query principal dos anúncios.
     let query = supabaseAdmin
       .from('anuncios')
       .select(`
@@ -310,6 +327,7 @@ export async function GET(request) {
       clientes: clientes || [],
       hotspots,
       anuncios,
+      permissions: auth.permissions?.anuncios || {},
     })
   } catch (error) {
     return NextResponse.json(
@@ -336,6 +354,11 @@ export async function POST(request) {
     if (action === 'toggle') {
       const id = String(body.id || '').trim()
       const ativo = Boolean(body.ativo)
+      const acaoNecessaria = ativo ? 'activate' : 'pause'
+
+      if (!auth.canAccess('anuncios', acaoNecessaria)) {
+        return permissaoNegada('anuncios', acaoNecessaria)
+      }
 
       if (!id) {
         return NextResponse.json(
@@ -380,6 +403,10 @@ export async function POST(request) {
     }
 
     if (action === 'delete') {
+      if (!auth.canAccess('anuncios', 'delete')) {
+        return permissaoNegada('anuncios', 'delete')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -393,7 +420,6 @@ export async function POST(request) {
       const hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(id)
       const eventosAntes = await contarEventosDoAnuncio(id)
 
-      // Remove vínculos e métricas antes do anúncio para evitar erro de FK.
       const { error: linksDeleteError } = await supabaseAdmin
         .from('anuncio_hotspots')
         .delete()
@@ -467,6 +493,10 @@ export async function POST(request) {
     let hotspotIdsAntes = []
 
     if (action === 'update') {
+      if (!auth.canAccess('anuncios', 'update')) {
+        return permissaoNegada('anuncios', 'update')
+      }
+
       anuncioId = String(body.id || '').trim()
 
       if (!anuncioId) {
@@ -489,7 +519,6 @@ export async function POST(request) {
       if (error) throw error
       anuncioId = data.id
 
-      // Atualiza vínculos.
       const { error: deleteLinksError } = await supabaseAdmin
         .from('anuncio_hotspots')
         .delete()
@@ -497,6 +526,10 @@ export async function POST(request) {
 
       if (deleteLinksError) throw deleteLinksError
     } else if (action === 'create') {
+      if (!auth.canAccess('anuncios', 'create')) {
+        return permissaoNegada('anuncios', 'create')
+      }
+
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .insert([payload])
