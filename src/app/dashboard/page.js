@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import {
   Users,
   Wifi,
@@ -29,12 +29,43 @@ import {
 } from 'recharts'
 import toast, { Toaster } from 'react-hot-toast'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+// Cliente Supabase usado apenas para pegar a sessão do admin logado.
+// A Dashboard agora busca dados por /api/admin/dashboard.
+const supabase = createBrowserSupabaseClient()
 
 const CORES = ['#6be12f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+
+// ============================================================
+// Chamada padrão para APIs administrativas.
+// Pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
+// ============================================================
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    throw new Error(data.error || 'Erro na API administrativa')
+  }
+
+  return data
+}
 
 export default function Dashboard() {
   const [metricas, setMetricas] = useState({
@@ -74,319 +105,68 @@ export default function Dashboard() {
 
   // Função auxiliar para contar registros da tabela anuncio_clicks.
   // Mantive isolada para ficar fácil editar depois se você quiser filtrar por período, cliente ou campanha.
-  async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
-    try {
-      let anuncioIdsDoHotspot = null
-
-      // Quando houver hotspot selecionado, buscamos os anúncios vinculados a ele.
-      // Assim a caixa mostra os dados do ponto escolhido no seletor.
-      if (hotspotId) {
-        const { data: vinculos, error: vinculosError } = await supabase
-          .from('anuncio_hotspots')
-          .select('anuncio_id')
-          .eq('hotspot_id', hotspotId)
-
-        if (vinculosError) throw vinculosError
-
-        anuncioIdsDoHotspot = (vinculos || [])
-          .map((v) => v.anuncio_id)
-          .filter(Boolean)
-
-        // Se o hotspot não tiver anúncios vinculados, não há interações para mostrar.
-        if (anuncioIdsDoHotspot.length === 0) {
-          return {
-            linksCopiados: 0,
-            tentativasAbrir: 0,
-          }
-        }
-      }
-
-      // Query base: total de pessoas que copiaram o link da oferta.
-      let queryCopias = supabase
-        .from('anuncio_clicks')
-        .select('*', { count: 'exact', head: true })
-        .eq('tipo_acao', 'copy')
-
-      // Query base: total de pessoas que tentaram abrir a página do cliente.
-      // open_attempt = clicou no CTA inicial.
-      // open = clicou no botão secundário "tentar abrir página".
-      let queryAberturas = supabase
-        .from('anuncio_clicks')
-        .select('*', { count: 'exact', head: true })
-        .in('tipo_acao', ['open', 'open_attempt'])
-
-      // Se houver hotspot selecionado, filtramos apenas os anúncios daquele hotspot.
-      if (anuncioIdsDoHotspot) {
-        queryCopias = queryCopias.in('anuncio_id', anuncioIdsDoHotspot)
-        queryAberturas = queryAberturas.in('anuncio_id', anuncioIdsDoHotspot)
-      }
-
-      const [
-        { count: linksCopiados, error: copiasError },
-        { count: tentativasAbrir, error: aberturasError },
-      ] = await Promise.all([
-        queryCopias,
-        queryAberturas,
-      ])
-
-      if (copiasError) throw copiasError
-      if (aberturasError) throw aberturasError
-
-      return {
-        linksCopiados: linksCopiados || 0,
-        tentativasAbrir: tentativasAbrir || 0,
-      }
-    } catch (error) {
-      console.error('Erro ao contar interações dos anúncios:', error)
-
-      // Retorna zero para não quebrar a dashboard caso a tabela/coluna ainda não exista.
-      return {
-        linksCopiados: 0,
-        tentativasAbrir: 0,
-      }
-    }
-  }
+  
 
   // Adicionado parâmetro "silent" para atualizar em tempo real sem piscar a tela.
+    // Adicionado parâmetro "silent" para atualizar sem piscar a tela.
   const buscarDados = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
 
-    const hoje = new Date()
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString()
-    const inicioHoje = new Date(hoje.setHours(0, 0, 0, 0)).toISOString()
-    const quinzeMinutosAtras = new Date(Date.now() - 15 * 60 * 1000).toISOString()
+    try {
+      // Agora a Dashboard não consulta mais as tabelas direto no navegador.
+      // Ela chama a API protegida, que valida admin e usa service_role no servidor.
+      const params = new URLSearchParams()
 
-    // 1. Buscar Hotspots para o Select.
-    if (hotspots.length === 0) {
-      const { data: hotspotsData, error: hotspotsError } = await supabase
-        .from('hotspots')
-        .select('id, nome')
-        .eq('status', 'Ativo')
-        .order('nome')
-
-      if (hotspotsError) console.error('Erro ao buscar hotspots:', hotspotsError)
-      else {
-        setHotspots(hotspotsData || [])
-
-        if (hotspotsData && hotspotsData.length > 0 && !selectedHotspotId) {
-          setSelectedHotspotId(hotspotsData[0].id)
-        }
+      if (selectedHotspotId) {
+        params.set('hotspotId', selectedHotspotId)
       }
+
+      const data = await adminApiFetch(`/api/admin/dashboard?${params.toString()}`)
+
+      setHotspots(data.hotspots || [])
+      setMetricas(data.metricas || {
+        clientesAtivos: 0,
+        hotspotsAtivos: 0,
+        leadsHoje: 0,
+        leadsMes: 0,
+        pessoasOnline: 0,
+        recebidoMes: 0,
+      })
+
+      setInteracoesAnuncios(data.interacoesAnuncios || {
+        linksCopiados: 0,
+        tentativasAbrir: 0,
+      })
+
+      setLeadsPorDiaGeral(data.leadsPorDiaGeral || [])
+      setLeadsUnicosPorDiaHotspot(data.leadsUnicosPorDiaHotspot || [])
+      setReceitaPorMes(data.receitaPorMes || [])
+      setClientesPorStatus(data.clientesPorStatus || [])
+      setLeadsPorHotspotGeral(data.leadsPorHotspotGeral || [])
+      setPagamentosRecentes(data.pagamentosRecentes || [])
+      setLeadsRecentes(data.leadsRecentes || [])
+    } catch (error) {
+      console.error('Erro ao carregar dashboard:', error)
+      toast.error(error.message || 'Erro ao carregar dashboard.')
+    } finally {
+      if (!silent) setLoading(false)
     }
-
-    // 2. Montar as queries de contagem baseadas no Hotspot selecionado.
-    let queryLeadsHoje = supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioHoje)
-
-    let queryLeadsMes = supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioMes)
-
-    let queryPessoasOnline = supabase
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', quinzeMinutosAtras)
-
-    if (selectedHotspotId) {
-      queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', selectedHotspotId)
-      queryLeadsMes = queryLeadsMes.eq('hotspot_id', selectedHotspotId)
-      queryPessoasOnline = queryPessoasOnline.eq('hotspot_id', selectedHotspotId)
-    }
-
-    // 3. Buscar dados gerais simultaneamente.
-    const [
-      { count: clientesAtivos },
-      { count: hotspotsAtivos },
-      { count: leadsHoje },
-      { count: leadsMes },
-      { count: pessoasOnline },
-      { data: pagamentos },
-      { data: clientes },
-      { data: leadsGeral },
-      interacoes,
-    ] = await Promise.all([
-      supabase.from('clientes').select('*', { count: 'exact', head: true }).eq('status', 'Ativo'),
-      supabase.from('hotspots').select('*', { count: 'exact', head: true }).eq('status', 'Ativo'),
-      queryLeadsHoje,
-      queryLeadsMes,
-      queryPessoasOnline,
-      supabase.from('pagamentos').select('*, clientes(nome)').order('created_at', { ascending: false }),
-      supabase.from('clientes').select('status'),
-      supabase.from('leads').select('*, hotspots(nome)').order('created_at', { ascending: false }),
-
-      // Nova busca: interações dos anúncios do hotspot selecionado.
-      contarInteracoesAnuncios({ hotspotId: selectedHotspotId }),
-    ])
-
-    const recebidoMes = (pagamentos || [])
-      .filter(p => p.status === 'Pago' && p.created_at >= inicioMes)
-      .reduce((acc, p) => acc + Number(p.valor), 0)
-
-    setMetricas({
-      clientesAtivos: clientesAtivos || 0,
-      hotspotsAtivos: hotspotsAtivos || 0,
-      leadsHoje: leadsHoje || 0,
-      leadsMes: leadsMes || 0,
-      pessoasOnline: pessoasOnline || 0,
-      recebidoMes,
-    })
-
-    // Atualiza a caixinha de interações dos anúncios.
-    setInteracoesAnuncios(interacoes)
-
-    // Lógica para leadsPorDiaGeral.
-    const ultimos14 = Array.from({ length: 14 }, (_, i) => {
-      const d = new Date()
-      d.setDate(hoje.getDate() - (13 - i))
-      return d.toISOString().slice(0, 10)
-    })
-
-    const leadsPorDiaMap = {}
-    ultimos14.forEach(d => leadsPorDiaMap[d] = 0)
-
-    ;(leadsGeral || []).forEach(l => {
-      const d = l.created_at?.slice(0, 10)
-      if (leadsPorDiaMap[d] !== undefined) leadsPorDiaMap[d]++
-    })
-
-    setLeadsPorDiaGeral(ultimos14.map(d => ({
-      data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      leads: leadsPorDiaMap[d],
-    })))
-
-    // Lógica para leadsUnicosPorDiaHotspot.
-    let leadsUnicosPorDiaHotspotData = []
-
-    if (selectedHotspotId) {
-      const { data: leadsHotspot, error: leadsHotspotError } = await supabase
-        .from('leads')
-        .select('created_at')
-        .eq('hotspot_id', selectedHotspotId)
-
-      if (leadsHotspotError) {
-        console.error('Erro ao buscar leads por hotspot:', leadsHotspotError)
-      } else {
-        const leadsPorDiaHotspotMap = {}
-        ultimos14.forEach(d => leadsPorDiaHotspotMap[d] = 0)
-
-        ;(leadsHotspot || []).forEach(l => {
-          const d = l.created_at?.slice(0, 10)
-          if (leadsPorDiaHotspotMap[d] !== undefined) leadsPorDiaHotspotMap[d]++
-        })
-
-        leadsUnicosPorDiaHotspotData = ultimos14.map(d => ({
-          data: new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-          leads: leadsPorDiaHotspotMap[d],
-        }))
-      }
-    }
-
-    setLeadsUnicosPorDiaHotspot(leadsUnicosPorDiaHotspotData)
-
-    // Lógica para receitaPorMes.
-    const ultimos6Meses = Array.from({ length: 6 }, (_, i) => {
-      const d = new Date()
-      d.setMonth(hoje.getMonth() - (5 - i))
-      return d.toISOString().slice(0, 7)
-    })
-
-    const receitaPorMesMap = {}
-    ultimos6Meses.forEach(m => receitaPorMesMap[m] = { recebido: 0, pendente: 0 })
-
-    ;(pagamentos || []).forEach(p => {
-      const mes = p.created_at?.slice(0, 7)
-
-      if (receitaPorMesMap[mes]) {
-        if (p.status === 'Pago') receitaPorMesMap[mes].recebido += Number(p.valor)
-        else if (p.status === 'Pendente') receitaPorMesMap[mes].pendente += Number(p.valor)
-      }
-    })
-
-    setReceitaPorMes(ultimos6Meses.map(m => ({
-      label: new Date(m + '-01T12:00:00').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
-      recebido: receitaPorMesMap[m]?.recebido || 0,
-      pendente: receitaPorMesMap[m]?.pendente || 0,
-    })))
-
-    // Lógica para clientesPorStatus.
-    const clientesPorStatusMap = (clientes || []).reduce((acc, c) => {
-      acc[c.status] = (acc[c.status] || 0) + 1
-      return acc
-    }, {})
-
-    setClientesPorStatus(Object.entries(clientesPorStatusMap).map(([status, count]) => ({
-      name: status,
-      value: count,
-    })))
-
-    // Lógica para leadsPorHotspotGeral.
-    const leadsPorHotspotMap = (leadsGeral || []).reduce((acc, l) => {
-      const hotspotNome = l.hotspots?.nome || 'Desconhecido'
-      acc[hotspotNome] = (acc[hotspotNome] || 0) + 1
-      return acc
-    }, {})
-
-    setLeadsPorHotspotGeral(Object.entries(leadsPorHotspotMap).map(([name, leads]) => ({
-      name,
-      leads,
-    })).sort((a, b) => b.leads - a.leads).slice(0, 5))
-
-    // Pagamentos Recentes.
-    setPagamentosRecentes((pagamentos || []).slice(0, 5))
-
-    // Leads Recentes.
-    setLeadsRecentes((leadsGeral || []).slice(0, 5))
-
-    if (!silent) setLoading(false)
-  }, [selectedHotspotId, hotspots])
+  }, [selectedHotspotId])
 
   useEffect(() => {
     buscarDados()
   }, [buscarDados])
 
-  // Atualização em Tempo Real baseada na tabela LEADS.
+    // Atualização automática segura.
+  // Em vez de assinar a tabela leads direto pelo navegador,
+  // a Dashboard chama a API admin periodicamente.
   useEffect(() => {
-    if (!selectedHotspotId) return
+    const interval = setInterval(() => {
+      buscarDados(true)
+    }, 45000)
 
-    const channel = supabase
-      .channel(`leads_channel_${selectedHotspotId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'leads',
-          filter: `hotspot_id=eq.${selectedHotspotId}`,
-        },
-        () => {
-          // Atualiza os dados silenciosamente, sem loading.
-          buscarDados(true)
-
-          toast.success(`Novo acesso registrado em ${selectedHotspotName}!`, {
-            position: 'bottom-right',
-            duration: 4000,
-            style: {
-              background: '#0a0a0a',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: '16px',
-            },
-            iconTheme: {
-              primary: '#6be12f',
-              secondary: '#0a0a0a',
-            },
-          })
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [selectedHotspotId, selectedHotspotName, buscarDados])
+    return () => clearInterval(interval)
+  }, [buscarDados])
 
   const cards = [
     { label: 'Clientes Ativos', valor: metricas.clientesAtivos, icon: Users, text: 'text-[#8cf059]', bg: 'bg-[#6be12f]/20' },
@@ -419,8 +199,10 @@ export default function Dashboard() {
             value={selectedHotspotId}
             onChange={(e) => setSelectedHotspotId(e.target.value)}
           >
+            <option value="">Todos os hotspots</option>
+
             {hotspots.length === 0 ? (
-              <option value="">Carregando Hotspots...</option>
+              <option value="" disabled>Carregando Hotspots...</option>
             ) : (
               hotspots.map((hotspot) => (
                 <option key={hotspot.id} value={hotspot.id}>
