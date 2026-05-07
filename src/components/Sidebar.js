@@ -100,7 +100,7 @@ export default function Sidebar({ onClose }) {
         </div>
       </div>
 
-      <nav className="flex-1 px-4 py-2 space-y-2 overflow-y-auto custom-scrollbar relative z-10">
+      <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto custom-scrollbar relative z-10">
         {menu.map((item) => {
           const Icon = item.icon
 
@@ -119,18 +119,18 @@ export default function Sidebar({ onClose }) {
                 router.push(item.path)
                 if (onClose) onClose()
               }}
-              className={`group relative w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold tracking-wide transition-all duration-300 border ${
+              className={`group relative w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold tracking-wide transition-all duration-300 border ${
                 active
                   ? 'text-white bg-white/[0.05] border-white/[0.05] shadow-inner'
                   : 'text-gray-500 hover:text-white hover:bg-white/[0.02] border-transparent hover:border-white/[0.02]'
               }`}
             >
               {active && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-8 bg-[#6be12f] rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#6be12f] rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
               )}
 
               <Icon
-                size={20}
+                size={18}
                 className={`transition-all duration-300 ${
                   active
                     ? 'text-[#8cf059] drop-shadow-[0_0_10px_rgba(34,197,94,0.4)]'
@@ -172,7 +172,7 @@ export default function Sidebar({ onClose }) {
 
         <button
           onClick={handleSignOut}
-          className="group w-full flex items-center gap-4 px-5 py-4 rounded-2xl text-sm font-bold tracking-wide text-gray-500 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent transition-all duration-300"
+          className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold tracking-wide text-gray-500 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent transition-all duration-300"
         >
           <LogOut
             size={20}
