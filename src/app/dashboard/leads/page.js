@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Search, Download, UserPlus, Wifi, Shield, ShieldOff, MonitorPlay } from 'lucide-react'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 // Cliente Supabase usado apenas para pegar a sessão do admin logado.
 // As consultas sensíveis agora passam por /api/admin/leads.

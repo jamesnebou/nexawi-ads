@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 // Cliente Supabase usado apenas para pegar a sessão do admin logado.
 // O relatório agora carrega por /api/admin/relatorios/acesso.

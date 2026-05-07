@@ -11,11 +11,13 @@
 // - POST cria/atualiza a configuração global.
 // - A variável payload só existe dentro do POST.
 // - O texto LGPD sempre é salvo e recuperado.
+// - A alteração é registrada em admin_audit_logs.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -119,7 +121,6 @@ function sanitizarPayload(config = {}) {
 
 async function buscarConfiguracaoGlobal() {
   // Busca sempre a configuração global.
-  // Se a tabela ainda tiver linhas antigas sem config_key, fazemos fallback para a mais recente.
   const { data: configGlobal, error: globalError } = await supabaseAdmin
     .from('configuracoes')
     .select('*')
@@ -196,6 +197,27 @@ export async function POST(request) {
     if (error) {
       throw error
     }
+
+    // Auditoria administrativa:
+    // Registra que o admin alterou as configurações globais.
+    // Não salvamos o texto completo da LGPD no log para evitar expor conteúdo grande/sensível.
+    await logAdminAction({
+      request,
+      adminUser: auth.user,
+      action: 'update',
+      entity: 'configuracoes',
+      entityId: data.id,
+      description: 'Atualizou as configurações globais do sistema',
+      metadata: {
+        config_key: data.config_key,
+        alterou_lgpd: typeof payload.texto_lgpd === 'string',
+        tamanho_lgpd: payload.texto_lgpd?.length || 0,
+        titulo_portal: payload.titulo_portal,
+        nome_empresa: payload.nome_empresa,
+        alterou_tempos_portal: true,
+        alterou_precos_padrao: true,
+      },
+    })
 
     return NextResponse.json({
       ok: true,

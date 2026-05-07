@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { MapPin, Clock, ExternalLink, Image as ImageIcon, Video as VideoIcon, User, Eye, MousePointerClick, Plus, Search, X } from 'lucide-react'
 import dynamic from 'next/dynamic';
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search), { ssr: false });
 

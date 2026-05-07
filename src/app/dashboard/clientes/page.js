@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import { Search, Plus, Pencil, Trash2, X, Check, Building, User, Users, Mail, Phone, MapPin, CreditCard, Briefcase } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 // Cliente Supabase usado apenas para pegar a sessão do admin logado.
 // As operações sensíveis agora passam por /api/admin/clientes.
