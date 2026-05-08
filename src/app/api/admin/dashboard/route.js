@@ -16,6 +16,12 @@
 // A rota exige dashboard.view para abrir.
 // Os dados financeiros, leads, clientes e relatórios também são
 // filtrados conforme permissões secundárias do admin.
+//
+// Agora também retorna:
+// - Resumo operacional de onboarding
+// - Clientes em implantação
+// - Alertas operacionais
+// - Distribuição por etapa de implantação
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -25,6 +31,42 @@ import { requireAdmin } from '@/lib/admin-api-auth'
 export const runtime = 'nodejs'
 
 const CORES_PADRAO = ['#6be12f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
+
+const ONBOARDING_LABELS = {
+  novo_lead: 'Novo lead',
+  contrato_enviado: 'Contrato enviado',
+  pagamento_pendente: 'Pagamento pendente',
+  pagamento_confirmado: 'Pagamento confirmado',
+  setup_em_andamento: 'Setup em andamento',
+  hotspot_configurado: 'Hotspot configurado',
+  campanha_criada: 'Campanha criada',
+  portal_testado: 'Portal testado',
+  cliente_ativo: 'Cliente ativo',
+  cliente_pausado: 'Cliente pausado',
+  cancelado: 'Cancelado',
+}
+
+const CHECKLIST_KEYS = [
+  'contrato_enviado',
+  'pagamento_confirmado',
+  'dados_empresa_recebidos',
+  'criativo_recebido',
+  'hotspot_vinculado',
+  'anuncio_criado',
+  'portal_testado',
+  'cliente_liberado',
+]
+
+const STATUS_SETUP = [
+  'novo_lead',
+  'contrato_enviado',
+  'pagamento_pendente',
+  'pagamento_confirmado',
+  'setup_em_andamento',
+  'hotspot_configurado',
+  'campanha_criada',
+  'portal_testado',
+]
 
 function inicioDoDiaISO() {
   const hoje = new Date()
@@ -80,6 +122,179 @@ function graficoVazioMeses() {
     recebido: 0,
     pendente: 0,
   }))
+}
+
+function normalizarOnboardingStatus(cliente = {}) {
+  if (cliente.onboarding_status) {
+    return cliente.onboarding_status
+  }
+
+  if (cliente.status === 'Ativo') return 'cliente_ativo'
+  if (cliente.status === 'Inadimplente') return 'pagamento_pendente'
+  if (cliente.status === 'Cancelado') return 'cancelado'
+  if (cliente.status === 'Inativo') return 'cliente_pausado'
+
+  return 'novo_lead'
+}
+
+function calcularProgressoChecklist(checklist = {}) {
+  const obj = checklist && typeof checklist === 'object' ? checklist : {}
+  const total = CHECKLIST_KEYS.length
+  const feitos = CHECKLIST_KEYS.filter((key) => Boolean(obj[key])).length
+
+  return {
+    total,
+    feitos,
+    percentual: total > 0 ? Math.round((feitos / total) * 100) : 0,
+  }
+}
+
+function normalizarClienteOperacional(cliente = {}) {
+  const onboardingStatus = normalizarOnboardingStatus(cliente)
+  const progresso = calcularProgressoChecklist(cliente.onboarding_checklist)
+
+  return {
+    id: cliente.id,
+    nome: cliente.nome || '',
+    nome_empresa: cliente.nome_empresa || '',
+    email: cliente.email || '',
+    status: cliente.status || '',
+    plano_nome: cliente.planos?.nome || '',
+    onboarding_status: onboardingStatus,
+    onboarding_status_label: ONBOARDING_LABELS[onboardingStatus] || 'Novo lead',
+    onboarding_travado: Boolean(cliente.onboarding_travado),
+    onboarding_motivo_trava: cliente.onboarding_motivo_trava || '',
+    onboarding_responsavel: cliente.onboarding_responsavel || '',
+    onboarding_updated_at: cliente.onboarding_updated_at || cliente.created_at || '',
+    progresso,
+  }
+}
+
+function calcularResumoOperacional(clientes = [], pagamentos = []) {
+  const normalizados = clientes.map(normalizarClienteOperacional)
+
+  const clientesEmSetup = normalizados.filter((cliente) =>
+    STATUS_SETUP.includes(cliente.onboarding_status)
+  )
+
+  const clientesTravados = normalizados.filter((cliente) => cliente.onboarding_travado)
+
+  const clientesProntosParaAtivar = normalizados.filter((cliente) =>
+    ['portal_testado'].includes(cliente.onboarding_status) ||
+    (cliente.progresso.percentual >= 100 && cliente.onboarding_status !== 'cliente_ativo')
+  )
+
+  const pagamentosPendentesClientes = normalizados.filter((cliente) =>
+    cliente.onboarding_status === 'pagamento_pendente' ||
+    cliente.status === 'Inadimplente'
+  )
+
+  const pagamentosPendentesFinanceiro = (pagamentos || []).filter((pagamento) =>
+    pagamento.status === 'Pendente'
+  )
+
+  return {
+    totalClientesMonitorados: normalizados.length,
+    emSetup: clientesEmSetup.length,
+    travados: clientesTravados.length,
+    pagamentoPendente: pagamentosPendentesClientes.length,
+    pagamentosPendentesFinanceiro: pagamentosPendentesFinanceiro.length,
+    prontosParaAtivar: clientesProntosParaAtivar.length,
+    implantacoesConcluidas: normalizados.filter((cliente) =>
+      cliente.onboarding_status === 'cliente_ativo'
+    ).length,
+    clientesPausados: normalizados.filter((cliente) =>
+      cliente.onboarding_status === 'cliente_pausado'
+    ).length,
+    cancelados: normalizados.filter((cliente) =>
+      cliente.onboarding_status === 'cancelado'
+    ).length,
+  }
+}
+
+function montarClientesOperacao(clientes = []) {
+  return clientes
+    .map(normalizarClienteOperacional)
+    .filter((cliente) =>
+      cliente.onboarding_travado ||
+      STATUS_SETUP.includes(cliente.onboarding_status)
+    )
+    .sort((a, b) => {
+      if (a.onboarding_travado && !b.onboarding_travado) return -1
+      if (!a.onboarding_travado && b.onboarding_travado) return 1
+
+      const dataA = new Date(a.onboarding_updated_at || 0).getTime()
+      const dataB = new Date(b.onboarding_updated_at || 0).getTime()
+
+      return dataB - dataA
+    })
+    .slice(0, 8)
+}
+
+function montarAlertasOperacionais(clientes = [], pagamentos = []) {
+  const alertasClientes = clientes
+    .map(normalizarClienteOperacional)
+    .filter((cliente) =>
+      cliente.onboarding_travado ||
+      cliente.onboarding_status === 'pagamento_pendente' ||
+      cliente.status === 'Inadimplente'
+    )
+    .map((cliente) => {
+      if (cliente.onboarding_travado) {
+        return {
+          id: `cliente-travado-${cliente.id}`,
+          tipo: 'travado',
+          titulo: 'Cliente travado',
+          descricao: cliente.onboarding_motivo_trava || 'Implantação parada por pendência.',
+          cliente_nome: cliente.nome_empresa || cliente.nome,
+          responsavel: cliente.onboarding_responsavel || '',
+          severidade: 'alta',
+        }
+      }
+
+      return {
+        id: `pagamento-pendente-${cliente.id}`,
+        tipo: 'pagamento_pendente',
+        titulo: 'Pagamento pendente',
+        descricao: 'Cliente aguardando confirmação de pagamento.',
+        cliente_nome: cliente.nome_empresa || cliente.nome,
+        responsavel: cliente.onboarding_responsavel || '',
+        severidade: 'media',
+      }
+    })
+
+  const alertasFinanceiro = (pagamentos || [])
+    .filter((pagamento) => pagamento.status === 'Pendente')
+    .slice(0, 5)
+    .map((pagamento) => ({
+      id: `pagamento-${pagamento.id}`,
+      tipo: 'financeiro_pendente',
+      titulo: 'Cobrança pendente',
+      descricao: `Pagamento pendente de ${pagamento.clientes?.nome || 'cliente sem nome'}.`,
+      cliente_nome: pagamento.clientes?.nome || '',
+      responsavel: 'Financeiro',
+      severidade: 'media',
+    }))
+
+  return [...alertasClientes, ...alertasFinanceiro].slice(0, 8)
+}
+
+function montarOnboardingPorStatus(clientes = []) {
+  const map = {}
+
+  clientes.forEach((cliente) => {
+    const status = normalizarOnboardingStatus(cliente)
+    const label = ONBOARDING_LABELS[status] || status
+
+    map[label] = (map[label] || 0) + 1
+  })
+
+  return Object.entries(map)
+    .map(([name, value]) => ({
+      name,
+      value,
+    }))
+    .sort((a, b) => b.value - a.value)
 }
 
 async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
@@ -202,7 +417,7 @@ export async function GET(request) {
     if (podeVerClientes) {
       const [
         { count: clientesCount, error: clientesCountError },
-        { data: clientesStatus, error: clientesError },
+        { data: clientesData, error: clientesError },
       ] = await Promise.all([
         supabaseAdmin
           .from('clientes')
@@ -211,14 +426,31 @@ export async function GET(request) {
 
         supabaseAdmin
           .from('clientes')
-          .select('status'),
+          .select(`
+            id,
+            nome,
+            nome_empresa,
+            email,
+            status,
+            plano_id,
+            created_at,
+            onboarding_status,
+            onboarding_checklist,
+            onboarding_observacao,
+            onboarding_responsavel,
+            onboarding_travado,
+            onboarding_motivo_trava,
+            onboarding_updated_at,
+            planos(nome)
+          `)
+          .order('created_at', { ascending: false }),
       ])
 
       if (clientesCountError) throw clientesCountError
       if (clientesError) throw clientesError
 
       clientesAtivos = clientesCount || 0
-      clientes = clientesStatus || []
+      clientes = clientesData || []
     }
 
     if (podeVerLeads) {
@@ -428,11 +660,41 @@ export async function GET(request) {
           .slice(0, 5)
       : []
 
+    const resumoOperacional = podeVerClientes
+      ? calcularResumoOperacional(clientes, pagamentos)
+      : {
+          totalClientesMonitorados: 0,
+          emSetup: 0,
+          travados: 0,
+          pagamentoPendente: 0,
+          pagamentosPendentesFinanceiro: 0,
+          prontosParaAtivar: 0,
+          implantacoesConcluidas: 0,
+          clientesPausados: 0,
+          cancelados: 0,
+        }
+
+    const clientesOperacao = podeVerClientes
+      ? montarClientesOperacao(clientes)
+      : []
+
+    const alertasOperacionais = podeVerClientes || podeVerFinanceiro
+      ? montarAlertasOperacionais(podeVerClientes ? clientes : [], podeVerFinanceiro ? pagamentos : [])
+      : []
+
+    const onboardingPorStatus = podeVerClientes
+      ? montarOnboardingPorStatus(clientes)
+      : []
+
     return NextResponse.json({
       ok: true,
       hotspots: podeVerHotspots ? hotspotsData : [],
       metricas,
       interacoesAnuncios: interacoes,
+      resumoOperacional,
+      clientesOperacao,
+      alertasOperacionais,
+      onboardingPorStatus,
       leadsPorDiaGeral,
       leadsUnicosPorDiaHotspot,
       receitaPorMes,
@@ -450,6 +712,7 @@ export async function GET(request) {
         relatorios: podeVerRelatorios,
         anuncios: podeVerAnuncios,
         interacoes: podeVerInteracoes,
+        operacao: podeVerClientes,
       },
     })
   } catch (error) {
