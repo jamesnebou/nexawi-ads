@@ -1,19 +1,41 @@
 'use client'
 
+// src/app/dashboard/leads/page.js
+// ============================================================
+// Aba Leads da dashboard NexaWi ADS.
+//
+// Agora esta tela respeita as permissões retornadas pela API:
+// - leads.view: permite visualizar leads
+// - leads.delete: mostra Excluir lead
+// - leads.export: mostra Exportar CSV
+//
+// Importante:
+// - A segurança real fica na API /api/admin/leads.
+// - Esta tela apenas melhora a experiência visual.
+// ============================================================
+
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { Search, Download, UserPlus, Wifi, Shield, ShieldOff, MonitorPlay } from 'lucide-react'
-import { logAdminAction } from '@/lib/admin-audit-log'
+import {
+  Search,
+  Download,
+  UserPlus,
+  Wifi,
+  Shield,
+  ShieldOff,
+  MonitorPlay,
+  Trash2,
+  Lock,
+} from 'lucide-react'
+import toast, { Toaster } from 'react-hot-toast'
 
-// Cliente Supabase usado apenas para pegar a sessão do admin logado.
-// As consultas sensíveis agora passam por /api/admin/leads.
 const supabase = createBrowserSupabaseClient()
 
-// ============================================================
-// Chamada padrão para APIs administrativas.
-// Essa função pega o token do usuário logado e envia para a API.
-// A API valida se o usuário é admin antes de consultar o banco.
-// ============================================================
+const permissoesIniciais = {
+  view: false,
+  delete: false,
+  export: false,
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -32,10 +54,18 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await response.json()
+  const text = await response.text()
+
+  let data = null
+
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Erro na API administrativa')
+    throw new Error(data?.error || 'Erro na API administrativa')
   }
 
   return data
@@ -44,102 +74,161 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 export default function Leads() {
   const [leads, setLeads] = useState([])
   const [hotspots, setHotspots] = useState([])
-  const [anuncios, setAnuncios] = useState([]) // NOVO ESTADO
+  const [anuncios, setAnuncios] = useState([])
+  const [permissions, setPermissions] = useState(permissoesIniciais)
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroHotspot, setFiltroHotspot] = useState('Todos')
   const [filtroLgpd, setFiltroLgpd] = useState('Todos')
+  const [confirmDelete, setConfirmDelete] = useState(null)
 
-  // Recarrega os dados quando os filtros mudam.
-// Agora os filtros são aplicados no servidor pela API admin.
-useEffect(() => {
-  buscarDados()
-}, [busca, filtroHotspot, filtroLgpd])
+  const canDelete = Boolean(permissions.delete)
+  const canExport = Boolean(permissions.export)
+  const readOnlyMode = !canDelete && !canExport
+
+  useEffect(() => {
+    buscarDados()
+  }, [busca, filtroHotspot, filtroLgpd])
 
   async function buscarDados() {
-  setLoading(true)
+    setLoading(true)
 
-  try {
-    // A aba Leads agora não consulta mais leads/hotspots/anuncios direto no Supabase.
-    // Ela chama a API protegida, que valida admin e usa service_role no servidor.
-    const params = new URLSearchParams()
+    try {
+      const params = new URLSearchParams()
 
-    if (busca) params.set('busca', busca)
-    if (filtroHotspot) params.set('hotspot', filtroHotspot)
-    if (filtroLgpd) params.set('lgpd', filtroLgpd)
+      if (busca) params.set('busca', busca)
+      if (filtroHotspot) params.set('hotspot', filtroHotspot)
+      if (filtroLgpd) params.set('lgpd', filtroLgpd)
 
-    const data = await adminApiFetch(`/api/admin/leads?${params.toString()}`)
+      const data = await adminApiFetch(`/api/admin/leads?${params.toString()}`)
 
-    setLeads(data.leads || [])
-    setHotspots(data.hotspots || [])
-    setAnuncios(data.anuncios || [])
-  } catch (error) {
-    console.error('Erro ao buscar leads:', error)
-    alert(error.message || 'Erro ao carregar leads.')
-  } finally {
-    setLoading(false)
+      setLeads(data.leads || [])
+      setHotspots(data.hotspots || [])
+      setAnuncios(data.anuncios || [])
+      setPermissions({
+        ...permissoesIniciais,
+        ...(data.permissions || {}),
+      })
+    } catch (error) {
+      console.error('Erro ao buscar leads:', error)
+      toast.error(error.message || 'Erro ao carregar leads.')
+    } finally {
+      setLoading(false)
+    }
   }
-}
 
   function exportarCSV() {
-  // Exportação CSV melhorada para Excel:
-  // - Usa ponto e vírgula, que costuma abrir melhor no Excel PT-BR.
-  // - Usa BOM UTF-8 para manter acentos.
-  // - Escapa aspas para não quebrar células.
-  function csvCell(value) {
-    const text = String(value ?? '')
-    return `"${text.replace(/"/g, '""')}"`
+    if (!canExport) {
+      toast.error('Você não tem permissão para exportar leads.')
+      return
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '')
+      return `"${text.replace(/"/g, '""')}"`
+    }
+
+    const linhas = [
+      ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
+      ...leadsFiltrados.map((l) => [
+        l.nome || '',
+        l.email || '',
+        l.telefone || '',
+        l.cpf || '',
+        nomeHotspot(l.hotspot_id),
+        nomeAnuncio(l.anuncio_id),
+        l.aceite_lgpd ? 'Sim' : 'Não',
+        new Date(l.created_at).toLocaleString('pt-BR'),
+      ]),
+    ]
+
+    const csvContent = '\uFEFF' + linhas
+      .map((linha) => linha.map(csvCell).join(';'))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.csv`)
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    URL.revokeObjectURL(url)
   }
 
-  const linhas = [
-    ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
-    ...leadsFiltrados.map((l) => [
-      l.nome || '',
-      l.email || '',
-      l.telefone || '',
-      l.cpf || '',
-      nomeHotspot(l.hotspot_id),
-      nomeAnuncio(l.anuncio_id),
-      l.aceite_lgpd ? 'Sim' : 'Não',
-      new Date(l.created_at).toLocaleString('pt-BR'),
-    ]),
-  ]
+  function solicitarExclusaoLead(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir leads.')
+      return
+    }
 
-  const csvContent = '\uFEFF' + linhas
-    .map((linha) => linha.map(csvCell).join(';'))
-    .join('\n')
+    setConfirmDelete(id)
+  }
 
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
+  async function excluirLead(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir leads.')
+      return
+    }
 
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  link.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.csv`)
+    try {
+      await adminApiFetch('/api/admin/leads', {
+        method: 'POST',
+        body: {
+          action: 'delete',
+          id,
+        },
+      })
 
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
+      toast.success('Lead excluído com sucesso!')
+      setConfirmDelete(null)
+      await buscarDados()
+    } catch (error) {
+      console.error('Erro ao excluir lead:', error)
+      toast.error(error.message || 'Erro ao excluir lead.')
+    }
+  }
 
-  URL.revokeObjectURL(url)
-}
+  const nomeHotspot = (id) => hotspots.find((h) => h.id === id)?.nome || 'Desconhecido'
 
-  const nomeHotspot = (id) => hotspots.find(h => h.id === id)?.nome || 'Desconhecido'
-
-  // NOVA FUNÇÃO PARA PEGAR O NOME DO ANÚNCIO
   const nomeAnuncio = (id) => {
     if (!id) return 'Orgânico / Sem anúncio'
-    return anuncios.find(a => a.id === id)?.titulo || 'Anúncio excluído'
+    return anuncios.find((a) => a.id === id)?.titulo || 'Anúncio excluído'
   }
 
-  // Os filtros agora são aplicados no servidor pela API admin.
-// Mantemos este nome para não precisar alterar toda a tabela e a exportação.
-const leadsFiltrados = leads
+  const leadsFiltrados = leads
 
   return (
     <>
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#0a0a0a',
+            color: '#fff',
+            borderRadius: '16px',
+            border: '1px solid rgba(255,255,255,0.1)',
+          },
+          success: {
+            iconTheme: {
+              primary: '#6be12f',
+              secondary: '#0a0a0a',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#ef4444',
+              secondary: '#0a0a0a',
+            },
+          },
+        }}
+      />
 
-        {/* Cabeçalho */}
+      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
@@ -148,24 +237,35 @@ const leadsFiltrados = leads
               </div>
               Leads Capturados
             </h1>
+
             <p className="text-sm text-neutral-500 mt-2 font-medium">
               {leads.length} lead{leads.length !== 1 ? 's' : ''} na sua base de dados
             </p>
+
+            {readOnlyMode && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+                <Lock size={14} className="text-neutral-500" />
+                Modo leitura: você pode visualizar, mas não excluir ou exportar leads.
+              </div>
+            )}
           </div>
-          <button
-            onClick={exportarCSV}
-            disabled={leadsFiltrados.length === 0}
-            className="flex items-center justify-center gap-2 bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-300 hover:text-white font-bold px-6 py-3.5 rounded-2xl transition-all duration-300 text-sm border border-white/[0.05] hover:border-white/[0.1] shadow-inner"
-          >
-            <Download size={18} />
-            Exportar CSV
-          </button>
+
+          {canExport && (
+            <button
+              onClick={exportarCSV}
+              disabled={leadsFiltrados.length === 0}
+              className="flex items-center justify-center gap-2 bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-300 hover:text-white font-bold px-6 py-3.5 rounded-2xl transition-all duration-300 text-sm border border-white/[0.05] hover:border-white/[0.1] shadow-inner"
+            >
+              <Download size={18} />
+              Exportar CSV
+            </button>
+          )}
         </div>
 
-        {/* Filtros Premium */}
         <div className="flex flex-col xl:flex-row gap-4 mb-8">
           <div className="relative flex-1 group/input">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+
             <input
               type="text"
               placeholder="Buscar por nome, e-mail, telefone ou CPF..."
@@ -182,17 +282,24 @@ const leadsFiltrados = leads
                 onChange={(e) => setFiltroHotspot(e.target.value)}
                 className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all appearance-none pr-12 cursor-pointer shadow-inner"
               >
-                <option value="Todos" className="bg-[#0a0a0a]">Todos os hotspots</option>
+                <option value="Todos" className="bg-[#0a0a0a]">
+                  Todos os hotspots
+                </option>
+
                 {hotspots.map((h) => (
-                  <option key={h.id} value={h.id} className="bg-[#0a0a0a]">{h.nome}</option>
+                  <option key={h.id} value={h.id} className="bg-[#0a0a0a]">
+                    {h.nome}
+                  </option>
                 ))}
               </select>
+
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                </svg>
               </div>
             </div>
 
-            {/* Segmented Control para LGPD Premium */}
             <div className="flex bg-[#0a0a0a] border border-white/[0.05] rounded-2xl p-1.5 flex-shrink-0 shadow-inner">
               {['Todos', 'Aceito', 'Não aceito'].map((f) => (
                 <button
@@ -211,7 +318,6 @@ const leadsFiltrados = leads
           </div>
         </div>
 
-        {/* Tabela */}
         <div className="bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.5)] overflow-hidden">
           <div className="overflow-x-auto custom-scrollbar">
             {loading ? (
@@ -226,8 +332,14 @@ const leadsFiltrados = leads
                 <div className="w-20 h-20 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center mb-6 shadow-inner">
                   <UserPlus size={32} className="text-neutral-600" />
                 </div>
-                <p className="text-xl font-bold text-white tracking-tight mb-2">Nenhum lead encontrado</p>
-                <p className="text-neutral-500 text-sm max-w-md">Tente ajustar os filtros de busca ou aguarde novas conexões na sua rede.</p>
+
+                <p className="text-xl font-bold text-white tracking-tight mb-2">
+                  Nenhum lead encontrado
+                </p>
+
+                <p className="text-neutral-500 text-sm max-w-md">
+                  Tente ajustar os filtros de busca ou aguarde novas conexões na sua rede.
+                </p>
               </div>
             ) : (
               <table className="min-w-full text-left border-collapse">
@@ -236,12 +348,18 @@ const leadsFiltrados = leads
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Lead</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Contato</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Hotspot</th>
-                    {/* NOVA COLUNA */}
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Anúncio Visto</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">LGPD</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Capturado em</th>
+
+                    {canDelete && (
+                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap text-right">
+                        Ações
+                      </th>
+                    )}
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-white/[0.02]">
                   {leadsFiltrados.map((lead) => (
                     <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
@@ -250,30 +368,46 @@ const leadsFiltrados = leads
                           <div className="w-11 h-11 rounded-full bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-500 font-bold text-sm flex-shrink-0 shadow-inner group-hover:text-[#8cf059] group-hover:border-[#6be12f]/30 transition-all duration-300">
                             {lead.nome?.charAt(0).toUpperCase() || '?'}
                           </div>
+
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors truncate">{lead.nome || '—'}</p>
-                            <p className="text-xs text-neutral-500 truncate mt-1 font-medium">{lead.email || '—'}</p>
+                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors truncate">
+                              {lead.nome || '—'}
+                            </p>
+
+                            <p className="text-xs text-neutral-500 truncate mt-1 font-medium">
+                              {lead.email || '—'}
+                            </p>
                           </div>
                         </div>
                       </td>
+
                       <td className="px-8 py-5 whitespace-nowrap">
                         <div className="flex flex-col justify-center">
-                          <span className="text-sm font-bold text-neutral-300">{lead.telefone || '—'}</span>
-                          <span className="text-xs text-neutral-500 mt-1 font-medium">CPF: {lead.cpf || '—'}</span>
+                          <span className="text-sm font-bold text-neutral-300">
+                            {lead.telefone || '—'}
+                          </span>
+
+                          <span className="text-xs text-neutral-500 mt-1 font-medium">
+                            CPF: {lead.cpf || '—'}
+                          </span>
                         </div>
                       </td>
+
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
                           <Wifi size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
-                          <span className="truncate max-w-[150px]">{nomeHotspot(lead.hotspot_id)}</span>
+                          <span className="truncate max-w-[150px]">
+                            {nomeHotspot(lead.hotspot_id)}
+                          </span>
                         </span>
                       </td>
 
-                      {/* NOVA CÉLULA DO ANÚNCIO */}
                       <td className="px-8 py-5 whitespace-nowrap">
                         <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
                           <MonitorPlay size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
-                          <span className="truncate max-w-[150px]">{nomeAnuncio(lead.anuncio_id)}</span>
+                          <span className="truncate max-w-[150px]">
+                            {nomeAnuncio(lead.anuncio_id)}
+                          </span>
                         </span>
                       </td>
 
@@ -290,12 +424,28 @@ const leadsFiltrados = leads
                           </span>
                         )}
                       </td>
+
                       <td className="px-8 py-5 text-sm text-neutral-500 font-medium whitespace-nowrap">
-                        {new Date(lead.created_at).toLocaleString('pt-BR', { 
-                          day: '2-digit', month: '2-digit', year: 'numeric', 
-                          hour: '2-digit', minute: '2-digit' 
+                        {new Date(lead.created_at).toLocaleString('pt-BR', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
                         })}
                       </td>
+
+                      {canDelete && (
+                        <td className="px-8 py-5 whitespace-nowrap text-right">
+                          <button
+                            onClick={() => solicitarExclusaoLead(lead.id)}
+                            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[#050505] border border-white/[0.05] hover:border-red-500/30 hover:text-red-400 text-neutral-500 transition-all shadow-inner"
+                            title="Excluir lead"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -305,8 +455,41 @@ const leadsFiltrados = leads
         </div>
       </div>
 
-      {/* Estilo para a barra de rolagem da tabela e animações */}
-      <style dangerouslySetInnerHTML={{__html: `
+      {confirmDelete && canDelete && (
+        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+              <Trash2 size={32} className="text-red-500" />
+            </div>
+
+            <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">
+              Excluir lead?
+            </h2>
+
+            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
+              Esta ação não pode ser desfeita. O lead será removido permanentemente da base.
+            </p>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={() => excluirLead(confirmDelete)}
+                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:-translate-y-1"
+              >
+                Sim, Excluir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
@@ -316,6 +499,7 @@ const leadsFiltrados = leads
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
         .animate-fade-in-up {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;

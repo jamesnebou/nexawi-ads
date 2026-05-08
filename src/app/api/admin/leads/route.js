@@ -6,26 +6,41 @@
 // - hotspots
 // - anuncios
 //
-// Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Permissões aplicadas:
+// - GET leads: leads.view
+// - Excluir lead: leads.delete
+// - Exportar leads: leads.export fica no front, porque o CSV é gerado no navegador
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
 function sanitizeBusca(value = '') {
-  // Evita quebrar a sintaxe do filtro .or do PostgREST.
   return String(value || '')
     .trim()
     .replace(/[%,()]/g, ' ')
     .replace(/\s+/g, ' ')
 }
 
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
+}
+
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'leads',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -38,8 +53,6 @@ export async function GET(request) {
     const filtroHotspot = searchParams.get('hotspot') || 'Todos'
     const filtroLgpd = searchParams.get('lgpd') || 'Todos'
 
-    // Busca os leads com filtros aplicados no servidor.
-    // Assim o front não consulta mais a tabela leads diretamente.
     let leadsQuery = supabaseAdmin
       .from('leads')
       .select(`
@@ -94,12 +107,92 @@ export async function GET(request) {
       leads: leadsData || [],
       hotspots: hotspotsData || [],
       anuncios: anunciosData || [],
+      permissions: auth.permissions?.leads || {},
     })
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
         error: error.message || 'Erro ao buscar leads',
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request) {
+  const auth = await requireAdmin(request)
+
+  if (auth.errorResponse) {
+    return auth.errorResponse
+  }
+
+  try {
+    const body = await request.json()
+    const action = String(body.action || '').trim()
+
+    if (action === 'delete') {
+      if (!auth.canAccess('leads', 'delete')) {
+        return permissaoNegada('leads', 'delete')
+      }
+
+      const id = String(body.id || '').trim()
+
+      if (!id) {
+        return NextResponse.json(
+          { ok: false, error: 'ID do lead é obrigatório' },
+          { status: 400 }
+        )
+      }
+
+      const { data: leadAntes, error: leadAntesError } = await supabaseAdmin
+        .from('leads')
+        .select('id, nome, email, hotspot_id, anuncio_id, aceite_lgpd, created_at')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (leadAntesError) throw leadAntesError
+
+      const { error } = await supabaseAdmin
+        .from('leads')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'leads',
+        entityId: id,
+        description: 'Excluiu um lead capturado',
+        metadata: {
+          lead_id: id,
+          nome: leadAntes?.nome || '',
+          email: leadAntes?.email || '',
+          hotspot_id: leadAntes?.hotspot_id || null,
+          anuncio_id: leadAntes?.anuncio_id || null,
+          aceite_lgpd: leadAntes?.aceite_lgpd ?? null,
+          created_at: leadAntes?.created_at || null,
+        },
+      })
+
+      return NextResponse.json({
+        ok: true,
+        message: 'Lead excluído com sucesso',
+      })
+    }
+
+    return NextResponse.json(
+      { ok: false, error: 'Ação inválida' },
+      { status: 400 }
+    )
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Erro ao salvar lead',
       },
       { status: 500 }
     )
