@@ -112,45 +112,63 @@ export default function ClientLoginPage() {
   }, [router])
 
   async function handleLogin(e) {
-    e.preventDefault()
+  e.preventDefault()
 
-    setLoading(true)
-    setError('')
-    setAviso({ type: '', message: '' })
+  setLoading(true)
+  setError('')
+  setAviso({ type: '', message: '' })
 
-    const senhaLimpa = password.replace(/\D/g, '').trim()
+  const emailLogin = email.trim().toLowerCase()
+  const senhaDigitada = password.trim()
+  const senhaLimpa = password.replace(/\D/g, '').trim()
 
-    try {
-      const { error: loginError } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password: senhaLimpa || password.trim(),
+  try {
+    let loginError = null
+
+    // 1. Primeiro tenta exatamente como o cliente digitou.
+    const primeiraTentativa = await supabase.auth.signInWithPassword({
+      email: emailLogin,
+      password: senhaDigitada,
+    })
+
+    loginError = primeiraTentativa.error
+
+    // 2. Se falhar e a senha tiver versão numérica diferente,
+    // tenta como CPF/CNPJ sem pontos, traços ou barras.
+    if (loginError && senhaLimpa && senhaLimpa !== senhaDigitada) {
+      const segundaTentativa = await supabase.auth.signInWithPassword({
+        email: emailLogin,
+        password: senhaLimpa,
       })
 
-      if (loginError) {
-        if (loginError.message.includes('Email not confirmed')) {
-          throw new Error('Acesso bloqueado: este e-mail ainda aguarda confirmação.')
-        }
+      loginError = segundaTentativa.error
+    }
 
-        if (loginError.message.includes('Invalid login credentials')) {
-          throw new Error('E-mail ou senha incorretos. Verifique suas credenciais.')
-        }
-
-        throw loginError
+    if (loginError) {
+      if (loginError.message.includes('Email not confirmed')) {
+        throw new Error('Acesso bloqueado: este e-mail ainda aguarda confirmação.')
       }
 
-      await validarClienteLogado()
+      if (loginError.message.includes('Invalid login credentials')) {
+        throw new Error('E-mail ou senha incorretos. Verifique suas credenciais.')
+      }
 
-      router.refresh()
-      router.replace('/cliente/dashboard')
-    } catch (err) {
-      console.error('Erro detalhado no login do cliente:', err)
-
-      await supabase.auth.signOut()
-
-      setError(err.message || 'Erro ao conectar. Tente novamente.')
-      setLoading(false)
+      throw loginError
     }
+
+    await validarClienteLogado()
+
+    router.refresh()
+    router.replace('/cliente/dashboard')
+  } catch (err) {
+    console.error('Erro detalhado no login do cliente:', err)
+
+    await supabase.auth.signOut()
+
+    setError(err.message || 'Erro ao conectar. Tente novamente.')
+    setLoading(false)
   }
+}
 
   if (checking) {
     return (
