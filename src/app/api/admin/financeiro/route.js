@@ -7,12 +7,24 @@
 // - planos
 //
 // Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Dashboard → API admin → valida admin → valida permissão → service_role → Supabase
+//
+// Permissões aplicadas:
+// - GET financeiro: financeiro.view
+// - Criar pagamento: financeiro.create
+// - Editar pagamento: financeiro.update
+// - Excluir pagamento: financeiro.delete
+// - Marcar como pago: financeiro.mark_paid
+// - Exportar: financeiro.export fica no front, porque o CSV é gerado no navegador
+//
+// Auditoria:
+// - Registra criação, edição, exclusão e marcação como pago.
 // ============================================================
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -40,12 +52,21 @@ function limparTexto(value = '') {
 }
 
 function sanitizeBusca(value = '') {
-  // Evita quebrar filtros e remove caracteres problemáticos.
   return String(value || '')
     .trim()
     .replace(/[%,()]/g, ' ')
     .replace(/\s+/g, ' ')
     .toLowerCase()
+}
+
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
 }
 
 function hojeISO() {
@@ -75,12 +96,10 @@ function isDataVencida(dataVencimento) {
 }
 
 function statusCalculado(pagamento) {
-  // Mantém status especiais como estão.
   if (['Pago', 'Cancelado', 'Isento', 'Estornado', 'Em negociação'].includes(pagamento.status)) {
     return pagamento.status
   }
 
-  // Se está pendente e passou do vencimento, exibimos como vencido.
   if (pagamento.status === 'Pendente' && isDataVencida(pagamento.data_vencimento)) {
     return 'Vencido'
   }
@@ -112,13 +131,10 @@ function sanitizarPagamentoPayload(pagamento = {}) {
     observacao: limparTexto(pagamento.observacao) || null,
   }
 
-  // Regra de conveniência:
-  // Se marcou como pago e não informou data, coloca hoje.
   if (payload.status === 'Pago' && !payload.data_pagamento) {
     payload.data_pagamento = hojeISO()
   }
 
-  // Se não está pago, data_pagamento não deve ser obrigatória.
   if (payload.status !== 'Pago' && !payload.data_pagamento) {
     payload.data_pagamento = null
   }
@@ -239,8 +255,23 @@ function calcularMetricas({ pagamentosTodos, clientes }) {
   }
 }
 
+async function buscarPagamentoBasico(pagamentoId) {
+  const { data, error } = await supabaseAdmin
+    .from('pagamentos')
+    .select('id, cliente_id, plano_id, valor, data_vencimento, data_pagamento, metodo_pagamento, status')
+    .eq('id', pagamentoId)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
+}
+
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'financeiro',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -318,6 +349,7 @@ export async function GET(request) {
       clientes: clientes || [],
       planos: planos || [],
       metricas,
+      permissions: auth.permissions?.financeiro || {},
     })
   } catch (error) {
     return NextResponse.json(
@@ -342,6 +374,10 @@ export async function POST(request) {
     const action = String(body.action || '').trim()
 
     if (action === 'delete') {
+      if (!auth.canAccess('financeiro', 'delete')) {
+        return permissaoNegada('financeiro', 'delete')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -350,6 +386,8 @@ export async function POST(request) {
           { status: 400 }
         )
       }
+
+      const pagamentoAntes = await buscarPagamentoBasico(id)
 
       const { error } = await supabaseAdmin
         .from('pagamentos')
@@ -358,6 +396,23 @@ export async function POST(request) {
 
       if (error) throw error
 
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'pagamentos',
+        entityId: id,
+        description: 'Excluiu um pagamento',
+        metadata: {
+          pagamento_id: id,
+          cliente_id: pagamentoAntes?.cliente_id || null,
+          plano_id: pagamentoAntes?.plano_id || null,
+          valor: pagamentoAntes?.valor || 0,
+          status_anterior: pagamentoAntes?.status || '',
+          data_vencimento: pagamentoAntes?.data_vencimento || null,
+        },
+      })
+
       return NextResponse.json({
         ok: true,
         message: 'Pagamento excluído com sucesso',
@@ -365,6 +420,10 @@ export async function POST(request) {
     }
 
     if (action === 'mark_paid') {
+      if (!auth.canAccess('financeiro', 'mark_paid')) {
+        return permissaoNegada('financeiro', 'mark_paid')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -373,6 +432,8 @@ export async function POST(request) {
           { status: 400 }
         )
       }
+
+      const pagamentoAntes = await buscarPagamentoBasico(id)
 
       const { data, error } = await supabaseAdmin
         .from('pagamentos')
@@ -386,6 +447,25 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'mark_paid',
+        entity: 'pagamentos',
+        entityId: data.id,
+        description: 'Marcou um pagamento como pago',
+        metadata: {
+          pagamento_id: data.id,
+          cliente_id: data.cliente_id,
+          plano_id: data.plano_id || null,
+          valor: data.valor,
+          status_anterior: pagamentoAntes?.status || '',
+          status_atual: data.status,
+          metodo_pagamento: data.metodo_pagamento || '',
+          data_pagamento: data.data_pagamento || null,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -408,6 +488,10 @@ export async function POST(request) {
     }
 
     if (action === 'update') {
+      if (!auth.canAccess('financeiro', 'update')) {
+        return permissaoNegada('financeiro', 'update')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -417,6 +501,8 @@ export async function POST(request) {
         )
       }
 
+      const pagamentoAntes = await buscarPagamentoBasico(id)
+
       const { data, error } = await supabaseAdmin
         .from('pagamentos')
         .update(payload)
@@ -425,6 +511,27 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'update',
+        entity: 'pagamentos',
+        entityId: data.id,
+        description: 'Atualizou um pagamento',
+        metadata: {
+          pagamento_id: data.id,
+          cliente_id: data.cliente_id,
+          plano_id_anterior: pagamentoAntes?.plano_id || null,
+          plano_id_atual: data.plano_id || null,
+          valor_anterior: pagamentoAntes?.valor || 0,
+          valor_atual: data.valor,
+          status_anterior: pagamentoAntes?.status || '',
+          status_atual: data.status,
+          vencimento_anterior: pagamentoAntes?.data_vencimento || null,
+          vencimento_atual: data.data_vencimento || null,
+        },
+      })
 
       return NextResponse.json({
         ok: true,
@@ -437,6 +544,10 @@ export async function POST(request) {
     }
 
     if (action === 'create') {
+      if (!auth.canAccess('financeiro', 'create')) {
+        return permissaoNegada('financeiro', 'create')
+      }
+
       const { data, error } = await supabaseAdmin
         .from('pagamentos')
         .insert([payload])
@@ -444,6 +555,23 @@ export async function POST(request) {
         .single()
 
       if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'create',
+        entity: 'pagamentos',
+        entityId: data.id,
+        description: 'Criou um novo pagamento',
+        metadata: {
+          pagamento_id: data.id,
+          cliente_id: data.cliente_id,
+          plano_id: data.plano_id || null,
+          valor: data.valor,
+          status: data.status,
+          data_vencimento: data.data_vencimento || null,
+        },
+      })
 
       return NextResponse.json({
         ok: true,

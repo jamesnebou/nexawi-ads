@@ -1,8 +1,25 @@
 'use client'
 
+// src/app/dashboard/financeiro/page.js
+// ============================================================
+// Aba Financeiro da dashboard NexaWi ADS.
+//
+// Agora esta tela respeita as permissões retornadas pela API:
+// - financeiro.view: permite visualizar dados
+// - financeiro.create: mostra Novo Pagamento / Registrar pagamento
+// - financeiro.update: mostra Editar
+// - financeiro.delete: mostra Excluir
+// - financeiro.mark_paid: mostra Marcar como pago
+// - financeiro.export: mostra Exportar CSV
+//
+// Importante:
+// - A segurança real fica na API /api/admin/financeiro.
+// - Esta tela apenas melhora a experiência visual, escondendo ações
+//   que o administrador não pode executar.
+// ============================================================
+
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { logAdminAction } from '@/lib/admin-audit-log'
 import {
   DollarSign,
   Plus,
@@ -21,11 +38,10 @@ import {
   FileDown,
   CalendarDays,
   ShieldAlert,
+  Lock,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-// Cliente Supabase usado apenas para pegar a sessão do admin logado.
-// As operações sensíveis agora passam por /api/admin/financeiro.
 const supabase = createBrowserSupabaseClient()
 
 const statusOpcoes = [
@@ -54,11 +70,14 @@ const periodos = [
   { value: 'proximos_30', label: 'Próximos 30 dias' },
 ]
 
-// ============================================================
-// Chamada padrão para APIs administrativas.
-// Essa função pega o token do usuário logado e envia para a API.
-// A API valida se o usuário é admin antes de consultar o banco.
-// ============================================================
+const permissoesIniciais = {
+  view: false,
+  create: false,
+  update: false,
+  delete: false,
+  mark_paid: false,
+  export: false,
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -77,10 +96,18 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await response.json()
+  const text = await response.text()
+
+  let data = null
+
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Erro na API administrativa')
+    throw new Error(data?.error || 'Erro na API administrativa')
   }
 
   return data
@@ -90,6 +117,8 @@ export default function Pagamentos() {
   const [pagamentos, setPagamentos] = useState([])
   const [clientes, setClientes] = useState([])
   const [planos, setPlanos] = useState([])
+  const [permissions, setPermissions] = useState(permissoesIniciais)
+
   const [metricas, setMetricas] = useState({
     recebidoMes: 0,
     previstoMes: 0,
@@ -122,6 +151,15 @@ export default function Pagamentos() {
     observacao: '',
   })
 
+  const canCreate = Boolean(permissions.create)
+  const canUpdate = Boolean(permissions.update)
+  const canDelete = Boolean(permissions.delete)
+  const canMarkPaid = Boolean(permissions.mark_paid)
+  const canExport = Boolean(permissions.export)
+
+  const showActionsColumn = canUpdate || canDelete || canMarkPaid
+  const readOnlyMode = !canCreate && !canUpdate && !canDelete && !canMarkPaid && !canExport
+
   useEffect(() => {
     buscarDados()
   }, [busca, filtroStatus, filtroPeriodo])
@@ -130,8 +168,6 @@ export default function Pagamentos() {
     setCarregando(true)
 
     try {
-      // A aba Financeiro agora não consulta pagamentos/clientes/planos direto no Supabase.
-      // Ela chama a API protegida, que valida admin e usa service_role no servidor.
       const params = new URLSearchParams()
 
       if (busca) params.set('busca', busca)
@@ -144,6 +180,10 @@ export default function Pagamentos() {
       setClientes(data.clientes || [])
       setPlanos(data.planos || [])
       setMetricas(data.metricas || {})
+      setPermissions({
+        ...permissoesIniciais,
+        ...(data.permissions || {}),
+      })
     } catch (error) {
       console.error('Erro ao buscar financeiro:', error)
       toast.error(error.message || 'Erro ao carregar financeiro.')
@@ -153,6 +193,16 @@ export default function Pagamentos() {
   }
 
   function abrirModal(pagamento = null) {
+    if (pagamento && !canUpdate) {
+      toast.error('Você não tem permissão para editar pagamentos.')
+      return
+    }
+
+    if (!pagamento && !canCreate) {
+      toast.error('Você não tem permissão para criar pagamentos.')
+      return
+    }
+
     if (pagamento) {
       setPagamentoSelecionado(pagamento)
       setForm({
@@ -198,6 +248,16 @@ export default function Pagamentos() {
   }
 
   async function salvarPagamento() {
+    if (pagamentoSelecionado && !canUpdate) {
+      toast.error('Você não tem permissão para editar pagamentos.')
+      return
+    }
+
+    if (!pagamentoSelecionado && !canCreate) {
+      toast.error('Você não tem permissão para criar pagamentos.')
+      return
+    }
+
     if (!form.cliente_id || !form.valor || !form.data_vencimento) {
       toast.error('Preencha os campos obrigatórios.')
       return
@@ -250,7 +310,21 @@ export default function Pagamentos() {
     }
   }
 
+  function solicitarExclusaoPagamento(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir pagamentos.')
+      return
+    }
+
+    setConfirmDelete(id)
+  }
+
   async function excluirPagamento(id) {
+    if (!canDelete) {
+      toast.error('Você não tem permissão para excluir pagamentos.')
+      return
+    }
+
     try {
       await adminApiFetch('/api/admin/financeiro', {
         method: 'POST',
@@ -270,6 +344,11 @@ export default function Pagamentos() {
   }
 
   async function marcarComoPago(id) {
+    if (!canMarkPaid) {
+      toast.error('Você não tem permissão para marcar pagamentos como pago.')
+      return
+    }
+
     try {
       await adminApiFetch('/api/admin/financeiro', {
         method: 'POST',
@@ -289,10 +368,11 @@ export default function Pagamentos() {
   }
 
   function exportarCSV() {
-    // Exportação CSV melhorada para Excel:
-    // - Usa ponto e vírgula, que costuma abrir melhor no Excel PT-BR.
-    // - Usa BOM UTF-8 para manter acentos.
-    // - Escapa aspas para não quebrar células.
+    if (!canExport) {
+      toast.error('Você não tem permissão para exportar financeiro.')
+      return
+    }
+
     function csvCell(value) {
       const text = String(value ?? '')
       return `"${text.replace(/"/g, '""')}"`
@@ -464,7 +544,6 @@ export default function Pagamentos() {
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        {/* Header e Controles */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
@@ -476,29 +555,39 @@ export default function Pagamentos() {
             <p className="text-sm text-neutral-500 mt-2 font-medium">
               Controle premium de receita, mensalidades, inadimplência e MRR
             </p>
+
+            {readOnlyMode && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+                <Lock size={14} className="text-neutral-500" />
+                Modo leitura: você pode visualizar, mas não alterar financeiro.
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <button
-              onClick={exportarCSV}
-              disabled={pagamentos.length === 0}
-              className="w-full sm:w-auto bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 border border-white/[0.05] hover:border-white/[0.1]"
-            >
-              <FileDown size={18} />
-              Exportar
-            </button>
+            {canExport && (
+              <button
+                onClick={exportarCSV}
+                disabled={pagamentos.length === 0}
+                className="w-full sm:w-auto bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 border border-white/[0.05] hover:border-white/[0.1]"
+              >
+                <FileDown size={18} />
+                Exportar
+              </button>
+            )}
 
-            <button
-              onClick={() => abrirModal()}
-              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-            >
-              <Plus size={18} strokeWidth={2.5} />
-              Novo Pagamento
-            </button>
+            {canCreate && (
+              <button
+                onClick={() => abrirModal()}
+                className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                Novo Pagamento
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Cards executivos */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-10">
           {cards.map((card, index) => (
             <div
@@ -529,7 +618,6 @@ export default function Pagamentos() {
           ))}
         </div>
 
-        {/* Filtros premium */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="relative group/input">
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
@@ -584,7 +672,6 @@ export default function Pagamentos() {
           </div>
         </div>
 
-        {/* Tabela */}
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
@@ -603,13 +690,16 @@ export default function Pagamentos() {
             <p className="text-sm text-neutral-500 mb-8 max-w-md">
               Ajuste os filtros ou registre uma nova cobrança para começar.
             </p>
-            <button
-              onClick={() => abrirModal()}
-              className="bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.05] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center gap-2"
-            >
-              <Plus size={18} />
-              Registrar pagamento
-            </button>
+
+            {canCreate && (
+              <button
+                onClick={() => abrirModal()}
+                className="bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.05] text-white font-bold py-3 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Registrar pagamento
+              </button>
+            )}
           </div>
         ) : (
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
@@ -624,7 +714,9 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Pagamento</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Método</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Status</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right whitespace-nowrap">Ações</th>
+                    {showActionsColumn && (
+                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right whitespace-nowrap">Ações</th>
+                    )}
                   </tr>
                 </thead>
 
@@ -676,35 +768,41 @@ export default function Pagamentos() {
                           </span>
                         </td>
 
-                        <td className="px-6 py-5 text-right whitespace-nowrap">
-                          <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
-                            {statusFinal !== 'Pago' && (
-                              <button
-                                onClick={() => marcarComoPago(p.id)}
-                                className="p-2.5 text-neutral-500 hover:text-[#8cf059] hover:bg-[#6be12f]/10 rounded-xl transition-all duration-300 border border-transparent hover:border-[#6be12f]/20"
-                                title="Marcar como pago"
-                              >
-                                <CheckCircle2 size={16} />
-                              </button>
-                            )}
+                        {showActionsColumn && (
+                          <td className="px-6 py-5 text-right whitespace-nowrap">
+                            <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                              {canMarkPaid && statusFinal !== 'Pago' && (
+                                <button
+                                  onClick={() => marcarComoPago(p.id)}
+                                  className="p-2.5 text-neutral-500 hover:text-[#8cf059] hover:bg-[#6be12f]/10 rounded-xl transition-all duration-300 border border-transparent hover:border-[#6be12f]/20"
+                                  title="Marcar como pago"
+                                >
+                                  <CheckCircle2 size={16} />
+                                </button>
+                              )}
 
-                            <button
-                              onClick={() => abrirModal(p)}
-                              className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
-                              title="Editar"
-                            >
-                              <Pencil size={16} />
-                            </button>
+                              {canUpdate && (
+                                <button
+                                  onClick={() => abrirModal(p)}
+                                  className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
+                                  title="Editar"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                              )}
 
-                            <button
-                              onClick={() => setConfirmDelete(p.id)}
-                              className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
-                              title="Excluir"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </td>
+                              {canDelete && (
+                                <button
+                                  onClick={() => solicitarExclusaoPagamento(p.id)}
+                                  className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
                       </tr>
                     )
                   })}
@@ -715,7 +813,6 @@ export default function Pagamentos() {
         )}
       </div>
 
-      {/* Modal de Pagamento Premium */}
       {modalAberto && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-2xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
@@ -938,8 +1035,7 @@ export default function Pagamentos() {
         </div>
       )}
 
-      {/* Modal de Confirmação de Exclusão Premium */}
-      {confirmDelete && (
+      {confirmDelete && canDelete && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
@@ -973,7 +1069,6 @@ export default function Pagamentos() {
         </div>
       )}
 
-      {/* Estilo para a barra de rolagem do modal e inputs de data */}
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
