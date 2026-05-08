@@ -259,12 +259,14 @@ export default function Anuncios() {
     if (!file) return null
 
     const uploadInfo = await adminApiFetch('/api/admin/anuncios/upload-url', {
-      method: 'POST',
-      body: {
-        filename: file.name,
-        contentType: file.type,
-      },
-    })
+  method: 'POST',
+  body: {
+    filename: file.name,
+    contentType: file.type,
+    sizeBytes: file.size,
+    mode: anuncioEditando ? 'update' : 'create',
+  },
+})
 
     const { error: uploadError } = await supabase
       .storage
