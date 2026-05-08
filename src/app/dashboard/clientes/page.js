@@ -37,11 +37,13 @@ import {
   CreditCard,
   Briefcase,
   Lock,
+  KeyRound,
+  Loader2,
+  Copy,
   ClipboardCheck,
   Flag,
   AlertTriangle,
   Rocket,
-  ListChecks,
   UserCheck,
   Clock3,
   CheckCircle2,
@@ -201,6 +203,9 @@ export default function Clientes() {
   const [clienteSelecionado, setClienteSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
+
+  const [resetandoAcessoId, setResetandoAcessoId] = useState('')
+  const [resetAccessInfo, setResetAccessInfo] = useState(null)
 
   const [estadosIBGE, setEstadosIBGE] = useState([])
   const [cidadesIBGE, setCidadesIBGE] = useState([])
@@ -524,6 +529,59 @@ export default function Clientes() {
     }
   }
 
+
+  async function resetarAcessoCliente(cliente) {
+  if (!canUpdate) {
+    toast.error('Você não tem permissão para resetar acesso de clientes.')
+    return
+  }
+
+  if (!cliente?.id) {
+    toast.error('Cliente inválido.')
+    return
+  }
+
+  setResetandoAcessoId(cliente.id)
+
+  try {
+    const data = await adminApiFetch('/api/admin/clientes', {
+      method: 'POST',
+      body: {
+        action: 'reset_access',
+        id: cliente.id,
+      },
+    })
+
+    setResetAccessInfo({
+      email: data.email,
+      senha: data.senha_inicial,
+      created: Boolean(data.created),
+      message: data.message,
+    })
+
+    toast.success(data.message || 'Acesso do cliente pronto!')
+    buscarDados()
+  } catch (error) {
+    console.error('Erro ao resetar acesso do cliente:', error)
+    toast.error(error.message || 'Erro ao resetar acesso do cliente.')
+  } finally {
+    setResetandoAcessoId('')
+  }
+}
+
+async function copiarAcessoCliente() {
+  if (!resetAccessInfo) return
+
+  const texto = `Acesso NexaWi ADS\nE-mail: ${resetAccessInfo.email}\nSenha inicial: ${resetAccessInfo.senha}`
+
+  try {
+    await navigator.clipboard.writeText(texto)
+    toast.success('Acesso copiado!')
+  } catch {
+    toast.error('Não foi possível copiar automaticamente.')
+  }
+}
+
   const cards = [
     {
       label: 'Clientes',
@@ -835,6 +893,20 @@ export default function Clientes() {
                           <td className="px-6 py-5 text-right">
                             <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
                               {canUpdate && (
+  <button
+    onClick={() => resetarAcessoCliente(cliente)}
+    disabled={resetandoAcessoId === cliente.id}
+    className="p-2.5 text-neutral-500 hover:text-[#8cf059] hover:bg-[#6be12f]/10 rounded-xl transition-all duration-300 border border-transparent hover:border-[#6be12f]/20 disabled:opacity-50 disabled:cursor-not-allowed"
+    title="Resetar acesso do cliente"
+  >
+    {resetandoAcessoId === cliente.id ? (
+      <Loader2 size={16} className="animate-spin" />
+    ) : (
+      <KeyRound size={16} />
+    )}
+  </button>
+)}
+{canUpdate && (
                                 <button
                                   onClick={() => abrirModal(cliente)}
                                   className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
@@ -1259,6 +1331,57 @@ export default function Clientes() {
           </div>
         </div>
       )}
+
+      {resetAccessInfo && (
+  <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+    <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+      <div className="w-20 h-20 rounded-full bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(107,225,47,0.15)]">
+        <KeyRound size={32} className="text-[#6be12f]" />
+      </div>
+
+      <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">
+        {resetAccessInfo.created ? 'Acesso criado' : 'Acesso resetado'}
+      </h2>
+
+      <p className="text-sm text-neutral-500 mb-6 leading-relaxed">
+        Envie estes dados para o cliente acessar a área do cliente.
+      </p>
+
+      <div className="text-left rounded-2xl bg-[#050505] border border-white/[0.06] p-5 mb-6">
+        <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-600 mb-2">
+          E-mail
+        </p>
+        <p className="text-sm font-bold text-white break-words mb-5">
+          {resetAccessInfo.email}
+        </p>
+
+        <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-600 mb-2">
+          Senha inicial
+        </p>
+        <p className="text-lg font-extrabold text-[#8cf059] break-words">
+          {resetAccessInfo.senha}
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <button
+          onClick={() => setResetAccessInfo(null)}
+          className="py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
+        >
+          Fechar
+        </button>
+
+        <button
+          onClick={copiarAcessoCliente}
+          className="bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)]"
+        >
+          <Copy size={16} />
+          Copiar acesso
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       <style dangerouslySetInnerHTML={{ __html: `
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 8px; }

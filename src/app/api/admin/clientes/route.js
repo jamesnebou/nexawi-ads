@@ -189,6 +189,39 @@ function calcularResumoOnboarding(clientes = []) {
   }
 }
 
+
+async function buscarAuthUserPorEmail(email = '') {
+  const emailNormalizado = limparTexto(email).toLowerCase()
+
+  if (!emailNormalizado) return null
+
+  let page = 1
+  const perPage = 1000
+
+  while (page <= 20) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    })
+
+    if (error) throw error
+
+    const users = data?.users || []
+
+    const found = users.find((user) => {
+      return limparTexto(user.email).toLowerCase() === emailNormalizado
+    })
+
+    if (found) return found
+
+    if (users.length < perPage) return null
+
+    page += 1
+  }
+
+  return null
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'clientes',
@@ -335,6 +368,129 @@ export async function POST(request) {
         message: 'Cliente excluído com sucesso',
       })
     }
+
+    if (action === 'reset_access') {
+  if (!auth.canAccess('clientes', 'update')) {
+    return permissaoNegada('clientes', 'update')
+  }
+
+  const id = String(body.id || '').trim()
+
+  if (!id) {
+    return NextResponse.json(
+      { ok: false, error: 'ID do cliente é obrigatório' },
+      { status: 400 }
+    )
+  }
+
+  const { data: cliente, error: clienteError } = await supabaseAdmin
+    .from('clientes')
+    .select('id, nome, nome_empresa, email, cpf_cnpj, status')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (clienteError) throw clienteError
+
+  if (!cliente) {
+    return NextResponse.json(
+      { ok: false, error: 'Cliente não encontrado' },
+      { status: 404 }
+    )
+  }
+
+  const emailCliente = limparTexto(cliente.email).toLowerCase()
+  const senhaInicial = limparNumeros(cliente.cpf_cnpj)
+
+  if (!emailCliente) {
+    return NextResponse.json(
+      { ok: false, error: 'Cliente sem e-mail cadastrado' },
+      { status: 400 }
+    )
+  }
+
+  if (senhaInicial.length !== 11 && senhaInicial.length !== 14) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'CPF/CNPJ inválido. A senha inicial precisa ter 11 ou 14 números.',
+      },
+      { status: 400 }
+    )
+  }
+
+  const authUser = await buscarAuthUserPorEmail(emailCliente)
+
+  let authUserId = null
+  let created = false
+
+  const userMetadata = {
+    tipo: 'cliente',
+    cliente_id: cliente.id,
+    nome: cliente.nome || '',
+    nome_empresa: cliente.nome_empresa || '',
+  }
+
+  if (authUser) {
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+      authUser.id,
+      {
+        password: senhaInicial,
+        email_confirm: true,
+        user_metadata: userMetadata,
+      }
+    )
+
+    if (updateError) {
+      throw new Error(`Erro ao resetar acesso: ${updateError.message}`)
+    }
+
+    authUserId = authUser.id
+  } else {
+    const { data: createdUser, error: createError } =
+      await supabaseAdmin.auth.admin.createUser({
+        email: emailCliente,
+        password: senhaInicial,
+        email_confirm: true,
+        user_metadata: userMetadata,
+      })
+
+    if (createError) {
+      throw new Error(`Erro ao criar acesso: ${createError.message}`)
+    }
+
+    authUserId = createdUser?.user?.id || null
+    created = true
+  }
+
+  await logAdminAction({
+    request,
+    adminUser: auth.user,
+    action: 'reset_access',
+    entity: 'clientes',
+    entityId: cliente.id,
+    description: created
+      ? 'Criou acesso de login para cliente'
+      : 'Resetou acesso de login do cliente',
+    metadata: {
+      cliente_id: cliente.id,
+      auth_user_id: authUserId,
+      nome: cliente.nome || '',
+      nome_empresa: cliente.nome_empresa || '',
+      email: emailCliente,
+      created,
+    },
+  })
+
+  return NextResponse.json({
+    ok: true,
+    created,
+    email: emailCliente,
+    senha_inicial: senhaInicial,
+    message: created
+      ? 'Acesso do cliente criado com sucesso'
+      : 'Acesso do cliente resetado com sucesso',
+  })
+}
 
     const payload = sanitizarClientePayload(body.cliente || {})
     const erroValidacao = validarCliente(payload)
