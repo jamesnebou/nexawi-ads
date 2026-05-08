@@ -7,6 +7,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireCliente } from '@/lib/cliente-api-auth'
+import { createAdminNotification } from '@/lib/admin-notifications'
 
 export const runtime = 'nodejs'
 
@@ -154,6 +155,25 @@ export async function POST(request) {
 
       if (messageError) throw messageError
 
+      await createAdminNotification({
+  type: 'support_ticket_created',
+  title: 'Novo chamado aberto',
+  message: subject,
+  severity: priority === 'urgente' ? 'critical' : priority === 'alta' ? 'warning' : 'info',
+  entity: 'support_tickets',
+  entityId: ticket.id,
+  actionUrl: `/dashboard/suporte?ticketId=${ticket.id}`,
+  dedupKey: `support_ticket_created:${ticket.id}`,
+  metadata: {
+    ticket_id: ticket.id,
+    cliente_id: cliente.id,
+    cliente_nome: getClienteNome(cliente),
+    email: user.email || cliente.email || '',
+    category,
+    priority,
+  },
+})
+
       return NextResponse.json({
         ok: true,
         ticket,
@@ -218,6 +238,22 @@ export async function POST(request) {
         .eq('id', ticket.id)
 
       if (updateError) throw updateError
+
+      await createAdminNotification({
+  type: 'support_ticket_client_reply',
+  title: 'Cliente respondeu um chamado',
+  message: ticket.subject || 'Um cliente respondeu um chamado.',
+  severity: 'info',
+  entity: 'support_tickets',
+  entityId: ticket.id,
+  actionUrl: `/dashboard/suporte?ticketId=${ticket.id}`,
+  metadata: {
+    ticket_id: ticket.id,
+    cliente_id: cliente.id,
+    cliente_nome: getClienteNome(cliente),
+    email: user.email || cliente.email || '',
+  },
+})
 
       return NextResponse.json({
         ok: true,

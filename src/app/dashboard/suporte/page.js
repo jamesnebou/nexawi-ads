@@ -101,6 +101,15 @@ export default function DashboardSuportePage() {
   const canClose = Boolean(permissions.close)
 
   useEffect(() => {
+  const params = new URLSearchParams(window.location.search)
+  const ticketId = params.get('ticketId')
+
+  if (ticketId) {
+    abrirTicket(ticketId)
+  }
+}, [])
+
+  useEffect(() => {
     buscarTickets()
   }, [filtroStatus, filtroPriority])
 

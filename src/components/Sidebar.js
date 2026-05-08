@@ -32,6 +32,7 @@ import {
   ClipboardList,
   Crown,
   LifeBuoy,
+  Bell,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -90,6 +91,12 @@ const menu = [
     path: '/dashboard/relatorios/acesso',
     icon: BarChart2,
     module: 'relatorios',
+  },
+  {
+  label: 'Notificações',
+  path: '/dashboard/notificacoes',
+  icon: Bell,
+  module: 'dashboard',
   },
   {
   label: 'Suporte',
