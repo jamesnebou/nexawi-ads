@@ -13,7 +13,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import Image from 'next/image'
 import {
   LayoutDashboard,

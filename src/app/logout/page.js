@@ -10,7 +10,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Loader2,
   LogOut,
@@ -24,29 +24,26 @@ function limparStorageSeguro() {
   if (typeof window === 'undefined') return
 
   Object.keys(window.localStorage || {}).forEach((key) => {
-    const lower = key.toLowerCase()
-
     if (
-      key.startsWith('sb-') ||
-      lower.includes('supabase') ||
-      lower.includes('nexawi')
+      key.includes('nexawi-admin-session') ||
+      key.includes('nexawi-admin')
     ) {
       window.localStorage.removeItem(key)
     }
   })
 
   Object.keys(window.sessionStorage || {}).forEach((key) => {
-    const lower = key.toLowerCase()
-
     if (
-      key.startsWith('sb-') ||
-      lower.includes('supabase') ||
-      lower.includes('nexawi')
+      key.includes('nexawi-admin-session') ||
+      key.includes('nexawi-admin')
     ) {
       window.sessionStorage.removeItem(key)
     }
   })
 }
+
+
+
 
 function esperar(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Users,
   Wifi,

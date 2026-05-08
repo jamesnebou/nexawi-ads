@@ -15,7 +15,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Mail,
   Lock,

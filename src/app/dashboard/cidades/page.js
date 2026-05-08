@@ -18,7 +18,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   MapPin,
   Search,

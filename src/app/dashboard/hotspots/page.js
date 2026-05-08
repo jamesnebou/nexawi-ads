@@ -18,7 +18,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Wifi,
   Plus,
