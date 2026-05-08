@@ -5,8 +5,11 @@
 // - planos
 // - clientes
 //
-// Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Permissões aplicadas:
+// - GET planos: planos.view
+// - Criar plano: planos.create
+// - Editar plano: planos.update
+// - Excluir plano: planos.delete
 //
 // Auditoria:
 // - Registra criação, edição e exclusão de planos.
@@ -25,6 +28,16 @@ const CICLOS_VALIDOS = ['mensal', 'trimestral', 'semestral', 'anual']
 
 function limparTexto(value = '') {
   return String(value || '').trim()
+}
+
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
 }
 
 function sanitizarPlanoPayload(plano = {}) {
@@ -53,8 +66,23 @@ function validarPlano(payload) {
   return ''
 }
 
+async function buscarPlanoBasico(id) {
+  const { data, error } = await supabaseAdmin
+    .from('planos')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
+}
+
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'planos',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -105,6 +133,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       planos,
+      permissions: auth.permissions?.planos || {},
     })
   } catch (error) {
     return NextResponse.json(
@@ -129,6 +158,10 @@ export async function POST(request) {
     const action = String(body.action || '').trim()
 
     if (action === 'delete') {
+      if (!auth.canAccess('planos', 'delete')) {
+        return permissaoNegada('planos', 'delete')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -138,14 +171,7 @@ export async function POST(request) {
         )
       }
 
-      // Busca o plano antes de excluir para registrar no log.
-      const { data: planoAntes, error: planoAntesError } = await supabaseAdmin
-        .from('planos')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (planoAntesError) throw planoAntesError
+      const planoAntes = await buscarPlanoBasico(id)
 
       const { data: clientesVinculados, error: clientesError } = await supabaseAdmin
         .from('clientes')
@@ -207,6 +233,10 @@ export async function POST(request) {
     }
 
     if (action === 'update') {
+      if (!auth.canAccess('planos', 'update')) {
+        return permissaoNegada('planos', 'update')
+      }
+
       const id = String(body.id || '').trim()
 
       if (!id) {
@@ -216,14 +246,7 @@ export async function POST(request) {
         )
       }
 
-      // Busca o plano antes da alteração para comparação no log.
-      const { data: planoAntes, error: planoAntesError } = await supabaseAdmin
-        .from('planos')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (planoAntesError) throw planoAntesError
+      const planoAntes = await buscarPlanoBasico(id)
 
       const { data, error } = await supabaseAdmin
         .from('planos')
@@ -266,6 +289,10 @@ export async function POST(request) {
     }
 
     if (action === 'create') {
+      if (!auth.canAccess('planos', 'create')) {
+        return permissaoNegada('planos', 'create')
+      }
+
       const { data, error } = await supabaseAdmin
         .from('planos')
         .insert([payload])
