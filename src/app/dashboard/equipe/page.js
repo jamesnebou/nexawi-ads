@@ -68,6 +68,9 @@ const actionLabels = {
   activate: 'Ativar',
   pause: 'Pausar',
   mark_paid: 'Marcar pago',
+  reply: 'Responder',
+  close: 'Fechar',
+  assign: 'Atribuir',
   master: 'Controle master',
 }
 
@@ -191,6 +194,7 @@ function criarPresetOperacional(modules) {
     anuncios: ['view', 'create', 'update', 'activate', 'pause'],
     leads: ['view', 'export'],
     relatorios: ['view'],
+    suporte: ['view', 'reply', 'update', 'close'],
   }
 
   modules.forEach((modulo) => {
@@ -215,6 +219,7 @@ function criarPresetFinanceiro(modules) {
     financeiro: ['view', 'create', 'update', 'mark_paid', 'export'],
     planos: ['view'],
     relatorios: ['view', 'export'],
+    suporte: ['view', 'reply'],
   }
 
   modules.forEach((modulo) => {

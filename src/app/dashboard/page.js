@@ -610,7 +610,7 @@ export default function Dashboard() {
 
         <span className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
           <CalendarClock size={14} className="text-[#6be12f]" />
-          Login
+          Portal
         </span>
       </div>
 
@@ -618,13 +618,13 @@ export default function Dashboard() {
         <EmptyState
           icon={LogIn}
           title="Nenhum acesso registrado"
-          description="Quando clientes entrarem no portal, os últimos acessos aparecerão aqui."
+          description="Quando clientes entrarem no portal, os acessos aparecerão aqui."
         />
       ) : (
         <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
           {clientesUltimosAcessos.map((cliente) => (
             <div
-              key={`${cliente.id}-${cliente.last_sign_in_at}`}
+              key={`${cliente.id}-${cliente.created_at}`}
               className="group rounded-2xl bg-[#0a0a0a] border border-white/[0.05] p-4 hover:border-white/[0.1] transition-all"
             >
               <div className="flex items-center justify-between gap-4">
@@ -652,11 +652,11 @@ export default function Dashboard() {
 
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs font-bold text-[#8cf059]">
-                    {formatarDataHora(cliente.last_sign_in_at)}
+                    {formatarDataHora(cliente.created_at)}
                   </p>
 
                   <p className="text-[11px] text-neutral-600 mt-1">
-                    último login
+                    acesso
                   </p>
                 </div>
               </div>
@@ -906,6 +906,10 @@ export default function Dashboard() {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
+          .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 8px; }
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+          .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
       `}} />
     </main>
   )

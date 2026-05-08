@@ -31,6 +31,7 @@ import {
   ShieldCheck,
   ClipboardList,
   Crown,
+  LifeBuoy,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -89,6 +90,12 @@ const menu = [
     path: '/dashboard/relatorios/acesso',
     icon: BarChart2,
     module: 'relatorios',
+  },
+  {
+  label: 'Suporte',
+  path: '/dashboard/suporte',
+  icon: LifeBuoy,
+  module: 'suporte',
   },
   {
     label: 'Auditoria',

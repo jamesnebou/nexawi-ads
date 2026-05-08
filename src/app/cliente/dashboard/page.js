@@ -41,7 +41,6 @@ import {
 
 const supabase = createClient()
 
-const SUPPORT_EMAIL = 'suporte@nexawi.com.br'
 
 async function clienteApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -70,6 +69,27 @@ async function clienteApiFetch(path) {
   }
 
   return data
+}
+
+async function registrarAcessoPortalCliente() {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    return
+  }
+
+  try {
+    await fetch('/api/cliente/access-log', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      cache: 'no-store',
+    })
+  } catch (error) {
+    console.error('Erro ao registrar acesso do cliente:', error)
+  }
 }
 
 function formatMoney(value) {
@@ -172,6 +192,8 @@ export default function ClientDashboardPage() {
         }
 
         const data = await clienteApiFetch('/api/cliente/dashboard')
+
+        await registrarAcessoPortalCliente()
 
         if (!isMounted) return
 
@@ -401,13 +423,14 @@ export default function ClientDashboardPage() {
               </p>
             </div>
 
-            <a
-              href={`mailto:${SUPPORT_EMAIL}?subject=Suporte%20NexaWi%20ADS&body=Olá,%20preciso%20de%20ajuda%20com%20minha%20campanha.`}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
-            >
-              <LifeBuoy size={17} />
-              Falar com suporte
-            </a>
+           
+            <button
+  onClick={() => router.push('/cliente/suporte')}
+  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
+>
+  <LifeBuoy size={17} />
+  Abrir suporte
+</button>
           </div>
         </div>
 
