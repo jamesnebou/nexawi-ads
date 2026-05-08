@@ -1,3 +1,12 @@
+// src/middleware.js
+// ============================================================
+// Middleware global da NexaWi ADS.
+//
+// Funções:
+// 1. Redirecionar painel legado /admin para o painel oficial.
+// 2. Manter CORS seguro para /api/control.
+// ============================================================
+
 import { NextResponse } from 'next/server'
 
 const ALLOWED_ORIGINS = new Set([
@@ -8,6 +17,26 @@ const ALLOWED_ORIGINS = new Set([
 
 export function middleware(request) {
   const { pathname } = request.nextUrl
+
+  // ============================================================
+  // 1. Redirecionamento de rotas antigas do painel /admin
+  // ============================================================
+
+  if (pathname === '/admin/login') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  if (pathname === '/admin' || pathname.startsWith('/admin/')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/dashboard'
+    return NextResponse.redirect(url)
+  }
+
+  // ============================================================
+  // 2. CORS somente para /api/control
+  // ============================================================
 
   if (!pathname.startsWith('/api/control/')) {
     return NextResponse.next()
@@ -45,5 +74,9 @@ export function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/api/control/:path*'],
+  matcher: [
+    '/admin',
+    '/admin/:path*',
+    '/api/control/:path*',
+  ],
 }
