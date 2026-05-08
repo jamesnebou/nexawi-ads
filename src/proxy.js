@@ -1,10 +1,12 @@
-// src/middleware.js
+// src/proxy.js
 // ============================================================
-// Middleware global da NexaWi ADS.
+// Proxy global da NexaWi ADS.
 //
 // Funções:
 // 1. Redirecionar painel legado /admin para o painel oficial.
 // 2. Manter CORS seguro para /api/control.
+//
+// Substitui o antigo src/middleware.js no Next.js 16.
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -15,7 +17,7 @@ const ALLOWED_ORIGINS = new Set([
   'https://wifi.nexawi.com.br',
 ])
 
-export function middleware(request) {
+export function proxy(request) {
   const { pathname } = request.nextUrl
 
   // ============================================================
