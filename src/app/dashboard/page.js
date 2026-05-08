@@ -19,6 +19,8 @@ import {
   Clock3,
   UserCheck,
   ShieldAlert,
+  LogIn,
+  CalendarClock,
 } from 'lucide-react'
 import {
   AreaChart,
@@ -108,6 +110,18 @@ function corAlerta(severidade) {
   }
 }
 
+function formatarDataHora(value) {
+  if (!value) return '—'
+
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 export default function Dashboard() {
   const [metricas, setMetricas] = useState({
     clientesAtivos: 0,
@@ -127,6 +141,7 @@ export default function Dashboard() {
   const [clientesOperacao, setClientesOperacao] = useState([])
   const [alertasOperacionais, setAlertasOperacionais] = useState([])
   const [onboardingPorStatus, setOnboardingPorStatus] = useState([])
+  const [clientesUltimosAcessos, setClientesUltimosAcessos] = useState([])
   const [visibility, setVisibility] = useState({
     clientes: false,
     hotspots: false,
@@ -184,6 +199,7 @@ export default function Dashboard() {
       setClientesOperacao(data.clientesOperacao || [])
       setAlertasOperacionais(data.alertasOperacionais || [])
       setOnboardingPorStatus(data.onboardingPorStatus || [])
+      setClientesUltimosAcessos(data.clientesUltimosAcessos || [])
       setVisibility(data.visibility || {})
 
       setLeadsPorDiaGeral(data.leadsPorDiaGeral || [])
@@ -543,29 +559,114 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {onboardingPorStatus.length > 0 && (
-                <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 mb-10 animate-fade-in-up">
-                  <div className="mb-8">
-                    <h2 className="text-lg font-semibold text-white tracking-tight">
-                      Distribuição por etapa de implantação
-                    </h2>
+              {visibility.operacao && (
+  <div className="grid grid-cols-1 xl:grid-cols-[1.15fr_0.85fr] gap-6 mb-10">
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up">
+      <div className="mb-8">
+        <h2 className="text-lg font-semibold text-white tracking-tight">
+          Distribuição por etapa de implantação
+        </h2>
 
-                    <p className="text-sm text-gray-500 mt-1">
-                      Quantidade de clientes em cada fase do onboarding
-                    </p>
+        <p className="text-sm text-gray-500 mt-1">
+          Quantidade de clientes em cada fase do onboarding
+        </p>
+      </div>
+
+      {onboardingPorStatus.length === 0 ? (
+        <EmptyState
+          icon={ClipboardCheck}
+          title="Sem dados de implantação"
+          description="Quando houver clientes com etapa definida, o gráfico aparecerá aqui."
+        />
+      ) : (
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart
+            data={onboardingPorStatus}
+            margin={{ top: 10, right: 0, left: -10, bottom: 0 }}
+            barSize={22}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} dy={10} />
+            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} labelStyle={{ color: '#9ca3af', marginBottom: '4px' }} />
+            <Bar dataKey="value" name="Clientes" fill="#6be12f" radius={[8, 8, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
+    </div>
+
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up">
+      <div className="flex items-start justify-between gap-4 mb-7">
+        <div>
+          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
+            <LogIn size={20} className="text-[#6be12f]" />
+            Últimos acessos ao portal
+          </h2>
+
+          <p className="text-sm text-gray-500 mt-1">
+            Clientes que entraram recentemente na área do cliente
+          </p>
+        </div>
+
+        <span className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
+          <CalendarClock size={14} className="text-[#6be12f]" />
+          Login
+        </span>
+      </div>
+
+      {clientesUltimosAcessos.length === 0 ? (
+        <EmptyState
+          icon={LogIn}
+          title="Nenhum acesso registrado"
+          description="Quando clientes entrarem no portal, os últimos acessos aparecerão aqui."
+        />
+      ) : (
+        <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
+          {clientesUltimosAcessos.map((cliente) => (
+            <div
+              key={`${cliente.id}-${cliente.last_sign_in_at}`}
+              className="group rounded-2xl bg-[#0a0a0a] border border-white/[0.05] p-4 hover:border-white/[0.1] transition-all"
+            >
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">
+                    {cliente.nome_empresa || cliente.nome || 'Cliente sem nome'}
+                  </p>
+
+                  <p className="text-xs text-neutral-500 truncate mt-1">
+                    {cliente.email}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-2 mt-3">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20">
+                      {cliente.status || 'Sem status'}
+                    </span>
+
+                    {cliente.plano_nome && (
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-white/[0.04] text-neutral-400 border border-white/[0.06]">
+                        {cliente.plano_nome}
+                      </span>
+                    )}
                   </div>
-
-                  <ResponsiveContainer width="100%" height={260}>
-                    <BarChart data={onboardingPorStatus} margin={{ top: 10, right: 0, left: -10, bottom: 0 }} barSize={22}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                      <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false} dy={10} />
-                      <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                      <Tooltip cursor={{ fill: 'rgba(255,255,255,0.02)' }} contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '16px', fontSize: '12px', boxShadow: '0 20px 40px rgba(0,0,0,0.5)' }} labelStyle={{ color: '#9ca3af', marginBottom: '4px' }} />
-                      <Bar dataKey="value" name="Clientes" fill="#6be12f" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
                 </div>
-              )}
+
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-bold text-[#8cf059]">
+                    {formatarDataHora(cliente.last_sign_in_at)}
+                  </p>
+
+                  <p className="text-[11px] text-neutral-600 mt-1">
+                    último login
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </div>
+)}
             </>
           )}
 

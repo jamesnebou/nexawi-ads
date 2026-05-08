@@ -297,6 +297,68 @@ function montarOnboardingPorStatus(clientes = []) {
     .sort((a, b) => b.value - a.value)
 }
 
+async function buscarUltimosAcessosClientes(clientes = []) {
+  if (!clientes.length) return []
+
+  const clientesPorEmail = new Map()
+
+  clientes.forEach((cliente) => {
+    const email = String(cliente.email || '').trim().toLowerCase()
+
+    if (email) {
+      clientesPorEmail.set(email, cliente)
+    }
+  })
+
+  if (clientesPorEmail.size === 0) return []
+
+  const acessos = []
+  let page = 1
+  const perPage = 1000
+
+  while (page <= 20) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+      page,
+      perPage,
+    })
+
+    if (error) throw error
+
+    const users = data?.users || []
+
+    users.forEach((user) => {
+      const email = String(user.email || '').trim().toLowerCase()
+      const cliente = clientesPorEmail.get(email)
+
+      if (!cliente || !user.last_sign_in_at) return
+
+      acessos.push({
+        id: cliente.id,
+        nome: cliente.nome || '',
+        nome_empresa: cliente.nome_empresa || '',
+        email,
+        status: cliente.status || '',
+        plano_nome: cliente.planos?.nome || '',
+        last_sign_in_at: user.last_sign_in_at,
+      })
+    })
+
+    if (users.length < perPage) break
+
+    page += 1
+  }
+
+  return acessos
+    .sort((a, b) => {
+      const dataA = new Date(a.last_sign_in_at || 0).getTime()
+      const dataB = new Date(b.last_sign_in_at || 0).getTime()
+
+      return dataB - dataA
+    })
+    .slice(0, 8)
+}
+
+
 async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
   let anuncioIdsDoHotspot = null
 
@@ -686,6 +748,10 @@ export async function GET(request) {
       ? montarOnboardingPorStatus(clientes)
       : []
 
+      const clientesUltimosAcessos = podeVerClientes
+  ? await buscarUltimosAcessosClientes(clientes)
+  : []
+
     return NextResponse.json({
       ok: true,
       hotspots: podeVerHotspots ? hotspotsData : [],
@@ -695,6 +761,7 @@ export async function GET(request) {
       clientesOperacao,
       alertasOperacionais,
       onboardingPorStatus,
+      clientesUltimosAcessos,
       leadsPorDiaGeral,
       leadsUnicosPorDiaHotspot,
       receitaPorMes,
