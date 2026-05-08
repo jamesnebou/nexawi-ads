@@ -11,10 +11,12 @@
 // - clientes.delete: mostra botão Excluir e permite abrir confirmação
 // - clientes.export: reservado para exportação futura
 //
-// Importante:
-// - A segurança real fica na API /api/admin/clientes.
-// - Esta tela apenas melhora a experiência visual, escondendo ações
-//   que o administrador não pode executar.
+// Agora também possui:
+// - Status de onboarding/implantação
+// - Checklist interno de setup
+// - Cliente travado por pendência
+// - Responsável interno pela implantação
+// - Cards operacionais de acompanhamento
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -35,21 +37,77 @@ import {
   CreditCard,
   Briefcase,
   Lock,
+  ClipboardCheck,
+  Flag,
+  AlertTriangle,
+  Rocket,
+  ListChecks,
+  UserCheck,
+  Clock3,
+  CheckCircle2,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-// Cliente Supabase usado apenas para pegar a sessão do admin logado.
-// As operações sensíveis agora passam por /api/admin/clientes.
 const supabase = createBrowserSupabaseClient()
 
 const statusCores = {
   Ativo: 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
-  Inativo: 'bg-red-500/10 text-red-400 border border-red-500/20',
+  Inativo: 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
   Inadimplente: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
-  Cancelado: 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
+  Cancelado: 'bg-red-500/10 text-red-400 border border-red-500/20',
 }
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Inadimplente', 'Cancelado']
+
+const onboardingStatusOpcoes = [
+  { value: 'novo_lead', label: 'Novo lead' },
+  { value: 'contrato_enviado', label: 'Contrato enviado' },
+  { value: 'pagamento_pendente', label: 'Pagamento pendente' },
+  { value: 'pagamento_confirmado', label: 'Pagamento confirmado' },
+  { value: 'setup_em_andamento', label: 'Setup em andamento' },
+  { value: 'hotspot_configurado', label: 'Hotspot configurado' },
+  { value: 'campanha_criada', label: 'Campanha criada' },
+  { value: 'portal_testado', label: 'Portal testado' },
+  { value: 'cliente_ativo', label: 'Cliente ativo' },
+  { value: 'cliente_pausado', label: 'Cliente pausado' },
+  { value: 'cancelado', label: 'Cancelado' },
+]
+
+const onboardingStatusCores = {
+  novo_lead: 'bg-blue-500/10 text-blue-400 border border-blue-500/20',
+  contrato_enviado: 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20',
+  pagamento_pendente: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20',
+  pagamento_confirmado: 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
+  setup_em_andamento: 'bg-purple-500/10 text-purple-400 border border-purple-500/20',
+  hotspot_configurado: 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20',
+  campanha_criada: 'bg-orange-500/10 text-orange-400 border border-orange-500/20',
+  portal_testado: 'bg-teal-500/10 text-teal-400 border border-teal-500/20',
+  cliente_ativo: 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
+  cliente_pausado: 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]',
+  cancelado: 'bg-red-500/10 text-red-400 border border-red-500/20',
+}
+
+const checklistLabels = [
+  { key: 'contrato_enviado', label: 'Contrato enviado' },
+  { key: 'pagamento_confirmado', label: 'Pagamento confirmado' },
+  { key: 'dados_empresa_recebidos', label: 'Dados da empresa recebidos' },
+  { key: 'criativo_recebido', label: 'Criativo recebido' },
+  { key: 'hotspot_vinculado', label: 'Hotspot vinculado' },
+  { key: 'anuncio_criado', label: 'Anúncio criado' },
+  { key: 'portal_testado', label: 'Portal testado' },
+  { key: 'cliente_liberado', label: 'Cliente liberado' },
+]
+
+const checklistPadrao = {
+  contrato_enviado: false,
+  pagamento_confirmado: false,
+  dados_empresa_recebidos: false,
+  criativo_recebido: false,
+  hotspot_vinculado: false,
+  anuncio_criado: false,
+  portal_testado: false,
+  cliente_liberado: false,
+}
 
 const permissoesIniciais = {
   view: false,
@@ -59,11 +117,39 @@ const permissoesIniciais = {
   export: false,
 }
 
-// ============================================================
-// Chamada padrão para APIs administrativas.
-// Essa função pega o token do usuário logado e envia para a API.
-// A API valida se o usuário é admin antes de consultar o banco.
-// ============================================================
+const resumoInicial = {
+  total: 0,
+  novoLead: 0,
+  emSetup: 0,
+  ativos: 0,
+  pausados: 0,
+  cancelados: 0,
+  travados: 0,
+  pagamentoPendente: 0,
+}
+
+function getOnboardingLabel(value) {
+  return onboardingStatusOpcoes.find((item) => item.value === value)?.label || 'Novo lead'
+}
+
+function normalizarChecklist(checklist = {}) {
+  return {
+    ...checklistPadrao,
+    ...(checklist || {}),
+  }
+}
+
+function calcularProgressoChecklist(checklist = {}) {
+  const normalizado = normalizarChecklist(checklist)
+  const total = checklistLabels.length
+  const feitos = checklistLabels.filter((item) => Boolean(normalizado[item.key])).length
+
+  return {
+    total,
+    feitos,
+    percentual: total > 0 ? Math.round((feitos / total) * 100) : 0,
+  }
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -103,15 +189,19 @@ export default function Clientes() {
   const [clientes, setClientes] = useState([])
   const [planos, setPlanos] = useState([])
   const [permissions, setPermissions] = useState(permissoesIniciais)
+  const [resumoOnboarding, setResumoOnboarding] = useState(resumoInicial)
+
   const [carregando, setCarregando] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('Todos')
+  const [filtroOnboarding, setFiltroOnboarding] = useState('Todos')
+  const [filtroTravado, setFiltroTravado] = useState('Todos')
+
   const [modalAberto, setModalAberto] = useState(false)
   const [clienteSelecionado, setClienteSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
 
-  // Estados e cidades via IBGE.
   const [estadosIBGE, setEstadosIBGE] = useState([])
   const [cidadesIBGE, setCidadesIBGE] = useState([])
 
@@ -127,6 +217,13 @@ export default function Clientes() {
     estado: '',
     plano_id: '',
     status: 'Ativo',
+
+    onboarding_status: 'novo_lead',
+    onboarding_checklist: checklistPadrao,
+    onboarding_observacao: '',
+    onboarding_responsavel: '',
+    onboarding_travado: false,
+    onboarding_motivo_trava: '',
   })
 
   const [cpfCnpjError, setCpfCnpjError] = useState('')
@@ -138,7 +235,6 @@ export default function Clientes() {
   const canCreate = Boolean(permissions.create)
   const canUpdate = Boolean(permissions.update)
   const canDelete = Boolean(permissions.delete)
-  const canExport = Boolean(permissions.export)
   const showActionsColumn = canUpdate || canDelete
 
   useEffect(() => {
@@ -162,23 +258,24 @@ export default function Clientes() {
 
   useEffect(() => {
     buscarDados()
-  }, [busca, filtroStatus])
+  }, [busca, filtroStatus, filtroOnboarding, filtroTravado])
 
   async function buscarDados() {
     setCarregando(true)
 
     try {
-      // Agora a aba Clientes não busca mais direto nas tabelas.
-      // Ela chama a API protegida, que valida o admin e usa service_role no servidor.
       const params = new URLSearchParams()
 
       if (busca) params.set('busca', busca)
       if (filtroStatus) params.set('status', filtroStatus)
+      if (filtroOnboarding) params.set('onboarding_status', filtroOnboarding)
+      if (filtroTravado) params.set('travado', filtroTravado)
 
       const data = await adminApiFetch(`/api/admin/clientes?${params.toString()}`)
 
       setPlanos(data.planos || [])
       setClientes(data.clientes || [])
+      setResumoOnboarding(data.resumoOnboarding || resumoInicial)
       setPermissions({
         ...permissoesIniciais,
         ...(data.permissions || {}),
@@ -220,8 +317,8 @@ export default function Clientes() {
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    let newValue = value
+    const { name, value, type, checked } = e.target
+    let newValue = type === 'checkbox' ? checked : value
 
     if (name === 'cpf_cnpj') {
       newValue = value.replace(/\D/g, '').slice(0, 14)
@@ -242,6 +339,16 @@ export default function Clientes() {
     } else {
       setForm({ ...form, [name]: newValue })
     }
+  }
+
+  function toggleChecklist(key) {
+    setForm((prev) => ({
+      ...prev,
+      onboarding_checklist: {
+        ...normalizarChecklist(prev.onboarding_checklist),
+        [key]: !Boolean(prev.onboarding_checklist?.[key]),
+      },
+    }))
   }
 
   function abrirModal(cliente = null) {
@@ -269,6 +376,13 @@ export default function Clientes() {
         estado: cliente.estado || '',
         plano_id: cliente.plano_id || '',
         status: cliente.status || 'Ativo',
+
+        onboarding_status: cliente.onboarding_status || 'novo_lead',
+        onboarding_checklist: normalizarChecklist(cliente.onboarding_checklist),
+        onboarding_observacao: cliente.onboarding_observacao || '',
+        onboarding_responsavel: cliente.onboarding_responsavel || '',
+        onboarding_travado: Boolean(cliente.onboarding_travado),
+        onboarding_motivo_trava: cliente.onboarding_motivo_trava || '',
       })
     } else {
       setClienteSelecionado(null)
@@ -284,6 +398,13 @@ export default function Clientes() {
         estado: '',
         plano_id: '',
         status: 'Ativo',
+
+        onboarding_status: 'novo_lead',
+        onboarding_checklist: checklistPadrao,
+        onboarding_observacao: '',
+        onboarding_responsavel: '',
+        onboarding_travado: false,
+        onboarding_motivo_trava: '',
       })
     }
 
@@ -333,11 +454,11 @@ export default function Clientes() {
     const dadosParaSalvar = {
       ...form,
       plano_id: form.plano_id || null,
+      onboarding_checklist: normalizarChecklist(form.onboarding_checklist),
     }
 
     try {
       if (clienteSelecionado) {
-        // Atualização via API protegida.
         await adminApiFetch('/api/admin/clientes', {
           method: 'POST',
           body: {
@@ -349,8 +470,6 @@ export default function Clientes() {
 
         toast.success('Cliente atualizado com sucesso!')
       } else {
-        // Criação via API protegida.
-        // A API cria o usuário no Supabase Auth e depois salva na tabela clientes.
         await adminApiFetch('/api/admin/clientes', {
           method: 'POST',
           body: {
@@ -388,9 +507,6 @@ export default function Clientes() {
     }
 
     try {
-      // Exclusão via API protegida.
-      // Não exclui o usuário do Supabase Auth por enquanto.
-      // Se quiser, depois criamos vínculo cliente → auth_user_id para remover ambos.
       await adminApiFetch('/api/admin/clientes', {
         method: 'POST',
         body: {
@@ -407,6 +523,44 @@ export default function Clientes() {
       toast.error(error.message || 'Erro ao excluir cliente. Verifique se há dependências.')
     }
   }
+
+  const cards = [
+    {
+      label: 'Clientes',
+      value: resumoOnboarding.total,
+      sub: 'na base filtrada',
+      icon: Users,
+      text: 'text-white',
+    },
+    {
+      label: 'Em setup',
+      value: resumoOnboarding.emSetup,
+      sub: 'implantação em andamento',
+      icon: Rocket,
+      text: 'text-purple-400',
+    },
+    {
+      label: 'Ativos',
+      value: resumoOnboarding.ativos,
+      sub: 'liberados para operação',
+      icon: CheckCircle2,
+      text: 'text-[#8cf059]',
+    },
+    {
+      label: 'Pag. pendente',
+      value: resumoOnboarding.pagamentoPendente,
+      sub: 'aguardando financeiro',
+      icon: Clock3,
+      text: 'text-yellow-400',
+    },
+    {
+      label: 'Travados',
+      value: resumoOnboarding.travados,
+      sub: 'precisam de atenção',
+      icon: AlertTriangle,
+      text: 'text-red-400',
+    },
+  ]
 
   return (
     <>
@@ -435,14 +589,13 @@ export default function Clientes() {
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        {/* Header e controles */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">
               Clientes
             </h1>
             <p className="text-sm text-neutral-500 mt-1.5 font-medium">
-              Gerencie sua base de clientes e empresas
+              Gerencie sua base, contratos e implantação dos clientes
             </p>
 
             {!canCreate && !canUpdate && !canDelete && (
@@ -453,56 +606,84 @@ export default function Clientes() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="relative w-full sm:w-72 group/input">
-              <Search
-                size={18}
-                className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300"
-              />
-              <input
-                type="text"
-                placeholder="Buscar cliente, empresa, CPF..."
-                value={busca}
-                onChange={(e) => setBusca(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-              />
-            </div>
-
-            <div className="relative w-full sm:w-48 group/select">
-              <select
-                value={filtroStatus}
-                onChange={(e) => setFiltroStatus(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer shadow-inner"
-              >
-                <option value="Todos" className="bg-[#0a0a0a]">
-                  Todos os Status
-                </option>
-                {statusOpcoes.map((status) => (
-                  <option key={status} value={status} className="bg-[#0a0a0a]">
-                    {status}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
-            </div>
-
-            {canCreate && (
-              <button
-                onClick={() => abrirModal()}
-                className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-              >
-                <Plus size={18} strokeWidth={2.5} />
-                Novo Cliente
-              </button>
-            )}
-          </div>
+          {canCreate && (
+            <button
+              onClick={() => abrirModal()}
+              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+            >
+              <Plus size={18} strokeWidth={2.5} />
+              Novo Cliente
+            </button>
+          )}
         </div>
 
-        {/* Tabela */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-8">
+          {cards.map((card) => (
+            <div
+              key={card.label}
+              className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 hover:border-white/[0.1] transition-all duration-300"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
+                  {card.label}
+                </p>
+
+                <div className="p-2.5 rounded-2xl bg-[#0a0a0a] border border-white/[0.05]">
+                  <card.icon size={18} className={card.text} />
+                </div>
+              </div>
+
+              <p className="text-4xl font-light text-white tracking-tight">
+                {card.value}
+              </p>
+
+              <p className="text-xs text-neutral-500 mt-2 font-medium">
+                {card.sub}
+              </p>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
+          <div className="relative group/input">
+            <Search
+              size={18}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300"
+            />
+            <input
+              type="text"
+              placeholder="Buscar cliente, empresa, CPF..."
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+            />
+          </div>
+
+          <SelectFiltro value={filtroStatus} onChange={setFiltroStatus}>
+            <option value="Todos" className="bg-[#0a0a0a]">Todos os Status</option>
+            {statusOpcoes.map((status) => (
+              <option key={status} value={status} className="bg-[#0a0a0a]">
+                {status}
+              </option>
+            ))}
+          </SelectFiltro>
+
+          <SelectFiltro value={filtroOnboarding} onChange={setFiltroOnboarding}>
+            <option value="Todos" className="bg-[#0a0a0a]">Todas as etapas</option>
+            {onboardingStatusOpcoes.map((status) => (
+              <option key={status.value} value={status.value} className="bg-[#0a0a0a]">
+                {status.label}
+              </option>
+            ))}
+          </SelectFiltro>
+
+          <SelectFiltro value={filtroTravado} onChange={setFiltroTravado}>
+            <option value="Todos" className="bg-[#0a0a0a]">Todos</option>
+            <option value="Sim" className="bg-[#0a0a0a]">Só travados</option>
+            <option value="Não" className="bg-[#0a0a0a]">Não travados</option>
+          </SelectFiltro>
+        </div>
+
         {carregando ? (
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
@@ -534,8 +715,8 @@ export default function Clientes() {
           </div>
         ) : (
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse min-w-[1150px]">
                 <thead>
                   <tr className="border-b border-white/[0.05] bg-white/[0.01]">
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
@@ -551,6 +732,9 @@ export default function Clientes() {
                       Plano / Resp.
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
+                      Implantação
+                    </th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
                       Status
                     </th>
                     {showActionsColumn && (
@@ -560,96 +744,121 @@ export default function Clientes() {
                     )}
                   </tr>
                 </thead>
+
                 <tbody className="divide-y divide-white/[0.02]">
-                  {clientes.map((cliente) => (
-                    <tr key={cliente.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-full bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-center text-neutral-400 font-bold text-sm shadow-inner flex-shrink-0 group-hover:text-white group-hover:border-white/[0.1] transition-colors">
-                            {cliente.nome?.charAt(0).toUpperCase() || '?'}
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors">
-                              {cliente.nome || '—'}
-                            </p>
-                            <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1">
-                              <Building size={12} className="text-neutral-600" />
-                              {cliente.nome_empresa || '—'}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
+                  {clientes.map((cliente) => {
+                    const progresso = calcularProgressoChecklist(cliente.onboarding_checklist)
 
-                      <td className="px-6 py-5">
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
-                            <Phone size={14} className="text-neutral-600" />
-                            <span className="text-xs font-medium">{cliente.telefone || '—'}</span>
-                          </div>
-                          <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
-                            <Mail size={14} className="text-neutral-600" />
-                            <span className="text-xs font-medium truncate max-w-[150px]" title={cliente.email}>
-                              {cliente.email || '—'}
-                            </span>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-2.5 text-neutral-400 mb-1.5">
-                          <MapPin size={14} className="text-neutral-600" />
-                          <span className="text-xs font-bold">
-                            {cliente.cidade || '—'}, {cliente.estado || '—'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-neutral-600 truncate max-w-[180px] font-medium" title={cliente.endereco}>
-                          {cliente.endereco || '—'}
-                        </p>
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <p className="text-sm font-bold text-neutral-300">
-                          {cliente.planos?.nome || 'Sem plano'}
-                        </p>
-                        <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 font-medium">
-                          <User size={12} className="text-neutral-600" />
-                          {cliente.nome_responsavel || '—'}
-                        </p>
-                      </td>
-
-                      <td className="px-6 py-5">
-                        <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${statusCores[cliente.status] || 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]'}`}>
-                          {cliente.status || 'Desconhecido'}
-                        </span>
-                      </td>
-
-                      {showActionsColumn && (
-                        <td className="px-6 py-5 text-right">
-                          <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
-                            {canUpdate && (
-                              <button
-                                onClick={() => abrirModal(cliente)}
-                                className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
-                                title="Editar cliente"
-                              >
-                                <Pencil size={16} />
-                              </button>
-                            )}
-
-                            {canDelete && (
-                              <button
-                                onClick={() => solicitarExclusaoCliente(cliente.id)}
-                                className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
-                                title="Excluir cliente"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            )}
+                    return (
+                      <tr key={cliente.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-4">
+                            <div className="w-11 h-11 rounded-full bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-center text-neutral-400 font-bold text-sm shadow-inner flex-shrink-0 group-hover:text-white group-hover:border-white/[0.1] transition-colors">
+                              {cliente.nome?.charAt(0).toUpperCase() || '?'}
+                            </div>
+                            <div>
+                              <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors">
+                                {cliente.nome || '—'}
+                              </p>
+                              <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1">
+                                <Building size={12} className="text-neutral-600" />
+                                {cliente.nome_empresa || '—'}
+                              </p>
+                            </div>
                           </div>
                         </td>
-                      )}
-                    </tr>
-                  ))}
+
+                        <td className="px-6 py-5">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
+                              <Phone size={14} className="text-neutral-600" />
+                              <span className="text-xs font-medium">{cliente.telefone || '—'}</span>
+                            </div>
+                            <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
+                              <Mail size={14} className="text-neutral-600" />
+                              <span className="text-xs font-medium truncate max-w-[150px]" title={cliente.email}>
+                                {cliente.email || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-2.5 text-neutral-400 mb-1.5">
+                            <MapPin size={14} className="text-neutral-600" />
+                            <span className="text-xs font-bold">
+                              {cliente.cidade || '—'}, {cliente.estado || '—'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-neutral-600 truncate max-w-[180px] font-medium" title={cliente.endereco}>
+                            {cliente.endereco || '—'}
+                          </p>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <p className="text-sm font-bold text-neutral-300">
+                            {cliente.planos?.nome || 'Sem plano'}
+                          </p>
+                          <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 font-medium">
+                            <User size={12} className="text-neutral-600" />
+                            {cliente.nome_responsavel || '—'}
+                          </p>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <div className="space-y-2">
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${onboardingStatusCores[cliente.onboarding_status] || onboardingStatusCores.novo_lead}`}>
+                              {cliente.onboarding_travado ? <AlertTriangle size={12} /> : <Flag size={12} />}
+                              {getOnboardingLabel(cliente.onboarding_status)}
+                            </span>
+
+                            <div className="w-40 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                              <div
+                                className="h-full rounded-full bg-[#6be12f]"
+                                style={{ width: `${progresso.percentual}%` }}
+                              />
+                            </div>
+
+                            <p className="text-[11px] text-neutral-500 font-medium">
+                              {progresso.feitos}/{progresso.total} etapas · {cliente.onboarding_responsavel || 'Sem responsável'}
+                            </p>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-5">
+                          <span className={`inline-flex items-center px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${statusCores[cliente.status] || 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]'}`}>
+                            {cliente.status || 'Desconhecido'}
+                          </span>
+                        </td>
+
+                        {showActionsColumn && (
+                          <td className="px-6 py-5 text-right">
+                            <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                              {canUpdate && (
+                                <button
+                                  onClick={() => abrirModal(cliente)}
+                                  className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all duration-300 border border-transparent hover:border-white/[0.05]"
+                                  title="Editar cliente"
+                                >
+                                  <Pencil size={16} />
+                                </button>
+                              )}
+
+                              {canDelete && (
+                                <button
+                                  onClick={() => solicitarExclusaoCliente(cliente.id)}
+                                  className="p-2.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-300 border border-transparent hover:border-red-500/20"
+                                  title="Excluir cliente"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
@@ -657,17 +866,16 @@ export default function Clientes() {
         )}
       </div>
 
-      {/* Modal de criação/edição */}
       {modalAberto && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-4xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-6xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
               <div>
                 <h2 className="text-2xl font-bold text-white tracking-tight">
                   {clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}
                 </h2>
                 <p className="text-sm text-neutral-500 mt-1.5 font-medium">
-                  Preencha os dados da empresa e do contato principal
+                  Preencha os dados da empresa, contato principal e implantação
                 </p>
               </div>
               <button
@@ -678,248 +886,306 @@ export default function Clientes() {
               </button>
             </div>
 
-            <div className="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 overflow-y-auto custom-scrollbar flex-grow">
-              <div>
-                <label htmlFor="nome" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Empresário *
-                </label>
-                <div className="relative group/input">
-                  <Briefcase size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="nome"
-                    name="nome"
-                    value={form.nome}
-                    onChange={handleChange}
-                    placeholder="Nome completo"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                {nomeEmpresarioError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeEmpresarioError}</p>}
-              </div>
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-grow">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div className="bg-white/[0.015] border border-white/[0.05] rounded-[2rem] p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+                      <Building size={18} className="text-[#6be12f]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Dados do cliente</h3>
+                      <p className="text-xs text-neutral-500">Informações comerciais e de contato</p>
+                    </div>
+                  </div>
 
-              <div>
-                <label htmlFor="nome_empresa" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Empresa *
-                </label>
-                <div className="relative group/input">
-                  <Building size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="nome_empresa"
-                    name="nome_empresa"
-                    value={form.nome_empresa}
-                    onChange={handleChange}
-                    placeholder="Nome do negócio"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                {nomeEmpresaError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeEmpresaError}</p>}
-              </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <InputField
+                      label="Empresário *"
+                      name="nome"
+                      value={form.nome}
+                      onChange={handleChange}
+                      icon={Briefcase}
+                      placeholder="Nome completo"
+                      error={nomeEmpresarioError}
+                    />
 
-              <div>
-                <label htmlFor="nome_responsavel" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Responsável pela Venda *
-                </label>
-                <div className="relative group/input">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="nome_responsavel"
-                    name="nome_responsavel"
-                    value={form.nome_responsavel}
-                    onChange={handleChange}
-                    placeholder="Quem fechou o negócio"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                {nomeResponsavelError && <p className="text-red-400 text-xs mt-2 font-medium">{nomeResponsavelError}</p>}
-              </div>
+                    <InputField
+                      label="Empresa *"
+                      name="nome_empresa"
+                      value={form.nome_empresa}
+                      onChange={handleChange}
+                      icon={Building}
+                      placeholder="Nome do negócio"
+                      error={nomeEmpresaError}
+                    />
 
-              <div>
-                <label htmlFor="cpf_cnpj" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  CPF/CNPJ *
-                </label>
-                <div className="relative group/input">
-                  <CreditCard size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="cpf_cnpj"
-                    name="cpf_cnpj"
-                    value={form.cpf_cnpj}
-                    onChange={handleChange}
-                    placeholder="Apenas números"
-                    maxLength={14}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                {cpfCnpjError && <p className="text-red-400 text-xs mt-2 font-medium">{cpfCnpjError}</p>}
-              </div>
+                    <InputField
+                      label="Responsável pela venda *"
+                      name="nome_responsavel"
+                      value={form.nome_responsavel}
+                      onChange={handleChange}
+                      icon={User}
+                      placeholder="Quem fechou o negócio"
+                      error={nomeResponsavelError}
+                    />
 
-              <div>
-                <label htmlFor="email" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Email (Login) *
-                </label>
-                <div className="relative group/input">
-                  <Mail size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={form.email}
-                    onChange={handleChange}
-                    placeholder="contato@empresa.com"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-              </div>
+                    <InputField
+                      label="CPF/CNPJ *"
+                      name="cpf_cnpj"
+                      value={form.cpf_cnpj}
+                      onChange={handleChange}
+                      icon={CreditCard}
+                      placeholder="Apenas números"
+                      maxLength={14}
+                      error={cpfCnpjError}
+                    />
 
-              <div>
-                <label htmlFor="telefone" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Telefone / WhatsApp *
-                </label>
-                <div className="relative group/input">
-                  <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="telefone"
-                    name="telefone"
-                    value={form.telefone}
-                    onChange={handleChange}
-                    placeholder="DDD + Número"
-                    maxLength={11}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                    required
-                  />
-                </div>
-                {telefoneError && <p className="text-red-400 text-xs mt-2 font-medium">{telefoneError}</p>}
-              </div>
+                    <InputField
+                      label="Email/Login *"
+                      name="email"
+                      type="email"
+                      value={form.email}
+                      onChange={handleChange}
+                      icon={Mail}
+                      placeholder="contato@empresa.com"
+                    />
 
-              <div className="md:col-span-2">
-                <label htmlFor="endereco" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Endereço Completo
-                </label>
-                <div className="relative group/input">
-                  <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  <input
-                    type="text"
-                    id="endereco"
-                    name="endereco"
-                    value={form.endereco}
-                    onChange={handleChange}
-                    placeholder="Rua, número, complemento, bairro"
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                  />
-                </div>
-              </div>
+                    <InputField
+                      label="Telefone/WhatsApp *"
+                      name="telefone"
+                      value={form.telefone}
+                      onChange={handleChange}
+                      icon={Phone}
+                      placeholder="DDD + Número"
+                      maxLength={11}
+                      error={telefoneError}
+                    />
 
-              <div>
-                <label htmlFor="estado" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Estado
-                </label>
-                <div className="relative group/select">
-                  <select
-                    id="estado"
-                    name="estado"
-                    value={form.estado}
-                    onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
-                  >
-                    <option value="" className="bg-[#050505]">
-                      Selecione o UF
-                    </option>
-                    {estadosIBGE.map((estado) => (
-                      <option key={estado.id} value={estado.sigla} className="bg-[#050505]">
-                        {estado.nome} ({estado.sigla})
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
+                    <div className="md:col-span-2">
+                      <InputField
+                        label="Endereço completo"
+                        name="endereco"
+                        value={form.endereco}
+                        onChange={handleChange}
+                        icon={MapPin}
+                        placeholder="Rua, número, complemento, bairro"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Estado
+                      </label>
+                      <select
+                        name="estado"
+                        value={form.estado}
+                        onChange={handleChange}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                      >
+                        <option value="" className="bg-[#050505]">
+                          Selecione o UF
+                        </option>
+                        {estadosIBGE.map((estado) => (
+                          <option key={estado.id} value={estado.sigla} className="bg-[#050505]">
+                            {estado.nome} ({estado.sigla})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Cidade
+                      </label>
+                      <input
+                        list="lista-cidades-ibge"
+                        type="text"
+                        name="cidade"
+                        value={form.cidade}
+                        onChange={handleChange}
+                        placeholder={form.estado ? 'Digite para buscar a cidade' : 'Selecione o estado primeiro'}
+                        disabled={!form.estado}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
+                      />
+                      <datalist id="lista-cidades-ibge">
+                        {cidadesIBGE.map((cidade) => (
+                          <option key={cidade.id} value={cidade.nome} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Plano contratado
+                      </label>
+                      <select
+                        name="plano_id"
+                        value={form.plano_id}
+                        onChange={handleChange}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                      >
+                        <option value="" className="bg-[#050505]">
+                          Sem plano vinculado
+                        </option>
+                        {planos.map((plano) => (
+                          <option key={plano.id} value={plano.id} className="bg-[#050505]">
+                            {plano.nome}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Status da conta
+                      </label>
+                      <select
+                        name="status"
+                        value={form.status}
+                        onChange={handleChange}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                      >
+                        {statusOpcoes.map((status) => (
+                          <option key={status} value={status} className="bg-[#050505]">
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label htmlFor="cidade" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Cidade
-                </label>
-                <input
-                  list="lista-cidades-ibge"
-                  type="text"
-                  id="cidade"
-                  name="cidade"
-                  value={form.cidade}
-                  onChange={handleChange}
-                  placeholder={form.estado ? 'Digite para buscar a cidade' : 'Selecione o estado primeiro'}
-                  disabled={!form.estado}
-                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
-                />
-                <datalist id="lista-cidades-ibge">
-                  {cidadesIBGE.map((cidade) => (
-                    <option key={cidade.id} value={cidade.nome} />
-                  ))}
-                </datalist>
-              </div>
-
-              <div>
-                <label htmlFor="plano_id" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Plano Contratado
-                </label>
-                <div className="relative group/select">
-                  <select
-                    id="plano_id"
-                    name="plano_id"
-                    value={form.plano_id}
-                    onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
-                  >
-                    <option value="" className="bg-[#050505]">
-                      Sem plano vinculado
-                    </option>
-                    {planos.map((plano) => (
-                      <option key={plano.id} value={plano.id} className="bg-[#050505]">
-                        {plano.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
+                <div className="bg-white/[0.015] border border-white/[0.05] rounded-[2rem] p-6">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+                      <ClipboardCheck size={18} className="text-[#6be12f]" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-white">Onboarding / Implantação</h3>
+                      <p className="text-xs text-neutral-500">Controle interno do setup do cliente</p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div>
-                <label htmlFor="status" className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Status da Conta
-                </label>
-                <div className="relative group/select">
-                  <select
-                    id="status"
-                    name="status"
-                    value={form.status}
-                    onChange={handleChange}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
-                  >
-                    {statusOpcoes.map((status) => (
-                      <option key={status} value={status} className="bg-[#050505]">
-                        {status}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                    <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                      <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                    </svg>
+                  <div className="grid grid-cols-1 gap-5">
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Etapa atual
+                      </label>
+                      <select
+                        name="onboarding_status"
+                        value={form.onboarding_status}
+                        onChange={handleChange}
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl py-4 px-5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 appearance-none pr-12 transition-all cursor-pointer shadow-inner"
+                      >
+                        {onboardingStatusOpcoes.map((status) => (
+                          <option key={status.value} value={status.value} className="bg-[#050505]">
+                            {status.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <InputField
+                      label="Responsável interno"
+                      name="onboarding_responsavel"
+                      value={form.onboarding_responsavel}
+                      onChange={handleChange}
+                      icon={UserCheck}
+                      placeholder="Ex: James, Suporte, Financeiro..."
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, onboarding_travado: !prev.onboarding_travado }))}
+                      className={`w-full flex items-center justify-between gap-4 rounded-2xl border p-5 transition-all ${
+                        form.onboarding_travado
+                          ? 'bg-red-500/10 border-red-500/20 text-red-300'
+                          : 'bg-[#050505] border-white/[0.05] text-neutral-300 hover:border-white/[0.1]'
+                      }`}
+                    >
+                      <div className="text-left">
+                        <p className="text-sm font-bold">
+                          Cliente travado
+                        </p>
+                        <p className="text-xs text-neutral-500 mt-1">
+                          Marque quando a implantação estiver parada por pendência.
+                        </p>
+                      </div>
+
+                      <div className={`w-14 h-7 rounded-full relative transition-colors ${form.onboarding_travado ? 'bg-red-500' : 'bg-neutral-800'}`}>
+                        <div className={`w-5 h-5 bg-white rounded-full absolute top-1 transition-all ${form.onboarding_travado ? 'left-8' : 'left-1'}`} />
+                      </div>
+                    </button>
+
+                    {form.onboarding_travado && (
+                      <div>
+                        <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                          Motivo da trava
+                        </label>
+                        <textarea
+                          name="onboarding_motivo_trava"
+                          value={form.onboarding_motivo_trava}
+                          onChange={handleChange}
+                          rows={3}
+                          placeholder="Ex: Cliente ainda não enviou arte, pagamento não confirmado, hotspot pendente..."
+                          className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner resize-none"
+                        />
+                      </div>
+                    )}
+
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                          Checklist de implantação
+                        </label>
+
+                        <span className="text-xs text-neutral-500 font-bold">
+                          {calcularProgressoChecklist(form.onboarding_checklist).percentual}%
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {checklistLabels.map((item) => {
+                          const ativo = Boolean(form.onboarding_checklist?.[item.key])
+
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => toggleChecklist(item.key)}
+                              className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border text-left transition-all ${
+                                ativo
+                                  ? 'bg-[#6be12f]/10 border-[#6be12f]/20 text-[#8cf059]'
+                                  : 'bg-[#050505] border-white/[0.05] text-neutral-500 hover:text-white hover:border-white/[0.1]'
+                              }`}
+                            >
+                              <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${ativo ? 'bg-[#6be12f] border-[#6be12f]' : 'border-white/[0.12]'}`}>
+                                {ativo && <Check size={13} className="text-black" />}
+                              </div>
+
+                              <span className="text-xs font-bold">
+                                {item.label}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Observação interna
+                      </label>
+                      <textarea
+                        name="onboarding_observacao"
+                        value={form.onboarding_observacao}
+                        onChange={handleChange}
+                        rows={4}
+                        placeholder="Notas internas sobre implantação, pendências, próximos passos..."
+                        className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner resize-none"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -964,7 +1230,6 @@ export default function Clientes() {
         </div>
       )}
 
-      {/* Modal de confirmação de exclusão */}
       {confirmDelete && canDelete && (
         <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
@@ -996,7 +1261,7 @@ export default function Clientes() {
       )}
 
       <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 8px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
@@ -1011,5 +1276,59 @@ export default function Clientes() {
         }
       `}} />
     </>
+  )
+}
+
+function SelectFiltro({ value, onChange, children }) {
+  return (
+    <div className="relative group/select">
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-5 pr-12 py-3.5 text-sm text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all cursor-pointer shadow-inner"
+      >
+        {children}
+      </select>
+      <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
+        <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+          <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+function InputField({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder = '',
+  icon: Icon,
+  error = '',
+  type = 'text',
+  maxLength,
+}) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+        {label}
+      </label>
+      <div className="relative group/input">
+        {Icon && (
+          <Icon size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+        )}
+        <input
+          type={type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          maxLength={maxLength}
+          className={`w-full bg-[#050505] border border-white/[0.05] rounded-2xl ${Icon ? 'pl-12' : 'pl-5'} pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner`}
+        />
+      </div>
+      {error && <p className="text-red-400 text-xs mt-2 font-medium">{error}</p>}
+    </div>
   )
 }

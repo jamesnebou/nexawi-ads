@@ -43,10 +43,22 @@ const menu = [
     module: 'dashboard',
   },
   {
+    label: 'Anúncios',
+    path: '/dashboard/anuncios',
+    icon: Megaphone,
+    module: 'anuncios',
+  },
+  {
     label: 'Clientes',
     path: '/dashboard/clientes',
     icon: Users,
     module: 'clientes',
+  },  
+  {
+    label: 'Hotspots',
+    path: '/dashboard/hotspots',
+    icon: Wifi,
+    module: 'hotspots',
   },
   {
     label: 'Financeiro',
@@ -55,16 +67,16 @@ const menu = [
     module: 'financeiro',
   },
   {
-    label: 'Hotspots',
-    path: '/dashboard/hotspots',
-    icon: Wifi,
-    module: 'hotspots',
+    label: 'Leads',
+    path: '/dashboard/leads',
+    icon: UserPlus,
+    module: 'leads',
   },
   {
-    label: 'Anúncios',
-    path: '/dashboard/anuncios',
-    icon: Megaphone,
-    module: 'anuncios',
+    label: 'Cidades',
+    path: '/dashboard/cidades',
+    icon: MapPin,
+    module: 'configuracoes',
   },
   {
     label: 'Planos',
@@ -73,22 +85,10 @@ const menu = [
     module: 'planos',
   },
   {
-    label: 'Leads',
-    path: '/dashboard/leads',
-    icon: UserPlus,
-    module: 'leads',
-  },
-  {
     label: 'Relatório de Acesso',
     path: '/dashboard/relatorios/acesso',
     icon: BarChart2,
     module: 'relatorios',
-  },
-  {
-    label: 'Cidades',
-    path: '/dashboard/cidades',
-    icon: MapPin,
-    module: 'configuracoes',
   },
   {
     label: 'Auditoria',
