@@ -3,13 +3,13 @@
 // API administrativa segura para Configurações.
 // Substitui o acesso direto do navegador à tabela configuracoes.
 //
-// Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Permissões aplicadas:
+// - GET configurações: configuracoes.view
+// - POST configurações: configuracoes.update
 //
 // Correção importante:
 // - GET apenas busca a configuração global.
 // - POST cria/atualiza a configuração global.
-// - A variável payload só existe dentro do POST.
 // - O texto LGPD sempre é salvo e recuperado.
 // - A alteração é registrada em admin_audit_logs.
 // ============================================================
@@ -62,9 +62,18 @@ function booleano(value, fallback = false) {
   return fallback
 }
 
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
+}
+
 function sanitizarPayload(config = {}) {
   return {
-    // Chave fixa para garantir que exista apenas uma configuração principal.
     config_key: 'global',
 
     nome_empresa: limparTexto(config.nome_empresa),
@@ -77,8 +86,6 @@ function sanitizarPayload(config = {}) {
     texto_boas_vindas: limparTexto(config.texto_boas_vindas),
     cor_principal: limparTexto(config.cor_principal) || '#22c55e',
 
-    // LGPD:
-    // Mantemos como string completa para preservar exatamente o texto salvo.
     texto_lgpd: String(config.texto_lgpd || ''),
 
     email_notificacoes: limparTexto(config.email_notificacoes),
@@ -120,7 +127,6 @@ function sanitizarPayload(config = {}) {
 }
 
 async function buscarConfiguracaoGlobal() {
-  // Busca sempre a configuração global.
   const { data: configGlobal, error: globalError } = await supabaseAdmin
     .from('configuracoes')
     .select('*')
@@ -135,7 +141,6 @@ async function buscarConfiguracaoGlobal() {
     return configGlobal
   }
 
-  // Fallback para projetos que ainda tenham configuração antiga sem config_key.
   const { data: configAntiga, error: antigaError } = await supabaseAdmin
     .from('configuracoes')
     .select('*')
@@ -151,7 +156,10 @@ async function buscarConfiguracaoGlobal() {
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'configuracoes',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -163,6 +171,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       config,
+      permissions: auth.permissions?.configuracoes || {},
     })
   } catch (error) {
     return NextResponse.json(
@@ -182,10 +191,12 @@ export async function POST(request) {
     return auth.errorResponse
   }
 
+  if (!auth.canAccess('configuracoes', 'update')) {
+    return permissaoNegada('configuracoes', 'update')
+  }
+
   try {
     const body = await request.json()
-
-    // payload existe somente aqui dentro do POST.
     const payload = sanitizarPayload(body.config || {})
 
     const { data, error } = await supabaseAdmin
@@ -198,9 +209,6 @@ export async function POST(request) {
       throw error
     }
 
-    // Auditoria administrativa:
-    // Registra que o admin alterou as configurações globais.
-    // Não salvamos o texto completo da LGPD no log para evitar expor conteúdo grande/sensível.
     await logAdminAction({
       request,
       adminUser: auth.user,
@@ -216,6 +224,7 @@ export async function POST(request) {
         nome_empresa: payload.nome_empresa,
         alterou_tempos_portal: true,
         alterou_precos_padrao: true,
+        alterou_hero: Boolean(payload.hero_imagem_url_padrao),
       },
     })
 
@@ -223,6 +232,7 @@ export async function POST(request) {
       ok: true,
       config: data,
       message: 'Configurações salvas com sucesso',
+      permissions: auth.permissions?.configuracoes || {},
     })
   } catch (error) {
     return NextResponse.json(

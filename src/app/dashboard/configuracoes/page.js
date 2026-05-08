@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
-import { logAdminAction } from '@/lib/admin-audit-log'
 import {
   Building2,
   Globe,
@@ -29,6 +28,11 @@ const abas = [
   { id: 'notificacoes', label: 'Notificações', icon: Bell, desc: 'Avisos e alertas' },
   { id: 'seguranca', label: 'Segurança', icon: Lock, desc: 'Senha de acesso' },
 ]
+
+const permissoesIniciais = {
+  view: false,
+  update: false,
+}
 
 const DEFAULT_FORM = {
   nome_empresa: '',
@@ -291,6 +295,10 @@ export default function Configuracoes() {
   const [salvo, setSalvo] = useState(false)
   const [configId, setConfigId] = useState(null)
 
+  const [permissions, setPermissions] = useState(permissoesIniciais)
+
+const canUpdate = Boolean(permissions.update)
+
   const [senhaAtual, setSenhaAtual] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
@@ -314,6 +322,10 @@ export default function Configuracoes() {
       // A API admin busca a configuração mais recente com service_role.
       const resposta = await adminApiFetch('/api/admin/configuracoes')
       const data = resposta.config
+      setPermissions({
+  ...permissoesIniciais,
+  ...(resposta.permissions || {}),
+})
 
       if (data) {
         setConfigId(data.id)
@@ -387,6 +399,10 @@ export default function Configuracoes() {
 
     async function salvarConfiguracoes() {
     try {
+      if (!canUpdate) {
+  alert('Você não tem permissão para alterar configurações.')
+  return
+}
       setSalvando(true)
       setSalvo(false)
 
@@ -480,13 +496,19 @@ export default function Configuracoes() {
     try {
       setUploadingHeroImage(true)
 
-      const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url', {
-        method: 'POST',
-        body: {
-          filename: file.name,
-          contentType: file.type,
-        },
-      })
+      if (!canUpdate) {
+  alert('Você não tem permissão para alterar configurações.')
+  return
+}
+
+const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url', {
+  method: 'POST',
+  body: {
+    filename: file.name,
+    contentType: file.type,
+    sizeBytes: file.size,
+  },
+})
 
       const { error: uploadError } = await supabase.storage
         .from(HERO_IMAGE_BUCKET)
@@ -565,9 +587,15 @@ export default function Configuracoes() {
           <p className="text-sm text-neutral-500 mt-2 font-medium">
             Gerencie preferências, tempos do portal e preços padrão
           </p>
+          {!canUpdate && (
+  <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+    <Lock size={14} className="text-neutral-500" />
+    Modo leitura: você pode visualizar, mas não alterar configurações.
+  </div>
+)}
         </div>
 
-        {abaAtiva !== 'seguranca' && (
+        {abaAtiva !== 'seguranca' && canUpdate && (
           <button
             onClick={salvarConfiguracoes}
             disabled={salvando}
