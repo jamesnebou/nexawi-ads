@@ -1,17 +1,28 @@
 // src/app/api/admin/equipe/route.js
 // ============================================================
 // API administrativa segura para Equipe/Admins.
-// Permite ao administrador master:
+// Permite ao administrador autorizado:
 // - listar administradores
 // - adicionar admin existente no Supabase Auth
 // - alterar cargo
 // - ativar/desativar admin
 // - controlar permissões granulares por módulo e ação
+// - remover admin da tabela admin_users
 //
-// Exemplo de permission:
-// {
-//   "hotspots": { "view": true, "create": true, "update": true, "delete": false }
-// }
+// Permissões aplicadas:
+// - usuarios_admin.view   → listar equipe
+// - usuarios_admin.create → adicionar admin
+// - usuarios_admin.update → editar admin/permissões
+// - usuarios_admin.delete → remover admin
+// - usuarios_admin.master → promover/rebaixar master ou editar outro master
+//
+// Regras críticas:
+// - Admin comum não consegue se tornar master sozinho.
+// - Admin sem master não consegue promover outro admin para master.
+// - Admin sem master não consegue editar/remover outro master.
+// - Usuário logado não consegue se desativar.
+// - Usuário logado não consegue remover seu próprio cargo master.
+// - Sistema nunca pode ficar sem nenhum master ativo.
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -77,7 +88,7 @@ const MODULOS = [
   {
     key: 'usuarios_admin',
     label: 'Equipe/Admins',
-    actions: ['view', 'create', 'update', 'delete'],
+    actions: ['view', 'create', 'update', 'delete', 'master'],
   },
 ]
 
@@ -93,7 +104,7 @@ const PERMISSOES_PADRAO = {
     relatorios: { view: true, export: true },
     auditoria: { view: true, export: true },
     configuracoes: { view: true, update: true },
-    usuarios_admin: { view: true, create: true, update: true, delete: true },
+    usuarios_admin: { view: true, create: true, update: true, delete: true, master: true },
   },
 
   admin: {
@@ -107,7 +118,7 @@ const PERMISSOES_PADRAO = {
     relatorios: { view: true, export: true },
     auditoria: { view: true, export: false },
     configuracoes: { view: true, update: false },
-    usuarios_admin: { view: false, create: false, update: false, delete: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false, master: false },
   },
 
   suporte: {
@@ -121,7 +132,7 @@ const PERMISSOES_PADRAO = {
     relatorios: { view: true, export: false },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
-    usuarios_admin: { view: false, create: false, update: false, delete: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false, master: false },
   },
 
   financeiro: {
@@ -135,7 +146,7 @@ const PERMISSOES_PADRAO = {
     relatorios: { view: true, export: true },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
-    usuarios_admin: { view: false, create: false, update: false, delete: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false, master: false },
   },
 
   viewer: {
@@ -149,12 +160,31 @@ const PERMISSOES_PADRAO = {
     relatorios: { view: true, export: false },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
-    usuarios_admin: { view: false, create: false, update: false, delete: false },
+    usuarios_admin: { view: false, create: false, update: false, delete: false, master: false },
   },
 }
 
 function limparEmail(value = '') {
   return String(value || '').trim().toLowerCase()
+}
+
+function isMasterAuth(auth) {
+  return Boolean(
+    auth?.isMaster ||
+    auth?.role === 'master' ||
+    auth?.adminProfile?.role === 'master' ||
+    auth?.canAccess?.('usuarios_admin', 'master')
+  )
+}
+
+function permissaoNegada(modulo, acao) {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: `Sem permissão para ${acao} em ${modulo}`,
+    },
+    { status: 403 }
+  )
 }
 
 function normalizarPermissoes(role = 'admin', permissions = {}) {
@@ -169,7 +199,6 @@ function normalizarPermissoes(role = 'admin', permissions = {}) {
 
     resultado[modulo.key] = {}
 
-    // Compatibilidade com modelo antigo: { hotspots: true }
     if (typeof bancoModulo === 'boolean') {
       modulo.actions.forEach((action) => {
         resultado[modulo.key][action] = bancoModulo
@@ -192,6 +221,16 @@ function normalizarPermissoes(role = 'admin', permissions = {}) {
   })
 
   return resultado
+}
+
+function removerPermissaoMasterSeNaoForMaster(auth, permissions) {
+  const normalized = normalizarPermissoes('admin', permissions || {})
+
+  if (!isMasterAuth(auth) && normalized.usuarios_admin) {
+    normalized.usuarios_admin.master = false
+  }
+
+  return normalized
 }
 
 async function buscarAuthUserPorEmail(email) {
@@ -219,8 +258,41 @@ async function contarMastersAtivosExceto(userId = '') {
   return (data || []).filter((item) => item.user_id !== userId).length
 }
 
+async function buscarAdminPorUserId(userId) {
+  const { data, error } = await supabaseAdmin
+    .from('admin_users')
+    .select('user_id, email, role, active, permissions')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
+}
+
+function exigeMasterParaOperacaoSensivel({ auth, roleNovo, adminAntes, permissions }) {
+  const querSerMaster = roleNovo === 'master'
+  const alvoEraMaster = adminAntes?.role === 'master'
+  const querPermissaoMaster = Boolean(permissions?.usuarios_admin?.master)
+
+  if ((querSerMaster || alvoEraMaster || querPermissaoMaster) && !isMasterAuth(auth)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'Somente um administrador master pode promover, editar ou remover permissões master.',
+      },
+      { status: 403 }
+    )
+  }
+
+  return null
+}
+
 export async function GET(request) {
-  const auth = await requireAdmin(request, { module: 'usuarios_admin', action: 'view' })
+  const auth = await requireAdmin(request, {
+    module: 'usuarios_admin',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -247,6 +319,13 @@ export async function GET(request) {
       roles: ROLES_VALIDOS,
       modules: MODULOS,
       permissoesPadrao: PERMISSOES_PADRAO,
+      permissions: auth.permissions?.usuarios_admin || {},
+      currentAdmin: {
+        user_id: auth.user?.id || '',
+        email: auth.user?.email || '',
+        role: auth.role || auth.adminProfile?.role || '',
+        isMaster: isMasterAuth(auth),
+      },
     })
   } catch (error) {
     return NextResponse.json(
@@ -260,7 +339,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = await requireAdmin(request, { module: 'usuarios_admin', action: 'update' })
+  const auth = await requireAdmin(request)
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -271,10 +350,25 @@ export async function POST(request) {
     const action = String(body.action || '').trim()
 
     if (action === 'upsert_admin') {
+      if (!auth.canAccess('usuarios_admin', 'create')) {
+        return permissaoNegada('usuarios_admin', 'create')
+      }
+
       const email = limparEmail(body.email)
       const role = ROLES_VALIDOS.includes(body.role) ? body.role : 'admin'
       const active = typeof body.active === 'boolean' ? body.active : true
-      const permissions = normalizarPermissoes(role, body.permissions || {})
+
+      const permissionsBase = body.permissions || PERMISSOES_PADRAO[role] || PERMISSOES_PADRAO.admin
+      const permissions = removerPermissaoMasterSeNaoForMaster(auth, normalizarPermissoes(role, permissionsBase))
+
+      const sensivel = exigeMasterParaOperacaoSensivel({
+        auth,
+        roleNovo: role,
+        adminAntes: null,
+        permissions,
+      })
+
+      if (sensivel) return sensivel
 
       if (!email) {
         return NextResponse.json(
@@ -292,6 +386,18 @@ export async function POST(request) {
             error: 'Usuário não encontrado no Supabase Auth. Primeiro crie o usuário em Authentication > Users.',
           },
           { status: 404 }
+        )
+      }
+
+      const adminAntes = await buscarAdminPorUserId(authUser.id)
+
+      if (adminAntes?.role === 'master' && !isMasterAuth(auth)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Somente um master pode atualizar outro administrador master.',
+          },
+          { status: 403 }
         )
       }
 
@@ -316,15 +422,20 @@ export async function POST(request) {
       await logAdminAction({
         request,
         adminUser: auth.user,
-        action: 'upsert',
+        action: adminAntes ? 'update' : 'create',
         entity: 'admin_users',
         entityId: data.user_id,
-        description: 'Criou ou atualizou um administrador',
+        description: adminAntes
+          ? 'Atualizou um administrador'
+          : 'Criou um novo administrador',
         metadata: {
           email: data.email,
-          role: data.role,
-          active: data.active,
-          permissions: data.permissions,
+          role_anterior: adminAntes?.role || null,
+          role_atual: data.role,
+          active_anterior: adminAntes?.active ?? null,
+          active_atual: data.active,
+          permissions_anteriores: adminAntes?.permissions || null,
+          permissions_atuais: data.permissions,
         },
       })
 
@@ -339,6 +450,10 @@ export async function POST(request) {
     }
 
     if (action === 'update_admin') {
+      if (!auth.canAccess('usuarios_admin', 'update')) {
+        return permissaoNegada('usuarios_admin', 'update')
+      }
+
       const userId = String(body.user_id || '').trim()
 
       if (!userId) {
@@ -348,13 +463,7 @@ export async function POST(request) {
         )
       }
 
-      const { data: adminAntes, error: adminAntesError } = await supabaseAdmin
-        .from('admin_users')
-        .select('user_id, email, role, active, permissions')
-        .eq('user_id', userId)
-        .maybeSingle()
-
-      if (adminAntesError) throw adminAntesError
+      const adminAntes = await buscarAdminPorUserId(userId)
 
       if (!adminAntes) {
         return NextResponse.json(
@@ -365,9 +474,21 @@ export async function POST(request) {
 
       const role = ROLES_VALIDOS.includes(body.role) ? body.role : adminAntes.role || 'admin'
       const active = typeof body.active === 'boolean' ? body.active : adminAntes.active
-      const permissions = normalizarPermissoes(role, body.permissions || adminAntes.permissions || {})
 
-      // Segurança: não permite o master logado se desativar.
+      const permissions = removerPermissaoMasterSeNaoForMaster(
+        auth,
+        normalizarPermissoes(role, body.permissions || adminAntes.permissions || {})
+      )
+
+      const sensivel = exigeMasterParaOperacaoSensivel({
+        auth,
+        roleNovo: role,
+        adminAntes,
+        permissions,
+      })
+
+      if (sensivel) return sensivel
+
       if (userId === auth.user.id && active === false) {
         return NextResponse.json(
           { ok: false, error: 'Você não pode desativar seu próprio usuário.' },
@@ -375,15 +496,13 @@ export async function POST(request) {
         )
       }
 
-      // Segurança: não permite o master logado remover seu próprio cargo master.
-      if (userId === auth.user.id && role !== 'master') {
+      if (userId === auth.user.id && adminAntes.role === 'master' && role !== 'master') {
         return NextResponse.json(
           { ok: false, error: 'Você não pode remover seu próprio cargo master.' },
           { status: 400 }
         )
       }
 
-      // Segurança: não permite deixar o sistema sem master ativo.
       if (adminAntes.role === 'master' && (role !== 'master' || active === false)) {
         const outrosMasters = await contarMastersAtivosExceto(userId)
 
@@ -434,6 +553,85 @@ export async function POST(request) {
           permissions: normalizarPermissoes(data.role, data.permissions),
         },
         message: 'Administrador atualizado com sucesso',
+      })
+    }
+
+    if (action === 'delete_admin') {
+      if (!auth.canAccess('usuarios_admin', 'delete')) {
+        return permissaoNegada('usuarios_admin', 'delete')
+      }
+
+      const userId = String(body.user_id || '').trim()
+
+      if (!userId) {
+        return NextResponse.json(
+          { ok: false, error: 'ID do administrador é obrigatório' },
+          { status: 400 }
+        )
+      }
+
+      if (userId === auth.user.id) {
+        return NextResponse.json(
+          { ok: false, error: 'Você não pode remover seu próprio usuário da equipe.' },
+          { status: 400 }
+        )
+      }
+
+      const adminAntes = await buscarAdminPorUserId(userId)
+
+      if (!adminAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Administrador não encontrado' },
+          { status: 404 }
+        )
+      }
+
+      if (adminAntes.role === 'master' && !isMasterAuth(auth)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error: 'Somente um master pode remover outro administrador master.',
+          },
+          { status: 403 }
+        )
+      }
+
+      if (adminAntes.role === 'master') {
+        const outrosMasters = await contarMastersAtivosExceto(userId)
+
+        if (outrosMasters === 0) {
+          return NextResponse.json(
+            { ok: false, error: 'Não é permitido remover o último master ativo do sistema.' },
+            { status: 400 }
+          )
+        }
+      }
+
+      const { error } = await supabaseAdmin
+        .from('admin_users')
+        .delete()
+        .eq('user_id', userId)
+
+      if (error) throw error
+
+      await logAdminAction({
+        request,
+        adminUser: auth.user,
+        action: 'delete',
+        entity: 'admin_users',
+        entityId: userId,
+        description: 'Removeu um administrador da equipe',
+        metadata: {
+          email: adminAntes.email,
+          role: adminAntes.role,
+          active: adminAntes.active,
+          permissions: adminAntes.permissions,
+        },
+      })
+
+      return NextResponse.json({
+        ok: true,
+        message: 'Administrador removido da equipe com sucesso',
       })
     }
 
