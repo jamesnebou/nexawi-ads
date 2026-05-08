@@ -3,8 +3,12 @@
 // API administrativa segura para Auditoria.
 // Lê os registros da tabela admin_audit_logs.
 //
+// Permissões aplicadas:
+// - GET auditoria: auditoria.view
+// - Exportação: auditoria.export fica no front, porque o CSV é gerado no navegador
+//
 // Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Dashboard → API admin → valida admin → valida permissão → service_role → Supabase
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -42,7 +46,10 @@ function getDataInicio(periodo = 'ultimos_7') {
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'auditoria',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -105,6 +112,7 @@ export async function GET(request) {
       resumo,
       entidades,
       acoes,
+      permissions: auth.permissions?.auditoria || {},
     })
   } catch (error) {
     return NextResponse.json(

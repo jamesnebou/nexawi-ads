@@ -4,6 +4,12 @@
 // ============================================================
 // Tela de Auditoria Administrativa da NexaWi ADS.
 // Mostra ações sensíveis feitas dentro da dashboard.
+//
+// Agora esta tela respeita as permissões retornadas pela API:
+// - auditoria.view: permite visualizar logs
+// - auditoria.export: mostra Exportar CSV
+//
+// A segurança real fica em /api/admin/auditoria.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
@@ -22,9 +28,10 @@ import {
   PauseCircle,
   PlayCircle,
   DollarSign,
-  Settings,
   Activity,
   ChevronDown,
+  Download,
+  Lock,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -45,6 +52,8 @@ const entidadesFixas = [
   { value: 'pagamentos', label: 'Financeiro' },
   { value: 'planos', label: 'Planos' },
   { value: 'configuracoes', label: 'Configurações' },
+  { value: 'admin_users', label: 'Equipe/Admins' },
+  { value: 'leads', label: 'Leads' },
 ]
 
 const acoesFixas = [
@@ -55,7 +64,13 @@ const acoesFixas = [
   { value: 'activate', label: 'Ativações' },
   { value: 'pause', label: 'Pausas' },
   { value: 'mark_paid', label: 'Marcado como pago' },
+  { value: 'upsert', label: 'Criou/Atualizou' },
 ]
+
+const permissoesIniciais = {
+  view: false,
+  export: false,
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -135,6 +150,11 @@ function getActionConfig(action) {
       icon: DollarSign,
       className: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
     },
+    upsert: {
+      label: 'Salvou',
+      icon: ShieldCheck,
+      className: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
+    },
   }
 
   return configs[action] || {
@@ -152,6 +172,8 @@ function getEntityLabel(entity) {
     pagamentos: 'Financeiro',
     planos: 'Planos',
     configuracoes: 'Configurações',
+    admin_users: 'Equipe/Admins',
+    leads: 'Leads',
   }
 
   return labels[entity] || entity || '-'
@@ -159,6 +181,7 @@ function getEntityLabel(entity) {
 
 export default function AuditoriaPage() {
   const [logs, setLogs] = useState([])
+  const [permissions, setPermissions] = useState(permissoesIniciais)
   const [resumo, setResumo] = useState({
     total: 0,
     criacoes: 0,
@@ -173,6 +196,8 @@ export default function AuditoriaPage() {
   const [action, setAction] = useState('todos')
   const [loading, setLoading] = useState(true)
   const [logAberto, setLogAberto] = useState(null)
+
+  const canExport = Boolean(permissions.export)
 
   useEffect(() => {
     buscarLogs()
@@ -202,6 +227,10 @@ export default function AuditoriaPage() {
         exclusoes: 0,
         financeiro: 0,
       })
+      setPermissions({
+        ...permissoesIniciais,
+        ...(data.permissions || {}),
+      })
     } catch (error) {
       console.error('Erro ao buscar auditoria:', error)
       toast.error(error.message || 'Erro ao carregar auditoria.')
@@ -213,6 +242,65 @@ export default function AuditoriaPage() {
   function handleSubmit(e) {
     e.preventDefault()
     buscarLogs()
+  }
+
+  function exportarCSV() {
+    if (!canExport) {
+      toast.error('Você não tem permissão para exportar auditoria.')
+      return
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '')
+      return `"${text.replace(/"/g, '""')}"`
+    }
+
+    const linhas = [
+      [
+        'Data',
+        'Admin',
+        'Ação',
+        'Entidade',
+        'Entidade ID',
+        'Descrição',
+        'IP',
+        'User Agent',
+        'Metadata',
+      ],
+      ...logs.map((log) => [
+        formatarData(log.created_at),
+        log.admin_email || '',
+        log.action || '',
+        getEntityLabel(log.entity),
+        log.entity_id || '',
+        log.description || '',
+        log.ip_address || '',
+        log.user_agent || '',
+        JSON.stringify(log.metadata || {}),
+      ]),
+    ]
+
+    const csvContent = '\uFEFF' + linhas
+      .map((linha) => linha.map(csvCell).join(';'))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const periodoLabel = periodos.find((item) => item.value === periodo)?.label || periodo
+
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute(
+      'download',
+      `auditoria_${periodoLabel.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`
+    )
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    URL.revokeObjectURL(url)
   }
 
   const cards = useMemo(() => [
@@ -280,15 +368,35 @@ export default function AuditoriaPage() {
             <p className="text-sm text-neutral-500 mt-2 font-medium">
               Histórico de ações administrativas realizadas no sistema
             </p>
+
+            {!canExport && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+                <Lock size={14} className="text-neutral-500" />
+                Modo leitura: você pode visualizar, mas não exportar auditoria.
+              </div>
+            )}
           </div>
 
-          <button
-            onClick={buscarLogs}
-            className="bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
-          >
-            <RefreshCw size={17} />
-            Atualizar
-          </button>
+          <div className="flex flex-col sm:flex-row gap-3">
+            {canExport && (
+              <button
+                onClick={exportarCSV}
+                disabled={logs.length === 0}
+                className="bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
+              >
+                <Download size={17} />
+                Exportar
+              </button>
+            )}
+
+            <button
+              onClick={buscarLogs}
+              className="bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
+            >
+              <RefreshCw size={17} />
+              Atualizar
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-8">
