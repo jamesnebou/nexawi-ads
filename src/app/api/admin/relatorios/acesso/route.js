@@ -4,8 +4,9 @@
 // Substitui a view antiga hotspot_access_report acessada direto
 // pelo navegador.
 //
-// Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Permissões aplicadas:
+// - GET relatório: relatorios.view
+// - Exportação: relatorios.export fica no front, porque o CSV é gerado no navegador
 //
 // Métricas:
 // - Visualizações por hotspot
@@ -44,7 +45,6 @@ function getDataInicio(periodo = 'ultimos_30') {
     return inicioMes.toISOString()
   }
 
-  // "todos" não aplica filtro de data.
   return null
 }
 
@@ -52,8 +52,6 @@ function uniqueCount(rows = [], keyName = 'ip_address') {
   const set = new Set()
 
   rows.forEach((row) => {
-    // Preferimos IP para evitar contar várias ações do mesmo visitante.
-    // Se não houver IP, usa o id do evento como fallback.
     set.add(row[keyName] || row.id)
   })
 
@@ -67,9 +65,6 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
     return []
   }
 
-  // Algumas tabelas antigas usam "timestamp".
-  // Algumas tabelas novas podem usar "created_at".
-  // Tentamos timestamp primeiro e, se falhar, tentamos created_at.
   const colunasDeData = ['timestamp', 'created_at']
   let ultimoErro = null
 
@@ -106,7 +101,10 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'relatorios',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -139,7 +137,9 @@ export async function GET(request) {
     if (clientesError) throw clientesError
     if (vinculosError) throw vinculosError
 
-    const anuncioIds = [...new Set((vinculos || []).map((v) => v.anuncio_id).filter(Boolean))]
+    const anuncioIds = [
+      ...new Set((vinculos || []).map((v) => v.anuncio_id).filter(Boolean)),
+    ]
 
     const [views, clicks] = await Promise.all([
       buscarEventosComData({
@@ -206,8 +206,9 @@ export async function GET(request) {
       }
     })
 
-    const relatorioOrdenado = relatorio
-      .sort((a, b) => b.total_unique_views - a.total_unique_views)
+    const relatorioOrdenado = relatorio.sort(
+      (a, b) => b.total_unique_views - a.total_unique_views
+    )
 
     const resumo = {
       totalHotspots: relatorio.length,
@@ -223,6 +224,7 @@ export async function GET(request) {
       periodo,
       resumo,
       relatorio: relatorioOrdenado,
+      permissions: auth.permissions?.relatorios || {},
     })
   } catch (error) {
     return NextResponse.json(

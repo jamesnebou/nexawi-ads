@@ -1,5 +1,18 @@
 'use client'
 
+// src/app/dashboard/relatorios/acesso/page.js
+// ============================================================
+// Relatório de Acesso da dashboard NexaWi ADS.
+//
+// Agora esta tela respeita as permissões retornadas pela API:
+// - relatorios.view: permite visualizar o relatório
+// - relatorios.export: mostra Exportar CSV
+//
+// Importante:
+// - A segurança real fica na API /api/admin/relatorios/acesso.
+// - Esta tela apenas melhora a experiência visual.
+// ============================================================
+
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/client'
 import {
@@ -14,12 +27,11 @@ import {
   CalendarDays,
   Activity,
   TrendingUp,
+  Download,
+  Lock,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
-import { logAdminAction } from '@/lib/admin-audit-log'
 
-// Cliente Supabase usado apenas para pegar a sessão do admin logado.
-// O relatório agora carrega por /api/admin/relatorios/acesso.
 const supabase = createBrowserSupabaseClient()
 
 const periodos = [
@@ -30,11 +42,10 @@ const periodos = [
   { value: 'todos', label: 'Todo período' },
 ]
 
-// ============================================================
-// Chamada padrão para APIs administrativas.
-// Essa função pega o token do usuário logado e envia para a API.
-// A API valida se o usuário é admin antes de consultar o banco.
-// ============================================================
+const permissoesIniciais = {
+  view: false,
+  export: false,
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -53,10 +64,18 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
 
-  const data = await response.json()
+  const text = await response.text()
+
+  let data = null
+
+  try {
+    data = text ? JSON.parse(text) : null
+  } catch {
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+  }
 
   if (!response.ok) {
-    throw new Error(data.error || 'Erro na API administrativa')
+    throw new Error(data?.error || 'Erro na API administrativa')
   }
 
   return data
@@ -64,6 +83,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 
 export default function RelatorioAcesso() {
   const [relatorio, setRelatorio] = useState([])
+  const [permissions, setPermissions] = useState(permissoesIniciais)
   const [resumo, setResumo] = useState({
     totalHotspots: 0,
     hotspotsComAcesso: 0,
@@ -75,6 +95,8 @@ export default function RelatorioAcesso() {
   const [periodo, setPeriodo] = useState('ultimos_30')
   const [carregando, setCarregando] = useState(true)
 
+  const canExport = Boolean(permissions.export)
+
   useEffect(() => {
     buscarRelatorio()
   }, [periodo])
@@ -83,8 +105,6 @@ export default function RelatorioAcesso() {
     setCarregando(true)
 
     try {
-      // Agora o relatório não consulta view/tabela direto pelo navegador.
-      // A API admin calcula tudo usando service_role no servidor.
       const params = new URLSearchParams()
       params.set('periodo', periodo)
 
@@ -99,12 +119,75 @@ export default function RelatorioAcesso() {
         totalCopias: 0,
         totalTentativasAbrir: 0,
       })
+      setPermissions({
+        ...permissoesIniciais,
+        ...(data.permissions || {}),
+      })
     } catch (error) {
       console.error('Erro ao buscar relatório de acesso:', error)
       toast.error(error.message || 'Erro ao carregar o relatório.')
     } finally {
       setCarregando(false)
     }
+  }
+
+  function exportarCSV() {
+    if (!canExport) {
+      toast.error('Você não tem permissão para exportar relatórios.')
+      return
+    }
+
+    function csvCell(value) {
+      const text = String(value ?? '')
+      return `"${text.replace(/"/g, '""')}"`
+    }
+
+    const linhas = [
+      [
+        'Hotspot',
+        'Cliente',
+        'Cidade',
+        'Status',
+        'Visualizações',
+        'Cliques',
+        'Links copiados',
+        'Tentativas de abrir CTA',
+        'CTR (%)',
+      ],
+      ...relatorio.map((item) => [
+        item.hotspot_nome || '',
+        item.cliente_nome || '',
+        item.cidade || '',
+        item.status || '',
+        item.total_unique_views || 0,
+        item.total_unique_clicks || 0,
+        item.total_links_copiados || 0,
+        item.total_tentativas_abrir || 0,
+        item.taxa_clique || 0,
+      ]),
+    ]
+
+    const csvContent = '\uFEFF' + linhas
+      .map((linha) => linha.map(csvCell).join(';'))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+
+    const periodoLabel = periodos.find((item) => item.value === periodo)?.label || periodo
+
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute(
+      'download',
+      `relatorio_acesso_${periodoLabel.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`
+    )
+
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    URL.revokeObjectURL(url)
   }
 
   const taxaGeral =
@@ -170,7 +253,6 @@ export default function RelatorioAcesso() {
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        {/* Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
@@ -183,6 +265,13 @@ export default function RelatorioAcesso() {
             <p className="text-sm text-neutral-500 mt-2 font-medium">
               Métricas agregadas de visualizações, cliques, cópias e CTAs por hotspot
             </p>
+
+            {!canExport && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
+                <Lock size={14} className="text-neutral-500" />
+                Modo leitura: você pode visualizar, mas não exportar relatórios.
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
@@ -205,6 +294,17 @@ export default function RelatorioAcesso() {
               />
             </div>
 
+            {canExport && (
+              <button
+                onClick={exportarCSV}
+                disabled={relatorio.length === 0}
+                className="bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
+              >
+                <Download size={17} />
+                Exportar
+              </button>
+            )}
+
             <button
               onClick={buscarRelatorio}
               className="bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
@@ -215,7 +315,6 @@ export default function RelatorioAcesso() {
           </div>
         </div>
 
-        {/* Cards principais */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-10">
           {cards.map((card, index) => (
             <div
@@ -275,7 +374,6 @@ export default function RelatorioAcesso() {
               >
                 <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#6be12f]/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
 
-                {/* Informações do Hotspot */}
                 <div className="flex items-center gap-5 w-full xl:w-[320px] relative z-10">
                   <div className="w-14 h-14 rounded-2xl bg-[#050505] border border-white/[0.05] flex items-center justify-center shadow-inner group-hover:border-[#6be12f]/30 transition-all duration-300 flex-shrink-0">
                     <MapPin size={24} className="text-neutral-500 group-hover:text-[#6be12f] transition-colors duration-300" />
@@ -301,7 +399,6 @@ export default function RelatorioAcesso() {
                   </div>
                 </div>
 
-                {/* Métricas */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full xl:flex-1 relative z-10">
                   <MetricBox
                     label="Visualizações"
