@@ -9,8 +9,13 @@
 // - anuncio_clicks
 // - anuncio_hotspots
 //
-// Agora:
-// Dashboard → API admin → valida admin → service_role → Supabase
+// Permissões aplicadas:
+// - dashboard.view → visualizar dashboard
+//
+// Observação profissional:
+// A rota exige dashboard.view para abrir.
+// Os dados financeiros, leads, clientes e relatórios também são
+// filtrados conforme permissões secundárias do admin.
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -56,10 +61,30 @@ function ultimosMesesISO(qtd = 6) {
   })
 }
 
+function graficoVazioDias() {
+  return ultimosDiasISO(14).map((d) => ({
+    data: new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+    }),
+    leads: 0,
+  }))
+}
+
+function graficoVazioMeses() {
+  return ultimosMesesISO(6).map((m) => ({
+    label: new Date(`${m}-01T12:00:00`).toLocaleDateString('pt-BR', {
+      month: 'short',
+      year: '2-digit',
+    }),
+    recebido: 0,
+    pendente: 0,
+  }))
+}
+
 async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
   let anuncioIdsDoHotspot = null
 
-  // Se a dashboard estiver filtrada por hotspot, buscamos os anúncios vinculados a ele.
   if (hotspotId) {
     const { data: vinculos, error: vinculosError } = await supabaseAdmin
       .from('anuncio_hotspots')
@@ -113,7 +138,10 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
 }
 
 export async function GET(request) {
-  const auth = await requireAdmin(request)
+  const auth = await requireAdmin(request, {
+    module: 'dashboard',
+    action: 'view',
+  })
 
   if (auth.errorResponse) {
     return auth.errorResponse
@@ -123,90 +151,139 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const hotspotId = String(searchParams.get('hotspotId') || '').trim()
 
+    const podeVerClientes = auth.canAccess('clientes', 'view')
+    const podeVerHotspots = auth.canAccess('hotspots', 'view')
+    const podeVerLeads = auth.canAccess('leads', 'view')
+    const podeVerFinanceiro = auth.canAccess('financeiro', 'view')
+    const podeVerRelatorios = auth.canAccess('relatorios', 'view')
+    const podeVerAnuncios = auth.canAccess('anuncios', 'view')
+
+    const podeVerInteracoes = podeVerRelatorios || podeVerAnuncios
+
     const inicioHoje = inicioDoDiaISO()
     const inicioMes = inicioDoMesISO()
     const quinzeMinutosAtras = subtrairMinutosISO(15)
 
-    let queryLeadsHoje = supabaseAdmin
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioHoje)
-
-    let queryLeadsMes = supabaseAdmin
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', inicioMes)
-
-    let queryPessoasOnline = supabaseAdmin
-      .from('leads')
-      .select('*', { count: 'exact', head: true })
-      .gte('created_at', quinzeMinutosAtras)
-
-    if (hotspotId) {
-      queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', hotspotId)
-      queryLeadsMes = queryLeadsMes.eq('hotspot_id', hotspotId)
-      queryPessoasOnline = queryPessoasOnline.eq('hotspot_id', hotspotId)
+    let hotspotsData = []
+    let clientesAtivos = 0
+    let hotspotsAtivos = 0
+    let leadsHoje = 0
+    let leadsMes = 0
+    let pessoasOnline = 0
+    let pagamentos = []
+    let clientes = []
+    let leadsGeral = []
+    let interacoes = {
+      linksCopiados: 0,
+      tentativasAbrir: 0,
     }
 
-    const [
-      { data: hotspotsData, error: hotspotsError },
-      { count: clientesAtivos, error: clientesAtivosError },
-      { count: hotspotsAtivos, error: hotspotsAtivosError },
-      { count: leadsHoje, error: leadsHojeError },
-      { count: leadsMes, error: leadsMesError },
-      { count: pessoasOnline, error: pessoasOnlineError },
-      { data: pagamentos, error: pagamentosError },
-      { data: clientes, error: clientesError },
-      { data: leadsGeral, error: leadsGeralError },
-      interacoes,
-    ] = await Promise.all([
-      supabaseAdmin
+    if (podeVerHotspots) {
+      const { data, error } = await supabaseAdmin
         .from('hotspots')
         .select('id, nome')
         .eq('status', 'Ativo')
-        .order('nome'),
+        .order('nome')
 
-      supabaseAdmin
-        .from('clientes')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'Ativo'),
+      if (error) throw error
 
-      supabaseAdmin
+      hotspotsData = data || []
+
+      const { count, error: countError } = await supabaseAdmin
         .from('hotspots')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'Ativo'),
+        .eq('status', 'Ativo')
 
-      queryLeadsHoje,
-      queryLeadsMes,
-      queryPessoasOnline,
+      if (countError) throw countError
 
-      supabaseAdmin
+      hotspotsAtivos = count || 0
+    }
+
+    if (podeVerClientes) {
+      const [
+        { count: clientesCount, error: clientesCountError },
+        { data: clientesStatus, error: clientesError },
+      ] = await Promise.all([
+        supabaseAdmin
+          .from('clientes')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'Ativo'),
+
+        supabaseAdmin
+          .from('clientes')
+          .select('status'),
+      ])
+
+      if (clientesCountError) throw clientesCountError
+      if (clientesError) throw clientesError
+
+      clientesAtivos = clientesCount || 0
+      clientes = clientesStatus || []
+    }
+
+    if (podeVerLeads) {
+      let queryLeadsHoje = supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', inicioHoje)
+
+      let queryLeadsMes = supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', inicioMes)
+
+      let queryPessoasOnline = supabaseAdmin
+        .from('leads')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', quinzeMinutosAtras)
+
+      if (hotspotId) {
+        queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', hotspotId)
+        queryLeadsMes = queryLeadsMes.eq('hotspot_id', hotspotId)
+        queryPessoasOnline = queryPessoasOnline.eq('hotspot_id', hotspotId)
+      }
+
+      const [
+        { count: leadsHojeCount, error: leadsHojeError },
+        { count: leadsMesCount, error: leadsMesError },
+        { count: pessoasOnlineCount, error: pessoasOnlineError },
+        { data: leadsData, error: leadsGeralError },
+      ] = await Promise.all([
+        queryLeadsHoje,
+        queryLeadsMes,
+        queryPessoasOnline,
+        supabaseAdmin
+          .from('leads')
+          .select('id, nome, email, created_at, hotspot_id, hotspots(nome)')
+          .order('created_at', { ascending: false })
+          .limit(5000),
+      ])
+
+      if (leadsHojeError) throw leadsHojeError
+      if (leadsMesError) throw leadsMesError
+      if (pessoasOnlineError) throw pessoasOnlineError
+      if (leadsGeralError) throw leadsGeralError
+
+      leadsHoje = leadsHojeCount || 0
+      leadsMes = leadsMesCount || 0
+      pessoasOnline = pessoasOnlineCount || 0
+      leadsGeral = leadsData || []
+    }
+
+    if (podeVerFinanceiro) {
+      const { data, error } = await supabaseAdmin
         .from('pagamentos')
         .select('id, valor, status, created_at, data_pagamento, clientes(nome)')
-        .order('created_at', { ascending: false }),
-
-      supabaseAdmin
-        .from('clientes')
-        .select('status'),
-
-      supabaseAdmin
-        .from('leads')
-        .select('id, nome, email, created_at, hotspot_id, hotspots(nome)')
         .order('created_at', { ascending: false })
-        .limit(5000),
 
-      contarInteracoesAnuncios({ hotspotId }),
-    ])
+      if (error) throw error
 
-    if (hotspotsError) throw hotspotsError
-    if (clientesAtivosError) throw clientesAtivosError
-    if (hotspotsAtivosError) throw hotspotsAtivosError
-    if (leadsHojeError) throw leadsHojeError
-    if (leadsMesError) throw leadsMesError
-    if (pessoasOnlineError) throw pessoasOnlineError
-    if (pagamentosError) throw pagamentosError
-    if (clientesError) throw clientesError
-    if (leadsGeralError) throw leadsGeralError
+      pagamentos = data || []
+    }
+
+    if (podeVerInteracoes) {
+      interacoes = await contarInteracoesAnuncios({ hotspotId })
+    }
 
     const recebidoMes = (pagamentos || [])
       .filter((p) => {
@@ -221,15 +298,14 @@ export async function GET(request) {
       .reduce((acc, p) => acc + Number(p.valor || 0), 0)
 
     const metricas = {
-      clientesAtivos: clientesAtivos || 0,
-      hotspotsAtivos: hotspotsAtivos || 0,
-      leadsHoje: leadsHoje || 0,
-      leadsMes: leadsMes || 0,
-      pessoasOnline: pessoasOnline || 0,
+      clientesAtivos,
+      hotspotsAtivos,
+      leadsHoje,
+      leadsMes,
+      pessoasOnline,
       recebidoMes,
     }
 
-    // Gráfico geral dos últimos 14 dias.
     const ultimos14 = ultimosDiasISO(14)
     const leadsPorDiaMap = {}
 
@@ -245,18 +321,19 @@ export async function GET(request) {
       }
     })
 
-    const leadsPorDiaGeral = ultimos14.map((d) => ({
-      data: new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: '2-digit',
-      }),
-      leads: leadsPorDiaMap[d] || 0,
-    }))
+    const leadsPorDiaGeral = podeVerLeads
+      ? ultimos14.map((d) => ({
+          data: new Date(`${d}T12:00:00`).toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+          }),
+          leads: leadsPorDiaMap[d] || 0,
+        }))
+      : graficoVazioDias()
 
-    // Gráfico do hotspot selecionado.
     let leadsUnicosPorDiaHotspot = []
 
-    if (hotspotId) {
+    if (podeVerLeads) {
       const leadsPorDiaHotspotMap = {}
 
       ultimos14.forEach((d) => {
@@ -264,7 +341,10 @@ export async function GET(request) {
       })
 
       ;(leadsGeral || [])
-        .filter((lead) => lead.hotspot_id === hotspotId)
+        .filter((lead) => {
+          if (!hotspotId) return true
+          return lead.hotspot_id === hotspotId
+        })
         .forEach((lead) => {
           const d = lead.created_at?.slice(0, 10)
 
@@ -280,9 +360,10 @@ export async function GET(request) {
         }),
         leads: leadsPorDiaHotspotMap[d] || 0,
       }))
+    } else {
+      leadsUnicosPorDiaHotspot = graficoVazioDias()
     }
 
-    // Receita dos últimos 6 meses.
     const ultimos6Meses = ultimosMesesISO(6)
     const receitaPorMesMap = {}
 
@@ -307,45 +388,49 @@ export async function GET(request) {
       }
     })
 
-    const receitaPorMes = ultimos6Meses.map((m) => ({
-      label: new Date(`${m}-01T12:00:00`).toLocaleDateString('pt-BR', {
-        month: 'short',
-        year: '2-digit',
-      }),
-      recebido: receitaPorMesMap[m]?.recebido || 0,
-      pendente: receitaPorMesMap[m]?.pendente || 0,
-    }))
+    const receitaPorMes = podeVerFinanceiro
+      ? ultimos6Meses.map((m) => ({
+          label: new Date(`${m}-01T12:00:00`).toLocaleDateString('pt-BR', {
+            month: 'short',
+            year: '2-digit',
+          }),
+          recebido: receitaPorMesMap[m]?.recebido || 0,
+          pendente: receitaPorMesMap[m]?.pendente || 0,
+        }))
+      : graficoVazioMeses()
 
-    // Clientes por status.
     const clientesPorStatusMap = (clientes || []).reduce((acc, cliente) => {
       const status = cliente.status || 'Sem status'
       acc[status] = (acc[status] || 0) + 1
       return acc
     }, {})
 
-    const clientesPorStatus = Object.entries(clientesPorStatusMap).map(([status, count]) => ({
-      name: status,
-      value: count,
-    }))
+    const clientesPorStatus = podeVerClientes
+      ? Object.entries(clientesPorStatusMap).map(([status, count]) => ({
+          name: status,
+          value: count,
+        }))
+      : []
 
-    // Top hotspots geral.
     const leadsPorHotspotMap = (leadsGeral || []).reduce((acc, lead) => {
       const hotspotNome = lead.hotspots?.nome || 'Desconhecido'
       acc[hotspotNome] = (acc[hotspotNome] || 0) + 1
       return acc
     }, {})
 
-    const leadsPorHotspotGeral = Object.entries(leadsPorHotspotMap)
-      .map(([name, leads]) => ({
-        name,
-        leads,
-      }))
-      .sort((a, b) => b.leads - a.leads)
-      .slice(0, 5)
+    const leadsPorHotspotGeral = podeVerLeads
+      ? Object.entries(leadsPorHotspotMap)
+          .map(([name, leads]) => ({
+            name,
+            leads,
+          }))
+          .sort((a, b) => b.leads - a.leads)
+          .slice(0, 5)
+      : []
 
     return NextResponse.json({
       ok: true,
-      hotspots: hotspotsData || [],
+      hotspots: podeVerHotspots ? hotspotsData : [],
       metricas,
       interacoesAnuncios: interacoes,
       leadsPorDiaGeral,
@@ -353,9 +438,19 @@ export async function GET(request) {
       receitaPorMes,
       clientesPorStatus,
       leadsPorHotspotGeral,
-      pagamentosRecentes: (pagamentos || []).slice(0, 5),
-      leadsRecentes: (leadsGeral || []).slice(0, 5),
+      pagamentosRecentes: podeVerFinanceiro ? (pagamentos || []).slice(0, 5) : [],
+      leadsRecentes: podeVerLeads ? (leadsGeral || []).slice(0, 5) : [],
       cores: CORES_PADRAO,
+      permissions: auth.permissions?.dashboard || {},
+      visibility: {
+        clientes: podeVerClientes,
+        hotspots: podeVerHotspots,
+        leads: podeVerLeads,
+        financeiro: podeVerFinanceiro,
+        relatorios: podeVerRelatorios,
+        anuncios: podeVerAnuncios,
+        interacoes: podeVerInteracoes,
+      },
     })
   } catch (error) {
     return NextResponse.json(
