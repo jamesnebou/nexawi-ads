@@ -1,405 +1,983 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import { LogOut, Eye, MousePointerClick, Activity, LayoutDashboard, KeyRound, PauseCircle, X, Check, Loader2 } from 'lucide-react';
+// src/app/cliente/dashboard/page.js
+// ============================================================
+// Dashboard premium do cliente NexaWi ADS.
+// Agora não consulta mais tabelas direto pelo navegador.
+// Tudo vem de /api/cliente/dashboard, que valida a sessão e
+// garante que o cliente só veja os próprios dados.
+// ============================================================
 
-const supabase = createClient();
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import {
+  LogOut,
+  Eye,
+  MousePointerClick,
+  Activity,
+  LayoutDashboard,
+  KeyRound,
+  PauseCircle,
+  X,
+  Check,
+  Loader2,
+  Building2,
+  Wifi,
+  Users,
+  CreditCard,
+  Mail,
+  Phone,
+  MapPin,
+  ShieldCheck,
+  AlertTriangle,
+  CheckCircle2,
+  TrendingUp,
+  LifeBuoy,
+  ExternalLink,
+  Megaphone,
+  CalendarDays,
+} from 'lucide-react'
+
+const supabase = createClient()
+
+const SUPPORT_EMAIL = 'suporte@nexawi.com.br'
+
+async function clienteApiFetch(path) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    const error = new Error('Sessão do cliente não encontrada.')
+    error.status = 401
+    throw error
+  }
+
+  const response = await fetch(path, {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+  })
+
+  const data = await response.json()
+
+  if (!response.ok) {
+    const error = new Error(data?.error || 'Erro ao carregar dados do cliente.')
+    error.status = response.status
+    throw error
+  }
+
+  return data
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value || 0))
+}
+
+function formatDate(value) {
+  if (!value) return '—'
+
+  return new Date(value).toLocaleDateString('pt-BR')
+}
+
+function statusCampanhaStyle(status) {
+  if (status === 'no_ar') {
+    return {
+      box: 'bg-[#6be12f]/10 border-[#6be12f]/20',
+      text: 'text-[#8cf059]',
+      icon: CheckCircle2,
+    }
+  }
+
+  if (status === 'financeiro_pendente') {
+    return {
+      box: 'bg-yellow-500/10 border-yellow-500/20',
+      text: 'text-yellow-300',
+      icon: AlertTriangle,
+    }
+  }
+
+  if (status === 'pausada' || status === 'sem_anuncio_ativo') {
+    return {
+      box: 'bg-white/[0.04] border-white/[0.08]',
+      text: 'text-neutral-300',
+      icon: PauseCircle,
+    }
+  }
+
+  return {
+    box: 'bg-blue-500/10 border-blue-500/20',
+    text: 'text-blue-300',
+    icon: Activity,
+  }
+}
 
 export default function ClientDashboardPage() {
-  const router = useRouter();
-  const [user, setUser] = useState(null);
-  const [ads, setAds] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const router = useRouter()
 
-  // Estados do Modal de Senha
-  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
-  const [pwdForm, setPwdForm] = useState({ new: '', confirm: '' });
-  const [pwdStatus, setPwdStatus] = useState({ loading: false, error: '', success: '' });
+  const [user, setUser] = useState(null)
+  const [cliente, setCliente] = useState(null)
+  const [campanha, setCampanha] = useState(null)
+  const [resumo, setResumo] = useState({
+    anunciosAtivos: 0,
+    anunciosInativos: 0,
+    totalAnuncios: 0,
+    totalVisualizacoes: 0,
+    totalCliques: 0,
+    totalLeads: 0,
+    ctrGeral: 0,
+    hotspotsVinculados: 0,
+  })
+  const [financeiro, setFinanceiro] = useState({
+    totalPago: 0,
+    totalPendente: 0,
+    pagamentosPendentes: 0,
+    proximoPagamento: null,
+  })
+  const [ads, setAds] = useState([])
+  const [leadsRecentes, setLeadsRecentes] = useState([])
+  const [pagamentosRecentes, setPagamentosRecentes] = useState([])
+  const [hotspotsVinculados, setHotspotsVinculados] = useState([])
+
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
+  const [pwdForm, setPwdForm] = useState({ new: '', confirm: '' })
+  const [pwdStatus, setPwdStatus] = useState({
+    loading: false,
+    error: '',
+    success: '',
+  })
 
   useEffect(() => {
-    let isMounted = true;
+    let isMounted = true
 
-    async function checkAuthAndFetchData() {
+    async function carregarDashboard() {
       try {
-        // 1. Pega a sessão atual
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-        if (sessionError || !session) {
-          router.replace('/cliente/login');
-          return;
+        if (sessionError || !sessionData?.session) {
+          router.replace('/cliente/login?expired=1')
+          return
         }
-
-        if (isMounted) setUser(session.user);
-
-        // 2. Busca o ID real do cliente na tabela 'clientes' usando o e-mail logado
-        const { data: clienteData, error: clienteError } = await supabase
-          .from('clientes')
-          .select('id')
-          .eq('email', session.user.email)
-          .single();
-
-        if (clienteError || !clienteData) {
-          throw new Error('Perfil de cliente não encontrado no banco de dados.');
-        }
-
-        // 3. Busca os anúncios e CONTA as visualizações e cliques nas tabelas relacionadas
-        const { data: anunciosData, error: anunciosError } = await supabase
-          .from('anuncios')
-          .select(`
-            *,
-            anuncio_views (count),
-            anuncio_clicks (count)
-          `)
-          .eq('cliente_id', clienteData.id)
-          .order('created_at', { ascending: false });
-
-        if (anunciosError) throw anunciosError;
-
-        // 4. Formata os dados para extrair os números corretamente à prova de falhas
-        const anunciosFormatados = (anunciosData || []).map(ad => {
-          const extrairNumero = (relacao) => {
-            if (!relacao) return 0;
-            if (Array.isArray(relacao)) return relacao[0]?.count || 0;
-            return relacao.count || 0;
-          };
-
-          return {
-            ...ad,
-            visualizacoes: extrairNumero(ad.anuncio_views),
-            cliques: extrairNumero(ad.anuncio_clicks)
-          };
-        });
 
         if (isMounted) {
-          setAds(anunciosFormatados);
-          setLoading(false);
+          setUser(sessionData.session.user)
         }
 
+        const data = await clienteApiFetch('/api/cliente/dashboard')
+
+        if (!isMounted) return
+
+        setCliente(data.cliente || null)
+        setCampanha(data.campanha || null)
+        setResumo(data.resumo || {})
+        setFinanceiro(data.financeiro || {})
+        setAds(data.anuncios || [])
+        setLeadsRecentes(data.leadsRecentes || [])
+        setPagamentosRecentes(data.pagamentosRecentes || [])
+        setHotspotsVinculados(data.hotspotsVinculados || [])
+        setLoading(false)
       } catch (err) {
-        console.error("Erro ao carregar painel:", err);
-        if (isMounted) {
-          setError('Não foi possível carregar seus dados.');
-          setLoading(false);
+        console.error('Erro ao carregar painel do cliente:', err)
+
+        if (!isMounted) return
+
+        if (err.status === 401) {
+          router.replace('/cliente/login?expired=1')
+          return
         }
+
+        setError(err.message || 'Não foi possível carregar seus dados.')
+        setLoading(false)
       }
     }
 
-    checkAuthAndFetchData();
+    carregarDashboard()
 
     return () => {
-      isMounted = false;
-    };
-  }, [router]);
+      isMounted = false
+    }
+  }, [router])
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    router.replace('/cliente/login');
-  };
+  async function handleLogout() {
+    await supabase.auth.signOut()
+    router.replace('/cliente/login?logout=1')
+  }
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
+  async function handlePasswordChange(e) {
+    e.preventDefault()
+
     if (pwdForm.new !== pwdForm.confirm) {
-      setPwdStatus({ loading: false, error: 'As senhas não coincidem.', success: '' });
-      return;
+      setPwdStatus({
+        loading: false,
+        error: 'As senhas não coincidem.',
+        success: '',
+      })
+      return
     }
+
     if (pwdForm.new.length < 6) {
-      setPwdStatus({ loading: false, error: 'A senha deve ter pelo menos 6 caracteres.', success: '' });
-      return;
+      setPwdStatus({
+        loading: false,
+        error: 'A senha deve ter pelo menos 6 caracteres.',
+        success: '',
+      })
+      return
     }
 
-    setPwdStatus({ loading: true, error: '', success: '' });
+    setPwdStatus({
+      loading: true,
+      error: '',
+      success: '',
+    })
 
-    const { error } = await supabase.auth.updateUser({ password: pwdForm.new });
+    const { error: updateError } = await supabase.auth.updateUser({
+      password: pwdForm.new,
+    })
 
-    if (error) {
-      setPwdStatus({ loading: false, error: error.message, success: '' });
-    } else {
-      setPwdStatus({ loading: false, error: '', success: 'Senha atualizada com sucesso!' });
-      setTimeout(() => {
-        setIsPasswordModalOpen(false);
-        setPwdForm({ new: '', confirm: '' });
-        setPwdStatus({ loading: false, error: '', success: '' });
-      }, 2000);
+    if (updateError) {
+      setPwdStatus({
+        loading: false,
+        error: updateError.message,
+        success: '',
+      })
+      return
     }
-  };
 
-  // Cálculos das Métricas Globais
-  const anunciosAtivos = ads.filter(ad => ad.ativo === true).length;
-  const anunciosInativos = ads.filter(ad => ad.ativo === false).length;
-  const totalVisualizacoes = ads.reduce((acc, ad) => acc + (ad.visualizacoes || 0), 0);
-  const totalCliques = ads.reduce((acc, ad) => acc + (ad.cliques || 0), 0);
+    setPwdStatus({
+      loading: false,
+      error: '',
+      success: 'Senha atualizada com sucesso!',
+    })
+
+    setTimeout(() => {
+      setIsPasswordModalOpen(false)
+      setPwdForm({ new: '', confirm: '' })
+      setPwdStatus({ loading: false, error: '', success: '' })
+    }, 1800)
+  }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center">
-        <div className="relative w-20 h-20 flex items-center justify-center mb-4">
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white">
+        <div className="relative w-20 h-20 flex items-center justify-center mb-5">
           <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
           <Activity className="text-[#6be12f] animate-pulse" size={30} />
         </div>
+
+        <p className="text-sm font-bold text-white">Carregando painel</p>
+        <p className="text-xs text-neutral-500 mt-1">
+          Buscando seus anúncios e resultados...
+        </p>
       </div>
-    );
+    )
   }
+
+  const campanhaStyle = statusCampanhaStyle(campanha?.status)
+  const CampanhaIcon = campanhaStyle.icon
+
+  const cards = [
+    {
+      label: 'Anúncios ativos',
+      value: resumo.anunciosAtivos || 0,
+      icon: Activity,
+      text: 'text-[#8cf059]',
+      bg: 'bg-[#6be12f]/20',
+    },
+    {
+      label: 'Visualizações',
+      value: resumo.totalVisualizacoes || 0,
+      icon: Eye,
+      text: 'text-blue-400',
+      bg: 'bg-blue-500/20',
+    },
+    {
+      label: 'Cliques no CTA',
+      value: resumo.totalCliques || 0,
+      icon: MousePointerClick,
+      text: 'text-purple-400',
+      bg: 'bg-purple-500/20',
+    },
+    {
+      label: 'Leads capturados',
+      value: resumo.totalLeads || 0,
+      icon: Users,
+      text: 'text-orange-400',
+      bg: 'bg-orange-500/20',
+    },
+    {
+      label: 'CTR geral',
+      value: `${resumo.ctrGeral || 0}%`,
+      icon: TrendingUp,
+      text: 'text-cyan-400',
+      bg: 'bg-cyan-500/20',
+    },
+    {
+      label: 'Hotspots',
+      value: resumo.hotspotsVinculados || 0,
+      icon: Wifi,
+      text: 'text-[#8cf059]',
+      bg: 'bg-[#6be12f]/20',
+    },
+  ]
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none"></div>
 
-      {/* Efeitos de Luz de Fundo */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none"></div>
-
-      {/* NAVBAR PREMIUM */}
-      <nav className="sticky top-0 z-40 bg-[#050505]/70 backdrop-blur-2xl border-b border-white/[0.04]">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      <nav className="sticky top-0 z-40 bg-[#050505]/75 backdrop-blur-2xl border-b border-white/[0.04]">
+        <div className="max-w-7xl mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-24">
+            <div className="flex items-center gap-3">
+              <img
+                src="/Nexa-logo.png"
+                alt="Nexa Logo"
+                className="h-16 object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
 
-            {/* LOGO */}
-            <div className="flex items-center gap-3 group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-                <img 
-                  src="/Nexa-logo.png" 
-                  alt="Nexa Logo" 
-                  className="h-20 relative z-10 object-contain transition-all duration-500 group-hover:scale-105" 
-                  onError={(e) => e.target.style.display = 'none'} 
-                />
+              <div className="hidden sm:block">
+                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+                  Área do cliente
+                </p>
+                <p className="text-sm font-bold text-white">
+                  {cliente?.nome_empresa || cliente?.nome || 'NexaWi ADS'}
+                </p>
               </div>
             </div>
 
-            {/* PERFIL E AÇÕES */}
-            <div className="flex items-center gap-2 sm:gap-6">
-              <div className="hidden md:flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.02] border border-white/[0.05]">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.02] border border-white/[0.05]">
                 <div className="w-2 h-2 rounded-full bg-[#6be12f] animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
-                <span className="text-xs font-medium text-gray-400">{user?.email}</span>
+                <span className="text-xs font-medium text-gray-400">
+                  {user?.email}
+                </span>
               </div>
 
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setIsPasswordModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all duration-300"
-                >
-                  <KeyRound size={16} />
-                  <span className="hidden sm:inline">Senha</span>
-                </button>
-                <button 
-                  onClick={handleLogout}
-                  className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all duration-300"
-                >
-                  <LogOut size={16} />
-                  <span className="hidden sm:inline">Sair</span>
-                </button>
-              </div>
+              <button
+                onClick={() => setIsPasswordModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all"
+              >
+                <KeyRound size={16} />
+                <span className="hidden sm:inline">Senha</span>
+              </button>
+
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all"
+              >
+                <LogOut size={16} />
+                <span className="hidden sm:inline">Sair</span>
+              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 py-12">
+      <main className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10">
+        <div className="mb-10 animate-fade-in-up">
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-5">
+                <ShieldCheck size={13} className="text-[#6be12f]" />
+                Painel de performance
+              </div>
 
-        {/* CABEÇALHO */}
-        <div className="mb-12 animate-fade-in-up">
-          <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">
-            Visão Geral
-          </h1>
-          <p className="text-gray-500 font-medium">Acompanhe o desempenho das suas campanhas na rede Nexa.</p>
+              <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">
+                Olá, {cliente?.nome?.split(' ')?.[0] || 'cliente'}
+              </h1>
+
+              <p className="text-gray-500 font-medium">
+                Acompanhe o desempenho das suas campanhas na rede NexaWi.
+              </p>
+            </div>
+
+            <a
+              href={`mailto:${SUPPORT_EMAIL}?subject=Suporte%20NexaWi%20ADS&body=Olá,%20preciso%20de%20ajuda%20com%20minha%20campanha.`}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
+            >
+              <LifeBuoy size={17} />
+              Falar com suporte
+            </a>
+          </div>
         </div>
-
-        {/* KPIS (AGORA COM 4 COLUNAS) */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16 animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-
-          {/* Card: Anúncios Ativos */}
-          <div className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-8 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#6be12f]/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-            <div className="relative z-10 flex items-center justify-between mb-6">
-              <h3 className="text-gray-500 text-sm font-semibold tracking-wide uppercase">Anúncios Ativos</h3>
-              <Activity className="text-[#6be12f]/80 group-hover:text-[#8cf059] transition-colors" size={20} />
-            </div>
-            <p className="relative z-10 text-5xl font-light text-white tracking-tight">{anunciosAtivos}</p>
-          </div>
-
-          {/* Card: Anúncios Inativos */}
-          <div className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-8 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-neutral-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-            <div className="relative z-10 flex items-center justify-between mb-6">
-              <h3 className="text-gray-500 text-sm font-semibold tracking-wide uppercase">Anúncios Inativos</h3>
-              <PauseCircle className="text-neutral-500/80 group-hover:text-neutral-400 transition-colors" size={20} />
-            </div>
-            <p className="relative z-10 text-5xl font-light text-white tracking-tight">{anunciosInativos}</p>
-          </div>
-
-          {/* Card: Visualizações Totais */}
-          <div className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-8 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-            <div className="relative z-10 flex items-center justify-between mb-6">
-              <h3 className="text-gray-500 text-sm font-semibold tracking-wide uppercase">Visualizações</h3>
-              <Eye className="text-blue-500/80 group-hover:text-blue-400 transition-colors" size={20} />
-            </div>
-            <p className="relative z-10 text-5xl font-light text-white tracking-tight">{totalVisualizacoes}</p>
-          </div>
-
-          {/* Card: Cliques Totais */}
-          <div className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-8 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-500"></div>
-            <div className="relative z-10 flex items-center justify-between mb-6">
-              <h3 className="text-gray-500 text-sm font-semibold tracking-wide uppercase">Cliques no CTA</h3>
-              <MousePointerClick className="text-purple-500/80 group-hover:text-purple-400 transition-colors" size={20} />
-            </div>
-            <p className="relative z-10 text-5xl font-light text-white tracking-tight">{totalCliques}</p>
-          </div>
-
-        </div>
-
-        {/* LISTA DE ANÚNCIOS */}
-        <h2 className="text-2xl font-bold text-white mb-8 tracking-tight animate-fade-in-up" style={{ animationDelay: '0.2s' }}>Suas Campanhas</h2>
 
         {error && (
-          <div className="p-4 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
-            {error}
+          <div className="p-5 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
+            <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+            <span>{error}</span>
           </div>
         )}
 
-        {ads.length === 0 && !error ? (
-          <div className="bg-white/[0.01] border border-white/[0.03] rounded-[2.5rem] p-16 text-center animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+        {campanha && (
+          <div className={`rounded-[2rem] border p-6 sm:p-8 mb-8 ${campanhaStyle.box} animate-fade-in-up`}>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                  <CampanhaIcon size={24} className={campanhaStyle.text} />
+                </div>
+
+                <div>
+                  <p className={`text-sm font-extrabold uppercase tracking-widest ${campanhaStyle.text}`}>
+                    {campanha.label}
+                  </p>
+
+                  <h2 className="text-2xl font-extrabold text-white mt-2">
+                    {cliente?.nome_empresa || 'Sua campanha'}
+                  </h2>
+
+                  <p className="text-sm text-neutral-400 mt-2 max-w-2xl">
+                    {campanha.message}
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-black/20 border border-white/[0.06] px-5 py-4 min-w-[210px]">
+                <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-1">
+                  Plano atual
+                </p>
+
+                <p className="text-lg font-bold text-white">
+                  {cliente?.plano_nome || 'Sem plano'}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-10">
+          {cards.map((card, index) => (
+            <MetricCard key={card.label} card={card} index={index} />
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 mb-10">
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
+            <div className="mb-7">
+              <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                <Building2 size={21} className="text-[#6be12f]" />
+                Dados da conta
+              </h2>
+
+              <p className="text-sm text-neutral-500 mt-1">
+                Informações principais do seu cadastro NexaWi.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <InfoBox icon={Building2} label="Empresa" value={cliente?.nome_empresa || '—'} />
+              <InfoBox icon={Mail} label="E-mail" value={cliente?.email || '—'} />
+              <InfoBox icon={Phone} label="Telefone" value={cliente?.telefone || '—'} />
+              <InfoBox icon={MapPin} label="Localização" value={`${cliente?.cidade || '—'}, ${cliente?.estado || '—'}`} />
+            </div>
+          </div>
+
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
+            <div className="mb-7">
+              <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                <CreditCard size={21} className="text-[#6be12f]" />
+                Financeiro
+              </h2>
+
+              <p className="text-sm text-neutral-500 mt-1">
+                Resumo dos pagamentos da sua conta.
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              <FinanceBox
+                label="Total pago"
+                value={formatMoney(financeiro.totalPago)}
+                color="text-[#8cf059]"
+              />
+
+              <FinanceBox
+                label="Pendente"
+                value={formatMoney(financeiro.totalPendente)}
+                color={financeiro.totalPendente > 0 ? 'text-yellow-400' : 'text-neutral-300'}
+              />
+
+              <div className="rounded-2xl bg-[#050505] border border-white/[0.05] p-4">
+                <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-600 mb-1">
+                  Próximo pagamento
+                </p>
+
+                <p className="text-sm font-bold text-white">
+                  {financeiro.proximoPagamento
+                    ? `${formatMoney(financeiro.proximoPagamento.valor)} · ${formatDate(financeiro.proximoPagamento.data_vencimento || financeiro.proximoPagamento.created_at)}`
+                    : 'Nenhuma cobrança pendente'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <SectionTitle
+          icon={Megaphone}
+          title="Suas campanhas"
+          subtitle="Anúncios vinculados à sua conta"
+        />
+
+        {ads.length === 0 ? (
+          <div className="bg-white/[0.01] border border-white/[0.03] rounded-[2.5rem] p-14 text-center mb-10 animate-fade-in-up">
             <div className="w-24 h-24 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto mb-8 border border-white/[0.05]">
               <LayoutDashboard size={32} className="text-gray-600" />
             </div>
-            <h3 className="text-2xl font-semibold text-white mb-3 tracking-tight">Nenhuma campanha encontrada</h3>
+
+            <h3 className="text-2xl font-semibold text-white mb-3 tracking-tight">
+              Nenhuma campanha encontrada
+            </h3>
+
             <p className="text-gray-500 max-w-md mx-auto leading-relaxed">
-              Você ainda não possui anúncios vinculados à sua conta. Entre em contato com o suporte para iniciar.
+              Você ainda não possui anúncios vinculados à sua conta. Fale com o suporte para iniciar.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 mb-10">
             {ads.map((ad, index) => (
-              <div 
-                key={ad.id} 
-                className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-fade-in-up"
-                style={{ animationDelay: `${0.3 + (index * 0.1)}s` }}
-              >
-                {/* Imagem do Card */}
-                <div className="relative h-56 overflow-hidden bg-[#0a0a0a]">
-                  {ad.media_url ? (
-                    ad.tipo_media === 'video' ? (
-                      <video src={ad.media_url} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" muted loop playsInline />
-                    ) : (
-                      <img src={ad.media_url} alt={ad.titulo} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out" />
-                    )
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-700 text-sm">Sem mídia</div>
-                  )}
-
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent opacity-90 group-hover:opacity-70 transition-opacity duration-500" />
-
-                  {/* Badge Dinâmico (Ativo/Inativo) */}
-                  {ad.ativo ? (
-                    <div className="absolute top-5 right-5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#6be12f] animate-pulse"></div>
-                      <span className="text-[10px] font-bold text-white uppercase tracking-widest">Ativo</span>
-                    </div>
-                  ) : (
-                    <div className="absolute top-5 right-5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-neutral-500"></div>
-                      <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-widest">Inativo</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Conteúdo do Card */}
-                <div className="p-8 relative z-10 -mt-6">
-                  <h3 className="text-xl font-semibold text-white mb-3 line-clamp-1 group-hover:text-[#8cf059] transition-colors duration-300">{ad.titulo}</h3>
-                  <p className="text-gray-500 text-sm mb-8 line-clamp-2 leading-relaxed">{ad.descricao}</p>
-
-                  {/* Métricas Individuais */}
-                  <div className="pt-5 border-t border-white/[0.05] flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-gray-500 group-hover:text-gray-300 transition-colors" title="Visualizações deste anúncio">
-                      <Eye size={16} />
-                      <span className="text-sm font-medium">{ad.visualizacoes || 0}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-500 group-hover:text-gray-300 transition-colors" title="Cliques neste anúncio">
-                      <MousePointerClick size={16} />
-                      <span className="text-sm font-medium">{ad.cliques || 0}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <CampaignCard key={ad.id} ad={ad} index={index} />
             ))}
           </div>
         )}
+
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-10">
+          <RecentLeads leads={leadsRecentes} />
+          <LinkedHotspots hotspots={hotspotsVinculados} />
+        </div>
+
+        <RecentPayments pagamentos={pagamentosRecentes} />
       </main>
 
-      {/* MODAL DE TROCA DE SENHA */}
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.5)] overflow-hidden">
-
-            <div className="flex items-center justify-between p-8 border-b border-white/[0.05]">
-              <div>
-                <h2 className="text-2xl font-bold text-white tracking-tight">Trocar Senha</h2>
-                <p className="text-sm text-neutral-500 mt-1.5 font-medium">Crie uma nova senha segura para seu acesso.</p>
-              </div>
-              <button onClick={() => setIsPasswordModalOpen(false)} className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handlePasswordChange} className="p-8">
-              <div className="space-y-5 mb-8">
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Nova Senha</label>
-                  <div className="relative group/input">
-                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                    <input
-                      type="password"
-                      value={pwdForm.new}
-                      onChange={(e) => setPwdForm({ ...pwdForm, new: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                      placeholder="Mínimo 6 caracteres"
-                      required
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">Confirmar Nova Senha</label>
-                  <div className="relative group/input">
-                    <KeyRound size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                    <input
-                      type="password"
-                      value={pwdForm.confirm}
-                      onChange={(e) => setPwdForm({ ...pwdForm, confirm: e.target.value })}
-                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                      placeholder="Repita a nova senha"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {pwdStatus.error && <div className="p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">{pwdStatus.error}</div>}
-              {pwdStatus.success && <div className="p-4 mb-6 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] text-sm text-center flex items-center justify-center gap-2"><Check size={16} /> {pwdStatus.success}</div>}
-
-              <button
-                type="submit"
-                disabled={pwdStatus.loading || pwdStatus.success}
-                className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-              >
-                {pwdStatus.loading ? <Loader2 size={20} className="animate-spin" /> : 'Atualizar Senha'}
-              </button>
-            </form>
-          </div>
-        </div>
+        <PasswordModal
+          pwdForm={pwdForm}
+          setPwdForm={setPwdForm}
+          pwdStatus={pwdStatus}
+          onClose={() => setIsPasswordModalOpen(false)}
+          onSubmit={handlePasswordChange}
+        />
       )}
 
-      <style dangerouslySetInnerHTML={{__html: `
+      <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
         }
+
         .animate-fade-in-up {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
       `}} />
     </div>
-  );
+  )
+}
+
+function MetricCard({ card, index }) {
+  return (
+    <div
+      className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 overflow-hidden hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1 animate-fade-in-up"
+      style={{ animationDelay: `${index * 0.05}s` }}
+    >
+      <div className={`absolute -right-10 -top-10 w-32 h-32 rounded-full blur-3xl opacity-0 group-hover:opacity-30 transition-opacity duration-700 ${card.bg}`} />
+
+      <div className="relative z-10 flex items-center justify-between mb-6">
+        <h3 className="text-gray-500 text-xs font-bold tracking-widest uppercase">
+          {card.label}
+        </h3>
+
+        <div className="p-2.5 rounded-2xl bg-[#0a0a0a] border border-white/[0.05] group-hover:scale-110 transition-transform shadow-inner">
+          <card.icon size={18} className={card.text} />
+        </div>
+      </div>
+
+      <p className="relative z-10 text-4xl font-light text-white tracking-tight">
+        {card.value}
+      </p>
+    </div>
+  )
+}
+
+function InfoBox({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl bg-[#050505] border border-white/[0.05] p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={15} className="text-[#6be12f]" />
+        <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-600">
+          {label}
+        </p>
+      </div>
+
+      <p className="text-sm font-bold text-white break-words">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function FinanceBox({ label, value, color }) {
+  return (
+    <div className="rounded-2xl bg-[#050505] border border-white/[0.05] p-4 flex items-center justify-between">
+      <p className="text-sm font-bold text-neutral-400">{label}</p>
+      <p className={`text-base font-extrabold ${color}`}>{value}</p>
+    </div>
+  )
+}
+
+function SectionTitle({ icon: Icon, title, subtitle }) {
+  return (
+    <div className="mb-8 animate-fade-in-up">
+      <h2 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+        <Icon size={22} className="text-[#6be12f]" />
+        {title}
+      </h2>
+
+      <p className="text-sm text-neutral-500 mt-1">
+        {subtitle}
+      </p>
+    </div>
+  )
+}
+
+function CampaignCard({ ad, index }) {
+  return (
+    <div
+      className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden hover:border-white/[0.15] transition-all duration-500 hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] animate-fade-in-up"
+      style={{ animationDelay: `${0.2 + index * 0.08}s` }}
+    >
+      <div className="relative h-56 overflow-hidden bg-[#0a0a0a]">
+        {ad.media_url ? (
+          ad.tipo_media === 'video' ? (
+            <video
+              src={ad.media_url}
+              className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <img
+              src={ad.media_url}
+              alt={ad.titulo || 'Anúncio'}
+              className="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
+            />
+          )
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-700 text-sm">
+            Sem mídia
+          </div>
+        )}
+
+        <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent opacity-90 group-hover:opacity-70 transition-opacity duration-500" />
+
+        <div className="absolute top-5 right-5 px-3 py-1.5 rounded-full bg-black/40 backdrop-blur-md border border-white/10 flex items-center gap-2">
+          <div className={`w-1.5 h-1.5 rounded-full ${ad.ativo ? 'bg-[#6be12f] animate-pulse' : 'bg-neutral-500'}`}></div>
+          <span className="text-[10px] font-bold text-white uppercase tracking-widest">
+            {ad.ativo ? 'Ativo' : 'Inativo'}
+          </span>
+        </div>
+      </div>
+
+      <div className="p-8 relative z-10 -mt-6">
+        <h3 className="text-xl font-semibold text-white mb-3 line-clamp-1 group-hover:text-[#8cf059] transition-colors">
+          {ad.titulo || 'Anúncio sem título'}
+        </h3>
+
+        <p className="text-gray-500 text-sm mb-8 line-clamp-2 leading-relaxed">
+          {ad.descricao || 'Sem descrição cadastrada.'}
+        </p>
+
+        <div className="pt-5 border-t border-white/[0.05] grid grid-cols-3 gap-3">
+          <MiniMetric icon={Eye} label="Views" value={ad.visualizacoes || 0} />
+          <MiniMetric icon={MousePointerClick} label="Cliques" value={ad.cliques || 0} />
+          <MiniMetric icon={TrendingUp} label="CTR" value={`${ad.ctr || 0}%`} />
+        </div>
+
+        {ad.link_cta && (
+          <a
+            href={ad.link_cta}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-5 inline-flex items-center gap-2 text-xs font-bold text-[#8cf059] hover:text-[#6be12f]"
+          >
+            Ver destino do CTA
+            <ExternalLink size={13} />
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MiniMetric({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl bg-[#0a0a0a] border border-white/[0.05] p-3 text-center">
+      <Icon size={15} className="text-neutral-500 mx-auto mb-2" />
+      <p className="text-sm font-bold text-white">{value}</p>
+      <p className="text-[10px] text-neutral-600 uppercase tracking-widest mt-1">{label}</p>
+    </div>
+  )
+}
+
+function RecentLeads({ leads }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
+      <div className="mb-7">
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <Users size={21} className="text-[#6be12f]" />
+          Leads recentes
+        </h2>
+
+        <p className="text-sm text-neutral-500 mt-1">
+          Contatos capturados pelas suas campanhas
+        </p>
+      </div>
+
+      {leads.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Nenhum lead recente"
+          description="Quando novos leads forem capturados, eles aparecerão aqui."
+        />
+      ) : (
+        <div className="space-y-3">
+          {leads.slice(0, 8).map((lead) => (
+            <div key={lead.id} className="rounded-2xl bg-[#050505] border border-white/[0.05] p-4 flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{lead.nome || 'Lead sem nome'}</p>
+                <p className="text-xs text-neutral-500 truncate">{lead.email || lead.telefone || 'Sem contato'}</p>
+              </div>
+
+              <div className="text-right flex-shrink-0">
+                <p className="text-xs text-neutral-500">{lead.hotspots?.nome || 'Hotspot'}</p>
+                <p className="text-[11px] text-neutral-600 mt-1">{formatDate(lead.created_at)}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function LinkedHotspots({ hotspots }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
+      <div className="mb-7">
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <Wifi size={21} className="text-[#6be12f]" />
+          Pontos de exibição
+        </h2>
+
+        <p className="text-sm text-neutral-500 mt-1">
+          Locais onde sua campanha pode aparecer
+        </p>
+      </div>
+
+      {hotspots.length === 0 ? (
+        <EmptyState
+          icon={Wifi}
+          title="Nenhum hotspot vinculado"
+          description="Quando sua campanha for vinculada a pontos de exibição, eles aparecerão aqui."
+        />
+      ) : (
+        <div className="space-y-3">
+          {hotspots.map((hotspot) => (
+            <div key={hotspot.id} className="rounded-2xl bg-[#050505] border border-white/[0.05] p-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-white">{hotspot.nome}</p>
+                <p className="text-xs text-neutral-500 mt-1">Ponto de acesso NexaWi</p>
+              </div>
+
+              <span className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg ${
+                hotspot.status === 'Ativo'
+                  ? 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
+                  : 'bg-white/[0.04] text-neutral-400 border border-white/[0.08]'
+              }`}>
+                {hotspot.status || 'Indefinido'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function RecentPayments({ pagamentos }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8 mb-10">
+      <div className="mb-7">
+        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+          <CalendarDays size={21} className="text-[#6be12f]" />
+          Histórico financeiro recente
+        </h2>
+
+        <p className="text-sm text-neutral-500 mt-1">
+          Últimas movimentações vinculadas à sua conta
+        </p>
+      </div>
+
+      {pagamentos.length === 0 ? (
+        <EmptyState
+          icon={CreditCard}
+          title="Nenhum pagamento encontrado"
+          description="Quando houver cobranças ou pagamentos, eles aparecerão aqui."
+        />
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[620px]">
+            <thead>
+              <tr className="border-b border-white/[0.05]">
+                <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Data</th>
+                <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Valor</th>
+                <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 text-right">Status</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-white/[0.02]">
+              {pagamentos.map((pagamento) => (
+                <tr key={pagamento.id}>
+                  <td className="py-4 text-sm text-neutral-400">{formatDate(pagamento.data_pagamento || pagamento.created_at)}</td>
+                  <td className="py-4 text-sm font-bold text-white">{formatMoney(pagamento.valor)}</td>
+                  <td className="py-4 text-right">
+                    <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${
+                      pagamento.status === 'Pago'
+                        ? 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
+                        : pagamento.status === 'Pendente'
+                          ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+                          : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>
+                      {pagamento.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EmptyState({ icon: Icon, title, description }) {
+  return (
+    <div className="py-10 text-center flex flex-col items-center justify-center">
+      <div className="w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] flex items-center justify-center mb-4">
+        <Icon size={26} className="text-neutral-600" />
+      </div>
+
+      <h3 className="text-base font-bold text-white mb-1">{title}</h3>
+      <p className="text-sm text-neutral-500 max-w-sm">{description}</p>
+    </div>
+  )
+}
+
+function PasswordModal({
+  pwdForm,
+  setPwdForm,
+  pwdStatus,
+  onClose,
+  onSubmit,
+}) {
+  return (
+    <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+      <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md shadow-[0_20px_40px_rgba(0,0,0,0.5)] overflow-hidden">
+        <div className="flex items-center justify-between p-8 border-b border-white/[0.05]">
+          <div>
+            <h2 className="text-2xl font-bold text-white tracking-tight">Trocar senha</h2>
+            <p className="text-sm text-neutral-500 mt-1.5 font-medium">
+              Crie uma nova senha segura para seu acesso.
+            </p>
+          </div>
+
+          <button
+            onClick={onClose}
+            className="p-2.5 text-neutral-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit} className="p-8">
+          <div className="space-y-5 mb-8">
+            <PasswordInput
+              label="Nova senha"
+              value={pwdForm.new}
+              onChange={(value) => setPwdForm({ ...pwdForm, new: value })}
+              placeholder="Mínimo 6 caracteres"
+            />
+
+            <PasswordInput
+              label="Confirmar nova senha"
+              value={pwdForm.confirm}
+              onChange={(value) => setPwdForm({ ...pwdForm, confirm: value })}
+              placeholder="Repita a nova senha"
+            />
+          </div>
+
+          {pwdStatus.error && (
+            <div className="p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm text-center">
+              {pwdStatus.error}
+            </div>
+          )}
+
+          {pwdStatus.success && (
+            <div className="p-4 mb-6 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] text-sm text-center flex items-center justify-center gap-2">
+              <Check size={16} />
+              {pwdStatus.success}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={pwdStatus.loading || pwdStatus.success}
+            className="w-full bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:-translate-y-1"
+          >
+            {pwdStatus.loading ? (
+              <Loader2 size={20} className="animate-spin" />
+            ) : (
+              'Atualizar senha'
+            )}
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function PasswordInput({ label, value, onChange, placeholder }) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+        {label}
+      </label>
+
+      <div className="relative group/input">
+        <KeyRound
+          size={18}
+          className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors"
+        />
+
+        <input
+          type="password"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+          placeholder={placeholder}
+          required
+        />
+      </div>
+    </div>
+  )
 }
