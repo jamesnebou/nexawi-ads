@@ -165,8 +165,10 @@ const handleSubmitContact = async (e) => {
 
 export default function LandingPage() {
   // Variáveis de Estado para a Barra de Status ao Vivo
-  const [onlineUsers, setOnlineUsers] = useState(124);
-  const [leadsToday, setLeadsToday] = useState(47);
+  const [onlineUsers, setOnlineUsers] = useState(0);
+  const [onlineReliable, setOnlineReliable] = useState(false);
+  const [onlineLoading, setOnlineLoading] = useState(true);
+  const [leadsToday, setLeadsToday] = useState(0);  
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
 
@@ -242,26 +244,53 @@ useEffect(() => {
   }
 }, [currentSlug])
 
+useEffect(() => {
+  let ativo = true
 
-  // Efeito para simular os números mudando em tempo real
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineUsers((prev) => prev + Math.floor(Math.random() * 5) - 2);
-    }, 3500);
-    return () => clearInterval(interval);
-  }, []);
+  async function buscarPessoasOnline() {
+    try {
+      const response = await fetch('/api/public/online', {
+        method: 'GET',
+        cache: 'no-store',
+      })
 
-  // Efeito que simula a variação em tempo real
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setOnlineUsers((prev) => prev + Math.floor(Math.random() * 5) - 2);
-      if (Math.random() > 0.7) {
-        setLeadsToday((prev) => prev + 1);
+      const data = await response.json()
+
+      if (!ativo) return
+
+      if (!response.ok || !data?.ok) {
+        setOnlineReliable(false)
+        setOnlineUsers(0)
+        return
       }
-    }, 4000);
 
-    return () => clearInterval(interval);
-  }, []);
+      setOnlineUsers(Number(data.online || 0))
+      setOnlineReliable(Boolean(data.reliable))
+    } catch (error) {
+      console.error('Erro ao buscar pessoas online:', error)
+
+      if (ativo) {
+        setOnlineReliable(false)
+        setOnlineUsers(0)
+      }
+    } finally {
+      if (ativo) {
+        setOnlineLoading(false)
+      }
+    }
+  }
+
+  buscarPessoasOnline()
+
+  const interval = setInterval(() => {
+    buscarPessoasOnline()
+  }, 15000)
+
+  return () => {
+    ativo = false
+    clearInterval(interval)
+  }
+}, [])
 
   // Efeito para animar elementos ao rolar a tela (Vai e Volta)
   useEffect(() => {
@@ -506,9 +535,9 @@ useEffect(() => {
                 </span>
                 <p className="text-gray-400 text-sm font-medium">
                   <strong className="text-white text-lg sm:text-xl font-black">
-                    {onlineUsers}
+                     {onlineLoading ? '...' : onlineUsers}
                   </strong>{" "}
-                  online agora
+                     {onlineReliable ? 'online agora' : 'monitoramento ativo'}
                 </p>
               </div>
 
