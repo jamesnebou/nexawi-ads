@@ -168,7 +168,8 @@ export default function LandingPage() {
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [onlineReliable, setOnlineReliable] = useState(false);
   const [onlineLoading, setOnlineLoading] = useState(true);
-  const [leadsToday, setLeadsToday] = useState(0);  
+  const [leadsToday, setLeadsToday] = useState(0);
+  const [monthlyConnections, setMonthlyConnections] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
 
@@ -578,7 +579,9 @@ useEffect(() => {
              shadow-lg group-hover:scale-105 transition-transform duration-300
              inline-flex items-center justify-center whitespace-nowrap"
                   >
-              +15.000 conexões mensais!
+              {monthlyConnections > 0
+  ? `+${monthlyConnections.toLocaleString('pt-BR')} conexões mensais!`
+  : 'Conexões mensais em tempo real!'}
              </div>
               </div>
             </div>
