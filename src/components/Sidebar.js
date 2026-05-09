@@ -184,10 +184,31 @@ export default function Sidebar({ onClose }) {
   const [permissions, setPermissions] = useState({})
   const [isMaster, setIsMaster] = useState(false)
   const [carregandoPermissoes, setCarregandoPermissoes] = useState(true)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+
+  async function buscarNotificacoesNaoLidas() {
+  try {
+    const data = await adminApiFetch('/api/admin/notificacoes?limit=30')
+    setUnreadNotifications(Number(data.unreadCount || 0))
+  } catch (error) {
+    console.error('Erro ao buscar notificações não lidas:', error)
+  }
+}
+useEffect(() => {
+  buscarNotificacoesNaoLidas()
+
+  const interval = setInterval(() => {
+    buscarNotificacoesNaoLidas()
+  }, 30000)
+
+  return () => clearInterval(interval)
+}, [])
+
 
   useEffect(() => {
     async function carregarAdminLogado() {
       setCarregandoPermissoes(true)
+      buscarNotificacoesNaoLidas()
 
       try {
         const data = await adminApiFetch('/api/admin/me')
@@ -306,7 +327,16 @@ export default function Sidebar({ onClose }) {
                   }`}
                 />
 
-                <span>{item.label}</span>
+                <span className="flex-1">
+  {item.label}
+</span>
+
+{item.path === '/dashboard/notificacoes' && unreadNotifications > 0 && (
+  <span className="relative flex h-3 w-3">
+    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+    <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+  </span>
+)}
               </button>
             )
           })
