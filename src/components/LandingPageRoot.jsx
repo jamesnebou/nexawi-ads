@@ -8,7 +8,6 @@ import { usePathname } from 'next/navigation'
 
 
 
-
 function resolveSlugFromPathname(pathname = '/') {
   const cleaned = String(pathname || '/').split('?')[0].split('#')[0]
   const parts = cleaned.split('/').filter(Boolean)
@@ -579,6 +578,8 @@ useEffect(() => {
              shadow-lg group-hover:scale-105 transition-transform duration-300
              inline-flex items-center justify-center whitespace-nowrap"
                   >
+
+                    {/*Faz com que as conexões mensais sejam valores reais +15 mil*/}
               {monthlyConnections > 0
   ? `+${monthlyConnections.toLocaleString('pt-BR')} conexões mensais!`
   : 'Conexões mensais em tempo real!'}
