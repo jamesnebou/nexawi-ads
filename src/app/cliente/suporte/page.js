@@ -201,7 +201,7 @@ export default function ClienteSuportePage() {
             className="bg-[#6be12f] text-black font-extrabold px-5 py-4 rounded-2xl flex items-center justify-center gap-2"
           >
             <Plus size={18} />
-            Novo chamado
+            Novo chamado/Abertos
           </button>
         </div>
 
@@ -321,39 +321,57 @@ export default function ClienteSuportePage() {
                 className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none"
               />
 
-              <div className="grid grid-cols-2 gap-3">
-                <select
-                  value={form.category}
-                  onChange={(e) => setForm({ ...form, category: e.target.value })}
-                  className="bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none"
-                >
-                  <option value="geral">Geral</option>
-                  <option value="financeiro">Financeiro</option>
-                  <option value="campanha">Campanha</option>
-                  <option value="tecnico">Técnico</option>
-                  <option value="hotspot">Hotspot</option>
-                  <option value="acesso">Acesso</option>
-                </select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+  <div>
+    <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+      Categoria
+    </label>
 
-                <select
-                  value={form.priority}
-                  onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                  className="bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none"
-                >
-                  <option value="baixa">Baixa</option>
-                  <option value="media">Média</option>
-                  <option value="alta">Alta</option>
-                  <option value="urgente">Urgente</option>
-                </select>
-              </div>
+    <select
+      value={form.category}
+      onChange={(e) => setForm({ ...form, category: e.target.value })}
+      className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none focus:border-[#6be12f]/40"
+    >
+      <option value="geral">Geral</option>
+      <option value="financeiro">Financeiro</option>
+      <option value="campanha">Campanha</option>
+      <option value="tecnico">Técnico</option>
+      <option value="hotspot">Hotspot / Wi-Fi</option>
+      <option value="acesso">Acesso ao portal</option>
+    </select>
+  </div>
 
-              <textarea
-                value={form.message}
-                onChange={(e) => setForm({ ...form, message: e.target.value })}
-                placeholder="Descreva sua solicitação..."
-                rows={5}
-                className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none resize-none"
-              />
+  <div>
+    <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+      Prioridade
+    </label>
+
+    <select
+      value={form.priority}
+      onChange={(e) => setForm({ ...form, priority: e.target.value })}
+      className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none focus:border-[#6be12f]/40"
+    >
+      <option value="baixa">Baixa</option>
+      <option value="media">Média</option>
+      <option value="alta">Alta</option>
+      <option value="urgente">Urgente</option>
+    </select>
+  </div>
+</div>
+
+              <div>
+  <label className="block text-xs font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+    Descrição
+  </label>
+
+  <textarea
+    value={form.message}
+    onChange={(e) => setForm({ ...form, message: e.target.value })}
+    placeholder="Explique o que aconteceu, onde percebeu o problema e o que precisa que a equipe NexaWi verifique."
+    rows={5}
+    className="w-full bg-[#050505] border border-white/[0.08] rounded-2xl px-5 py-4 text-sm outline-none focus:border-[#6be12f]/40 resize-none"
+  />
+</div>
 
               <button
                 disabled={salvando}

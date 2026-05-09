@@ -313,7 +313,7 @@ useEffect(() => {
                     ? 'text-white bg-white/[0.05] border-white/[0.05] shadow-inner'
                     : 'text-gray-500 hover:text-white hover:bg-white/[0.02] border-transparent hover:border-white/[0.02]'
                 }`}
-              >
+               >
                 {active && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#6be12f] rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
                 )}
@@ -327,16 +327,16 @@ useEffect(() => {
                   }`}
                 />
 
-                <span className="flex-1">
-  {item.label}
-</span>
+                <span className="flex-1 text-left truncate">
+                 {item.label}
+                </span>
 
-{item.path === '/dashboard/notificacoes' && unreadNotifications > 0 && (
-  <span className="relative flex h-3 w-3">
-    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
-    <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
-  </span>
-)}
+                 {item.path === '/dashboard/notificacoes' && unreadNotifications > 0 && (
+                   <span className="relative flex h-3 w-3 flex-shrink-0 ml-auto">
+                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+                     <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+                    </span>
+                 )}
               </button>
             )
           })
