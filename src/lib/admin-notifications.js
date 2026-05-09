@@ -2,17 +2,15 @@
 // ============================================================
 // Helper de notificações internas da NexaWi ADS.
 // Registra alertas importantes para administradores.
-// Nunca deve quebrar a operação principal caso falhe.
 //
-// Correção profissional:
-// - Não usa upsert com índice parcial.
-// - Se tiver dedupKey, busca primeiro.
-// - Se existir, atualiza.
-// - Se não existir, insere.
-// - Retorna erro detalhado no console do servidor.
+// Agora:
+// - Cria/atualiza notificação interna
+// - Envia e-mail para alertas importantes
+// - Evita spam usando email_sent_at
 // ============================================================
 
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { sendAdminAlertEmail } from '@/lib/email-service'
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -26,6 +24,70 @@ function normalizarSeverity(value = 'info') {
   }
 
   return 'info'
+}
+
+function deveEnviarEmail({ type, severity }) {
+  return (
+    severity === 'critical' ||
+    type === 'support_ticket_created' ||
+    type === 'support_ticket_client_reply' ||
+    type === 'cliente_travado'
+  )
+}
+
+async function enviarEmailSeNecessario({
+  notificationId,
+  type,
+  title,
+  message,
+  severity,
+  actionUrl,
+}) {
+  if (!notificationId) return
+
+  if (!deveEnviarEmail({ type, severity })) return
+
+  const { data: notification, error: findError } = await supabaseAdmin
+    .from('admin_notifications')
+    .select('id, email_sent_at')
+    .eq('id', notificationId)
+    .maybeSingle()
+
+  if (findError) {
+    throw findError
+  }
+
+  if (!notification || notification.email_sent_at) {
+    return
+  }
+
+  const emailResult = await sendAdminAlertEmail({
+    title,
+    message,
+    severity,
+    actionUrl,
+  })
+
+  if (emailResult.ok) {
+    await supabaseAdmin
+      .from('admin_notifications')
+      .update({
+        email_sent_at: new Date().toISOString(),
+        email_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', notificationId)
+
+    return
+  }
+
+  await supabaseAdmin
+    .from('admin_notifications')
+    .update({
+      email_error: emailResult.error || 'Erro desconhecido ao enviar e-mail',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', notificationId)
 }
 
 export async function createAdminNotification({
@@ -66,15 +128,13 @@ export async function createAdminNotification({
       updated_at: new Date().toISOString(),
     }
 
-    // ============================================================
-    // Se tiver dedupKey, evita duplicar a mesma notificação.
-    // Sem usar upsert para não depender de índice parcial.
-    // ============================================================
+    let notificationId = null
+    let action = 'created'
 
     if (dedupKeyLimpa) {
       const { data: existing, error: findError } = await supabaseAdmin
         .from('admin_notifications')
-        .select('id')
+        .select('id, email_sent_at')
         .eq('dedup_key', dedupKeyLimpa)
         .maybeSingle()
 
@@ -94,28 +154,39 @@ export async function createAdminNotification({
           throw updateError
         }
 
-        return {
-          ok: true,
-          action: 'updated',
-          id: data?.id || existing.id,
-        }
+        notificationId = data?.id || existing.id
+        action = 'updated'
       }
     }
 
-    const { data, error: insertError } = await supabaseAdmin
-      .from('admin_notifications')
-      .insert([payload])
-      .select('id')
-      .single()
+    if (!notificationId) {
+      const { data, error: insertError } = await supabaseAdmin
+        .from('admin_notifications')
+        .insert([payload])
+        .select('id')
+        .single()
 
-    if (insertError) {
-      throw insertError
+      if (insertError) {
+        throw insertError
+      }
+
+      notificationId = data?.id || null
+      action = 'created'
     }
+
+    await enviarEmailSeNecessario({
+      notificationId,
+      type: payload.type,
+      title: payload.title,
+      message: payload.message,
+      severity: payload.severity,
+      actionUrl: payload.action_url,
+    })
 
     return {
       ok: true,
-      action: 'created',
-      id: data?.id || null,
+      action,
+      id: notificationId,
     }
   } catch (error) {
     console.error('Erro ao criar notificação admin:', {
