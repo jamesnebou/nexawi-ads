@@ -537,7 +537,7 @@ useEffect(() => {
                   <strong className="text-white text-lg sm:text-xl font-black">
                      {onlineLoading ? '...' : onlineUsers}
                   </strong>{" "}
-                     {onlineReliable ? 'online agora' : 'monitoramento ativo'}
+                     {onlineReliable ? 'online agora' : 'Monitoramento Ativo'}
                 </p>
               </div>
 
@@ -558,7 +558,7 @@ useEffect(() => {
                   <strong className="text-white text-lg sm:text-xl font-black">
                     {leadsToday}
                   </strong>{" "}
-                  leads hoje
+                  Leads Hoje
                 </p>
               </div>
             </div>
