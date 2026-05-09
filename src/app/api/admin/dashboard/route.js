@@ -27,6 +27,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { countOnlineHotspotClients } from '@/lib/routeros-rest'
 
 export const runtime = 'nodejs'
 
@@ -462,6 +463,30 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
   }
 }
 
+async function buscarPessoasOnlineReais() {
+  try {
+    const result = await countOnlineHotspotClients()
+
+    return {
+      count: result.count || 0,
+      source: 'routeros',
+      reliable: true,
+      checkedAt: result.checkedAt,
+      error: '',
+    }
+  } catch (error) {
+    console.error('Erro ao buscar pessoas online no MikroTik:', error)
+
+    return {
+      count: 0,
+      source: 'routeros',
+      reliable: false,
+      checkedAt: new Date().toISOString(),
+      error: error.message || 'Erro ao consultar MikroTik',
+    }
+  }
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'dashboard',
@@ -487,7 +512,6 @@ export async function GET(request) {
 
     const inicioHoje = inicioDoDiaISO()
     const inicioMes = inicioDoMesISO()
-    const quinzeMinutosAtras = subtrairMinutosISO(15)
 
     let hotspotsData = []
     let clientesAtivos = 0
@@ -574,11 +598,7 @@ export async function GET(request) {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', inicioMes)
 
-      let queryPessoasOnline = supabaseAdmin
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .gte('created_at', quinzeMinutosAtras)
-
+      
       if (hotspotId) {
         queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', hotspotId)
         queryLeadsMes = queryLeadsMes.eq('hotspot_id', hotspotId)
@@ -586,29 +606,25 @@ export async function GET(request) {
       }
 
       const [
-        { count: leadsHojeCount, error: leadsHojeError },
-        { count: leadsMesCount, error: leadsMesError },
-        { count: pessoasOnlineCount, error: pessoasOnlineError },
-        { data: leadsData, error: leadsGeralError },
-      ] = await Promise.all([
-        queryLeadsHoje,
-        queryLeadsMes,
-        queryPessoasOnline,
-        supabaseAdmin
-          .from('leads')
-          .select('id, nome, email, created_at, hotspot_id, hotspots(nome)')
-          .order('created_at', { ascending: false })
-          .limit(5000),
-      ])
+  { count: leadsHojeCount, error: leadsHojeError },
+  { count: leadsMesCount, error: leadsMesError },
+  { data: leadsData, error: leadsGeralError },
+] = await Promise.all([
+  queryLeadsHoje,
+  queryLeadsMes,
+  supabaseAdmin
+    .from('leads')
+    .select('id, nome, email, created_at, hotspot_id, hotspots(nome)')
+    .order('created_at', { ascending: false })
+    .limit(5000),
+])
 
       if (leadsHojeError) throw leadsHojeError
       if (leadsMesError) throw leadsMesError
-      if (pessoasOnlineError) throw pessoasOnlineError
       if (leadsGeralError) throw leadsGeralError
 
       leadsHoje = leadsHojeCount || 0
       leadsMes = leadsMesCount || 0
-      pessoasOnline = pessoasOnlineCount || 0
       leadsGeral = leadsData || []
     }
 
@@ -639,14 +655,21 @@ export async function GET(request) {
       })
       .reduce((acc, p) => acc + Number(p.valor || 0), 0)
 
+      const pessoasOnlineReal = await buscarPessoasOnlineReais()
+pessoasOnline = pessoasOnlineReal.count
+
     const metricas = {
-      clientesAtivos,
-      hotspotsAtivos,
-      leadsHoje,
-      leadsMes,
-      pessoasOnline,
-      recebidoMes,
-    }
+  clientesAtivos,
+  hotspotsAtivos,
+  leadsHoje,
+  leadsMes,
+  pessoasOnline,
+  pessoasOnlineFonte: pessoasOnlineReal.source,
+  pessoasOnlineConfiavel: pessoasOnlineReal.reliable,
+  pessoasOnlineCheckedAt: pessoasOnlineReal.checkedAt,
+  pessoasOnlineErro: pessoasOnlineReal.error,
+  recebidoMes,
+}
 
     const ultimos14 = ultimosDiasISO(14)
     const leadsPorDiaMap = {}

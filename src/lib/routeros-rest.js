@@ -56,6 +56,32 @@ async function routerosFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
+function routerFlag(value) {
+  return value === true || value === 'true' || value === 'yes' || value === 'enabled'
+}
+
+function getClientKey(item = {}) {
+  const mac = normalizeMac(item['mac-address'] || item.macAddress || '')
+  const address = String(item.address || item['host-address'] || item['to-address'] || '').trim()
+
+  return mac || address || item['.id'] || ''
+}
+
+function normalizarOnlineClient(item = {}, source = 'unknown') {
+  return {
+    id: item['.id'] || '',
+    source,
+    server: item.server || '',
+    user: item.user || '',
+    address: item.address || item['host-address'] || '',
+    macAddress: normalizeMac(item['mac-address'] || ''),
+    uptime: item.uptime || '',
+    idleTime: item['idle-time'] || '',
+    authorized: routerFlag(item.authorized),
+    bypassed: routerFlag(item.bypassed),
+  }
+}
+
 export async function routerHealth() {
   return routerosFetch('/system/resource')
 }
@@ -63,6 +89,107 @@ export async function routerHealth() {
 export async function listHotspotBindings() {
   const data = await routerosFetch('/ip/hotspot/ip-binding')
   return Array.isArray(data) ? data : []
+}
+
+export async function listHotspotActiveUsers({ server } = {}) {
+  const { hotspotServer } = getRouterConfig()
+  const targetServer = server || hotspotServer
+
+  const data = await routerosFetch('/ip/hotspot/active')
+  const list = Array.isArray(data) ? data : []
+
+  return list
+    .filter((item) => {
+      if (!targetServer) return true
+      if (!item.server) return true
+      return item.server === targetServer
+    })
+    .map((item) => normalizarOnlineClient(item, 'active'))
+}
+
+export async function listHotspotHosts({ server } = {}) {
+  const { hotspotServer } = getRouterConfig()
+  const targetServer = server || hotspotServer
+
+  const data = await routerosFetch('/ip/hotspot/host')
+  const list = Array.isArray(data) ? data : []
+
+  return list
+    .filter((item) => {
+      if (!targetServer) return true
+      if (!item.server) return true
+      return item.server === targetServer
+    })
+    .map((item) => normalizarOnlineClient(item, 'host'))
+}
+
+export async function listOnlineHotspotClients({ server } = {}) {
+  const [activeUsers, hosts] = await Promise.all([
+    listHotspotActiveUsers({ server }),
+    listHotspotHosts({ server }),
+  ])
+
+  const map = new Map()
+
+  activeUsers.forEach((item) => {
+    const key = getClientKey({
+      '.id': item.id,
+      server: item.server,
+      user: item.user,
+      address: item.address,
+      'mac-address': item.macAddress,
+    })
+
+    if (key) {
+      map.set(key, {
+        ...item,
+        onlineSource: 'active',
+        online: true,
+      })
+    }
+  })
+
+  hosts
+    .filter((item) => item.authorized || item.bypassed)
+    .forEach((item) => {
+      const key = getClientKey({
+        '.id': item.id,
+        server: item.server,
+        user: item.user,
+        address: item.address,
+        'mac-address': item.macAddress,
+      })
+
+      if (!key) return
+
+      if (map.has(key)) {
+        map.set(key, {
+          ...map.get(key),
+          ...item,
+          onlineSource: 'active_host',
+          online: true,
+        })
+      } else {
+        map.set(key, {
+          ...item,
+          onlineSource: item.bypassed ? 'host_bypassed' : 'host_authorized',
+          online: true,
+        })
+      }
+    })
+
+  return Array.from(map.values())
+}
+
+export async function countOnlineHotspotClients({ server } = {}) {
+  const clients = await listOnlineHotspotClients({ server })
+
+  return {
+    ok: true,
+    count: clients.length,
+    server: server || getRouterConfig().hotspotServer,
+    checkedAt: new Date().toISOString(),
+  }
 }
 
 export async function ensureBypassBinding({ macAddress, comment }) {
@@ -83,8 +210,6 @@ export async function ensureBypassBinding({ macAddress, comment }) {
 
   const bindings = await listHotspotBindings()
 
-  // procura qualquer binding existente para o MAC,
-  // independentemente do server atual
   const existing = bindings.find(
     (item) => normalizeMac(item['mac-address']) === mac
   )
@@ -151,6 +276,7 @@ export async function removeBypassBindings({ macAddress }) {
 
   for (const item of toRemove) {
     if (!item['.id']) continue
+
     await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(item['.id'])}`, {
       method: 'DELETE',
     })

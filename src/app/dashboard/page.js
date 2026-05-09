@@ -263,7 +263,7 @@ export default function Dashboard() {
     {
       label: 'Pessoas Online',
       valor: metricas.pessoasOnline,
-      sub: 'Últimos 15 min',
+      sub: metricas.pessoasOnlineConfiavel ? 'Agora no MikroTik' : 'MikroTik indisponível',
       icon: Activity,
       text: 'text-cyan-400',
       bg: 'bg-cyan-500/20',
