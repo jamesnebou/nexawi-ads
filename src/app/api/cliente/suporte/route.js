@@ -159,7 +159,7 @@ export async function POST(request) {
 
       if (messageError) throw messageError
 
-      await createAdminNotification({
+      const notificationResult = await createAdminNotification({
         type: 'support_ticket_created',
         title: 'Novo chamado aberto',
         message: subject,
@@ -177,6 +177,10 @@ export async function POST(request) {
           priority,
         },
       })
+
+      if (!notificationResult.ok) {
+  console.error('Falha ao criar notificação de suporte:', notificationResult)
+}
 
       return NextResponse.json({
         ok: true,
@@ -243,7 +247,7 @@ export async function POST(request) {
 
       if (updateError) throw updateError
 
-      await createAdminNotification({
+      const notificationResult = await createAdminNotification({
         type: 'support_ticket_client_reply',
         title: 'Cliente respondeu um chamado',
         message: ticket.subject || 'Um cliente respondeu um chamado.',
@@ -258,6 +262,10 @@ export async function POST(request) {
           email: user.email || cliente.email || '',
         },
       })
+
+      if (!notificationResult.ok) {
+  console.error('Falha ao criar notificação de suporte:', notificationResult)
+}
 
       return NextResponse.json({
         ok: true,
