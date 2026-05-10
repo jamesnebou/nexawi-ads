@@ -763,7 +763,7 @@ useEffect(() => {
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
                     A NexaWi exibe o anúncio da sua empresa. O cliente assiste
-                    com 100% de atenção. E sabemos exatamente quem clicou no seu anúcio.
+                    com 100% de atenção. E sabemos exatamente quem clicou no seu anúncio.
                   </p>
                 </div>
                 <div className="absolute 
