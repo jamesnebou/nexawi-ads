@@ -107,7 +107,10 @@ export async function POST(request) {
       status,
     })
   } catch (routerError) {
-    await markSessionError(latestSession.id, routerError.message || 'Falha ao reautorizar no RouterOS')
+    await markSessionError(
+      latestSession.id,
+      routerError.message || 'Falha ao reautorizar no RouterOS'
+    )
 
     await logRouterAction({
       authSessionId: latestSession.id,

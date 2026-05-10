@@ -460,9 +460,8 @@ export default function Portal() {
       throw new Error('leadId ausente ao finalizar o anúncio')
     }
 
-    // Importante:
-    // Mesmo que o banco diga "authorized", chamamos authorize de novo.
-    // O backend deve garantir/recriar o bypass no MikroTik.
+    // Mesmo se o banco disser "authorized",
+    // chama o backend para garantir o bypass real no MikroTik.
     const autorizacao = await autorizarSessaoNoBackend(resolvedLeadId)
 
     if (!autorizacao) return
@@ -669,7 +668,7 @@ async function handleCopiarLinkCliente() {
  
 
     async function inicializarPortal() {
-  try {
+   try {
     if (!isMounted) return
 
     setLoadingTexto('Conectando à rede...')
