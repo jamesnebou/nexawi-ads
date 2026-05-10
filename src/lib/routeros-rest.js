@@ -11,6 +11,9 @@ function getRouterConfig() {
   const password = process.env.ROUTEROS_PASSWORD
   const hotspotServer = process.env.ROUTEROS_HOTSPOT_SERVER || 'hotspot1'
 
+  const clientDownloadLimit = process.env.NEXAWI_CLIENT_RATE_DOWNLOAD || '10M'
+  const clientUploadLimit = process.env.NEXAWI_CLIENT_RATE_UPLOAD || '2M'
+
   if (!baseUrl) throw new Error('ROUTEROS_BASE_URL não definido')
   if (!username) throw new Error('ROUTEROS_USERNAME não definido')
   if (!password) throw new Error('ROUTEROS_PASSWORD não definido')
@@ -20,6 +23,8 @@ function getRouterConfig() {
     username,
     password,
     hotspotServer,
+    clientDownloadLimit,
+    clientUploadLimit,
   }
 }
 
@@ -60,6 +65,11 @@ function routerFlag(value) {
   return value === true || value === 'true' || value === 'yes' || value === 'enabled'
 }
 
+function queueNameFromMac(macAddress = '') {
+  const mac = normalizeMac(macAddress).replace(/:/g, '')
+  return `nexawi-client-${mac}`
+}
+
 function getClientKey(item = {}) {
   const mac = normalizeMac(item['mac-address'] || item.macAddress || '')
   const address = String(item.address || item['host-address'] || item['to-address'] || '').trim()
@@ -73,7 +83,7 @@ function normalizarOnlineClient(item = {}, source = 'unknown') {
     source,
     server: item.server || '',
     user: item.user || '',
-    address: item.address || item['host-address'] || '',
+    address: item.address || item['host-address'] || item['to-address'] || '',
     macAddress: normalizeMac(item['mac-address'] || ''),
     uptime: item.uptime || '',
     idleTime: item['idle-time'] || '',
@@ -88,6 +98,11 @@ export async function routerHealth() {
 
 export async function listHotspotBindings() {
   const data = await routerosFetch('/ip/hotspot/ip-binding')
+  return Array.isArray(data) ? data : []
+}
+
+export async function listSimpleQueues() {
+  const data = await routerosFetch('/queue/simple')
   return Array.isArray(data) ? data : []
 }
 
@@ -149,34 +164,32 @@ export async function listOnlineHotspotClients({ server } = {}) {
     }
   })
 
-  hosts
-    .filter((item) => item.authorized || item.bypassed)
-    .forEach((item) => {
-      const key = getClientKey({
-        '.id': item.id,
-        server: item.server,
-        user: item.user,
-        address: item.address,
-        'mac-address': item.macAddress,
-      })
-
-      if (!key) return
-
-      if (map.has(key)) {
-        map.set(key, {
-          ...map.get(key),
-          ...item,
-          onlineSource: 'active_host',
-          online: true,
-        })
-      } else {
-        map.set(key, {
-          ...item,
-          onlineSource: item.bypassed ? 'host_bypassed' : 'host_authorized',
-          online: true,
-        })
-      }
+  hosts.forEach((item) => {
+    const key = getClientKey({
+      '.id': item.id,
+      server: item.server,
+      user: item.user,
+      address: item.address,
+      'mac-address': item.macAddress,
     })
+
+    if (!key) return
+
+    if (map.has(key)) {
+      map.set(key, {
+        ...map.get(key),
+        ...item,
+        onlineSource: 'active_host',
+        online: true,
+      })
+    } else {
+      map.set(key, {
+        ...item,
+        onlineSource: item.bypassed ? 'host_bypassed' : 'host_seen',
+        online: true,
+      })
+    }
+  })
 
   return Array.from(map.values())
 }
@@ -190,6 +203,36 @@ export async function countOnlineHotspotClients({ server } = {}) {
     server: server || getRouterConfig().hotspotServer,
     checkedAt: new Date().toISOString(),
   }
+}
+
+export async function listCurrentHotspotMacs({ server } = {}) {
+  const clients = await listOnlineHotspotClients({ server })
+
+  const macs = new Set()
+
+  clients.forEach((client) => {
+    const mac = normalizeMac(client.macAddress)
+
+    if (mac) {
+      macs.add(mac)
+    }
+  })
+
+  return macs
+}
+
+export async function findHotspotHostByMac({ macAddress, server } = {}) {
+  const mac = normalizeMac(macAddress)
+
+  if (!mac) return null
+
+  const hosts = await listHotspotHosts({ server })
+
+  return (
+    hosts.find((item) => normalizeMac(item.macAddress) === mac && item.address) ||
+    hosts.find((item) => normalizeMac(item.macAddress) === mac) ||
+    null
+  )
 }
 
 export async function ensureBypassBinding({ macAddress, comment }) {
@@ -261,6 +304,142 @@ export async function ensureBypassBinding({ macAddress, comment }) {
   }
 }
 
+export async function ensureClientBandwidthQueue({
+  macAddress,
+  comment = '',
+  uploadLimit,
+  downloadLimit,
+} = {}) {
+  const {
+    clientUploadLimit,
+    clientDownloadLimit,
+  } = getRouterConfig()
+
+  const mac = normalizeMac(macAddress)
+
+  if (!mac) {
+    throw new Error('MAC inválido para queue')
+  }
+
+  const host = await findHotspotHostByMac({ macAddress: mac })
+
+  if (!host?.address) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: 'Host local não encontrado para criar queue',
+      macAddress: mac,
+    }
+  }
+
+  const queueName = queueNameFromMac(mac)
+  const upload = uploadLimit || clientUploadLimit || '2M'
+  const download = downloadLimit || clientDownloadLimit || '10M'
+
+  // RouterOS simple queue usa max-limit no formato upload/download.
+  // Para 10M Down e 2M Up: 2M/10M.
+  const payload = {
+    name: queueName,
+    target: `${host.address}/32`,
+    'max-limit': `${upload}/${download}`,
+    comment: comment || `nexawi_client:${mac}`,
+    disabled: false,
+  }
+
+  const queues = await listSimpleQueues()
+  const existing = queues.find((item) => item.name === queueName)
+
+  if (existing?.['.id']) {
+    await routerosFetch(`/queue/simple/${encodeURIComponent(existing['.id'])}`, {
+      method: 'PATCH',
+      body: payload,
+    })
+
+    return {
+      ok: true,
+      created: false,
+      queue: {
+        ...existing,
+        ...payload,
+        '.id': existing['.id'],
+      },
+    }
+  }
+
+  const created = await routerosFetch('/queue/simple', {
+    method: 'PUT',
+    body: payload,
+  })
+
+  return {
+    ok: true,
+    created: true,
+    queue: created,
+  }
+}
+
+export async function removeClientBandwidthQueue({ macAddress } = {}) {
+  const mac = normalizeMac(macAddress)
+
+  if (!mac) {
+    return {
+      removedCount: 0,
+      reason: 'MAC ausente',
+    }
+  }
+
+  const queueName = queueNameFromMac(mac)
+  const queues = await listSimpleQueues()
+
+  const toRemove = queues.filter((item) => {
+    const nameMatch = item.name === queueName
+    const commentMatch = String(item.comment || '').includes(mac)
+
+    return nameMatch || commentMatch
+  })
+
+  for (const item of toRemove) {
+    if (!item['.id']) continue
+
+    await routerosFetch(`/queue/simple/${encodeURIComponent(item['.id'])}`, {
+      method: 'DELETE',
+    })
+  }
+
+  return {
+    removedCount: toRemove.length,
+  }
+}
+
+export async function removeHotspotHostsByMac({ macAddress, server } = {}) {
+  const mac = normalizeMac(macAddress)
+
+  if (!mac) {
+    return {
+      removedCount: 0,
+      reason: 'MAC ausente',
+    }
+  }
+
+  const hosts = await listHotspotHosts({ server })
+
+  const toRemove = hosts.filter(
+    (item) => normalizeMac(item.macAddress) === mac
+  )
+
+  for (const item of toRemove) {
+    if (!item.id) continue
+
+    await routerosFetch(`/ip/hotspot/host/${encodeURIComponent(item.id)}`, {
+      method: 'DELETE',
+    })
+  }
+
+  return {
+    removedCount: toRemove.length,
+  }
+}
+
 export async function removeBypassBindings({ macAddress }) {
   const { hotspotServer } = getRouterConfig()
   const mac = normalizeMac(macAddress)
@@ -284,6 +463,34 @@ export async function removeBypassBindings({ macAddress }) {
 
   return {
     removedCount: toRemove.length,
+  }
+}
+
+export async function cleanupClientAccess({ macAddress } = {}) {
+  const mac = normalizeMac(macAddress)
+
+  if (!mac) {
+    return {
+      ok: false,
+      macAddress: '',
+      bypass: { removedCount: 0 },
+      queue: { removedCount: 0 },
+      hosts: { removedCount: 0 },
+    }
+  }
+
+  const [bypass, queue, hosts] = await Promise.all([
+    removeBypassBindings({ macAddress: mac }),
+    removeClientBandwidthQueue({ macAddress: mac }),
+    removeHotspotHostsByMac({ macAddress: mac }),
+  ])
+
+  return {
+    ok: true,
+    macAddress: mac,
+    bypass,
+    queue,
+    hosts,
   }
 }
 

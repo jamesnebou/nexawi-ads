@@ -1,6 +1,11 @@
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
-import { ensureBypassBinding, normalizeMac } from '@/lib/routeros-rest'
+import {
+  ensureBypassBinding,
+  ensureClientBandwidthQueue,
+  removeHotspotHostsByMac,
+  normalizeMac,
+} from '@/lib/routeros-rest'
 import {
   resolveHotspotBySlug,
   resolveLeadForAuthorization,
@@ -86,6 +91,16 @@ export async function POST(request) {
       comment: `auth_session:${latestSession.id}`,
     })
 
+
+    const bandwidthQueue = await ensureClientBandwidthQueue({
+  macAddress: clientMac,
+  comment: `auth_session:${latestSession.id}`,
+})
+
+const hostCleanup = await removeHotspotHostsByMac({
+  macAddress: clientMac,
+})
+
     const authorizedSession = await markSessionAuthorized(
       latestSession.id,
       binding?.['.id'] || null
@@ -99,13 +114,15 @@ export async function POST(request) {
     })
 
     return NextResponse.json({
-      ok: true,
-      alreadyAuthorized: true,
-      reauthorized: true,
-      session: authorizedSession,
-      binding,
-      status,
-    })
+  ok: true,
+  alreadyAuthorized: true,
+  reauthorized: true,
+  session: authorizedSession,
+  binding,
+  bandwidthQueue,
+  hostCleanup,
+  status,
+})
   } catch (routerError) {
     await markSessionError(
       latestSession.id,
@@ -171,6 +188,15 @@ export async function POST(request) {
         comment: `auth_session:${pendingSession.id}`,
       })
 
+      const bandwidthQueue = await ensureClientBandwidthQueue({
+  macAddress: clientMac,
+  comment: `auth_session:${pendingSession.id}`,
+})
+
+const hostCleanup = await removeHotspotHostsByMac({
+  macAddress: clientMac,
+})
+
       const authorizedSession = await markSessionAuthorized(
         pendingSession.id,
         binding?.['.id'] || null
@@ -184,10 +210,12 @@ export async function POST(request) {
       })
 
       return NextResponse.json({
-        ok: true,
-        session: authorizedSession,
-        binding,
-      })
+  ok: true,
+  session: authorizedSession,
+  binding,
+  bandwidthQueue,
+  hostCleanup,
+})
     } catch (routerError) {
       await markSessionError(pendingSession.id, routerError.message || 'Falha no RouterOS')
 

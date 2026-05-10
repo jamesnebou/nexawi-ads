@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { removeBypassBindings } from '@/lib/routeros-rest'
-import { markSessionCooldown, markSessionExpired, logRouterAction } from '@/lib/session-control'
+import {
+  cleanupClientAccess,
+  listCurrentHotspotMacs,
+} from '@/lib/routeros-rest'
+import { markSessionExpired, logRouterAction } from '@/lib/session-control'
 
 export const runtime = 'nodejs'
 
@@ -15,53 +18,69 @@ export async function POST(request) {
   try {
     const nowIso = new Date().toISOString()
 
-    const { data: sessionsToCooldown, error: err1 } = await supabaseAdmin
+    const onlineMacs = await listCurrentHotspotMacs()
+
+    const { data: authorizedSessions, error: authorizedError } = await supabaseAdmin
       .from('auth_sessions')
       .select('*')
       .eq('session_state', 'authorized')
-      .lte('expires_at', nowIso)
-      .limit(100)
+      .limit(500)
 
-    if (err1) throw err1
+    if (authorizedError) throw authorizedError
 
-    const cooledDown = []
+    const cleanedOffline = []
+    const cleanedExpired = []
+    const keptOnline = []
 
-    for (const session of sessionsToCooldown || []) {
-      const result = await removeBypassBindings({ macAddress: session.client_mac })
-      const updated = await markSessionCooldown(session.id)
+    for (const session of authorizedSessions || []) {
+      const mac = String(session.client_mac || '').trim().toUpperCase()
+
+      if (!mac) continue
+
+      const isOnline = onlineMacs.has(mac)
+      const isExpiredByTime = session.expires_at && session.expires_at <= nowIso
+
+      if (isOnline && !isExpiredByTime) {
+        keptOnline.push(session.id)
+        continue
+      }
+
+      const cleanup = await cleanupClientAccess({
+        macAddress: mac,
+      })
+
+      const updated = await markSessionExpired(session.id)
 
       await logRouterAction({
         authSessionId: session.id,
-        action: 'reconcile_revoke_bypass',
+        action: isExpiredByTime
+          ? 'reconcile_expire_timed_bypass'
+          : 'reconcile_expire_offline_bypass',
         status: 'success',
-        responsePayload: result,
+        responsePayload: {
+          cleanup,
+          online: isOnline,
+          expiredByTime: isExpiredByTime,
+        },
       })
 
-      cooledDown.push(updated.id)
-    }
-
-    const { data: sessionsToExpire, error: err2 } = await supabaseAdmin
-      .from('auth_sessions')
-      .select('*')
-      .eq('session_state', 'cooldown')
-      .lte('cooldown_until', nowIso)
-      .limit(100)
-
-    if (err2) throw err2
-
-    const expired = []
-
-    for (const session of sessionsToExpire || []) {
-      const updated = await markSessionExpired(session.id)
-      expired.push(updated.id)
+      if (isExpiredByTime) {
+        cleanedExpired.push(updated.id)
+      } else {
+        cleanedOffline.push(updated.id)
+      }
     }
 
     return NextResponse.json({
       ok: true,
-      cooledDownCount: cooledDown.length,
-      expiredCount: expired.length,
-      cooledDown,
-      expired,
+      checkedAt: nowIso,
+      onlineMacsCount: onlineMacs.size,
+      keptOnlineCount: keptOnline.length,
+      cleanedOfflineCount: cleanedOffline.length,
+      cleanedExpiredCount: cleanedExpired.length,
+      keptOnline,
+      cleanedOffline,
+      cleanedExpired,
     })
   } catch (error) {
     return NextResponse.json(
@@ -70,7 +89,3 @@ export async function POST(request) {
     )
   }
 }
-
-
-
-
