@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import {
   ensureBypassBinding,
   ensureClientBandwidthQueue,
+  findHotspotHostByMac,
   removeHotspotHostsByMac,
   normalizeMac,
 } from '@/lib/routeros-rest'
@@ -86,6 +87,12 @@ export async function POST(request) {
       },
     })
 
+
+    const hostBeforeAuthorization = await findHotspotHostByMac({
+  macAddress: clientMac,
+})
+
+
     const binding = await ensureBypassBinding({
       macAddress: clientMac,
       comment: `auth_session:${latestSession.id}`,
@@ -94,6 +101,7 @@ export async function POST(request) {
 
     const bandwidthQueue = await ensureClientBandwidthQueue({
   macAddress: clientMac,
+  targetAddress: hostBeforeAuthorization?.address || '',
   comment: `auth_session:${latestSession.id}`,
 })
 
@@ -183,6 +191,11 @@ const hostCleanup = await removeHotspotHostsByMac({
         },
       })
 
+
+      const hostBeforeAuthorization = await findHotspotHostByMac({
+  macAddress: clientMac,
+})
+
       const binding = await ensureBypassBinding({
         macAddress: clientMac,
         comment: `auth_session:${pendingSession.id}`,
@@ -190,6 +203,7 @@ const hostCleanup = await removeHotspotHostsByMac({
 
       const bandwidthQueue = await ensureClientBandwidthQueue({
   macAddress: clientMac,
+  targetAddress: hostBeforeAuthorization?.address || '',
   comment: `auth_session:${pendingSession.id}`,
 })
 

@@ -306,6 +306,7 @@ export async function ensureBypassBinding({ macAddress, comment }) {
 
 export async function ensureClientBandwidthQueue({
   macAddress,
+  targetAddress = '',
   comment = '',
   uploadLimit,
   downloadLimit,
@@ -321,26 +322,29 @@ export async function ensureClientBandwidthQueue({
     throw new Error('MAC inválido para queue')
   }
 
-  const host = await findHotspotHostByMac({ macAddress: mac })
+  let resolvedTargetAddress = String(targetAddress || '').trim()
 
-  if (!host?.address) {
+  if (!resolvedTargetAddress) {
+    const host = await findHotspotHostByMac({ macAddress: mac })
+    resolvedTargetAddress = String(host?.address || '').trim()
+  }
+
+  if (!resolvedTargetAddress) {
     return {
       ok: false,
       skipped: true,
-      reason: 'Host local não encontrado para criar queue',
+      reason: 'Host/IP local não encontrado para criar queue',
       macAddress: mac,
     }
   }
 
   const queueName = queueNameFromMac(mac)
-  const upload = uploadLimit || clientUploadLimit || '2M'
+  const upload = uploadLimit || clientUploadLimit || '3M'
   const download = downloadLimit || clientDownloadLimit || '10M'
 
-  // RouterOS simple queue usa max-limit no formato upload/download.
-  // Para 10M Down e 2M Up: 2M/10M.
   const payload = {
     name: queueName,
-    target: `${host.address}/32`,
+    target: `${resolvedTargetAddress}/32`,
     'max-limit': `${upload}/${download}`,
     comment: comment || `nexawi_client:${mac}`,
     disabled: false,
@@ -358,6 +362,7 @@ export async function ensureClientBandwidthQueue({
     return {
       ok: true,
       created: false,
+      targetAddress: resolvedTargetAddress,
       queue: {
         ...existing,
         ...payload,
@@ -374,6 +379,7 @@ export async function ensureClientBandwidthQueue({
   return {
     ok: true,
     created: true,
+    targetAddress: resolvedTargetAddress,
     queue: created,
   }
 }

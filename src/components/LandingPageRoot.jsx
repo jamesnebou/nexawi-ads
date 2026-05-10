@@ -112,55 +112,7 @@ const faqs = [
 
 
 
-const handleSubmitContact = async (e) => {
-  e.preventDefault();
 
-  setContactSuccess(null);
-  setContactError(null);
-  setIsSendingContact(true);
-
-  try {
-    const res = await fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: contactName,
-        phone: contactPhone,
-        email: contactEmail,
-        city: contactCity,
-      }),
-    });
-
-    let data = {};
-    try {
-      data = await res.json();
-    } catch (err) {
-      console.error("Erro ao converter resposta em JSON:", err);
-    }
-
-    if (!res.ok || data.ok === false) {
-      throw new Error(
-        (data && data.message) ||
-          "Erro ao enviar mensagem. Tente novamente em instantes."
-      );
-    }
-
-    setContactSuccess(
-      "Mensagem enviada com sucesso! Em breve, um consultor NexaWi falará com você."
-    );
-    setContactName("");
-    setContactPhone("");
-    setContactEmail("");
-    setContactCity("");
-  } catch (err) {
-    console.error("Erro no envio do formulário:", err);
-    setContactError(
-      err.message || "Não foi possível enviar sua mensagem. Tente novamente."
-    );
-  } finally {
-    setIsSendingContact(false);
-  }
-};
 
 export default function LandingPage() {
   // Variáveis de Estado para a Barra de Status ao Vivo
@@ -171,6 +123,10 @@ export default function LandingPage() {
   const [monthlyConnections, setMonthlyConnections] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileQuickOpen, setMobileQuickOpen] = useState(false);
+
+  //Adicona efeito visual de entrada com logo
+  const [showIntro, setShowIntro] = useState(true);
+  const [introLeaving, setIntroLeaving] = useState(false);
 
   // Estados para controlar a visibilidade dos Modals
   const [showTermsPopup, setShowTermsPopup] = useState(false);
@@ -206,8 +162,16 @@ const [landingConfig, setLandingConfig] = useState({
 })
 
 const currentSlug = useMemo(() => resolveSlugFromPathname(pathname), [pathname])
-  
 
+//efeito para sair a logo  
+useEffect(() => {
+  const t1 = setTimeout(() => setIntroLeaving(true), 1700); // começa a sair
+  const t2 = setTimeout(() => setShowIntro(false), 2400);   // remove splash
+  return () => {
+    clearTimeout(t1);
+    clearTimeout(t2);
+  };
+}, []);
 
 useEffect(() => {
   let ativo = true
@@ -337,8 +301,74 @@ useEffect(() => {
     setShowContactPopup(true);
   };
 
+  const handleSubmitContact = async (e) => {
+  e.preventDefault();
+
+  setContactSuccess(null);
+  setContactError(null);
+  setIsSendingContact(true);
+
+  try {
+    const res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: contactName,
+        phone: contactPhone,
+        email: contactEmail,
+        city: contactCity,
+      }),
+    });
+
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (err) {
+      console.error("Erro ao converter resposta em JSON:", err);
+    }
+
+    if (!res.ok || data.ok === false) {
+      throw new Error(
+        (data && data.message) ||
+          "Erro ao enviar mensagem. Tente novamente em instantes."
+      );
+    }
+
+    setContactSuccess(
+      "Mensagem enviada com sucesso! Em breve, um consultor NexaWi falará com você."
+    );
+    setContactName("");
+    setContactPhone("");
+    setContactEmail("");
+    setContactCity("");
+  } catch (err) {
+    console.error("Erro no envio do formulário:", err);
+    setContactError(
+      err.message || "Não foi possível enviar sua mensagem. Tente novamente."
+    );
+  } finally {
+    setIsSendingContact(false);
+  }
+};
+
   return (
     <div className="relative min-h-screen bg-[#050505] text-white selection:bg-[#6be12f] selection:text-black font-sans overflow-x-hidden">
+      {showIntro && (
+  <div
+    className={`fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] transition-opacity duration-700 ${
+      introLeaving ? "opacity-0" : "opacity-100"
+    }`}
+  >
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(107,225,47,0.18)_0%,rgba(5,5,5,1)_55%)]" />
+    <img
+      src="/Nexa-logo.png"
+      alt="NexaWi"
+      className={`relative z-10 h-20 md:h-28 w-auto object-contain logo-intro ${
+        introLeaving ? "logo-intro-out" : ""
+      }`}
+    />
+  </div>
+)}
       {/* GRADE GLOBAL (fundo) */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff06_1px,transparent_1px),linear-gradient(to_bottom,#ffffff06_1px,transparent_1px)] bg-[size:40px_40px]" />
@@ -357,6 +387,17 @@ useEffect(() => {
             0% { transform: translateX(-150%) skewX(-20deg); }
             100% { transform: translateX(860%) skewX(-50deg); }
           }
+
+          @keyframes logoIntroIn {
+  0% { opacity: 0; transform: scale(.75) translateY(16px); filter: blur(8px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+@keyframes logoIntroOut {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); filter: blur(6px); }
+}
+.logo-intro { animation: logoIntroIn .9s cubic-bezier(.16,1,.3,1) forwards; }
+.logo-intro-out { animation: logoIntroOut .6s ease forwards; }
         `}</style>
 
         {/* Navbar */}
@@ -537,7 +578,7 @@ useEffect(() => {
                   <strong className="text-white text-lg sm:text-xl font-black">
                      {onlineLoading ? '...' : onlineUsers}
                   </strong>{" "}
-                     {onlineReliable ? 'online agora' : 'Monitoramento Ativo'}
+                     {onlineReliable ? 'Online Agora' : 'Monitoramento Ativo'}
                 </p>
               </div>
 
@@ -1039,10 +1080,10 @@ useEffect(() => {
         <PlanosSection />
 
 
- {/* SEÇÃO DE FAQ em caixa de videro */}
+ {/* SEÇÃO DE FAQ em caixa de vidro */}
         <section className="relative z-20 py-16 md:py-24">
   <div className="max-w-4xl mx-auto px-6 ">   
-    <div className=" bg-white/5 bg-opacity-20 border border-[#6be12f] rounded-3xl p-8 md:p-12 shadow-1xl ">
+    <div className="bg-white/5 backdrop-blur-xl border border-[#6be12f]/40 rounded-3xl p-8 md:p-12 shadow-[0_0_35px_rgba(107,225,47,0.12)]">
      
       {/* SEÇÃO DE FAQ dentro da seção caixa de videro */}
         <section
@@ -1061,9 +1102,10 @@ useEffect(() => {
         </section>
       <div className="flex justify-center">
         <a
-          href="#contato"
-          className="px-8 py-4 bg-[#6be12f] text-black font-extrabold rounded-xl shadow-[0_0_20px_rgba(107,225,47,0.6)] hover:shadow-[0_0_50px_rgba(107,225,47,0.6)] transition-all duration-300 hover:-translate-y-1"
-        >
+  href="#"
+  onClick={handleOpenContact}
+  className="px-8 py-4 bg-[#6be12f] text-black font-extrabold rounded-xl shadow-[0_0_20px_rgba(107,225,47,0.6)] hover:shadow-[0_0_50px_rgba(107,225,47,0.6)] transition-all duration-300 hover:-translate-y-1"
+>
           Fale com um dos nossos consultores!
         </a>
       </div>
