@@ -359,14 +359,24 @@ useEffect(() => {
       introLeaving ? "opacity-0" : "opacity-100"
     }`}
   >
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(107,225,47,0.18)_0%,rgba(5,5,5,1)_55%)]" />
-    <img
-      src="/Nexa-logo.png"
-      alt="NexaWi"
-      className={`relative z-10 h-20 md:h-28 w-auto object-contain logo-intro ${
-        introLeaving ? "logo-intro-out" : ""
-      }`}
-    />
+    {/* fundo glow */}
+    <div className={`absolute inset-0 intro-bg ${introLeaving ? "intro-bg-out" : ""}`} />
+
+    {/* bloco da logo */}
+    <div className={`relative flex items-center justify-center ${introLeaving ? "logo-wrap-out" : "logo-wrap-in"}`}>
+      {/* contorno animado */}
+      <span className="logo-outline" />
+      <span className="logo-outline-2" />
+      <span className="logo-halo" />
+
+      <img
+        src="/Nexa-logo.png"
+        alt="NexaWi"
+        className={`relative z-10 h-20 md:h-28 w-auto object-contain logo-intro ${
+          introLeaving ? "logo-intro-out" : ""
+        }`}
+      />
+    </div>
   </div>
 )}
       {/* GRADE GLOBAL (fundo) */}
@@ -388,16 +398,118 @@ useEffect(() => {
             100% { transform: translateX(860%) skewX(-50deg); }
           }
 
-          @keyframes logoIntroIn {
-  0% { opacity: 0; transform: scale(.75) translateY(16px); filter: blur(8px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+          @keyframes introBgIn {
+  0% { opacity: 0; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
 }
-@keyframes logoIntroOut {
+@keyframes introBgOut {
   0% { opacity: 1; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.08); filter: blur(6px); }
+  100% { opacity: 0; transform: scale(1.08); }
 }
-.logo-intro { animation: logoIntroIn .9s cubic-bezier(.16,1,.3,1) forwards; }
-.logo-intro-out { animation: logoIntroOut .6s ease forwards; }
+
+@keyframes logoIntroIn {
+  0% { opacity: 0; transform: scale(0.72) translateY(18px); filter: blur(8px); }
+  60% { opacity: 1; transform: scale(1.04) translateY(0); filter: blur(0); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* zoom de saída = "puxando a página" */
+@keyframes logoIntroOutZoom {
+  0% { opacity: 1; transform: scale(1); filter: blur(0); }
+  100% { opacity: 0; transform: scale(1.9); filter: blur(4px); }
+}
+
+@keyframes outlineSpin {
+  0% { transform: rotate(0deg); opacity: .35; }
+  100% { transform: rotate(360deg); opacity: .9; }
+}
+
+@keyframes haloPulse {
+  0% { transform: scale(.9); opacity: .15; }
+  50% { transform: scale(1.08); opacity: .28; }
+  100% { transform: scale(.95); opacity: .12; }
+}
+
+.intro-bg {
+  background: radial-gradient(circle at center, rgba(107,225,47,0.22) 0%, rgba(5,5,5,1) 58%);
+  animation: introBgIn .8s ease forwards;
+}
+.intro-bg-out {
+  animation: introBgOut .65s ease forwards;
+}
+
+.logo-wrap-in { transform: scale(1); }
+.logo-wrap-out { transform: scale(1.02); transition: transform .6s ease; }
+
+.logo-intro {
+  animation: logoIntroIn 1s cubic-bezier(.16,1,.3,1) forwards;
+  filter: drop-shadow(0 0 24px rgba(107,225,47,.35));
+}
+.logo-intro-out {
+  animation: logoIntroOutZoom .65s ease forwards;
+}
+
+.logo-outline,
+.logo-outline-2 {
+  position: absolute;
+  inset: -20px;
+  border-radius: 9999px;
+  border: 1.5px solid rgba(107,225,47,.55);
+  pointer-events: none;
+}
+.logo-outline {
+  animation: outlineSpin 2.2s linear infinite;
+}
+.logo-outline-2 {
+  inset: -32px;
+  border-color: rgba(140,240,89,.35);
+  animation: outlineSpin 3.4s linear infinite reverse;
+}
+
+.logo-halo {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(107,225,47,.25) 0%, rgba(107,225,47,0) 70%);
+  filter: blur(10px);
+  animation: haloPulse 1.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes marqueeLeft {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 14px;
+  animation: marqueeLeft 18s linear infinite;
+}
+
+.marquee-chip {
+  white-space: nowrap;
+  border: 1px solid rgba(107,225,47,.45);
+  background: linear-gradient(
+    90deg,
+    rgba(107,225,47,.20),
+    rgba(107,225,47,.08),
+    rgba(255,255,255,.08),
+    rgba(107,225,47,.20)
+  );
+  color: #e9ffe2;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  box-shadow: 0 0 14px rgba(107,225,47,.18);
+}
+
+
         `}</style>
 
         {/* Navbar */}
@@ -547,6 +659,23 @@ useEffect(() => {
             />
           </div>
         </main>
+
+        {/* Faixa premium entre seção 1 e 2 */}
+<section className="relative z-20 py-5 md:py-6 overflow-hidden">
+  <div className="mx-auto max-w-7xl px-6">
+    <div className="relative rounded-2xl border border-[#6be12f]/35 bg-[#6be12f]/10 backdrop-blur-xl shadow-[0_0_30px_rgba(107,225,47,0.18)] overflow-hidden">
+      <div className="marquee-track py-3 md:py-4">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <span key={i} className="marquee-chip">
+            NexaWi • Conectando o seu cliente ao seu negócio!
+          </span>
+        ))}
+      </div>
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#050505] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#050505] to-transparent" />
+    </div>
+  </div>
+</section>
         
 
         {/* Alta Conversão */}
