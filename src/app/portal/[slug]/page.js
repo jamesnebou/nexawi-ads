@@ -435,47 +435,45 @@ export default function Portal() {
   }
 
   async function concluirAnuncioComAutorizacao(explicitLeadId = null) {
-    try {
-      setLoadingTexto('Liberando sua conexão...')
-      setEtapa(ETAPAS.LOADING)
+  try {
+    setLoadingTexto('Liberando sua conexão...')
+    setEtapa(ETAPAS.LOADING)
 
-      const hotspotSlug = hotspot?.slug || slug
-      const resolvedMac = getClientMac()
-      const statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
+    const hotspotSlug = hotspot?.slug || slug
+    const resolvedMac = getClientMac()
 
-      if (statusAtual.state === 'cooldown') {
-        setEtapa(ETAPAS.BLOQUEADO)
-        return
-      }
+    const statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
 
-      if (statusAtual.state === 'authorized') {
-        setInternetLiberadaNaCta(true)
-        setLoadingTexto('Conectando à rede...')
-        setEtapa(ETAPAS.CTA)
-        return
-      }
-
-      const resolvedLeadId =
-        explicitLeadId ||
-        leadIdRef.current ||
-        leadId ||
-        leadRapido?.id ||
-        null
-
-      if (!resolvedLeadId) {
-        throw new Error('leadId ausente ao finalizar o anúncio')
-      }
-
-      const autorizacao = await autorizarSessaoNoBackend(resolvedLeadId)
-      if (!autorizacao) return
-
-      setInternetLiberadaNaCta(true)
-      setLoadingTexto('Conectando à rede...')
-      setEtapa(ETAPAS.CTA)
-    } catch (error) {
-      falhar('Erro ao concluir anúncio com autorização', error)
+    if (statusAtual.state === 'cooldown') {
+      setEtapa(ETAPAS.BLOQUEADO)
+      return
     }
+
+    const resolvedLeadId =
+      explicitLeadId ||
+      leadIdRef.current ||
+      leadId ||
+      leadRapido?.id ||
+      null
+
+    if (!resolvedLeadId) {
+      throw new Error('leadId ausente ao finalizar o anúncio')
+    }
+
+    // Importante:
+    // Mesmo que o banco diga "authorized", chamamos authorize de novo.
+    // O backend deve garantir/recriar o bypass no MikroTik.
+    const autorizacao = await autorizarSessaoNoBackend(resolvedLeadId)
+
+    if (!autorizacao) return
+
+    setInternetLiberadaNaCta(true)
+    setLoadingTexto('Conectando à rede...')
+    setEtapa(ETAPAS.CTA)
+  } catch (error) {
+    falhar('Erro ao concluir anúncio com autorização', error)
   }
+}
 
   async function handleCadastro(e) {
     e.preventDefault()
@@ -667,75 +665,69 @@ async function handleCopiarLinkCliente() {
   useEffect(() => {
     let isMounted = true
 
+
+ 
+
     async function inicializarPortal() {
+  try {
+    if (!isMounted) return
+
+    setLoadingTexto('Conectando à rede...')
+
+    const resolvedMac = getClientMac()
+    const resolvedIp = getClientIp()
+
+    setMacAddress(resolvedMac)
+
+    if (isLocalhost) {
+      setIpAddress(resolvedIp)
+    } else {
       try {
-        if (!isMounted) return
-
-        setLoadingTexto('Conectando à rede...')
-
-        const resolvedMac = getClientMac()
-        const resolvedIp = getClientIp()
-
-        setMacAddress(resolvedMac)
-
-        if (isLocalhost) {
-          setIpAddress(resolvedIp)
-        } else {
-          try {
-            const res = await fetch('https://api.ipify.org?format=json')
-            const data = await res.json()
-            if (isMounted) setIpAddress(data.ip)
-          } catch {
-            if (isMounted) setIpAddress('')
-          }
-        }
-
-        const hotspotData = await carregarHotspotEAnuncios()
-        if (!hotspotData || !isMounted) return
-
-        const hotspotSlug = hotspotData.slug || slug
-
-        let statusAtual = { state: 'idle', remainingSeconds: 0 }
-
-        try {
-          statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
-        } catch (error) {
-          console.warn('Falha ao consultar status da sessão na inicialização:', error)
-        }
-
-        if (statusAtual.state === 'authorized') {
-          const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, resolvedMac)
-
-          if (leadDoMes) {
-            setLeadRapido(leadDoMes)
-            setLeadId(leadDoMes.id)
-            leadIdRef.current = leadDoMes.id
-          }
-
-          setEtapa(ETAPAS.ACESSO)
-          return
-        }
-
-        if (statusAtual.state === 'cooldown') {
-          setEtapa(ETAPAS.BLOQUEADO)
-          return
-        }
-
-        const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, resolvedMac)
-
-        if (leadDoMes) {
-          setLeadRapido(leadDoMes)
-          setLeadId(leadDoMes.id)
-          leadIdRef.current = leadDoMes.id
-          setEtapa(ETAPAS.CPF_RAPIDO)
-          return
-        }
-
-        setEtapa(ETAPAS.CADASTRO)
-      } catch (error) {
-        if (isMounted) falhar('Erro na inicialização do portal', error)
+        const res = await fetch('https://api.ipify.org?format=json')
+        const data = await res.json()
+        if (isMounted) setIpAddress(data.ip)
+      } catch {
+        if (isMounted) setIpAddress('')
       }
     }
+
+    const hotspotData = await carregarHotspotEAnuncios()
+    if (!hotspotData || !isMounted) return
+
+    const hotspotSlug = hotspotData.slug || slug
+
+    let statusAtual = { state: 'idle', remainingSeconds: 0 }
+
+    try {
+      statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
+    } catch (error) {
+      console.warn('Falha ao consultar status da sessão na inicialização:', error)
+    }
+
+    if (statusAtual.state === 'cooldown') {
+      setEtapa(ETAPAS.BLOQUEADO)
+      return
+    }
+
+    const leadDoMes = await buscarLeadRapidoDoMes(hotspotData.id, resolvedMac)
+
+    if (leadDoMes) {
+      setLeadRapido(leadDoMes)
+      setLeadId(leadDoMes.id)
+      leadIdRef.current = leadDoMes.id
+
+      // Mesmo que exista sessão authorized antiga,
+      // se o portal abriu de novo, o usuário precisa validar CPF rápido.
+      setEtapa(ETAPAS.CPF_RAPIDO)
+      return
+    }
+
+    // Sem lead do mês, volta para cadastro.
+    setEtapa(ETAPAS.CADASTRO)
+  } catch (error) {
+    if (isMounted) falhar('Erro na inicialização do portal', error)
+  }
+}
 
     inicializarPortal()
 

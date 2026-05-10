@@ -67,13 +67,64 @@ export async function POST(request) {
       const status = computeStatusFromSession(latestSession)
 
       if (status.state === 'authorized') {
-        return NextResponse.json({
-          ok: true,
-          alreadyAuthorized: true,
-          session: latestSession,
-          status,
-        })
-      }
+  try {
+    await logRouterAction({
+      authSessionId: latestSession.id,
+      action: 'reauthorize_bypass',
+      status: 'success',
+      requestPayload: {
+        hotspotSlug,
+        leadId: lead.id,
+        clientMac,
+        clientIp,
+        reason: 'session_already_authorized_reensure_routeros',
+      },
+    })
+
+    const binding = await ensureBypassBinding({
+      macAddress: clientMac,
+      comment: `auth_session:${latestSession.id}`,
+    })
+
+    const authorizedSession = await markSessionAuthorized(
+      latestSession.id,
+      binding?.['.id'] || null
+    )
+
+    await logRouterAction({
+      authSessionId: latestSession.id,
+      action: 'reauthorize_bypass_result',
+      status: 'success',
+      responsePayload: binding,
+    })
+
+    return NextResponse.json({
+      ok: true,
+      alreadyAuthorized: true,
+      reauthorized: true,
+      session: authorizedSession,
+      binding,
+      status,
+    })
+  } catch (routerError) {
+    await markSessionError(latestSession.id, routerError.message || 'Falha ao reautorizar no RouterOS')
+
+    await logRouterAction({
+      authSessionId: latestSession.id,
+      action: 'reauthorize_bypass_result',
+      status: 'error',
+      errorMessage: routerError.message || 'Falha ao reautorizar no RouterOS',
+    })
+
+    return NextResponse.json(
+      {
+        ok: false,
+        error: routerError.message || 'Falha ao reautorizar no MikroTik',
+      },
+      { status: 500 }
+    )
+  }
+}
 
       if (status.state === 'cooldown') {
         return NextResponse.json(
