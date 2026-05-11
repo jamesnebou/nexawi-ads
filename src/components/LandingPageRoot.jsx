@@ -946,7 +946,7 @@ useEffect(() => {
         </main>
 
         {/* Faixa premium entre seção 1 e 2 */}
-g<section className="relative z-30 py-4 md:py-6 overflow-hidden">
+<section className="relative z-30 py-4 md:py-6 overflow-hidden">
   {/* full-bleed real */}
   <div className="relative left-1/2 w-screen -translate-x-1/2">
     <div className="relative overflow-hidden border-y border-[#6be12f]/35 bg-[#6be12f]/10 backdrop-blur-xl shadow-[0_0_40px_rgba(107,225,47,0.22)]">
