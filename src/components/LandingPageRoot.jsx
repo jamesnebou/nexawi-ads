@@ -509,6 +509,144 @@ useEffect(() => {
   box-shadow: 0 0 14px rgba(107,225,47,.18);
 }
 
+/* ===== RIBBON DISRUPTIVA ===== */
+.nexa-ribbon-shell {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(107, 225, 47, 0.32);
+  border-bottom: 1px solid rgba(107, 225, 47, 0.22);
+  background:
+    linear-gradient(180deg, rgba(107,225,47,.10), rgba(107,225,47,.04)),
+    linear-gradient(90deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+  backdrop-filter: blur(8px);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.15),
+    0 0 40px rgba(107,225,47,.12);
+  transform: translateZ(0);
+}
+
+.nexa-ribbon-glow {
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(circle at 50% 50%, rgba(107,225,47,.18), transparent 55%);
+  filter: blur(30px);
+  pointer-events: none;
+  animation: nexaHue 8s linear infinite;
+}
+
+.nexa-ribbon-noise {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: .10;
+  background-image:
+    radial-gradient(rgba(255,255,255,.45) 0.4px, transparent 0.7px);
+  background-size: 3px 3px;
+  mix-blend-mode: soft-light;
+}
+
+.nexa-ribbon-track {
+  display: flex;
+  width: max-content;
+  gap: 12px;
+  padding: 9px 0;
+  will-change: transform;
+}
+
+.nexa-ribbon-track-a {
+  animation: nexaMarqueeA 18s linear infinite;
+}
+
+.nexa-ribbon-track-b {
+  animation: nexaMarqueeB 24s linear infinite;
+  opacity: .72;
+  padding-top: 0;
+  padding-bottom: 10px;
+}
+
+.nexa-ribbon-chip {
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-size: 10px;
+  font-weight: 900;
+  color: #e9ffe2;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(107,225,47,.45);
+  background: linear-gradient(
+    90deg,
+    rgba(107,225,47,.26),
+    rgba(107,225,47,.08) 40%,
+    rgba(255,255,255,.10) 55%,
+    rgba(107,225,47,.22) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,.25),
+    0 0 18px rgba(107,225,47,.18);
+}
+
+.nexa-ribbon-chip.alt {
+  color: #d5ffca;
+  border-color: rgba(140,240,89,.35);
+  background: linear-gradient(
+    90deg,
+    rgba(140,240,89,.20),
+    rgba(107,225,47,.06) 45%,
+    rgba(255,255,255,.08) 60%,
+    rgba(140,240,89,.18)
+  );
+}
+
+.nexa-ribbon-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22%;
+  left: -30%;
+  pointer-events: none;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,.00) 15%,
+    rgba(255,255,255,.28) 45%,
+    rgba(255,255,255,.00) 85%,
+    transparent 100%
+  );
+  transform: skewX(-18deg);
+  animation: nexaSweep 3.4s ease-in-out infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes nexaMarqueeA {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes nexaMarqueeB {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes nexaSweep {
+  0% { left: -30%; opacity: 0; }
+  20% { opacity: .9; }
+  100% { left: 110%; opacity: 0; }
+}
+
+@keyframes nexaHue {
+  0% { filter: blur(30px) hue-rotate(0deg); }
+  100% { filter: blur(30px) hue-rotate(18deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nexa-ribbon-track-a,
+  .nexa-ribbon-track-b,
+  .nexa-ribbon-sweep,
+  .nexa-ribbon-glow {
+    animation: none !important;
+  }
+}
 
         `}</style>
 
@@ -673,6 +811,39 @@ useEffect(() => {
       </div>
       <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#050505] to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#050505] to-transparent" />
+    </div>
+  </div>
+</section>
+
+{/* FAIXA DISRUPTIVA FULL-WIDTH */}
+<section className="relative z-30 my-4 md:my-6">
+  <div className="relative left-1/2 w-screen -translate-x-1/2 px-0">
+    <div className="nexa-ribbon-shell">
+      {/* brilho de fundo */}
+      <div className="nexa-ribbon-glow" />
+      {/* ruído holográfico */}
+      <div className="nexa-ribbon-noise" />
+
+      {/* trilha A */}
+      <div className="nexa-ribbon-track nexa-ribbon-track-a">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span key={`a-${i}`} className="nexa-ribbon-chip">
+            NexaWi • Conectando o seu cliente ao seu negócio!
+          </span>
+        ))}
+      </div>
+
+      {/* trilha B (contrafluxo) */}
+      <div className="nexa-ribbon-track nexa-ribbon-track-b">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span key={`b-${i}`} className="nexa-ribbon-chip alt">
+            atenção local • impacto imediato • leads reais
+          </span>
+        ))}
+      </div>
+
+      {/* varredura premium */}
+      <div className="nexa-ribbon-sweep" />
     </div>
   </div>
 </section>
