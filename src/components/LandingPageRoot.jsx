@@ -946,76 +946,7 @@ useEffect(() => {
         </main>
 
         {/* Faixa premium entre seção 1 e 2 */}
-<section className="relative z-20 py-5 md:py-6 overflow-hidden">
-  <div className="mx-auto max-w-7xl px-6">
-    <div className="relative rounded-2xl border border-[#6be12f]/35 bg-[#6be12f]/10 backdrop-blur-xl shadow-[0_0_30px_rgba(107,225,47,0.18)] overflow-hidden">
-      <div className="marquee-track py-3 md:py-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <span key={i} className="marquee-chip">
-            NexaWi • Conectando o seu cliente ao seu negócio!
-          </span>
-        ))}
-      </div>
-      <div className="pointer-events-none absolute inset-y-0 left-0 w-20 bg-gradient-to-r from-[#050505] to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#050505] to-transparent" />
-    </div>
-  </div>
-</section>
-
-{/* FAIXA DISRUPTIVA FULL-WIDTH */}
-<section className="relative z-30 my-4 md:my-6">
-  <div className="relative left-1/2 w-screen -translate-x-1/2 px-0">
-    <div className="nexa-ribbon-shell">
-      {/* brilho de fundo */}
-      <div className="nexa-ribbon-glow" />
-      {/* ruído holográfico */}
-      <div className="nexa-ribbon-noise" />
-
-      {/* trilha A */}
-      <div className="nexa-ribbon-track nexa-ribbon-track-a">
-        {Array.from({ length: 14 }).map((_, i) => (
-          <span key={`a-${i}`} className="nexa-ribbon-chip">
-            NexaWi • Conectando o seu cliente ao seu negócio!
-          </span>
-        ))}
-      </div>
-
-      {/* trilha B (contrafluxo) */}
-      <div className="nexa-ribbon-track nexa-ribbon-track-b">
-        {Array.from({ length: 14 }).map((_, i) => (
-          <span key={`b-${i}`} className="nexa-ribbon-chip alt">
-            atenção local • impacto imediato • leads reais
-          </span>
-        ))}
-      </div>
-
-      {/* varredura premium */}
-      <div className="nexa-ribbon-sweep" />
-    </div>
-  </div>
-</section>
-
-{/* FAIXAS CRUZADAS EM X */}
-<section className="relative z-30 h-[120px] md:h-[150px] my-3 md:my-6 overflow-hidden pointer-events-none">
-  {/* Faixa de trás (branca e desfocada) */}
-  <div className="x-ribbon x-ribbon-back">
-    <div className="x-ribbon-fill" />
-  </div>
-
-  {/* Faixa da frente (verde + texto grande) */}
-  <div className="x-ribbon x-ribbon-front">
-    <div className="x-ribbon-marquee">
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
-    </div>
-  </div>
-</section>
-
-<section className="relative z-30 py-4 md:py-6 overflow-hidden">
+g<section className="relative z-30 py-4 md:py-6 overflow-hidden">
   {/* full-bleed real */}
   <div className="relative left-1/2 w-screen -translate-x-1/2">
     <div className="relative overflow-hidden border-y border-[#6be12f]/35 bg-[#6be12f]/10 backdrop-blur-xl shadow-[0_0_40px_rgba(107,225,47,0.22)]">
