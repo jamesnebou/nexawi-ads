@@ -737,6 +737,64 @@ useEffect(() => {
   }
 }
 
+@keyframes marqueeFull {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes ribbonSweep {
+  0% { left: -25%; opacity: 0; }
+  20% { opacity: .9; }
+  100% { left: 110%; opacity: 0; }
+}
+
+.marquee-track-full {
+  display: flex;
+  width: max-content;
+  white-space: nowrap;
+  animation: marqueeFull 16s linear infinite;
+  will-change: transform;
+}
+
+.marquee-text-full {
+  margin-right: 1.8rem;
+  font-size: clamp(0.95rem, 1.25vw, 1.2rem);
+  font-weight: 900;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+  color: #eaffdf;
+  text-shadow:
+    0 0 10px rgba(107,225,47,0.25),
+    0 1px 0 rgba(0,0,0,0.3);
+}
+
+.ribbon-sweep {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 18%;
+  left: -25%;
+  transform: skewX(-18deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.0) 20%,
+    rgba(255,255,255,0.28) 52%,
+    rgba(255,255,255,0.0) 85%,
+    transparent 100%
+  );
+  mix-blend-mode: screen;
+  pointer-events: none;
+  animation: ribbonSweep 3.2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track-full,
+  .ribbon-sweep {
+    animation: none !important;
+  }
+}
+
         `}</style>
 
         {/* Navbar */}
@@ -953,6 +1011,32 @@ useEffect(() => {
       <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
       <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
       <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+    </div>
+  </div>
+</section>
+
+<section className="relative z-30 py-4 md:py-6 overflow-hidden">
+  {/* full-bleed real */}
+  <div className="relative left-1/2 w-screen -translate-x-1/2">
+    <div className="relative overflow-hidden border-y border-[#6be12f]/35 bg-[#6be12f]/10 backdrop-blur-xl shadow-[0_0_40px_rgba(107,225,47,0.22)]">
+      {/* glow interno */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(107,225,47,0.18)_0%,rgba(107,225,47,0)_60%)]" />
+
+      {/* linha principal */}
+      <div className="marquee-track-full py-3 md:py-4">
+        {Array.from({ length: 14 }).map((_, i) => (
+          <span key={i} className="marquee-text-full">
+            NexaWi • Conectando o seu cliente ao seu negócio! •
+          </span>
+        ))}
+      </div>
+
+      {/* acabamento lateral */}
+      <div className="pointer-events-none absolute inset-y-0 left-0 w-24 md:w-40 bg-gradient-to-r from-[#050505] to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 w-24 md:w-40 bg-gradient-to-l from-[#050505] to-transparent" />
+
+      {/* sweep premium */}
+      <div className="ribbon-sweep" />
     </div>
   </div>
 </section>
