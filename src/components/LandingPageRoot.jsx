@@ -648,6 +648,95 @@ useEffect(() => {
   }
 }
 
+
+/* ===== X RIBBON ===== */
+.x-ribbon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160vw; /* passa de fora a fora com sobra */
+  transform-origin: center;
+  border-radius: 999px;
+}
+
+/* Trás: branca desfocada */
+.x-ribbon-back {
+  height: 54px;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  z-index: 1;
+  filter: blur(6px);
+  opacity: 0.75;
+}
+
+.x-ribbon-back .x-ribbon-fill {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.12),
+    rgba(255,255,255,0.45),
+    rgba(255,255,255,0.12)
+  );
+  box-shadow:
+    0 0 30px rgba(255,255,255,0.25),
+    inset 0 1px 0 rgba(255,255,255,0.35);
+}
+
+/* Frente: verde com texto */
+.x-ribbon-front {
+  height: 62px;
+  transform: translate(-50%, -50%) rotate(7deg);
+  z-index: 2;
+  background: linear-gradient(
+    90deg,
+    rgba(107,225,47,0.28),
+    rgba(107,225,47,0.72),
+    rgba(107,225,47,0.28)
+  );
+  border-top: 1px solid rgba(107,225,47,0.45);
+  border-bottom: 1px solid rgba(107,225,47,0.45);
+  box-shadow:
+    0 0 30px rgba(107,225,47,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+  overflow: hidden;
+  backdrop-filter: blur(4px);
+}
+
+.x-ribbon-marquee {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  width: max-content;
+  white-space: nowrap;
+  animation: xMarquee 18s linear infinite;
+}
+
+.x-ribbon-marquee span {
+  font-size: clamp(1rem, 1.8vw, 1.35rem); /* texto maior */
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  color: #0b0b0b;
+  text-transform: uppercase;
+  margin-right: 2rem;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.25);
+}
+
+@keyframes xMarquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@media (max-width: 768px) {
+  .x-ribbon-back { height: 44px; }
+  .x-ribbon-front { height: 50px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .x-ribbon-marquee {
+    animation: none !important;
+  }
+}
+
         `}</style>
 
         {/* Navbar */}
@@ -844,6 +933,26 @@ useEffect(() => {
 
       {/* varredura premium */}
       <div className="nexa-ribbon-sweep" />
+    </div>
+  </div>
+</section>
+
+{/* FAIXAS CRUZADAS EM X */}
+<section className="relative z-30 h-[120px] md:h-[150px] my-3 md:my-6 overflow-hidden pointer-events-none">
+  {/* Faixa de trás (branca e desfocada) */}
+  <div className="x-ribbon x-ribbon-back">
+    <div className="x-ribbon-fill" />
+  </div>
+
+  {/* Faixa da frente (verde + texto grande) */}
+  <div className="x-ribbon x-ribbon-front">
+    <div className="x-ribbon-marquee">
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
+      <span>NexaWi - Conectando o seu cliente ao seu negócio! • </span>
     </div>
   </div>
 </section>
