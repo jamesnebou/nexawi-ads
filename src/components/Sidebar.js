@@ -34,6 +34,7 @@ import {
   LifeBuoy,
   Bell,
   Network,
+  Router as RouterIcon,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -66,7 +67,7 @@ const menu = [
   {
   label: 'MikroTiks',
   path: '/dashboard/mikrotiks',
-  icon: Router,
+  icon: RouterIcon,
   module: 'hotspots',
 },
   {
