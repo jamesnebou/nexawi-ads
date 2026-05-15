@@ -199,6 +199,12 @@ export default function ControleRedePage() {
 
   const query = new URLSearchParams()
 
+console.log('Controle de Rede params:', {
+  hotspotIdFromUrl,
+  hotspotSlugFromUrl,
+  currentUrl: window.location.href,
+})
+
   if (hotspotIdFromUrl) {
     query.set('hotspotId', hotspotIdFromUrl)
   }
@@ -322,8 +328,8 @@ export default function ControleRedePage() {
 
 
   useEffect(() => {
-    carregarStatus()
-  }, [])
+  carregarStatus()
+}, [hotspotIdFromUrl, hotspotSlugFromUrl])
 
   const canUpdate = Boolean(permissions.update)
 
