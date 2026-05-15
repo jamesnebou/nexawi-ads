@@ -64,6 +64,12 @@ const menu = [
     module: 'hotspots',
   },
   {
+  label: 'MikroTiks',
+  path: '/dashboard/mikrotiks',
+  icon: Router,
+  module: 'hotspots',
+},
+  {
   label: 'Controle de Rede',
   path: '/dashboard/rede',
   icon: Network,

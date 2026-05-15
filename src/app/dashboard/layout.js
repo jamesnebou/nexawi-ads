@@ -44,6 +44,12 @@ const rotasProtegidas = [
     label: 'Hotspots',
   },
   {
+  path: '/dashboard/mikrotiks',
+  module: 'hotspots',
+  action: 'view',
+  label: 'MikroTiks',
+},
+  {
   path: '/dashboard/rede',
   module: 'hotspots',
   action: 'view',
