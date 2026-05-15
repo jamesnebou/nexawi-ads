@@ -934,7 +934,7 @@ useEffect(() => {
           {/* Coluna Direita: Mockup */}
           <div
             className="flex-1 flex justify-center lg:justify-end relative"
-            style={{ animation: "float 6s ease-in-out infinite" }}
+            style={{ animation: "float 5s ease-in-out infinite" }}
           >
             <div className="absolute inset-0 bg-[#6be12f]/20 blur-[100px] rounded-full" />
             <img

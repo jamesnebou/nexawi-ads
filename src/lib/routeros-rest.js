@@ -500,4 +500,322 @@ export async function cleanupClientAccess({ macAddress } = {}) {
   }
 }
 
+const NEXAWI_POLICY_PREFIX = 'NEXAWI_'
+
+function getNexawiPolicyConfig(options = {}) {
+  return {
+    hotspotSubnet:
+      options.hotspotSubnet ||
+      process.env.NEXAWI_HOTSPOT_SUBNET ||
+      '192.168.88.0/24',
+    blockQuic: options.blockQuic !== false,
+    blockTorrent: options.blockTorrent !== false,
+    blockGames: options.blockGames !== false,
+    blockTlsGames: options.blockTlsGames !== false,
+    forceDns: options.forceDns !== false,
+  }
+}
+
+function isNexawiPolicyRule(item = {}) {
+  return String(item.comment || '').startsWith(NEXAWI_POLICY_PREFIX)
+}
+
+async function listFirewallFilters() {
+  const data = await routerosFetch('/ip/firewall/filter')
+  return Array.isArray(data) ? data : []
+}
+
+async function listFirewallNatRules() {
+  const data = await routerosFetch('/ip/firewall/nat')
+  return Array.isArray(data) ? data : []
+}
+
+async function addFirewallFilterRule(payload) {
+  return routerosFetch('/ip/firewall/filter', {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
+async function addFirewallNatRule(payload) {
+  return routerosFetch('/ip/firewall/nat', {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
+async function tryEnsureDnsSettings() {
+  const attempts = [
+    {
+      path: '/ip/dns/set',
+      method: 'POST',
+      body: {
+        'allow-remote-requests': 'yes',
+        servers: '1.1.1.1,8.8.8.8',
+      },
+    },
+    {
+      path: '/ip/dns',
+      method: 'PATCH',
+      body: {
+        'allow-remote-requests': 'yes',
+        servers: '1.1.1.1,8.8.8.8',
+      },
+    },
+  ]
+
+  let lastError = null
+
+  for (const attempt of attempts) {
+    try {
+      const result = await routerosFetch(attempt.path, {
+        method: attempt.method,
+        body: attempt.body,
+      })
+
+      return {
+        ok: true,
+        path: attempt.path,
+        result,
+      }
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  return {
+    ok: false,
+    skipped: true,
+    error: lastError?.message || 'Não foi possível ajustar DNS via REST',
+  }
+}
+
+export async function resetNexawiNetworkPolicy() {
+  const [filters, natRules] = await Promise.all([
+    listFirewallFilters(),
+    listFirewallNatRules(),
+  ])
+
+  const filterRules = filters.filter(isNexawiPolicyRule)
+  const natPolicyRules = natRules.filter(isNexawiPolicyRule)
+
+  for (const item of filterRules) {
+    if (!item['.id']) continue
+
+    await routerosFetch(`/ip/firewall/filter/${encodeURIComponent(item['.id'])}`, {
+      method: 'DELETE',
+    })
+  }
+
+  for (const item of natPolicyRules) {
+    if (!item['.id']) continue
+
+    await routerosFetch(`/ip/firewall/nat/${encodeURIComponent(item['.id'])}`, {
+      method: 'DELETE',
+    })
+  }
+
+  return {
+    ok: true,
+    removedFilters: filterRules.length,
+    removedNatRules: natPolicyRules.length,
+  }
+}
+
+export async function getNexawiNetworkPolicyStatus() {
+  const [filters, natRules] = await Promise.all([
+    listFirewallFilters(),
+    listFirewallNatRules(),
+  ])
+
+  const filterRules = filters
+    .filter(isNexawiPolicyRule)
+    .map((item) => ({
+      id: item['.id'] || '',
+      chain: item.chain || '',
+      action: item.action || '',
+      protocol: item.protocol || '',
+      srcAddress: item['src-address'] || '',
+      dstPort: item['dst-port'] || '',
+      tlsHost: item['tls-host'] || '',
+      comment: item.comment || '',
+      disabled: routerFlag(item.disabled),
+      invalid: routerFlag(item.invalid),
+      bytes: item.bytes || '',
+      packets: item.packets || '',
+    }))
+
+  const natPolicyRules = natRules
+    .filter(isNexawiPolicyRule)
+    .map((item) => ({
+      id: item['.id'] || '',
+      chain: item.chain || '',
+      action: item.action || '',
+      protocol: item.protocol || '',
+      srcAddress: item['src-address'] || '',
+      dstPort: item['dst-port'] || '',
+      toPorts: item['to-ports'] || '',
+      comment: item.comment || '',
+      disabled: routerFlag(item.disabled),
+      invalid: routerFlag(item.invalid),
+      bytes: item.bytes || '',
+      packets: item.packets || '',
+    }))
+
+  return {
+    ok: true,
+    enabled: filterRules.length > 0 || natPolicyRules.length > 0,
+    filterCount: filterRules.length,
+    natCount: natPolicyRules.length,
+    filters: filterRules,
+    natRules: natPolicyRules,
+    checkedAt: new Date().toISOString(),
+  }
+}
+
+export async function applyNexawiNetworkPolicy(options = {}) {
+  const config = getNexawiPolicyConfig(options)
+  const hotspotSubnet = config.hotspotSubnet
+
+  const reset = await resetNexawiNetworkPolicy()
+  const dnsSettings = await tryEnsureDnsSettings()
+
+  const createdNatRules = []
+  const createdFilterRules = []
+
+  if (config.forceDns) {
+    createdNatRules.push(await addFirewallNatRule({
+      chain: 'dstnat',
+      action: 'redirect',
+      'to-ports': '53',
+      protocol: 'udp',
+      'src-address': hotspotSubnet,
+      'dst-port': '53',
+      comment: 'NEXAWI_FORCE_DNS_UDP',
+    }))
+
+    createdNatRules.push(await addFirewallNatRule({
+      chain: 'dstnat',
+      action: 'redirect',
+      'to-ports': '53',
+      protocol: 'tcp',
+      'src-address': hotspotSubnet,
+      'dst-port': '53',
+      comment: 'NEXAWI_FORCE_DNS_TCP',
+    }))
+  }
+
+  createdFilterRules.push(await addFirewallFilterRule({
+    chain: 'forward',
+    action: 'drop',
+    protocol: 'tcp',
+    'src-address': hotspotSubnet,
+    'dst-port': '853',
+    comment: 'NEXAWI_BLOCK_DOT_TCP',
+  }))
+
+  createdFilterRules.push(await addFirewallFilterRule({
+    chain: 'forward',
+    action: 'drop',
+    protocol: 'udp',
+    'src-address': hotspotSubnet,
+    'dst-port': '853',
+    comment: 'NEXAWI_BLOCK_DOT_UDP',
+  }))
+
+  if (config.blockQuic) {
+    createdFilterRules.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'udp',
+      'src-address': hotspotSubnet,
+      'dst-port': '443',
+      comment: 'NEXAWI_BLOCK_QUIC_UDP_443',
+    }))
+  }
+
+  if (config.blockTorrent) {
+    createdFilterRules.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'tcp',
+      'src-address': hotspotSubnet,
+      'dst-port': '6881-6999,51413,6969',
+      comment: 'NEXAWI_BLOCK_TORRENT_TCP',
+    }))
+
+    createdFilterRules.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'udp',
+      'src-address': hotspotSubnet,
+      'dst-port': '6881-6999,51413,6969',
+      comment: 'NEXAWI_BLOCK_TORRENT_UDP',
+    }))
+  }
+
+  if (config.blockGames) {
+    createdFilterRules.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'udp',
+      'src-address': hotspotSubnet,
+      'dst-port': '3074,3478-3480,3659,4380,7777-7790,27000-27200',
+      comment: 'NEXAWI_BLOCK_GAMES_UDP',
+    }))
+
+    createdFilterRules.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'tcp',
+      'src-address': hotspotSubnet,
+      'dst-port': '3074,27014-27050',
+      comment: 'NEXAWI_BLOCK_GAMES_TCP',
+    }))
+  }
+
+  if (config.blockTlsGames) {
+    const tlsHosts = [
+      ['*.roblox.com', 'NEXAWI_BLOCK_TLS_ROBLOX'],
+      ['*.rbxcdn.com', 'NEXAWI_BLOCK_TLS_RBXCDN'],
+      ['*.epicgames.com', 'NEXAWI_BLOCK_TLS_EPICGAMES'],
+      ['*.fortnite.com', 'NEXAWI_BLOCK_TLS_FORTNITE'],
+      ['*.steampowered.com', 'NEXAWI_BLOCK_TLS_STEAMPOWERED'],
+      ['*.steamcommunity.com', 'NEXAWI_BLOCK_TLS_STEAMCOMMUNITY'],
+      ['*.steamcontent.com', 'NEXAWI_BLOCK_TLS_STEAMCONTENT'],
+      ['*.riotgames.com', 'NEXAWI_BLOCK_TLS_RIOTGAMES'],
+      ['*.leagueoflegends.com', 'NEXAWI_BLOCK_TLS_LOL'],
+      ['*.valorant.com', 'NEXAWI_BLOCK_TLS_VALORANT'],
+      ['*.xboxlive.com', 'NEXAWI_BLOCK_TLS_XBOXLIVE'],
+      ['*.playstation.net', 'NEXAWI_BLOCK_TLS_PLAYSTATION'],
+    ]
+
+    for (const [tlsHost, comment] of tlsHosts) {
+      createdFilterRules.push(await addFirewallFilterRule({
+        chain: 'forward',
+        action: 'drop',
+        protocol: 'tcp',
+        'src-address': hotspotSubnet,
+        'dst-port': '443',
+        'tls-host': tlsHost,
+        comment,
+      }))
+    }
+  }
+
+  const status = await getNexawiNetworkPolicyStatus()
+
+  return {
+    ok: true,
+    hotspotSubnet,
+    config,
+    reset,
+    dnsSettings,
+    createdFilterRulesCount: createdFilterRules.length,
+    createdNatRulesCount: createdNatRules.length,
+    status,
+    appliedAt: new Date().toISOString(),
+  }
+}
+
 export { normalizeMac }

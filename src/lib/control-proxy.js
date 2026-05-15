@@ -13,12 +13,22 @@ export async function proxyControlRequest(request, targetPath, method = 'POST') 
   const url = `${baseUrl}${targetPath.startsWith('/') ? targetPath : `/${targetPath}`}`
   const body = method === 'GET' ? undefined : await request.text()
 
+  const headers = {
+    'Content-Type': request.headers.get('content-type') || 'application/json',
+  }
+
+  const controlSecret = request.headers.get('x-control-secret')
+  const cronSecret = request.headers.get('x-cron-secret')
+  const authorization = request.headers.get('authorization')
+
+  if (controlSecret) headers['x-control-secret'] = controlSecret
+  if (cronSecret) headers['x-cron-secret'] = cronSecret
+  if (authorization) headers.Authorization = authorization
+
   try {
     const response = await fetch(url, {
       method,
-      headers: {
-        'Content-Type': request.headers.get('content-type') || 'application/json',
-      },
+      headers,
       body,
       cache: 'no-store',
     })
