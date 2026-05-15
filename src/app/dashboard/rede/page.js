@@ -1,20 +1,25 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Activity,
   AlertTriangle,
+  ArrowLeft,
   CheckCircle2,
   CircleOff,
   Globe,
   Loader2,
+  MapPin,
   Network,
+  Plus,
   RefreshCcw,
   Router,
+  Server,
   ShieldCheck,
   ShieldOff,
+  Trash2,
   Wifi,
   Zap,
 } from 'lucide-react'
@@ -28,6 +33,26 @@ const DEFAULT_POLICY = {
   blockTorrent: true,
   blockGames: true,
   blockTlsGames: true,
+  downloadLimit: '10M',
+  uploadLimit: '3M',
+  customBlockedDomains: [],
+  customAllowedDomains: [],
+}
+
+function normalizeDomain(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0]
+    .split('?')[0]
+    .trim()
+}
+
+function isValidDomain(value = '') {
+  const domain = normalizeDomain(value)
+  return domain.includes('.') && domain.length >= 4 && !domain.includes(' ')
 }
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
@@ -119,6 +144,29 @@ function StatCard({ icon: Icon, label, value, accent = false }) {
   )
 }
 
+function InfoCard({ icon: Icon, label, value, description }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} className="text-[#6be12f]" />
+        <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600">
+          {label}
+        </p>
+      </div>
+
+      <p className="text-sm font-black text-white break-all">
+        {value || '—'}
+      </p>
+
+      {description && (
+        <p className="text-xs text-neutral-600 mt-1">
+          {description}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function RuleRow({ rule }) {
   const invalid = Boolean(rule.invalid)
   const disabled = Boolean(rule.disabled)
@@ -171,15 +219,113 @@ function RuleRow({ rule }) {
   )
 }
 
+function DomainManager({
+  title,
+  description,
+  value,
+  inputValue,
+  setInputValue,
+  onAdd,
+  onRemove,
+  disabled,
+  variant = 'blocked',
+}) {
+  const isAllowed = variant === 'allowed'
+
+  return (
+    <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
+      <div className="mb-4">
+        <p className="text-sm font-black text-white">{title}</p>
+        <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+          {description}
+        </p>
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          value={inputValue}
+          disabled={disabled}
+          onChange={(event) => setInputValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') {
+              event.preventDefault()
+              onAdd()
+            }
+          }}
+          placeholder={isAllowed ? 'ex: gov.br' : 'ex: tiktok.com'}
+          className="flex-1 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
+        />
+
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={onAdd}
+          className="inline-flex items-center justify-center rounded-2xl bg-[#6be12f] px-4 py-3 text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all"
+          title="Adicionar domínio"
+        >
+          <Plus size={18} />
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {value.length === 0 ? (
+          <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
+            <p className="text-xs font-bold text-neutral-500">
+              Nenhum domínio cadastrado.
+            </p>
+          </div>
+        ) : (
+          value.map((domain) => (
+            <div
+              key={domain}
+              className={`flex items-center justify-between gap-3 rounded-2xl border px-4 py-3 ${
+                isAllowed
+                  ? 'border-[#6be12f]/15 bg-[#6be12f]/5'
+                  : 'border-red-500/15 bg-red-500/5'
+              }`}
+            >
+              <p className="text-sm font-bold text-white break-all">
+                {domain}
+              </p>
+
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onRemove(domain)}
+                className="p-2 rounded-xl text-neutral-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
+                title="Remover domínio"
+              >
+                <Trash2 size={15} />
+              </button>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ControleRedePage() {
+  const router = useRouter()
   const searchParams = useSearchParams()
+
   const hotspotIdFromUrl = searchParams.get('hotspotId')
   const hotspotSlugFromUrl = searchParams.get('hotspotSlug')
+
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+
   const [status, setStatus] = useState(null)
   const [permissions, setPermissions] = useState({ view: false, update: false })
+
+  const [hotspot, setHotspot] = useState(null)
+  const [mikrotik, setMikrotik] = useState(null)
+
   const [policy, setPolicy] = useState(DEFAULT_POLICY)
+
+  const [blockedInput, setBlockedInput] = useState('')
+  const [allowedInput, setAllowedInput] = useState('')
+
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
@@ -193,145 +339,227 @@ export default function ControleRedePage() {
     return allRules.filter((rule) => rule.invalid)
   }, [allRules])
 
+  const canUpdate = Boolean(permissions.update)
+
   async function carregarStatus() {
-  setError('')
-  setMessage('')
+    setError('')
+    setMessage('')
 
-  const query = new URLSearchParams()
+    const query = new URLSearchParams()
 
-console.log('Controle de Rede params:', {
-  hotspotIdFromUrl,
-  hotspotSlugFromUrl,
-  currentUrl: window.location.href,
-})
-
-  if (hotspotIdFromUrl) {
-    query.set('hotspotId', hotspotIdFromUrl)
-  }
-
-  if (hotspotSlugFromUrl) {
-    query.set('hotspotSlug', hotspotSlugFromUrl)
-  }
-
-  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
-    setLoading(false)
-    setError('Selecione um hotspot para gerenciar a rede.')
-    return
-  }
-
-  try {
-    setLoading(true)
-
-    const data = await adminApiFetch(`/api/admin/rede/policy/status?${query.toString()}`)
-
-    setStatus(data.status)
-    setPermissions(data.permissions || { view: true, update: false })
-
-    if (data.policy) {
-      setPolicy({
-        hotspotSubnet: data.policy.hotspot_subnet || '192.168.88.0/24',
-        forceDns: data.policy.force_dns !== false,
-        blockQuic: data.policy.block_quic !== false,
-        blockTorrent: data.policy.block_torrent !== false,
-        blockGames: data.policy.block_games !== false,
-        blockTlsGames: data.policy.block_tls_games !== false,
-        downloadLimit: data.policy.download_limit || '10M',
-        uploadLimit: data.policy.upload_limit || '3M',
-      })
+    if (hotspotIdFromUrl) {
+      query.set('hotspotId', hotspotIdFromUrl)
     }
-  } catch (err) {
-    console.error('Erro ao carregar status da rede:', err)
-    setError(err.message || 'Erro ao carregar status da rede')
-  } finally {
-    setLoading(false)
+
+    if (hotspotSlugFromUrl) {
+      query.set('hotspotSlug', hotspotSlugFromUrl)
+    }
+
+    if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+      setLoading(false)
+      setError('Selecione um hotspot para gerenciar a rede.')
+      return
+    }
+
+    try {
+      setLoading(true)
+
+      const data = await adminApiFetch(`/api/admin/rede/policy/status?${query.toString()}`)
+
+      setStatus(data.status)
+      setPermissions(data.permissions || { view: true, update: false })
+      setHotspot(data.hotspot || null)
+      setMikrotik(data.router || null)
+
+      const blockedDomains =
+        data.domains
+          ?.filter((domain) => domain.type === 'blocked' && domain.enabled !== false)
+          .map((domain) => domain.domain) || []
+
+      const allowedDomains =
+        data.domains
+          ?.filter((domain) => domain.type === 'allowed' && domain.enabled !== false)
+          .map((domain) => domain.domain) || []
+
+      if (data.policy) {
+        setPolicy({
+          hotspotSubnet: data.policy.hotspot_subnet || '192.168.88.0/24',
+          forceDns: data.policy.force_dns !== false,
+          blockQuic: data.policy.block_quic !== false,
+          blockTorrent: data.policy.block_torrent !== false,
+          blockGames: data.policy.block_games !== false,
+          blockTlsGames: data.policy.block_tls_games !== false,
+          downloadLimit: data.policy.download_limit || '10M',
+          uploadLimit: data.policy.upload_limit || '3M',
+          customBlockedDomains: blockedDomains,
+          customAllowedDomains: allowedDomains,
+        })
+      } else {
+        setPolicy({
+          ...DEFAULT_POLICY,
+          customBlockedDomains: blockedDomains,
+          customAllowedDomains: allowedDomains,
+        })
+      }
+    } catch (err) {
+      console.error('Erro ao carregar status da rede:', err)
+      setError(err.message || 'Erro ao carregar status da rede')
+    } finally {
+      setLoading(false)
+    }
   }
-}
+
+  function addBlockedDomain() {
+    const domain = normalizeDomain(blockedInput)
+
+    if (!isValidDomain(domain)) {
+      setError('Informe um domínio válido para bloquear. Exemplo: tiktok.com')
+      return
+    }
+
+    setError('')
+
+    setPolicy((current) => {
+      const blocked = new Set(current.customBlockedDomains || [])
+      blocked.add(domain)
+
+      const allowed = new Set(current.customAllowedDomains || [])
+      allowed.delete(domain)
+
+      return {
+        ...current,
+        customBlockedDomains: Array.from(blocked),
+        customAllowedDomains: Array.from(allowed),
+      }
+    })
+
+    setBlockedInput('')
+  }
+
+  function addAllowedDomain() {
+    const domain = normalizeDomain(allowedInput)
+
+    if (!isValidDomain(domain)) {
+      setError('Informe um domínio válido para liberar. Exemplo: gov.br')
+      return
+    }
+
+    setError('')
+
+    setPolicy((current) => {
+      const allowed = new Set(current.customAllowedDomains || [])
+      allowed.add(domain)
+
+      const blocked = new Set(current.customBlockedDomains || [])
+      blocked.delete(domain)
+
+      return {
+        ...current,
+        customAllowedDomains: Array.from(allowed),
+        customBlockedDomains: Array.from(blocked),
+      }
+    })
+
+    setAllowedInput('')
+  }
+
+  function removeBlockedDomain(domain) {
+    setPolicy((current) => ({
+      ...current,
+      customBlockedDomains: (current.customBlockedDomains || []).filter((item) => item !== domain),
+    }))
+  }
+
+  function removeAllowedDomain(domain) {
+    setPolicy((current) => ({
+      ...current,
+      customAllowedDomains: (current.customAllowedDomains || []).filter((item) => item !== domain),
+    }))
+  }
 
   async function aplicarPolitica() {
-  setError('')
-  setMessage('')
+    setError('')
+    setMessage('')
 
-  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
-    setError('Selecione um hotspot antes de aplicar a política.')
-    return
+    if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+      setError('Selecione um hotspot antes de aplicar a política.')
+      return
+    }
+
+    try {
+      setProcessing(true)
+
+      const data = await adminApiFetch('/api/admin/rede/policy/apply', {
+        method: 'POST',
+        body: {
+          hotspotId: hotspotIdFromUrl,
+          hotspotSlug: hotspotSlugFromUrl,
+          hotspotSubnet: policy.hotspotSubnet,
+          forceDns: policy.forceDns,
+          blockQuic: policy.blockQuic,
+          blockTorrent: policy.blockTorrent,
+          blockGames: policy.blockGames,
+          blockTlsGames: policy.blockTlsGames,
+          downloadLimit: policy.downloadLimit || '10M',
+          uploadLimit: policy.uploadLimit || '3M',
+          customBlockedDomains: policy.customBlockedDomains || [],
+          customAllowedDomains: policy.customAllowedDomains || [],
+        },
+      })
+
+      setStatus(data.result?.status || null)
+      setHotspot(data.hotspot || hotspot)
+      setMikrotik(data.router || mikrotik)
+
+      setMessage('Política de rede aplicada com sucesso neste hotspot.')
+      await carregarStatus()
+    } catch (err) {
+      console.error('Erro ao aplicar política:', err)
+      setError(err.message || 'Erro ao aplicar política')
+    } finally {
+      setProcessing(false)
+    }
   }
-
-  try {
-    setProcessing(true)
-
-    const data = await adminApiFetch('/api/admin/rede/policy/apply', {
-      method: 'POST',
-      body: {
-        hotspotId: hotspotIdFromUrl,
-        hotspotSlug: hotspotSlugFromUrl,
-        hotspotSubnet: policy.hotspotSubnet,
-        forceDns: policy.forceDns,
-        blockQuic: policy.blockQuic,
-        blockTorrent: policy.blockTorrent,
-        blockGames: policy.blockGames,
-        blockTlsGames: policy.blockTlsGames,
-        downloadLimit: policy.downloadLimit || '10M',
-        uploadLimit: policy.uploadLimit || '3M',
-        customBlockedDomains: policy.customBlockedDomains || [],
-        customAllowedDomains: policy.customAllowedDomains || [],
-      },
-    })
-
-    setStatus(data.result?.status || null)
-    setMessage('Política de rede aplicada com sucesso.')
-  } catch (err) {
-    console.error('Erro ao aplicar política:', err)
-    setError(err.message || 'Erro ao aplicar política')
-  } finally {
-    setProcessing(false)
-  }
-}
 
   async function resetarPolitica() {
-  const confirmar = window.confirm(
-    'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenção.'
-  )
+    const confirmar = window.confirm(
+      'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenção.'
+    )
 
-  if (!confirmar) return
+    if (!confirmar) return
 
-  setError('')
-  setMessage('')
+    setError('')
+    setMessage('')
 
-  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
-    setError('Selecione um hotspot antes de resetar a política.')
-    return
+    if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+      setError('Selecione um hotspot antes de resetar a política.')
+      return
+    }
+
+    try {
+      setProcessing(true)
+
+      await adminApiFetch('/api/admin/rede/policy/reset', {
+        method: 'POST',
+        body: {
+          hotspotId: hotspotIdFromUrl,
+          hotspotSlug: hotspotSlugFromUrl,
+        },
+      })
+
+      setMessage('Política removida com sucesso deste hotspot.')
+      await carregarStatus()
+    } catch (err) {
+      console.error('Erro ao resetar política:', err)
+      setError(err.message || 'Erro ao resetar política')
+    } finally {
+      setProcessing(false)
+    }
   }
-
-  try {
-    setProcessing(true)
-
-    await adminApiFetch('/api/admin/rede/policy/reset', {
-      method: 'POST',
-      body: {
-        hotspotId: hotspotIdFromUrl,
-        hotspotSlug: hotspotSlugFromUrl,
-      },
-    })
-
-    setMessage('Política removida com sucesso.')
-    await carregarStatus()
-  } catch (err) {
-    console.error('Erro ao resetar política:', err)
-    setError(err.message || 'Erro ao resetar política')
-  } finally {
-    setProcessing(false)
-  }
-}
-
-
-
-
 
   useEffect(() => {
-  carregarStatus()
-}, [hotspotIdFromUrl, hotspotSlugFromUrl])
-
-  const canUpdate = Boolean(permissions.update)
+    carregarStatus()
+  }, [hotspotIdFromUrl, hotspotSlugFromUrl])
 
   if (loading) {
     return (
@@ -352,7 +580,16 @@ console.log('Controle de Rede params:', {
 
       <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-extrabold text-[#8cf059] mb-4">
+          <button
+            type="button"
+            onClick={() => router.push('/dashboard/hotspots')}
+            className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-all mb-4"
+          >
+            <ArrowLeft size={14} />
+            Voltar para Hotspots
+          </button>
+
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-extrabold text-[#8cf059] mb-4 ml-0 lg:ml-3">
             <Network size={14} />
             Controle operacional do hotspot
           </div>
@@ -362,7 +599,7 @@ console.log('Controle de Rede params:', {
           </h1>
 
           <p className="text-sm text-neutral-500 mt-2 max-w-2xl leading-relaxed">
-            Aplique, monitore e remova políticas de DNS, jogos, torrent, QUIC e domínios bloqueados diretamente no MikroTik.
+            Configure bloqueios, velocidade, DNS e domínios diretamente no MikroTik vinculado ao hotspot selecionado.
           </p>
         </div>
 
@@ -432,8 +669,50 @@ console.log('Controle de Rede params:', {
         />
       </section>
 
-      <section className="relative z-10 grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-6">
+      <section className="relative z-10 grid grid-cols-1 xl:grid-cols-[460px_1fr] gap-6">
         <div className="space-y-6">
+          <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+                <Wifi size={19} className="text-[#6be12f]" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-black text-white">Hotspot selecionado</h2>
+                <p className="text-xs text-neutral-500 font-medium">
+                  Política aplicada somente neste ponto
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3">
+              <InfoCard
+                icon={Wifi}
+                label="Hotspot"
+                value={hotspot?.nome || hotspot?.slug || 'Não identificado'}
+                description={hotspot?.slug ? `/portal/${hotspot.slug}` : ''}
+              />
+              <InfoCard
+                icon={MapPin}
+                label="Status"
+                value={hotspot?.status || '—'}
+                description="Status cadastral do hotspot"
+              />
+              <InfoCard
+                icon={Server}
+                label="MikroTik"
+                value={mikrotik?.nome || 'Sem MikroTik vinculado'}
+                description={mikrotik?.base_url || ''}
+              />
+              <InfoCard
+                icon={Router}
+                label="Hotspot Server"
+                value={mikrotik?.hotspot_server || 'hotspot1'}
+                description="Servidor hotspot usado no RouterOS"
+              />
+            </div>
+          </div>
+
           <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
@@ -459,6 +738,34 @@ console.log('Controle de Rede params:', {
                   onChange={(e) => setPolicy({ ...policy, hotspotSubnet: e.target.value })}
                   className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] uppercase tracking-widest font-bold text-neutral-500 mb-2">
+                    Download
+                  </label>
+                  <input
+                    value={policy.downloadLimit}
+                    disabled={!canUpdate}
+                    onChange={(e) => setPolicy({ ...policy, downloadLimit: e.target.value })}
+                    placeholder="10M"
+                    className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] uppercase tracking-widest font-bold text-neutral-500 mb-2">
+                    Upload
+                  </label>
+                  <input
+                    value={policy.uploadLimit}
+                    disabled={!canUpdate}
+                    onChange={(e) => setPolicy({ ...policy, uploadLimit: e.target.value })}
+                    placeholder="3M"
+                    className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
+                  />
+                </div>
               </div>
 
               <ToggleCard
@@ -515,38 +822,66 @@ console.log('Controle de Rede params:', {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-lg font-black text-white">Regras ativas</h2>
-              <p className="text-xs text-neutral-500 mt-1">
-                Lista lida diretamente do MikroTik via Control API.
-              </p>
-            </div>
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DomainManager
+              title="Sites bloqueados"
+              description="Domínios que devem ser bloqueados neste hotspot. Ex: tiktok.com, bet365.com, netflix.com"
+              value={policy.customBlockedDomains || []}
+              inputValue={blockedInput}
+              setInputValue={setBlockedInput}
+              disabled={!canUpdate || processing}
+              onAdd={addBlockedDomain}
+              onRemove={removeBlockedDomain}
+              variant="blocked"
+            />
 
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
-              <Activity size={14} />
-              {allRules.length} regras
-            </div>
+            <DomainManager
+              title="Sites liberados"
+              description="Domínios que devem ser priorizados/liberados antes das regras de bloqueio. Ex: gov.br, banco.com.br"
+              value={policy.customAllowedDomains || []}
+              inputValue={allowedInput}
+              setInputValue={setAllowedInput}
+              disabled={!canUpdate || processing}
+              onAdd={addAllowedDomain}
+              onRemove={removeAllowedDomain}
+              variant="allowed"
+            />
           </div>
 
-          {allRules.length === 0 ? (
-            <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
-              <Wifi className="mx-auto text-neutral-600 mb-3" size={32} />
-              <p className="text-sm font-bold text-neutral-400">
-                Nenhuma regra NexaWi ativa no MikroTik.
-              </p>
-              <p className="text-xs text-neutral-600 mt-1">
-                Clique em “Aplicar Política” para ativar o controle de rede.
-              </p>
+          <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-lg font-black text-white">Regras ativas</h2>
+                <p className="text-xs text-neutral-500 mt-1">
+                  Lista lida diretamente do MikroTik via Control API.
+                </p>
+              </div>
+
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
+                <Activity size={14} />
+                {allRules.length} regras
+              </div>
             </div>
-          ) : (
-            <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1 custom-scrollbar">
-              {allRules.map((rule) => (
-                <RuleRow key={`${rule.comment}-${rule.id}`} rule={rule} />
-              ))}
-            </div>
-          )}
+
+            {allRules.length === 0 ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
+                <Wifi className="mx-auto text-neutral-600 mb-3" size={32} />
+                <p className="text-sm font-bold text-neutral-400">
+                  Nenhuma regra NexaWi ativa no MikroTik.
+                </p>
+                <p className="text-xs text-neutral-600 mt-1">
+                  Clique em “Aplicar Política” para ativar o controle de rede.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1 custom-scrollbar">
+                {allRules.map((rule) => (
+                  <RuleRow key={`${rule.comment}-${rule.id}`} rule={rule} />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
