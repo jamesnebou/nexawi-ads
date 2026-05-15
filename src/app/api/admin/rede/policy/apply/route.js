@@ -1,19 +1,34 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
+
+function normalizeDomain(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0]
+    .split('?')[0]
+    .trim()
+}
+
+function uniqueDomains(list = []) {
+  return [...new Set(
+    (list || [])
+      .map(normalizeDomain)
+      .filter((item) => item && item.includes('.'))
+  )]
+}
 
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
   const secret = process.env.NEXAWI_CRON_SECRET
 
-  if (!baseUrl) {
-    throw new Error('CONTROL_API_BASE_URL não configurado')
-  }
-
-  if (!secret) {
-    throw new Error('NEXAWI_CRON_SECRET não configurado')
-  }
+  if (!baseUrl) throw new Error('CONTROL_API_BASE_URL não configurado')
+  if (!secret) throw new Error('NEXAWI_CRON_SECRET não configurado')
 
   const response = await fetch(`${baseUrl}${path}`, {
     method,
@@ -36,10 +51,48 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Erro ao aplicar política na Control API')
+    throw new Error(data?.error || 'Erro na Control API')
   }
 
   return data
+}
+
+async function resolveNetworkContext({ hotspotId, hotspotSlug }) {
+  let query = supabaseAdmin
+    .from('hotspots')
+    .select('id, nome, slug, status, router_id')
+
+  if (hotspotId) {
+    query = query.eq('id', hotspotId)
+  } else {
+    query = query.eq('slug', hotspotSlug)
+  }
+
+  const { data: hotspot, error: hotspotError } = await query.maybeSingle()
+
+  if (hotspotError) throw hotspotError
+  if (!hotspot) throw new Error('Hotspot não encontrado')
+  if (!hotspot.router_id) throw new Error('Hotspot sem MikroTik vinculado')
+
+  const { data: router, error: routerError } = await supabaseAdmin
+    .from('network_routers')
+    .select('*')
+    .eq('id', hotspot.router_id)
+    .maybeSingle()
+
+  if (routerError) throw routerError
+  if (!router) throw new Error('MikroTik vinculado não encontrado')
+
+  return {
+    hotspot,
+    router,
+    routerConfig: {
+      baseUrl: router.base_url,
+      username: router.username,
+      password: router.password,
+      hotspotServer: router.hotspot_server || 'hotspot1',
+    },
+  }
 }
 
 export async function POST(request) {
@@ -58,23 +111,99 @@ export async function POST(request) {
 
   try {
     const body = await request.json().catch(() => ({}))
+    const hotspotId = body.hotspotId
+    const hotspotSlug = body.hotspotSlug
 
-    const payload = {
-      hotspotSubnet: body.hotspotSubnet || process.env.NEXAWI_HOTSPOT_SUBNET || '192.168.88.0/24',
-      forceDns: body.forceDns !== false,
-      blockQuic: body.blockQuic !== false,
-      blockTorrent: body.blockTorrent !== false,
-      blockGames: body.blockGames !== false,
-      blockTlsGames: body.blockTlsGames !== false,
+    if (!hotspotId && !hotspotSlug) {
+      throw new Error('hotspotId ou hotspotSlug é obrigatório')
+    }
+
+    const context = await resolveNetworkContext({ hotspotId, hotspotSlug })
+
+    const policyPayload = {
+      hotspot_id: context.hotspot.id,
+      router_id: context.router.id,
+      hotspot_subnet: body.hotspotSubnet || '192.168.88.0/24',
+      force_dns: body.forceDns !== false,
+      block_quic: body.blockQuic !== false,
+      block_torrent: body.blockTorrent !== false,
+      block_games: body.blockGames !== false,
+      block_tls_games: body.blockTlsGames !== false,
+      download_limit: body.downloadLimit || '10M',
+      upload_limit: body.uploadLimit || '3M',
+      active: true,
+      updated_at: new Date().toISOString(),
+    }
+
+    const { data: policy, error: policyError } = await supabaseAdmin
+      .from('network_policies')
+      .upsert([policyPayload], {
+        onConflict: 'hotspot_id',
+      })
+      .select('*')
+      .single()
+
+    if (policyError) throw policyError
+
+    const blockedDomains = uniqueDomains(body.customBlockedDomains || [])
+    const allowedDomains = uniqueDomains(body.customAllowedDomains || [])
+
+    await supabaseAdmin
+      .from('network_policy_domains')
+      .delete()
+      .eq('policy_id', policy.id)
+
+    const domainRows = [
+      ...blockedDomains.map((domain) => ({
+        policy_id: policy.id,
+        domain,
+        type: 'blocked',
+        enabled: true,
+      })),
+      ...allowedDomains.map((domain) => ({
+        policy_id: policy.id,
+        domain,
+        type: 'allowed',
+        enabled: true,
+      })),
+    ]
+
+    if (domainRows.length > 0) {
+      const { error: domainsInsertError } = await supabaseAdmin
+        .from('network_policy_domains')
+        .insert(domainRows)
+
+      if (domainsInsertError) throw domainsInsertError
     }
 
     const result = await callControlApi('/api/control/router/policy/apply', {
       method: 'POST',
-      body: payload,
+      body: {
+        routerConfig: context.routerConfig,
+        hotspotSubnet: policy.hotspot_subnet,
+        forceDns: policy.force_dns,
+        blockQuic: policy.block_quic,
+        blockTorrent: policy.block_torrent,
+        blockGames: policy.block_games,
+        blockTlsGames: policy.block_tls_games,
+        customBlockedDomains: blockedDomains,
+        customAllowedDomains: allowedDomains,
+      },
     })
 
     return NextResponse.json({
       ok: true,
+      hotspot: context.hotspot,
+      router: {
+        id: context.router.id,
+        nome: context.router.nome,
+        slug: context.router.slug,
+        base_url: context.router.base_url,
+        hotspot_server: context.router.hotspot_server,
+        status: context.router.status,
+      },
+      policy,
+      domains: domainRows,
       result,
     })
   } catch (error) {
