@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Activity,
@@ -171,6 +172,9 @@ function RuleRow({ rule }) {
 }
 
 export default function ControleRedePage() {
+  const searchParams = useSearchParams()
+  const hotspotIdFromUrl = searchParams.get('hotspotId')
+  const hotspotSlugFromUrl = searchParams.get('hotspotSlug')
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [status, setStatus] = useState(null)
@@ -190,71 +194,132 @@ export default function ControleRedePage() {
   }, [allRules])
 
   async function carregarStatus() {
-    setError('')
-    setMessage('')
+  setError('')
+  setMessage('')
 
-    try {
-      setLoading(true)
-      const data = await adminApiFetch('/api/admin/rede/policy/status')
+  const query = new URLSearchParams()
 
-      setStatus(data.status)
-      setPermissions(data.permissions || { view: true, update: false })
-    } catch (err) {
-      console.error('Erro ao carregar status da rede:', err)
-      setError(err.message || 'Erro ao carregar status da rede')
-    } finally {
-      setLoading(false)
-    }
+  if (hotspotIdFromUrl) {
+    query.set('hotspotId', hotspotIdFromUrl)
   }
+
+  if (hotspotSlugFromUrl) {
+    query.set('hotspotSlug', hotspotSlugFromUrl)
+  }
+
+  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+    setLoading(false)
+    setError('Selecione um hotspot para gerenciar a rede.')
+    return
+  }
+
+  try {
+    setLoading(true)
+
+    const data = await adminApiFetch(`/api/admin/rede/policy/status?${query.toString()}`)
+
+    setStatus(data.status)
+    setPermissions(data.permissions || { view: true, update: false })
+
+    if (data.policy) {
+      setPolicy({
+        hotspotSubnet: data.policy.hotspot_subnet || '192.168.88.0/24',
+        forceDns: data.policy.force_dns !== false,
+        blockQuic: data.policy.block_quic !== false,
+        blockTorrent: data.policy.block_torrent !== false,
+        blockGames: data.policy.block_games !== false,
+        blockTlsGames: data.policy.block_tls_games !== false,
+        downloadLimit: data.policy.download_limit || '10M',
+        uploadLimit: data.policy.upload_limit || '3M',
+      })
+    }
+  } catch (err) {
+    console.error('Erro ao carregar status da rede:', err)
+    setError(err.message || 'Erro ao carregar status da rede')
+  } finally {
+    setLoading(false)
+  }
+}
 
   async function aplicarPolitica() {
-    setError('')
-    setMessage('')
+  setError('')
+  setMessage('')
 
-    try {
-      setProcessing(true)
-
-      const data = await adminApiFetch('/api/admin/rede/policy/apply', {
-        method: 'POST',
-        body: policy,
-      })
-
-      setStatus(data.result?.status || null)
-      setMessage('Política de rede aplicada com sucesso.')
-    } catch (err) {
-      console.error('Erro ao aplicar política:', err)
-      setError(err.message || 'Erro ao aplicar política')
-    } finally {
-      setProcessing(false)
-    }
+  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+    setError('Selecione um hotspot antes de aplicar a política.')
+    return
   }
+
+  try {
+    setProcessing(true)
+
+    const data = await adminApiFetch('/api/admin/rede/policy/apply', {
+      method: 'POST',
+      body: {
+        hotspotId: hotspotIdFromUrl,
+        hotspotSlug: hotspotSlugFromUrl,
+        hotspotSubnet: policy.hotspotSubnet,
+        forceDns: policy.forceDns,
+        blockQuic: policy.blockQuic,
+        blockTorrent: policy.blockTorrent,
+        blockGames: policy.blockGames,
+        blockTlsGames: policy.blockTlsGames,
+        downloadLimit: policy.downloadLimit || '10M',
+        uploadLimit: policy.uploadLimit || '3M',
+        customBlockedDomains: policy.customBlockedDomains || [],
+        customAllowedDomains: policy.customAllowedDomains || [],
+      },
+    })
+
+    setStatus(data.result?.status || null)
+    setMessage('Política de rede aplicada com sucesso.')
+  } catch (err) {
+    console.error('Erro ao aplicar política:', err)
+    setError(err.message || 'Erro ao aplicar política')
+  } finally {
+    setProcessing(false)
+  }
+}
 
   async function resetarPolitica() {
-    const confirmar = window.confirm(
-      'Tem certeza que deseja remover todas as regras NexaWi de rede? Use apenas para manutenção.'
-    )
+  const confirmar = window.confirm(
+    'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenção.'
+  )
 
-    if (!confirmar) return
+  if (!confirmar) return
 
-    setError('')
-    setMessage('')
+  setError('')
+  setMessage('')
 
-    try {
-      setProcessing(true)
-
-      await adminApiFetch('/api/admin/rede/policy/reset', {
-        method: 'POST',
-      })
-
-      setMessage('Política removida com sucesso.')
-      await carregarStatus()
-    } catch (err) {
-      console.error('Erro ao resetar política:', err)
-      setError(err.message || 'Erro ao resetar política')
-    } finally {
-      setProcessing(false)
-    }
+  if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+    setError('Selecione um hotspot antes de resetar a política.')
+    return
   }
+
+  try {
+    setProcessing(true)
+
+    await adminApiFetch('/api/admin/rede/policy/reset', {
+      method: 'POST',
+      body: {
+        hotspotId: hotspotIdFromUrl,
+        hotspotSlug: hotspotSlugFromUrl,
+      },
+    })
+
+    setMessage('Política removida com sucesso.')
+    await carregarStatus()
+  } catch (err) {
+    console.error('Erro ao resetar política:', err)
+    setError(err.message || 'Erro ao resetar política')
+  } finally {
+    setProcessing(false)
+  }
+}
+
+
+
+
 
   useEffect(() => {
     carregarStatus()
