@@ -33,6 +33,7 @@ import {
   Crown,
   LifeBuoy,
   Bell,
+  Network,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -61,6 +62,12 @@ const menu = [
     path: '/dashboard/hotspots',
     icon: Wifi,
     module: 'hotspots',
+  },
+  {
+  label: 'Controle de Rede',
+  path: '/dashboard/rede',
+  icon: Network,
+  module: 'hotspots',
   },
   {
     label: 'Financeiro',

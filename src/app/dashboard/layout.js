@@ -44,6 +44,12 @@ const rotasProtegidas = [
     label: 'Hotspots',
   },
   {
+  path: '/dashboard/rede',
+  module: 'hotspots',
+  action: 'view',
+  label: 'Controle de Rede',
+  },
+  {
     path: '/dashboard/anuncios',
     module: 'anuncios',
     action: 'view',
