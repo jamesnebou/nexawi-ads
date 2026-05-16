@@ -1284,4 +1284,222 @@ export async function applyNexawiNetworkPolicy(options = {}) {
   }
 }
 
+
+function settledValue(result, fallback = null) {
+  return result.status === 'fulfilled' ? result.value : fallback
+}
+
+function settledError(result) {
+  if (result.status !== 'rejected') return ''
+  return result.reason?.message || String(result.reason || '')
+}
+
+function serviceIsEnabled(service = {}) {
+  return !routerFlag(service.disabled)
+}
+
+function normalizeService(service = {}) {
+  return {
+    id: service['.id'] || '',
+    name: service.name || '',
+    port: service.port || '',
+    address: service.address || '',
+    disabled: routerFlag(service.disabled),
+    enabled: serviceIsEnabled(service),
+  }
+}
+
+function normalizeHotspotServer(server = {}) {
+  return {
+    id: server['.id'] || '',
+    name: server.name || '',
+    interface: server.interface || '',
+    addressPool: server['address-pool'] || '',
+    profile: server.profile || '',
+    disabled: routerFlag(server.disabled),
+    enabled: !routerFlag(server.disabled),
+  }
+}
+
+function makeDiagnosticCheck({ id, label, ok, severity = 'info', message = '', recommendation = '' }) {
+  return {
+    id,
+    label,
+    ok: Boolean(ok),
+    severity,
+    message,
+    recommendation,
+  }
+}
+
+export async function routerDiagnostics({ routerConfig } = {}) {
+  const { hotspotServer } = getRouterConfig(routerConfig || {})
+  const targetHotspotServer = routerConfig?.hotspotServer || hotspotServer || 'hotspot1'
+
+  const [
+    resourceResult,
+    servicesResult,
+    hotspotServersResult,
+    hotspotProfilesResult,
+    policyStatusResult,
+  ] = await Promise.allSettled([
+    routerosFetch('/system/resource', { routerConfig }),
+    routerosFetch('/ip/service', { routerConfig }),
+    routerosFetch('/ip/hotspot', { routerConfig }),
+    routerosFetch('/ip/hotspot/profile', { routerConfig }),
+    getNexawiNetworkPolicyStatus({ routerConfig }),
+  ])
+
+  const resource = settledValue(resourceResult, null)
+  const servicesRaw = settledValue(servicesResult, [])
+  const hotspotServersRaw = settledValue(hotspotServersResult, [])
+  const hotspotProfilesRaw = settledValue(hotspotProfilesResult, [])
+  const policyStatus = settledValue(policyStatusResult, null)
+
+  const services = Array.isArray(servicesRaw) ? servicesRaw.map(normalizeService) : []
+  const hotspotServers = Array.isArray(hotspotServersRaw)
+    ? hotspotServersRaw.map(normalizeHotspotServer)
+    : []
+
+  const hotspotProfiles = Array.isArray(hotspotProfilesRaw)
+    ? hotspotProfilesRaw.map((profile) => ({
+        id: profile['.id'] || '',
+        name: profile.name || '',
+        hotspotAddress: profile['hotspot-address'] || '',
+        dnsName: profile['dns-name'] || '',
+        htmlDirectory: profile['html-directory'] || '',
+        loginBy: profile['login-by'] || '',
+        useRadius: profile['use-radius'] || '',
+      }))
+    : []
+
+  const serviceWww = services.find((service) => service.name === 'www')
+  const serviceApi = services.find((service) => service.name === 'api')
+  const serviceApiSsl = services.find((service) => service.name === 'api-ssl')
+
+  const selectedHotspotServer =
+    hotspotServers.find((server) => server.name === targetHotspotServer) || null
+
+  const checks = [
+    makeDiagnosticCheck({
+      id: 'router_reachable',
+      label: 'MikroTik respondeu',
+      ok: Boolean(resource),
+      severity: resource ? 'success' : 'critical',
+      message: resource
+        ? `RouterOS ${resource.version || 'desconhecido'} em ${resource['board-name'] || 'MikroTik'}`
+        : 'Não foi possível consultar /system/resource.',
+      recommendation: resource
+        ? ''
+        : 'Verifique VPN/WireGuard, base URL, usuário, senha e serviço www no MikroTik.',
+    }),
+
+    makeDiagnosticCheck({
+      id: 'rest_www_enabled',
+      label: 'REST/API via serviço www',
+      ok: Boolean(serviceWww?.enabled),
+      severity: serviceWww?.enabled ? 'success' : 'critical',
+      message: serviceWww
+        ? `Serviço www está ${serviceWww.enabled ? 'ativo' : 'desativado'} na porta ${serviceWww.port || '80'}.`
+        : 'Serviço www não encontrado.',
+      recommendation: serviceWww?.enabled
+        ? ''
+        : 'Ative /ip service www e limite o acesso à rede segura da VPS/VPN.',
+    }),
+
+    makeDiagnosticCheck({
+      id: 'api_service_available',
+      label: 'Serviço API tradicional',
+      ok: Boolean(serviceApi?.enabled || serviceApiSsl?.enabled),
+      severity: serviceApi?.enabled || serviceApiSsl?.enabled ? 'success' : 'warning',
+      message: serviceApi?.enabled || serviceApiSsl?.enabled
+        ? 'API tradicional encontrada ativa.'
+        : 'API tradicional não está ativa. Para a NexaWi atual, REST via www já é suficiente.',
+      recommendation: serviceApi?.enabled || serviceApiSsl?.enabled
+        ? ''
+        : 'Opcional: ativar api/api-ssl se futuramente for usar integração não REST.',
+    }),
+
+    makeDiagnosticCheck({
+      id: 'hotspot_servers_found',
+      label: 'Hotspot servers encontrados',
+      ok: hotspotServers.length > 0,
+      severity: hotspotServers.length > 0 ? 'success' : 'critical',
+      message: hotspotServers.length > 0
+        ? `${hotspotServers.length} hotspot server(s) encontrado(s).`
+        : 'Nenhum hotspot server encontrado.',
+      recommendation: hotspotServers.length > 0
+        ? ''
+        : 'Crie/configure o Hotspot no MikroTik antes de vincular ao portal NexaWi.',
+    }),
+
+    makeDiagnosticCheck({
+      id: 'target_hotspot_server',
+      label: 'Hotspot server configurado',
+      ok: Boolean(selectedHotspotServer?.enabled),
+      severity: selectedHotspotServer?.enabled ? 'success' : 'critical',
+      message: selectedHotspotServer
+        ? `Servidor ${targetHotspotServer} encontrado e ${selectedHotspotServer.enabled ? 'ativo' : 'desativado'}.`
+        : `Servidor ${targetHotspotServer} não encontrado.`,
+      recommendation: selectedHotspotServer?.enabled
+        ? ''
+        : 'Ajuste o campo Hotspot Server no cadastro do MikroTik ou renomeie o server no RouterOS.',
+    }),
+
+    makeDiagnosticCheck({
+      id: 'policy_status',
+      label: 'Política NexaWi legível',
+      ok: Boolean(policyStatus?.ok),
+      severity: policyStatus?.ok ? 'success' : 'warning',
+      message: policyStatus?.ok
+        ? `Política NexaWi: ${policyStatus.enabled ? 'ativa' : 'sem regras ativas'} | filter=${policyStatus.filterCount || 0}, nat=${policyStatus.natCount || 0}, dns=${policyStatus.dnsCount || 0}`
+        : 'Não foi possível ler a política NexaWi.',
+      recommendation: policyStatus?.ok
+        ? ''
+        : 'Aplique a política de rede pelo painel Controle de Rede.',
+    }),
+  ]
+
+  const criticalIssues = checks.filter((check) => !check.ok && check.severity === 'critical')
+  const warnings = checks.filter((check) => !check.ok && check.severity === 'warning')
+
+  return {
+    ok: criticalIssues.length === 0,
+    ready: criticalIssues.length === 0,
+    checkedAt: new Date().toISOString(),
+    targetHotspotServer,
+    summary: {
+      criticalIssues: criticalIssues.length,
+      warnings: warnings.length,
+      checks: checks.length,
+    },
+    router: resource
+      ? {
+          boardName: resource['board-name'] || '',
+          architectureName: resource['architecture-name'] || '',
+          version: resource.version || '',
+          uptime: resource.uptime || '',
+          cpuLoad: resource['cpu-load'] || '',
+          freeMemory: resource['free-memory'] || '',
+          totalMemory: resource['total-memory'] || '',
+          freeHddSpace: resource['free-hdd-space'] || '',
+          totalHddSpace: resource['total-hdd-space'] || '',
+        }
+      : null,
+    services,
+    hotspotServers,
+    hotspotProfiles,
+    selectedHotspotServer,
+    policyStatus,
+    checks,
+    errors: {
+      resource: settledError(resourceResult),
+      services: settledError(servicesResult),
+      hotspotServers: settledError(hotspotServersResult),
+      hotspotProfiles: settledError(hotspotProfilesResult),
+      policyStatus: settledError(policyStatusResult),
+    },
+  }
+}
+
 export { normalizeMac }
