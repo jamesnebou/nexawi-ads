@@ -381,7 +381,7 @@ export default function MikrotiksPage() {
     setSaving(true)
 
     try {
-      await adminApiFetch('/api/admin/mikrotiks', {
+      const savedResponse = await adminApiFetch('/api/admin/mikrotiks', {
         method: 'POST',
         body: {
           action: routerSelecionado ? 'update' : 'create',
@@ -390,7 +390,26 @@ export default function MikrotiksPage() {
         },
       })
 
-      toast.success(routerSelecionado ? 'MikroTik atualizado!' : 'MikroTik criado!')
+      
+
+      const savedRouter =
+        savedResponse?.router ||
+        savedResponse?.mikrotik ||
+        savedResponse?.data ||
+        savedResponse?.item ||
+        savedResponse?.result ||
+        routerSelecionado ||
+        null
+
+      const savedRouterId =
+        savedRouter?.id ||
+        routerSelecionado?.id ||
+        savedResponse?.id ||
+        null
+
+      if (form.hotspot_id && savedRouterId) {
+        await vincularRouterAoHotspot(savedRouterId, form.hotspot_id)
+      }toast.success(routerSelecionado ? 'MikroTik atualizado!' : 'MikroTik criado!')
       await carregarRouters()
       fecharModal()
     } catch (error) {
