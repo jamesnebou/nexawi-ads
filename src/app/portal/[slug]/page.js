@@ -486,14 +486,6 @@ export default function Portal() {
         throw new Error('leadId ausente ao finalizar o anúncio')
       }
 
-      setLoadingTexto('Conectando à rede...')
-
-      autorizarSessaoEmBackground(resolvedLeadId).catch((error) => {
-        console.error('Erro ao concluir autorização:', error)
-      })
-
-      // Libera a experiência do usuário imediatamente.
-      // A autorização real já começou durante o anúncio e continua em background.
       setInternetLiberadaNaCta(true)
       setEtapa(ETAPAS.CTA)
     } catch (error) {
@@ -629,12 +621,15 @@ leadIdRef.current = data.leadId
   async function handleCtaClick(clicou, destinoExterno = '') {
     try {
       const resolvedIp = getClientIp()
+      const resolvedLeadId =
+        leadIdRef.current ||
+        leadId ||
+        leadRapido?.id ||
+        null
 
       if (clicou && anuncioAtual) {
         const urlNormalizada = normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
-        // Abre primeiro, de forma síncrona no clique do usuário.
-        // Se esperar await antes, o navegador pode bloquear.
         if (urlNormalizada) {
           const opened = window.open(urlNormalizada, '_blank', 'noopener,noreferrer')
 
@@ -650,7 +645,18 @@ leadIdRef.current = data.leadId
         registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
           console.error('Erro ao registrar abertura de CTA:', error)
         })
+
+        autorizarSessaoEmBackground(resolvedLeadId).catch((error) => {
+          console.error('Erro ao liberar internet após CTA:', error)
+        })
+
+        setEtapa(ETAPAS.CONECTADO || 'conectado')
+        return
       }
+
+      // Caso o usuário recuse ir para a página do anunciante,
+      // aí sim liberamos a internet e mostramos conectado.
+      await autorizarSessaoEmBackground(resolvedLeadId)
 
       setEtapa(ETAPAS.CONECTADO || 'conectado')
     } catch (error) {
@@ -770,10 +776,9 @@ async function handleCopiarLinkCliente() {
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
-      autorizarSessaoEmBackground(leadIdRef.current || leadRapido?.id || null).catch((error) => {
-        console.error('Erro ao pré-liberar internet durante anúncio:', error)
-      })
-
+      // Android fecha automaticamente o captive portal quando detecta internet.
+      // Por isso não liberamos a sessão durante o anúncio.
+      // A liberação acontece somente após o clique no CTA ou ao recusar.
       setContador(anuncioAtual.duracao_segundos || 15)
 
       intervaloAnuncioRef.current = setInterval(() => {
