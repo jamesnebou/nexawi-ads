@@ -193,6 +193,9 @@ export default function Portal() {
   const [erros, setErros] = useState({})
   const intervaloAnuncioRef = useRef(null)
   const leadIdRef = useRef(null)
+  const hotspotIdRef = useRef('')
+  const sessaoAutorizadaRef = useRef(false)
+  const autorizacaoPromiseRef = useRef(null)
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -236,7 +239,8 @@ export default function Portal() {
       return null
     }
 
-    setHotspot(data.hotspot)
+    setHotspot(data.hotspot || null)
+    hotspotIdRef.current = data.hotspot?.id || ''
     setAnuncios(data.anuncios || [])
 
     return data.hotspot
@@ -362,30 +366,30 @@ export default function Portal() {
   }
 
   async function registrarVisualizacao(anuncioId, ip) {
-  try {
-    await portalApiFetch('/api/portal/view', {
-      anuncioId,
-      hotspotId: hotspot?.id || '',
-      ipAddress: ip,
-    })
-  } catch (err) {
-    console.error('Erro silencioso ao registrar view:', err)
+    try {
+      await portalApiFetch('/api/portal/view', {
+        anuncioId,
+        hotspotId: hotspot?.id || hotspotIdRef.current || '',
+        ipAddress: ip,
+      })
+    } catch (error) {
+      console.error('Erro ao registrar visualização:', error)
+    }
   }
-}
 
   async function registrarClique(anuncioId, ip, tipoAcao = 'open', urlDestino = '') {
-  try {
-    await portalApiFetch('/api/portal/click', {
-      anuncioId,
-      hotspotId: hotspot?.id || '',
-      ipAddress: ip,
-      tipoAcao,
-      urlDestino,
-    })
-  } catch (err) {
-    console.error('Erro silencioso ao registrar clique:', err)
+    try {
+      await portalApiFetch('/api/portal/click', {
+        anuncioId,
+        hotspotId: hotspot?.id || hotspotIdRef.current || '',
+        ipAddress: ip,
+        tipoAcao,
+        urlDestino,
+      })
+    } catch (error) {
+      console.error('Erro ao registrar clique:', error)
+    }
   }
-}
 
   const validatePhoneNumber = (phone) => {
     const cleanedPhone = String(phone).replace(/\D/g, '')
@@ -436,21 +440,7 @@ export default function Portal() {
     return Object.keys(novosErros).length === 0
   }
 
-  async function concluirAnuncioComAutorizacao(explicitLeadId = null) {
-  try {
-    setLoadingTexto('Liberando sua conexão...')
-    setEtapa(ETAPAS.LOADING)
-
-    const hotspotSlug = hotspot?.slug || slug
-    const resolvedMac = getClientMac()
-
-    const statusAtual = await consultarStatusSessao(hotspotSlug, resolvedMac)
-
-    if (statusAtual.state === 'cooldown') {
-      setEtapa(ETAPAS.BLOQUEADO)
-      return
-    }
-
+  function autorizarSessaoEmBackground(explicitLeadId = null) {
     const resolvedLeadId =
       explicitLeadId ||
       leadIdRef.current ||
@@ -458,23 +448,58 @@ export default function Portal() {
       leadRapido?.id ||
       null
 
-    if (!resolvedLeadId) {
-      throw new Error('leadId ausente ao finalizar o anúncio')
+    if (!resolvedLeadId) return Promise.resolve(null)
+
+    if (sessaoAutorizadaRef.current) return Promise.resolve(null)
+
+    if (autorizacaoPromiseRef.current) {
+      return autorizacaoPromiseRef.current
     }
 
-    // Mesmo se o banco disser "authorized",
-    // chama o backend para garantir o bypass real no MikroTik.
-    const autorizacao = await autorizarSessaoNoBackend(resolvedLeadId)
+    autorizacaoPromiseRef.current = autorizarSessaoNoBackend(resolvedLeadId)
+      .then((result) => {
+        sessaoAutorizadaRef.current = true
+        setInternetLiberadaNaCta(true)
+        return result
+      })
+      .catch((error) => {
+        console.error('Erro ao autorizar sessão em background:', error)
+        throw error
+      })
+      .finally(() => {
+        autorizacaoPromiseRef.current = null
+      })
 
-    if (!autorizacao) return
-
-    setInternetLiberadaNaCta(true)
-    setLoadingTexto('Conectando à rede...')
-    setEtapa(ETAPAS.CTA)
-  } catch (error) {
-    falhar('Erro ao concluir anúncio com autorização', error)
+    return autorizacaoPromiseRef.current
   }
-}
+
+  async function concluirAnuncioComAutorizacao(explicitLeadId = null) {
+    try {
+      const resolvedLeadId =
+        explicitLeadId ||
+        leadIdRef.current ||
+        leadId ||
+        leadRapido?.id ||
+        null
+
+      if (!resolvedLeadId) {
+        throw new Error('leadId ausente ao finalizar o anúncio')
+      }
+
+      setLoadingTexto('Conectando à rede...')
+
+      autorizarSessaoEmBackground(resolvedLeadId).catch((error) => {
+        console.error('Erro ao concluir autorização:', error)
+      })
+
+      // Libera a experiência do usuário imediatamente.
+      // A autorização real já começou durante o anúncio e continua em background.
+      setInternetLiberadaNaCta(true)
+      setEtapa(ETAPAS.CTA)
+    } catch (error) {
+      falhar('Erro ao finalizar anúncio', error)
+    }
+  }
 
   async function handleCadastro(e) {
     e.preventDefault()
@@ -602,30 +627,36 @@ leadIdRef.current = data.leadId
   }
 
   async function handleCtaClick(clicou, destinoExterno = '') {
-  try {
-    if (!internetLiberadaNaCta) return
+    try {
+      const resolvedIp = getClientIp()
 
-    const resolvedIp = getClientIp()
+      if (clicou && anuncioAtual) {
+        const urlNormalizada = normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
-    if (clicou && anuncioAtual) {
-  await registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', destinoExterno)
-}
+        // Abre primeiro, de forma síncrona no clique do usuário.
+        // Se esperar await antes, o navegador pode bloquear.
+        if (urlNormalizada) {
+          const opened = window.open(urlNormalizada, '_blank', 'noopener,noreferrer')
 
-    if (clicou && destinoExterno) {
-      const urlNormalizada = normalizarUrlDestino(destinoExterno)
+          if (!opened) {
+            window.location.href = urlNormalizada
+          }
+        }
 
-      if (urlNormalizada) {
-        setUrlCliente(urlNormalizada)
-        setEtapa(ETAPAS.ABRIR_CLIENTE)
-        return
+        registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
+          console.error('Erro ao registrar tentativa de CTA:', error)
+        })
+
+        registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
+          console.error('Erro ao registrar abertura de CTA:', error)
+        })
       }
-    }
 
-    setEtapa(ETAPAS.ACESSO)
-  } catch (error) {
-    falhar('Erro na CTA', error)
+      setEtapa(ETAPAS.CONECTADO || 'conectado')
+    } catch (error) {
+      falhar('Erro na CTA', error)
+    }
   }
-}
 
 async function handleCopiarLinkCliente() {
   try {
@@ -739,6 +770,10 @@ async function handleCopiarLinkCliente() {
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
+      autorizarSessaoEmBackground(leadIdRef.current || leadRapido?.id || null).catch((error) => {
+        console.error('Erro ao pré-liberar internet durante anúncio:', error)
+      })
+
       setContador(anuncioAtual.duracao_segundos || 15)
 
       intervaloAnuncioRef.current = setInterval(() => {
