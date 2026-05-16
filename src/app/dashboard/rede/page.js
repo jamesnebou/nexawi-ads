@@ -39,6 +39,16 @@ const DEFAULT_POLICY = {
   customAllowedDomains: [],
 }
 
+const QUICK_PRESETS = [
+  {
+    id: 'meta',
+    title: 'Facebook / Meta',
+    description: 'Bloqueia Facebook, Messenger e domínios essenciais da Meta com DNS, TLS, IP e DoH.',
+    domain: 'facebook.com',
+    badge: 'Preset forte',
+  },
+]
+
 function normalizeDomain(value = '') {
   return String(value || '')
     .trim()
@@ -408,6 +418,31 @@ export default function ControleRedePage() {
       setLoading(false)
     }
   }
+function isPresetActive(preset) {
+  return (policy.customBlockedDomains || []).includes(preset.domain)
+}
+
+function togglePreset(preset) {
+  setError('')
+
+  setPolicy((current) => {
+    const blocked = new Set(current.customBlockedDomains || [])
+    const allowed = new Set(current.customAllowedDomains || [])
+
+    if (blocked.has(preset.domain)) {
+      blocked.delete(preset.domain)
+    } else {
+      blocked.add(preset.domain)
+      allowed.delete(preset.domain)
+    }
+
+    return {
+      ...current,
+      customBlockedDomains: Array.from(blocked),
+      customAllowedDomains: Array.from(allowed),
+    }
+  })
+}
 
   function addBlockedDomain() {
     const domain = normalizeDomain(blockedInput)
@@ -462,6 +497,11 @@ export default function ControleRedePage() {
 
     setAllowedInput('')
   }
+
+  function isPresetActive(preset) {
+  return (policy.customBlockedDomains || []).includes(preset.domain)
+}
+
 
   function removeBlockedDomain(domain) {
     setPolicy((current) => ({
@@ -821,6 +861,78 @@ export default function ControleRedePage() {
             )}
           </div>
         </div>
+
+        <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+    <div>
+      <h2 className="text-lg font-black text-white">
+        Presets rápidos
+      </h2>
+      <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+        Bloqueios inteligentes para apps grandes. O painel adiciona um domínio simples e a Control API expande para regras avançadas no MikroTik.
+      </p>
+    </div>
+
+    <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-bold text-[#8cf059]">
+      <ShieldCheck size={14} />
+      Automático
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+    {QUICK_PRESETS.map((preset) => {
+      const active = isPresetActive(preset)
+
+      return (
+        <button
+          key={preset.id}
+          type="button"
+          disabled={!canUpdate || processing}
+          onClick={() => togglePreset(preset)}
+          className={`text-left rounded-[1.5rem] border p-5 transition-all ${
+            active
+              ? 'border-[#6be12f]/30 bg-[#6be12f]/10'
+              : 'border-white/[0.06] bg-[#050505] hover:border-white/[0.12]'
+          } ${!canUpdate || processing ? 'opacity-60 cursor-not-allowed' : ''}`}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <p className="text-sm font-black text-white">
+                  {preset.title}
+                </p>
+
+                <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+                  {preset.badge}
+                </span>
+              </div>
+
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                {preset.description}
+              </p>
+
+              <p className="text-xs text-neutral-600 mt-3">
+                Domínio gatilho: <span className="font-bold text-neutral-300">{preset.domain}</span>
+              </p>
+            </div>
+
+            <div
+              className={`w-12 h-6 rounded-full relative flex-shrink-0 transition-colors ${
+                active ? 'bg-[#6be12f]' : 'bg-neutral-800'
+              }`}
+            >
+              <div
+                className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all ${
+                  active ? 'left-7' : 'left-1'
+                }`}
+              />
+            </div>
+          </div>
+        </button>
+      )
+    })}
+  </div>
+</div>
 
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
