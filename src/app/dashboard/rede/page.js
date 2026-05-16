@@ -482,34 +482,14 @@ function isPresetActive(preset) {
   return (policy.customBlockedDomains || []).includes(preset.domain)
 }
 
-
   function removeBlockedDomain(domain) {
     setPolicy((current) => ({
       ...current,
       customBlockedDomains: (current.customBlockedDomains || []).filter((item) => item !== domain),
     }))
   }
-  function togglePreset(preset) {
-  setError('')
 
-  setPolicy((current) => {
-    const blocked = new Set(current.customBlockedDomains || [])
-    const allowed = new Set(current.customAllowedDomains || [])
 
-    if (blocked.has(preset.domain)) {
-      blocked.delete(preset.domain)
-    } else {
-      blocked.add(preset.domain)
-      allowed.delete(preset.domain)
-    }
-
-    return {
-      ...current,
-      customBlockedDomains: Array.from(blocked),
-      customAllowedDomains: Array.from(allowed),
-    }
-  })
-}
 
   function removeAllowedDomain(domain) {
     setPolicy((current) => ({
@@ -597,6 +577,28 @@ function isPresetActive(preset) {
       setProcessing(false)
     }
   }
+
+    function togglePreset(preset) {
+  setError('')
+
+  setPolicy((current) => {
+    const blocked = new Set(current.customBlockedDomains || [])
+    const allowed = new Set(current.customAllowedDomains || [])
+
+    if (blocked.has(preset.domain)) {
+      blocked.delete(preset.domain)
+    } else {
+      blocked.add(preset.domain)
+      allowed.delete(preset.domain)
+    }
+
+    return {
+      ...current,
+      customBlockedDomains: Array.from(blocked),
+      customAllowedDomains: Array.from(allowed),
+    }
+  })
+}
 
   useEffect(() => {
     carregarStatus()
