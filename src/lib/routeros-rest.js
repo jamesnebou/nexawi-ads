@@ -707,6 +707,122 @@ const META_PRESET_DOMAINS = [
   'm.facebook.com',
 ]
 
+const INSTAGRAM_PRESET_DOMAINS = [
+  'instagram.com',
+  'cdninstagram.com',
+  'ig.me',
+  'threads.net',
+]
+
+const TIKTOK_PRESET_DOMAINS = [
+  'tiktok.com',
+  'tiktokcdn.com',
+  'tiktokv.com',
+  'tiktokcdn-us.com',
+  'byteoversea.com',
+  'ibyteimg.com',
+  'ibytedtos.com',
+  'muscdn.com',
+  'snssdk.com',
+]
+
+const YOUTUBE_PRESET_DOMAINS = [
+  'youtube.com',
+  'youtu.be',
+  'm.youtube.com',
+  'youtube-nocookie.com',
+  'ytimg.com',
+  'googlevideo.com',
+  'ytstatic.l.google.com',
+  'youtubei.googleapis.com',
+]
+
+const STREAMING_PRESET_DOMAINS = [
+  'netflix.com',
+  'nflxext.com',
+  'nflximg.net',
+  'nflximg.com',
+  'nflxsearch.net',
+  'nflxso.net',
+  'nflxvideo.net',
+]
+
+const HEAVY_GAMES_PRESET_DOMAINS = [
+  'roblox.com',
+  'rbxcdn.com',
+  'epicgames.com',
+  'fortnite.com',
+  'steampowered.com',
+  'steamcommunity.com',
+  'steamcontent.com',
+  'riotgames.com',
+  'leagueoflegends.com',
+  'valorant.com',
+  'xboxlive.com',
+  'playstation.net',
+]
+
+const STRONG_PRESETS = [
+  {
+    id: 'instagram',
+    triggerDomains: INSTAGRAM_PRESET_DOMAINS,
+    domains: INSTAGRAM_PRESET_DOMAINS,
+    usesMetaInfrastructure: true,
+  },
+  {
+    id: 'tiktok',
+    triggerDomains: ['tiktok.com', 'tiktokcdn.com'],
+    domains: TIKTOK_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+  {
+    id: 'youtube',
+    triggerDomains: ['youtube.com', 'youtu.be', 'googlevideo.com'],
+    domains: YOUTUBE_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+  {
+    id: 'streaming',
+    triggerDomains: ['netflix.com', 'nflxvideo.net'],
+    domains: STREAMING_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+  {
+    id: 'heavy_games',
+    triggerDomains: ['roblox.com', 'epicgames.com', 'fortnite.com', 'steampowered.com', 'riotgames.com', 'valorant.com'],
+    domains: HEAVY_GAMES_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+]
+
+function domainMatchesPreset(domain = '', preset = {}) {
+  const clean = normalizeDomain(domain)
+
+  if (!clean) return false
+
+  return (preset.triggerDomains || []).some((trigger) => {
+    const normalizedTrigger = normalizeDomain(trigger)
+
+    return (
+      clean === normalizedTrigger ||
+      clean.endsWith(`.${normalizedTrigger}`) ||
+      normalizedTrigger.endsWith(`.${clean}`)
+    )
+  })
+}
+
+function getActiveStrongPresets(customBlockedDomains = [], options = {}) {
+  const requested = uniqueDomains(customBlockedDomains)
+
+  return STRONG_PRESETS.filter((preset) => {
+    const optionName = `blockPreset_${preset.id}`
+
+    if (options[optionName] === true) return true
+
+    return requested.some((domain) => domainMatchesPreset(domain, preset))
+  })
+}
+
 const META_PRESET_ADDRESS_LIST = [
   { address: '31.13.91.0/24', comment: 'NEXAWI_META_OBSERVED_31_13_91' },
   { address: '57.144.0.0/16', comment: 'NEXAWI_META_OBSERVED_57_144' },
@@ -940,11 +1056,18 @@ export async function applyNexawiNetworkPolicy(options = {}) {
   const forceDns = options.forceDns !== false
 
   const requestedBlockedDomains = uniqueDomains(options.customBlockedDomains || [])
-  const applyMetaPreset = shouldApplyMetaPreset(requestedBlockedDomains, options)
+  const activeStrongPresets = getActiveStrongPresets(requestedBlockedDomains, options)
+
+  const applyMetaPreset =
+    shouldApplyMetaPreset(requestedBlockedDomains, options) ||
+    activeStrongPresets.some((preset) => preset.usesMetaInfrastructure)
+
+  const expandedPresetDomains = activeStrongPresets.flatMap((preset) => preset.domains || [])
 
   const customBlockedDomains = uniqueDomains([
     ...requestedBlockedDomains,
     ...(applyMetaPreset ? META_PRESET_DOMAINS : []),
+    ...expandedPresetDomains,
   ])
 
   const customAllowedDomains = uniqueDomains(options.customAllowedDomains || [])
@@ -1146,6 +1269,7 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       forceDns,
       blockDoh,
       applyMetaPreset,
+      activeStrongPresetIds: activeStrongPresets.map((preset) => preset.id),
       customBlockedDomains,
       customAllowedDomains,
     },
