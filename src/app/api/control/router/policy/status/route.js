@@ -16,11 +16,7 @@ function validateControlSecret(request) {
   return Boolean(expected && received && received === expected)
 }
 
-export async function GET(request) {
-  if (CONTROL_API_MODE === 'proxy') {
-    return proxyControlRequest(request, '/api/control/router/policy/status', 'GET')
-  }
-
+async function handleStatus(request, body = {}) {
   if (!validateControlSecret(request)) {
     return NextResponse.json(
       { ok: false, error: 'Não autorizado' },
@@ -29,7 +25,10 @@ export async function GET(request) {
   }
 
   try {
-    const result = await getNexawiNetworkPolicyStatus()
+    const result = await getNexawiNetworkPolicyStatus({
+      routerConfig: body.routerConfig || null,
+    })
+
     return NextResponse.json(result)
   } catch (error) {
     return NextResponse.json(
@@ -40,4 +39,21 @@ export async function GET(request) {
       { status: 500 }
     )
   }
+}
+
+export async function GET(request) {
+  if (CONTROL_API_MODE === 'proxy') {
+    return proxyControlRequest(request, '/api/control/router/policy/status', 'GET')
+  }
+
+  return handleStatus(request, {})
+}
+
+export async function POST(request) {
+  if (CONTROL_API_MODE === 'proxy') {
+    return proxyControlRequest(request, '/api/control/router/policy/status', 'POST')
+  }
+
+  const body = await request.json().catch(() => ({}))
+  return handleStatus(request, body || {})
 }
