@@ -228,6 +228,19 @@ export default function MikrotiksPage() {
     }))
   }
 
+  function usarHotspotServerDoDiagnostico(serverName) {
+    const value = String(serverName || '').trim()
+
+    if (!value) return
+
+    setForm((current) => ({
+      ...current,
+      hotspot_server: value,
+    }))
+
+    toast.success(`Hotspot server selecionado: ${value}`)
+  }
+
   async function diagnosticarFormularioRouter() {
     setFormDiagnostics(null)
 
@@ -922,6 +935,53 @@ export default function MikrotiksPage() {
                             {check.label}: {check.message}
                           </p>
                         ))}
+
+                        {(formDiagnostics.hotspotServers || []).length > 0 && (
+                          <div className="mt-4 rounded-2xl border border-white/[0.06] bg-[#050505] p-4">
+                            <p className="text-xs font-black text-white mb-3">
+                              Hotspot servers encontrados
+                            </p>
+
+                            <div className="space-y-2">
+                              {(formDiagnostics.hotspotServers || []).map((server) => {
+                                const selected = form.hotspot_server === server.name
+
+                                return (
+                                  <div
+                                    key={server.id || server.name}
+                                    className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border px-4 py-3 ${
+                                      selected
+                                        ? 'border-[#6be12f]/25 bg-[#6be12f]/10'
+                                        : 'border-white/[0.05] bg-white/[0.02]'
+                                    }`}
+                                  >
+                                    <div>
+                                      <p className="text-sm font-black text-white">
+                                        {server.name}
+                                      </p>
+
+                                      <p className="text-xs text-neutral-500 mt-1">
+                                        Interface: {server.interface || '—'} · Profile: {server.profile || '—'} · {server.enabled ? 'Ativo' : 'Desativado'}
+                                      </p>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => usarHotspotServerDoDiagnostico(server.name)}
+                                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-black transition-all ${
+                                        selected
+                                          ? 'bg-[#6be12f] text-black'
+                                          : 'bg-white/[0.05] text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]'
+                                      }`}
+                                    >
+                                      {selected ? 'Selecionado' : 'Usar este'}
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
