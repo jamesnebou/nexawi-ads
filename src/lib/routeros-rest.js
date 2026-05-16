@@ -5,21 +5,58 @@ function normalizeMac(value = '') {
     .replace(/-/g, ':')
 }
 
-function getRouterConfig() {
-  const baseUrl = process.env.ROUTEROS_BASE_URL
-  const username = process.env.ROUTEROS_USERNAME
-  const password = process.env.ROUTEROS_PASSWORD
-  const hotspotServer = process.env.ROUTEROS_HOTSPOT_SERVER || 'hotspot1'
+function normalizeRouterBaseUrl(value = '') {
+  const raw = String(value || '').trim()
 
-  const clientDownloadLimit = process.env.NEXAWI_CLIENT_RATE_DOWNLOAD || '10M'
-  const clientUploadLimit = process.env.NEXAWI_CLIENT_RATE_UPLOAD || '2M'
+  if (!raw) return ''
+
+  const withProtocol = /^https?:\/\//i.test(raw)
+    ? raw
+    : `http://${raw}`
+
+  return withProtocol.replace(/\/$/, '')
+}
+
+function getRouterConfig(routerConfig = {}) {
+  const baseUrl =
+    routerConfig.baseUrl ||
+    routerConfig.base_url ||
+    process.env.ROUTEROS_BASE_URL
+
+  const username =
+    routerConfig.username ||
+    process.env.ROUTEROS_USERNAME
+
+  const password =
+    routerConfig.password ||
+    process.env.ROUTEROS_PASSWORD
+
+  const hotspotServer =
+    routerConfig.hotspotServer ||
+    routerConfig.hotspot_server ||
+    process.env.ROUTEROS_HOTSPOT_SERVER ||
+    'hotspot1'
+
+  const clientDownloadLimit =
+    routerConfig.clientDownloadLimit ||
+    routerConfig.downloadLimit ||
+    routerConfig.download_limit ||
+    process.env.NEXAWI_CLIENT_RATE_DOWNLOAD ||
+    '10M'
+
+  const clientUploadLimit =
+    routerConfig.clientUploadLimit ||
+    routerConfig.uploadLimit ||
+    routerConfig.upload_limit ||
+    process.env.NEXAWI_CLIENT_RATE_UPLOAD ||
+    '2M'
 
   if (!baseUrl) throw new Error('ROUTEROS_BASE_URL não definido')
   if (!username) throw new Error('ROUTEROS_USERNAME não definido')
   if (!password) throw new Error('ROUTEROS_PASSWORD não definido')
 
   return {
-    baseUrl: baseUrl.replace(/\/$/, ''),
+    baseUrl: normalizeRouterBaseUrl(baseUrl),
     username,
     password,
     hotspotServer,
@@ -28,8 +65,8 @@ function getRouterConfig() {
   }
 }
 
-async function routerosFetch(path, { method = 'GET', body } = {}) {
-  const { baseUrl, username, password } = getRouterConfig()
+async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) {
+  const { baseUrl, username, password } = getRouterConfig(routerConfig || {})
 
   const headers = {
     Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
