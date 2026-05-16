@@ -315,14 +315,19 @@ export default function MikrotiksPage() {
     try {
       const data = await adminApiFetch('/api/admin/hotspots')
 
-      const lista =
-        data.hotspots ||
-        data.data ||
-        data.items ||
-        data.results ||
-        []
+      const candidatos = [
+        data?.hotspots,
+        data?.data,
+        data?.items,
+        data?.results,
+        data?.hotspots?.data,
+        data?.payload?.hotspots,
+        data?.payload?.data,
+      ]
 
-      setHotspots(Array.isArray(lista) ? lista : [])
+      const lista = candidatos.find((item) => Array.isArray(item)) || []
+
+      setHotspots(lista)
     } catch (error) {
       console.error('Erro ao carregar hotspots:', error)
       setHotspots([])
