@@ -135,6 +135,8 @@ export default function MikrotiksPage() {
   const [diagnosticsLoadingId, setDiagnosticsLoadingId] = useState(null)
 
   const [form, setForm] = useState(DEFAULT_FORM)
+  const [formDiagnostics, setFormDiagnostics] = useState(null)
+  const [formDiagnosticsLoading, setFormDiagnosticsLoading] = useState(false)
 
   const canCreate = Boolean(permissions.create)
   const canUpdate = Boolean(permissions.update)
@@ -200,9 +202,11 @@ export default function MikrotiksPage() {
         localizacao: router.localizacao || '',
         observacoes: router.observacoes || '',
       })
+      setFormDiagnostics(null)
     } else {
       setRouterSelecionado(null)
       setForm(DEFAULT_FORM)
+      setFormDiagnostics(null)
     }
 
     setModalAberto(true)
@@ -212,6 +216,8 @@ export default function MikrotiksPage() {
     setModalAberto(false)
     setRouterSelecionado(null)
     setForm(DEFAULT_FORM)
+    setFormDiagnostics(null)
+    setFormDiagnosticsLoading(false)
   }
 
   function atualizarNome(value) {
@@ -220,6 +226,74 @@ export default function MikrotiksPage() {
       nome: value,
       slug: routerSelecionado ? prev.slug : slugify(value),
     }))
+  }
+
+  async function diagnosticarFormularioRouter() {
+    setFormDiagnostics(null)
+
+    if (!form.base_url.trim()) {
+      toast.error('Informe a Base URL antes de diagnosticar.')
+      return
+    }
+
+    if (!form.username.trim()) {
+      toast.error('Informe o usuário antes de diagnosticar.')
+      return
+    }
+
+    if (!routerSelecionado && !form.password.trim()) {
+      toast.error('Informe a senha antes de diagnosticar.')
+      return
+    }
+
+    if (routerSelecionado && !form.password.trim()) {
+      toast.error('Para diagnosticar editando, informe a senha atual ou nova.')
+      return
+    }
+
+    setFormDiagnosticsLoading(true)
+
+    try {
+      const data = await adminApiFetch('/api/admin/mikrotiks/diagnostics', {
+        method: 'POST',
+        body: {
+          router: {
+            nome: form.nome,
+            slug: form.slug,
+            base_url: form.base_url,
+            username: form.username,
+            password: form.password,
+            hotspot_server: form.hotspot_server || 'hotspot1',
+          },
+        },
+      })
+
+      setFormDiagnostics(data.diagnostics || null)
+
+      if (data.diagnostics?.ready) {
+        toast.success('MikroTik pronto para salvar.')
+      } else {
+        toast.error('Diagnóstico encontrou pendências.')
+      }
+    } catch (error) {
+      console.error('Erro ao diagnosticar formulário:', error)
+
+      setFormDiagnostics({
+        ok: false,
+        ready: false,
+        error: error.message || 'Erro ao diagnosticar MikroTik',
+        checks: [],
+        summary: {
+          criticalIssues: 1,
+          warnings: 0,
+          checks: 0,
+        },
+      })
+
+      toast.error(error.message || 'Erro ao diagnosticar MikroTik.')
+    } finally {
+      setFormDiagnosticsLoading(false)
+    }
   }
 
   async function salvarRouter() {
@@ -764,6 +838,94 @@ export default function MikrotiksPage() {
                   rows={3}
                   className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none resize-none"
                 />
+              </div>
+
+              <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      Diagnóstico antes de salvar
+                    </p>
+                    <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                      Teste Base URL, usuário, senha e hotspot server antes de gravar este MikroTik no sistema.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={diagnosticarFormularioRouter}
+                    disabled={formDiagnosticsLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50"
+                  >
+                    {formDiagnosticsLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                    Diagnosticar
+                  </button>
+                </div>
+
+                {formDiagnosticsLoading && (
+                  <div className="rounded-2xl border border-white/[0.05] bg-[#0a0a0a] px-4 py-4 flex items-center gap-3">
+                    <Loader2 size={18} className="animate-spin text-[#6be12f]" />
+                    <p className="text-sm font-bold text-neutral-400">
+                      Consultando MikroTik...
+                    </p>
+                  </div>
+                )}
+
+                {!formDiagnosticsLoading && formDiagnostics?.error && (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-4">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle size={18} className="text-red-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-black text-red-300">
+                          Diagnóstico falhou
+                        </p>
+                        <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
+                          {formDiagnostics.error}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!formDiagnosticsLoading && formDiagnostics && !formDiagnostics.error && (
+                  <div className={`rounded-2xl border px-4 py-4 ${
+                    formDiagnostics.ready
+                      ? 'border-[#6be12f]/20 bg-[#6be12f]/10'
+                      : 'border-yellow-500/20 bg-yellow-500/10'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      {formDiagnostics.ready ? (
+                        <ShieldCheck size={20} className="text-[#8cf059] mt-0.5" />
+                      ) : (
+                        <AlertTriangle size={20} className="text-yellow-300 mt-0.5" />
+                      )}
+
+                      <div className="min-w-0">
+                        <p className={`text-sm font-black ${
+                          formDiagnostics.ready ? 'text-[#8cf059]' : 'text-yellow-300'
+                        }`}>
+                          {formDiagnostics.ready ? 'MikroTik pronto para salvar' : 'MikroTik com pendências'}
+                        </p>
+
+                        <p className="text-xs text-neutral-400 mt-1">
+                          {formDiagnostics.summary?.criticalIssues || 0} críticos · {formDiagnostics.summary?.warnings || 0} avisos · {formDiagnostics.summary?.checks || 0} verificações
+                        </p>
+
+                        {formDiagnostics.router && (
+                          <p className="text-xs text-neutral-300 mt-2">
+                            {formDiagnostics.router.boardName || 'MikroTik'} · RouterOS {formDiagnostics.router.version || '—'} · Uptime {formDiagnostics.router.uptime || '—'}
+                          </p>
+                        )}
+
+                        {(formDiagnostics.checks || []).filter((check) => !check.ok).slice(0, 3).map((check) => (
+                          <p key={check.id} className="text-xs text-yellow-100 mt-2 leading-relaxed">
+                            {check.label}: {check.message}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {routerSelecionado && (
