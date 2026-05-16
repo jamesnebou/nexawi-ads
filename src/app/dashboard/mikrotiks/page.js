@@ -43,6 +43,7 @@ const DEFAULT_FORM = {
   status: 'Ativo',
   localizacao: '',
   observacoes: '',
+  hotspot_id: '',
 }
 
 function slugify(value = '') {
@@ -115,6 +116,7 @@ function StatCard({ icon: Icon, label, value, description, accent = false }) {
 
 export default function MikrotiksPage() {
   const [routers, setRouters] = useState([])
+  const [hotspots, setHotspots] = useState([])
   const [totals, setTotals] = useState(null)
   const [permissions, setPermissions] = useState(permissoesIniciais)
 
@@ -307,6 +309,36 @@ export default function MikrotiksPage() {
     } finally {
       setFormDiagnosticsLoading(false)
     }
+  }
+
+  async function carregarHotspots() {
+    try {
+      const data = await adminApiFetch('/api/admin/hotspots')
+
+      const lista =
+        data.hotspots ||
+        data.data ||
+        data.items ||
+        data.results ||
+        []
+
+      setHotspots(Array.isArray(lista) ? lista : [])
+    } catch (error) {
+      console.error('Erro ao carregar hotspots:', error)
+      setHotspots([])
+    }
+  }
+
+  async function vincularRouterAoHotspot(routerId, hotspotId) {
+    if (!routerId || !hotspotId) return null
+
+    return adminApiFetch('/api/admin/mikrotiks/link-hotspot', {
+      method: 'POST',
+      body: {
+        routerId,
+        hotspotId,
+      },
+    })
   }
 
   async function salvarRouter() {
@@ -851,6 +883,31 @@ export default function MikrotiksPage() {
                   rows={3}
                   className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none resize-none"
                 />
+              </div>
+
+              <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
+                <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Vincular ao Hotspot
+                </label>
+
+                <select
+                  value={form.hotspot_id}
+                  onChange={(e) => setForm({ ...form, hotspot_id: e.target.value })}
+                  className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-[#6be12f]/30"
+                >
+                  <option value="">Não vincular agora</option>
+
+                  {hotspots.map((hotspot) => (
+                    <option key={hotspot.id} value={hotspot.id}>
+                      {hotspot.nome || hotspot.name || hotspot.slug || hotspot.id}
+                      {hotspot.router_id ? ' — já possui MikroTik' : ''}
+                    </option>
+                  ))}
+                </select>
+
+                <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
+                  Ao salvar, este MikroTik será vinculado ao hotspot escolhido. Isso permite que o Controle de Rede aplique regras no roteador correto.
+                </p>
               </div>
 
               <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
