@@ -196,6 +196,7 @@ export default function Portal() {
   const hotspotIdRef = useRef('')
   const sessaoAutorizadaRef = useRef(false)
   const autorizacaoPromiseRef = useRef(null)
+  const liberacaoCtaTimerRef = useRef(null)
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -618,6 +619,53 @@ leadIdRef.current = data.leadId
     }
   }
 
+  function liberarInternetAposDelay(explicitLeadId = null, delayMs = 5000) {
+    const resolvedLeadId =
+      explicitLeadId ||
+      leadIdRef.current ||
+      leadId ||
+      leadRapido?.id ||
+      null
+
+    if (!resolvedLeadId) return
+
+    if (liberacaoCtaTimerRef.current) {
+      clearTimeout(liberacaoCtaTimerRef.current)
+    }
+
+    liberacaoCtaTimerRef.current = setTimeout(() => {
+      autorizarSessaoEmBackground(resolvedLeadId).catch((error) => {
+        console.error('Erro ao liberar internet após delay do CTA:', error)
+      })
+    }, delayMs)
+  }
+
+  async function handleCopiarLinkCliente() {
+    if (!urlCliente) return
+
+    setCopiandoLink(true)
+
+    try {
+      await navigator.clipboard.writeText(urlCliente)
+      setLinkCopiado(true)
+
+      if (anuncioAtual) {
+        registrarClique(anuncioAtual.id, getClientIp(), 'copy', urlCliente).catch((error) => {
+          console.error('Erro ao registrar cópia do link:', error)
+        })
+      }
+
+      setTimeout(() => {
+        setLinkCopiado(false)
+      }, 2500)
+    } catch (error) {
+      console.error('Erro ao copiar link:', error)
+      window.prompt('Copie o link abaixo:', urlCliente)
+    } finally {
+      setCopiandoLink(false)
+    }
+  }
+
   async function handleCtaClick(clicou, destinoExterno = '') {
     try {
       const resolvedIp = getClientIp()
@@ -630,34 +678,21 @@ leadIdRef.current = data.leadId
       if (clicou && anuncioAtual) {
         const urlNormalizada = normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
-        if (urlNormalizada) {
-          const opened = window.open(urlNormalizada, '_blank', 'noopener,noreferrer')
-
-          if (!opened) {
-            window.location.href = urlNormalizada
-          }
-        }
+        setUrlCliente(urlNormalizada)
+        setLinkCopiado(false)
 
         registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
-          console.error('Erro ao registrar tentativa de CTA:', error)
+          console.error('Erro ao registrar interesse no CTA:', error)
         })
 
-        registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
-          console.error('Erro ao registrar abertura de CTA:', error)
-        })
-
-        autorizarSessaoEmBackground(resolvedLeadId).catch((error) => {
-          console.error('Erro ao liberar internet após CTA:', error)
-        })
-
-        setEtapa(ETAPAS.CONECTADO || 'conectado')
+        // No Android, liberar imediatamente fecha o captive portal.
+        // Por isso primeiro mostramos a tela de copiar/abrir oferta e só liberamos após 5s.
+        setEtapa(ETAPAS.ABRIR_CLIENTE)
+        liberarInternetAposDelay(resolvedLeadId, 5000)
         return
       }
 
-      // Caso o usuário recuse ir para a página do anunciante,
-      // aí sim liberamos a internet e mostramos conectado.
       await autorizarSessaoEmBackground(resolvedLeadId)
-
       setEtapa(ETAPAS.CONECTADO || 'conectado')
     } catch (error) {
       falhar('Erro na CTA', error)
