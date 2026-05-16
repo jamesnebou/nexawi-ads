@@ -44,6 +44,7 @@ const DEFAULT_FORM = {
   localizacao: '',
   observacoes: '',
   hotspot_id: '',
+  apply_base_policy: true,
 }
 
 function slugify(value = '') {
@@ -343,6 +344,7 @@ export default function MikrotiksPage() {
       body: {
         routerId,
         hotspotId,
+        applyBasePolicy: form.apply_base_policy,
       },
     })
   }
@@ -933,6 +935,25 @@ export default function MikrotiksPage() {
                 <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
                   Ao salvar, este MikroTik será vinculado ao hotspot escolhido. Isso permite que o Controle de Rede aplique regras no roteador correto.
                 </p>
+
+                <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/5 p-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.apply_base_policy}
+                    onChange={(e) => setForm({ ...form, apply_base_policy: e.target.checked })}
+                    className="mt-1"
+                  />
+
+                  <div>
+                    <p className="text-sm font-black text-white">
+                      Aplicar política base após salvar
+                    </p>
+
+                    <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+                      Cria a política padrão do hotspot e envia as regras iniciais para o MikroTik automaticamente.
+                    </p>
+                  </div>
+                </label>
               </div>
 
               <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
