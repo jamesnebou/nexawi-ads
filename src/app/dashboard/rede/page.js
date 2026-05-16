@@ -865,7 +865,8 @@ function isPresetActive(preset) {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
+        <div className="space-y-6">
+            <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
     <div>
       <h2 className="text-lg font-black text-white">
@@ -936,8 +937,6 @@ function isPresetActive(preset) {
     })}
   </div>
 </div>
-
-        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DomainManager
               title="Sites bloqueados"
