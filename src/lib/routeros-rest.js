@@ -502,49 +502,105 @@ export async function cleanupClientAccess({ macAddress } = {}) {
 
 const NEXAWI_POLICY_PREFIX = 'NEXAWI_'
 
-function getNexawiPolicyConfig(options = {}) {
-  return {
-    hotspotSubnet:
-      options.hotspotSubnet ||
-      process.env.NEXAWI_HOTSPOT_SUBNET ||
-      '192.168.88.0/24',
-    blockQuic: options.blockQuic !== false,
-    blockTorrent: options.blockTorrent !== false,
-    blockGames: options.blockGames !== false,
-    blockTlsGames: options.blockTlsGames !== false,
-    forceDns: options.forceDns !== false,
-  }
+function sanitizePolicyComment(value = '') {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 45)
+}
+
+function normalizeDomain(value = '') {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^www\./, '')
+    .split('/')[0]
+    .split('?')[0]
+    .trim()
+}
+
+function uniqueDomains(list = []) {
+  return [...new Set(
+    (list || [])
+      .map(normalizeDomain)
+      .filter((item) => item && item.includes('.'))
+  )]
+}
+
+function escapeRegexDomain(domain = '') {
+  return normalizeDomain(domain).replace(/\./g, '\\.')
+}
+
+function getDomainTlsHosts(domain = '') {
+  const clean = normalizeDomain(domain)
+
+  if (!clean) return []
+
+  return [
+    clean,
+    `*.${clean}`,
+  ]
 }
 
 function isNexawiPolicyRule(item = {}) {
   return String(item.comment || '').startsWith(NEXAWI_POLICY_PREFIX)
 }
 
-async function listFirewallFilters() {
-  const data = await routerosFetch('/ip/firewall/filter')
+async function listFirewallFilters({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/firewall/filter', { routerConfig })
   return Array.isArray(data) ? data : []
 }
 
-async function listFirewallNatRules() {
-  const data = await routerosFetch('/ip/firewall/nat')
+async function listFirewallNatRules({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/firewall/nat', { routerConfig })
   return Array.isArray(data) ? data : []
 }
 
-async function addFirewallFilterRule(payload) {
+async function listDnsStaticRules({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/dns/static', { routerConfig })
+  return Array.isArray(data) ? data : []
+}
+
+async function listFirewallAddressList({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/firewall/address-list', { routerConfig })
+  return Array.isArray(data) ? data : []
+}
+
+async function addFirewallAddressListEntry(payload, { routerConfig } = {}) {
+  return routerosFetch('/ip/firewall/address-list', {
+    method: 'PUT',
+    body: payload,
+    routerConfig,
+  })
+}
+
+async function addFirewallFilterRule(payload, { routerConfig } = {}) {
   return routerosFetch('/ip/firewall/filter', {
     method: 'PUT',
     body: payload,
+    routerConfig,
   })
 }
 
-async function addFirewallNatRule(payload) {
+async function addFirewallNatRule(payload, { routerConfig } = {}) {
   return routerosFetch('/ip/firewall/nat', {
     method: 'PUT',
     body: payload,
+    routerConfig,
   })
 }
 
-async function tryEnsureDnsSettings() {
+async function addDnsStaticRule(payload, { routerConfig } = {}) {
+  return routerosFetch('/ip/dns/static', {
+    method: 'PUT',
+    body: payload,
+    routerConfig,
+  })
+}
+
+async function tryEnsureDnsSettings({ routerConfig } = {}) {
   const attempts = [
     {
       path: '/ip/dns/set',
@@ -571,6 +627,7 @@ async function tryEnsureDnsSettings() {
       const result = await routerosFetch(attempt.path, {
         method: attempt.method,
         body: attempt.body,
+        routerConfig,
       })
 
       return {
@@ -590,20 +647,178 @@ async function tryEnsureDnsSettings() {
   }
 }
 
-export async function resetNexawiNetworkPolicy() {
-  const [filters, natRules] = await Promise.all([
-    listFirewallFilters(),
-    listFirewallNatRules(),
+async function addDnsBlockForDomain(domain, { routerConfig } = {}) {
+  const clean = normalizeDomain(domain)
+  const commentSafe = sanitizePolicyComment(clean)
+
+  if (!clean) {
+    return []
+  }
+
+  const created = []
+
+  const regexpPayload = {
+    regexp: `(^|.*\\.)${escapeRegexDomain(clean)}$`,
+    type: 'NXDOMAIN',
+    comment: `NEXAWI_DNS_BLOCK_CUSTOM_${commentSafe}`,
+    disabled: false,
+  }
+
+  try {
+    created.push(await addDnsStaticRule(regexpPayload, { routerConfig }))
+    return created
+  } catch {
+    // Alguns RouterOS/REST podem rejeitar regexp+NXDOMAIN.
+    // Nesse caso, aplica fallback por registros A.
+  }
+
+  const fallbackRules = [
+    {
+      name: clean,
+      type: 'A',
+      address: '0.0.0.0',
+      comment: `NEXAWI_DNS_BLOCK_CUSTOM_${commentSafe}`,
+      disabled: false,
+    },
+    {
+      name: `www.${clean}`,
+      type: 'A',
+      address: '0.0.0.0',
+      comment: `NEXAWI_DNS_BLOCK_CUSTOM_WWW_${commentSafe}`,
+      disabled: false,
+    },
+  ]
+
+  for (const payload of fallbackRules) {
+    created.push(await addDnsStaticRule(payload, { routerConfig }))
+  }
+
+  return created
+}
+
+const META_PRESET_DOMAINS = [
+  'facebook.com',
+  'fbcdn.net',
+  'fbsbx.com',
+  'messenger.com',
+  'fb.com',
+  'connect.facebook.net',
+  'graph.facebook.com',
+  'm.facebook.com',
+]
+
+const META_PRESET_ADDRESS_LIST = [
+  { address: '31.13.91.0/24', comment: 'NEXAWI_META_OBSERVED_31_13_91' },
+  { address: '57.144.0.0/16', comment: 'NEXAWI_META_OBSERVED_57_144' },
+  { address: '157.240.0.0/16', comment: 'NEXAWI_META_COMMON_157_240' },
+  { address: '129.134.0.0/17', comment: 'NEXAWI_META_COMMON_129_134' },
+  { address: '173.252.64.0/18', comment: 'NEXAWI_META_COMMON_173_252' },
+  { address: '69.171.224.0/19', comment: 'NEXAWI_META_COMMON_69_171' },
+]
+
+const DOH_BLOCK_TARGETS = [
+  { address: '8.8.8.8', comment: 'NEXAWI_BLOCK_DOH_GOOGLE_8_8_8_8' },
+  { address: '8.8.4.4', comment: 'NEXAWI_BLOCK_DOH_GOOGLE_8_8_4_4' },
+  { address: '1.1.1.1', comment: 'NEXAWI_BLOCK_DOH_CLOUDFLARE_1_1_1_1' },
+  { address: '1.0.0.1', comment: 'NEXAWI_BLOCK_DOH_CLOUDFLARE_1_0_0_1' },
+  { address: '9.9.9.9', comment: 'NEXAWI_BLOCK_DOH_QUAD9_9_9_9' },
+]
+
+function shouldApplyMetaPreset(customBlockedDomains = [], options = {}) {
+  if (options.blockMeta === true) return true
+
+  const normalized = uniqueDomains(customBlockedDomains)
+
+  return normalized.some((domain) =>
+    META_PRESET_DOMAINS.some(
+      (presetDomain) =>
+        domain === presetDomain ||
+        domain.endsWith(`.${presetDomain}`) ||
+        presetDomain.endsWith(`.${domain}`)
+    )
+  )
+}
+
+async function addDohBlockRules({ hotspotSubnet, routerConfig } = {}) {
+  const created = []
+
+  for (const target of DOH_BLOCK_TARGETS) {
+    created.push(await addFirewallFilterRule({
+      chain: 'forward',
+      action: 'drop',
+      protocol: 'tcp',
+      'src-address': hotspotSubnet,
+      'dst-address': target.address,
+      'dst-port': '443',
+      comment: target.comment,
+    }, { routerConfig }))
+  }
+
+  return created
+}
+
+async function addMetaPresetRules({ hotspotSubnet, routerConfig } = {}) {
+  const createdAddressListRules = []
+  const createdFilterRules = []
+
+  for (const item of META_PRESET_ADDRESS_LIST) {
+    createdAddressListRules.push(await addFirewallAddressListEntry({
+      list: 'NEXAWI_BLOCK_META',
+      address: item.address,
+      comment: item.comment,
+      disabled: false,
+    }, { routerConfig }))
+  }
+
+  createdFilterRules.push(await addFirewallFilterRule({
+    chain: 'forward',
+    action: 'drop',
+    'src-address': hotspotSubnet,
+    'dst-address-list': 'NEXAWI_BLOCK_META',
+    comment: 'NEXAWI_BLOCK_META_IP',
+  }, { routerConfig }))
+
+  createdFilterRules.push(await addFirewallFilterRule({
+    chain: 'forward',
+    action: 'drop',
+    protocol: 'tcp',
+    'src-address': hotspotSubnet,
+    'dst-address-list': 'NEXAWI_BLOCK_META',
+    'dst-port': '5222',
+    comment: 'NEXAWI_BLOCK_META_5222',
+  }, { routerConfig }))
+
+  return {
+    createdAddressListRules,
+    createdFilterRules,
+  }
+}
+
+export async function resetNexawiNetworkPolicy({ routerConfig } = {}) {
+  const [filters, natRules, dnsStaticRules, addressListRulesRaw] = await Promise.all([
+    listFirewallFilters({ routerConfig }),
+    listFirewallNatRules({ routerConfig }),
+    listDnsStaticRules({ routerConfig }),
+    listFirewallAddressList({ routerConfig }),
   ])
 
   const filterRules = filters.filter(isNexawiPolicyRule)
   const natPolicyRules = natRules.filter(isNexawiPolicyRule)
+  const dnsPolicyRules = dnsStaticRules.filter(isNexawiPolicyRule)
+
+  const addressListRules = addressListRulesRaw.filter((item) => {
+    const comment = String(item.comment || '')
+    const list = String(item.list || '')
+
+    return comment.startsWith(NEXAWI_POLICY_PREFIX) || list.startsWith(NEXAWI_POLICY_PREFIX)
+  })
 
   for (const item of filterRules) {
     if (!item['.id']) continue
 
     await routerosFetch(`/ip/firewall/filter/${encodeURIComponent(item['.id'])}`, {
       method: 'DELETE',
+      routerConfig,
     })
   }
 
@@ -612,6 +827,25 @@ export async function resetNexawiNetworkPolicy() {
 
     await routerosFetch(`/ip/firewall/nat/${encodeURIComponent(item['.id'])}`, {
       method: 'DELETE',
+      routerConfig,
+    })
+  }
+
+  for (const item of dnsPolicyRules) {
+    if (!item['.id']) continue
+
+    await routerosFetch(`/ip/dns/static/${encodeURIComponent(item['.id'])}`, {
+      method: 'DELETE',
+      routerConfig,
+    })
+  }
+
+  for (const item of addressListRules) {
+    if (!item['.id']) continue
+
+    await routerosFetch(`/ip/firewall/address-list/${encodeURIComponent(item['.id'])}`, {
+      method: 'DELETE',
+      routerConfig,
     })
   }
 
@@ -619,13 +853,16 @@ export async function resetNexawiNetworkPolicy() {
     ok: true,
     removedFilters: filterRules.length,
     removedNatRules: natPolicyRules.length,
+    removedDnsRules: dnsPolicyRules.length,
+    removedAddressListRules: addressListRules.length,
   }
 }
 
-export async function getNexawiNetworkPolicyStatus() {
-  const [filters, natRules] = await Promise.all([
-    listFirewallFilters(),
-    listFirewallNatRules(),
+export async function getNexawiNetworkPolicyStatus({ routerConfig } = {}) {
+  const [filters, natRules, dnsStaticRules] = await Promise.all([
+    listFirewallFilters({ routerConfig }),
+    listFirewallNatRules({ routerConfig }),
+    listDnsStaticRules({ routerConfig }),
   ])
 
   const filterRules = filters
@@ -662,28 +899,66 @@ export async function getNexawiNetworkPolicyStatus() {
       packets: item.packets || '',
     }))
 
+  const dnsPolicyRules = dnsStaticRules
+    .filter(isNexawiPolicyRule)
+    .map((item) => ({
+      id: item['.id'] || '',
+      name: item.name || '',
+      regexp: item.regexp || '',
+      type: item.type || '',
+      address: item.address || '',
+      comment: item.comment || '',
+      disabled: routerFlag(item.disabled),
+      invalid: routerFlag(item.invalid),
+    }))
+
   return {
     ok: true,
-    enabled: filterRules.length > 0 || natPolicyRules.length > 0,
+    enabled: filterRules.length > 0 || natPolicyRules.length > 0 || dnsPolicyRules.length > 0,
     filterCount: filterRules.length,
     natCount: natPolicyRules.length,
+    dnsCount: dnsPolicyRules.length,
     filters: filterRules,
     natRules: natPolicyRules,
+    dnsRules: dnsPolicyRules,
     checkedAt: new Date().toISOString(),
   }
 }
 
 export async function applyNexawiNetworkPolicy(options = {}) {
-  const config = getNexawiPolicyConfig(options)
-  const hotspotSubnet = config.hotspotSubnet
+  const routerConfig = options.routerConfig || null
 
-  const reset = await resetNexawiNetworkPolicy()
-  const dnsSettings = await tryEnsureDnsSettings()
+  const hotspotSubnet =
+    options.hotspotSubnet ||
+    process.env.NEXAWI_HOTSPOT_SUBNET ||
+    '192.168.88.0/24'
+
+  const blockQuic = options.blockQuic !== false
+  const blockTorrent = options.blockTorrent !== false
+  const blockGames = options.blockGames !== false
+  const blockTlsGames = options.blockTlsGames !== false
+  const forceDns = options.forceDns !== false
+
+  const requestedBlockedDomains = uniqueDomains(options.customBlockedDomains || [])
+  const applyMetaPreset = shouldApplyMetaPreset(requestedBlockedDomains, options)
+
+  const customBlockedDomains = uniqueDomains([
+    ...requestedBlockedDomains,
+    ...(applyMetaPreset ? META_PRESET_DOMAINS : []),
+  ])
+
+  const customAllowedDomains = uniqueDomains(options.customAllowedDomains || [])
+  const blockDoh = options.blockDoh !== false && forceDns
+
+  const reset = await resetNexawiNetworkPolicy({ routerConfig })
+  const dnsSettings = await tryEnsureDnsSettings({ routerConfig })
 
   const createdNatRules = []
   const createdFilterRules = []
+  const createdDnsRules = []
+  const createdAddressListRules = []
 
-  if (config.forceDns) {
+  if (forceDns) {
     createdNatRules.push(await addFirewallNatRule({
       chain: 'dstnat',
       action: 'redirect',
@@ -692,7 +967,7 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '53',
       comment: 'NEXAWI_FORCE_DNS_UDP',
-    }))
+    }, { routerConfig }))
 
     createdNatRules.push(await addFirewallNatRule({
       chain: 'dstnat',
@@ -702,7 +977,42 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '53',
       comment: 'NEXAWI_FORCE_DNS_TCP',
-    }))
+    }, { routerConfig }))
+  }
+
+  if (blockDoh) {
+    const dohRules = await addDohBlockRules({
+      hotspotSubnet,
+      routerConfig,
+    })
+
+    createdFilterRules.push(...dohRules)
+  }
+
+  if (applyMetaPreset) {
+    const metaRules = await addMetaPresetRules({
+      hotspotSubnet,
+      routerConfig,
+    })
+
+    createdAddressListRules.push(...metaRules.createdAddressListRules)
+    createdFilterRules.push(...metaRules.createdFilterRules)
+  }
+
+  for (const domain of customAllowedDomains) {
+    const tlsHosts = getDomainTlsHosts(domain)
+
+    for (const tlsHost of tlsHosts) {
+      createdFilterRules.push(await addFirewallFilterRule({
+        chain: 'forward',
+        action: 'accept',
+        protocol: 'tcp',
+        'src-address': hotspotSubnet,
+        'dst-port': '443',
+        'tls-host': tlsHost,
+        comment: `NEXAWI_ALLOW_CUSTOM_${sanitizePolicyComment(domain)}`,
+      }, { routerConfig }))
+    }
   }
 
   createdFilterRules.push(await addFirewallFilterRule({
@@ -712,7 +1022,7 @@ export async function applyNexawiNetworkPolicy(options = {}) {
     'src-address': hotspotSubnet,
     'dst-port': '853',
     comment: 'NEXAWI_BLOCK_DOT_TCP',
-  }))
+  }, { routerConfig }))
 
   createdFilterRules.push(await addFirewallFilterRule({
     chain: 'forward',
@@ -721,9 +1031,9 @@ export async function applyNexawiNetworkPolicy(options = {}) {
     'src-address': hotspotSubnet,
     'dst-port': '853',
     comment: 'NEXAWI_BLOCK_DOT_UDP',
-  }))
+  }, { routerConfig }))
 
-  if (config.blockQuic) {
+  if (blockQuic) {
     createdFilterRules.push(await addFirewallFilterRule({
       chain: 'forward',
       action: 'drop',
@@ -731,10 +1041,10 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '443',
       comment: 'NEXAWI_BLOCK_QUIC_UDP_443',
-    }))
+    }, { routerConfig }))
   }
 
-  if (config.blockTorrent) {
+  if (blockTorrent) {
     createdFilterRules.push(await addFirewallFilterRule({
       chain: 'forward',
       action: 'drop',
@@ -742,7 +1052,7 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '6881-6999,51413,6969',
       comment: 'NEXAWI_BLOCK_TORRENT_TCP',
-    }))
+    }, { routerConfig }))
 
     createdFilterRules.push(await addFirewallFilterRule({
       chain: 'forward',
@@ -751,10 +1061,10 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '6881-6999,51413,6969',
       comment: 'NEXAWI_BLOCK_TORRENT_UDP',
-    }))
+    }, { routerConfig }))
   }
 
-  if (config.blockGames) {
+  if (blockGames) {
     createdFilterRules.push(await addFirewallFilterRule({
       chain: 'forward',
       action: 'drop',
@@ -762,7 +1072,7 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '3074,3478-3480,3659,4380,7777-7790,27000-27200',
       comment: 'NEXAWI_BLOCK_GAMES_UDP',
-    }))
+    }, { routerConfig }))
 
     createdFilterRules.push(await addFirewallFilterRule({
       chain: 'forward',
@@ -771,10 +1081,10 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       'src-address': hotspotSubnet,
       'dst-port': '3074,27014-27050',
       comment: 'NEXAWI_BLOCK_GAMES_TCP',
-    }))
+    }, { routerConfig }))
   }
 
-  if (config.blockTlsGames) {
+  if (blockTlsGames) {
     const tlsHosts = [
       ['*.roblox.com', 'NEXAWI_BLOCK_TLS_ROBLOX'],
       ['*.rbxcdn.com', 'NEXAWI_BLOCK_TLS_RBXCDN'],
@@ -799,20 +1109,52 @@ export async function applyNexawiNetworkPolicy(options = {}) {
         'dst-port': '443',
         'tls-host': tlsHost,
         comment,
-      }))
+      }, { routerConfig }))
     }
   }
 
-  const status = await getNexawiNetworkPolicyStatus()
+  for (const domain of customBlockedDomains) {
+    const tlsHosts = getDomainTlsHosts(domain)
+
+    for (const tlsHost of tlsHosts) {
+      createdFilterRules.push(await addFirewallFilterRule({
+        chain: 'forward',
+        action: 'drop',
+        protocol: 'tcp',
+        'src-address': hotspotSubnet,
+        'dst-port': '443',
+        'tls-host': tlsHost,
+        comment: `NEXAWI_BLOCK_CUSTOM_${sanitizePolicyComment(domain)}`,
+      }, { routerConfig }))
+    }
+
+    const dnsRules = await addDnsBlockForDomain(domain, { routerConfig })
+    createdDnsRules.push(...dnsRules)
+  }
+
+  const status = await getNexawiNetworkPolicyStatus({ routerConfig })
 
   return {
     ok: true,
     hotspotSubnet,
-    config,
+    config: {
+      hotspotSubnet,
+      blockQuic,
+      blockTorrent,
+      blockGames,
+      blockTlsGames,
+      forceDns,
+      blockDoh,
+      applyMetaPreset,
+      customBlockedDomains,
+      customAllowedDomains,
+    },
     reset,
     dnsSettings,
     createdFilterRulesCount: createdFilterRules.length,
     createdNatRulesCount: createdNatRules.length,
+    createdDnsRulesCount: createdDnsRules.length,
+    createdAddressListRulesCount: createdAddressListRules.length,
     status,
     appliedAt: new Date().toISOString(),
   }
