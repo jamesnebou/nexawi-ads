@@ -148,6 +148,7 @@ export default function MikrotiksPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       carregarRouters()
+    carregarHotspots()
     }, 250)
 
     return () => clearTimeout(timer)
