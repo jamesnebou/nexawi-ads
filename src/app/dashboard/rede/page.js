@@ -436,14 +436,14 @@ export default function ControleRedePage() {
           blockTlsGames: data.policy.block_tls_games !== false,
           downloadLimit: data.policy.download_limit || '10M',
           uploadLimit: data.policy.upload_limit || '3M',
-          customBlockedDomains: blockedDomains,
-          customAllowedDomains: allowedDomains,
+          customBlockedDomains: cleanDomainList(blockedDomains),
+          customAllowedDomains: cleanDomainList(allowedDomains),
         })
       } else {
         setPolicy({
           ...DEFAULT_POLICY,
-          customBlockedDomains: blockedDomains,
-          customAllowedDomains: allowedDomains,
+          customBlockedDomains: cleanDomainList(blockedDomains),
+customAllowedDomains: cleanDomainList(allowedDomains),
         })
       }
     } catch (err) {
@@ -453,55 +453,39 @@ export default function ControleRedePage() {
       setLoading(false)
     }
   }
+
+function getPresetDomains(preset) {
+  return (preset.domains || [])
+    .map((domain) => normalizeDomain(domain))
+    .filter(Boolean)
+}
+
+function cleanDomainList(list = []) {
+  return [...new Set(
+    (list || [])
+      .map((domain) => normalizeDomain(domain))
+      .filter((domain) => domain && domain.includes('.'))
+  )]
+}
+
 function isPresetActive(preset) {
-  const blocked = new Set(
-    (policy.customBlockedDomains || []).filter(Boolean)
-  )
+  const blocked = new Set(cleanDomainList(policy.customBlockedDomains || []))
+  const domains = getPresetDomains(preset)
 
-  return (preset.domains || []).every((domain) => blocked.has(domain))
+  if (domains.length === 0) return false
+
+  return domains.every((domain) => blocked.has(domain))
 }
 
 function togglePreset(preset) {
   setError('')
 
   setPolicy((current) => {
-    const blocked = new Set(
-      (current.customBlockedDomains || []).filter(Boolean)
-    )
+    const blocked = new Set(cleanDomainList(current.customBlockedDomains || []))
+    const allowed = new Set(cleanDomainList(current.customAllowedDomains || []))
 
-    const allowed = new Set(
-      (current.customAllowedDomains || []).filter(Boolean)
-    )
-
-    const domains = (preset.domains || []).filter(Boolean)
-    const active = domains.every((domain) => blocked.has(domain))
-
-    if (active) {
-      domains.forEach((domain) => blocked.delete(domain))
-    } else {
-      domains.forEach((domain) => {
-        blocked.add(domain)
-        allowed.delete(domain)
-      })
-    }
-
-    return {
-      ...current,
-      customBlockedDomains: Array.from(blocked),
-      customAllowedDomains: Array.from(allowed),
-    }
-  })
-}
-
-function togglePreset(preset) {
-  setError('')
-
-  setPolicy((current) => {
-    const blocked = new Set(current.customBlockedDomains || [])
-    const allowed = new Set(current.customAllowedDomains || [])
-
-    const domains = preset.domains || []
-    const active = domains.every((domain) => blocked.has(domain))
+    const domains = getPresetDomains(preset)
+    const active = domains.length > 0 && domains.every((domain) => blocked.has(domain))
 
     if (active) {
       domains.forEach((domain) => blocked.delete(domain))
@@ -574,7 +558,9 @@ function togglePreset(preset) {
     setAllowedInput('')
   }
 
-   function removeBlockedDomain(domain) {
+ 
+
+  function removeBlockedDomain(domain) {
     setPolicy((current) => ({
       ...current,
       customBlockedDomains: (current.customBlockedDomains || []).filter((item) => item !== domain),
@@ -670,27 +656,7 @@ function togglePreset(preset) {
     }
   }
 
-    function togglePreset(preset) {
-  setError('')
-
-  setPolicy((current) => {
-    const blocked = new Set(current.customBlockedDomains || [])
-    const allowed = new Set(current.customAllowedDomains || [])
-
-    if (blocked.has(preset.domain)) {
-      blocked.delete(preset.domain)
-    } else {
-      blocked.add(preset.domain)
-      allowed.delete(preset.domain)
-    }
-
-    return {
-      ...current,
-      customBlockedDomains: Array.from(blocked),
-      customAllowedDomains: Array.from(allowed),
-    }
-  })
-}
+  
 
   useEffect(() => {
     carregarStatus()
@@ -1008,7 +974,7 @@ function togglePreset(preset) {
               </p>
 
               <p className="text-xs text-neutral-600 mt-3">
-                Gatilhos: <span className="font-bold text-neutral-300">{preset.domains.join(', ')}</span>
+                Gatilhos: <span className="font-bold text-neutral-300">{getPresetDomains(preset).join(', ')}</span>
               </p>
             </div>
 
