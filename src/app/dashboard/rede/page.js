@@ -44,8 +44,43 @@ const QUICK_PRESETS = [
     id: 'meta',
     title: 'Facebook / Meta',
     description: 'Bloqueia Facebook, Messenger e domínios essenciais da Meta com DNS, TLS, IP e DoH.',
-    domain: 'facebook.com',
+    domains: ['facebook.com'],
     badge: 'Preset forte',
+  },
+  {
+    id: 'instagram',
+    title: 'Instagram',
+    description: 'Adiciona domínios principais do Instagram para bloqueio por DNS e TLS.',
+    domains: ['instagram.com', 'cdninstagram.com'],
+    badge: 'Básico',
+  },
+  {
+    id: 'tiktok',
+    title: 'TikTok',
+    description: 'Adiciona domínios comuns do TikTok para bloqueio por DNS e TLS.',
+    domains: ['tiktok.com', 'tiktokcdn.com', 'byteoversea.com'],
+    badge: 'Básico',
+  },
+  {
+    id: 'youtube',
+    title: 'YouTube',
+    description: 'Adiciona domínios principais do YouTube e Google Video.',
+    domains: ['youtube.com', 'youtu.be', 'googlevideo.com', 'ytimg.com'],
+    badge: 'Básico',
+  },
+  {
+    id: 'netflix',
+    title: 'Netflix / Streaming',
+    description: 'Adiciona domínios principais de streaming para reduzir consumo de banda.',
+    domains: ['netflix.com', 'nflxvideo.net', 'nflximg.net'],
+    badge: 'Básico',
+  },
+  {
+    id: 'apostas',
+    title: 'Apostas',
+    description: 'Adiciona domínios comuns de apostas para bloqueio inicial.',
+    domains: ['bet365.com', 'betano.com', 'kto.com', 'superbet.com'],
+    badge: 'Básico',
   },
 ]
 
@@ -419,10 +454,36 @@ export default function ControleRedePage() {
     }
   }
 function isPresetActive(preset) {
-  return (policy.customBlockedDomains || []).includes(preset.domain)
+  const blocked = new Set(policy.customBlockedDomains || [])
+  return (preset.domains || []).every((domain) => blocked.has(domain))
 }
 
+function togglePreset(preset) {
+  setError('')
 
+  setPolicy((current) => {
+    const blocked = new Set(current.customBlockedDomains || [])
+    const allowed = new Set(current.customAllowedDomains || [])
+
+    const domains = preset.domains || []
+    const active = domains.every((domain) => blocked.has(domain))
+
+    if (active) {
+      domains.forEach((domain) => blocked.delete(domain))
+    } else {
+      domains.forEach((domain) => {
+        blocked.add(domain)
+        allowed.delete(domain)
+      })
+    }
+
+    return {
+      ...current,
+      customBlockedDomains: Array.from(blocked),
+      customAllowedDomains: Array.from(allowed),
+    }
+  })
+}
 
   function addBlockedDomain() {
     const domain = normalizeDomain(blockedInput)
@@ -883,7 +944,7 @@ function isPresetActive(preset) {
     </div>
   </div>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+<div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-3">
     {QUICK_PRESETS.map((preset) => {
       const active = isPresetActive(preset)
 
@@ -916,7 +977,7 @@ function isPresetActive(preset) {
               </p>
 
               <p className="text-xs text-neutral-600 mt-3">
-                Domínio gatilho: <span className="font-bold text-neutral-300">{preset.domain}</span>
+                Gatilhos: <span className="font-bold text-neutral-300">{preset.domains.join(', ')}</span>
               </p>
             </div>
 
