@@ -365,6 +365,7 @@ export default function Portal() {
   try {
     await portalApiFetch('/api/portal/view', {
       anuncioId,
+      hotspotId: hotspot?.id || '',
       ipAddress: ip,
     })
   } catch (err) {
@@ -376,6 +377,7 @@ export default function Portal() {
   try {
     await portalApiFetch('/api/portal/click', {
       anuncioId,
+      hotspotId: hotspot?.id || '',
       ipAddress: ip,
       tipoAcao,
       urlDestino,
