@@ -574,11 +574,7 @@ function togglePreset(preset) {
     setAllowedInput('')
   }
 
-  function isPresetActive(preset) {
-  return (policy.customBlockedDomains || []).includes(preset.domain)
-}
-
-  function removeBlockedDomain(domain) {
+   function removeBlockedDomain(domain) {
     setPolicy((current) => ({
       ...current,
       customBlockedDomains: (current.customBlockedDomains || []).filter((item) => item !== domain),
