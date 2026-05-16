@@ -277,28 +277,7 @@ export default function MikrotiksPage() {
   }
 
   async function testarRouter(router) {
-    setProcessingId(router.id)
-
-    try {
-      const data = await adminApiFetch('/api/admin/mikrotiks', {
-        method: 'POST',
-        body: {
-          action: 'test',
-          id: router.id,
-        },
-      })
-
-      if (data?.result?.ok) {
-        toast.success('MikroTik respondeu corretamente.')
-      } else {
-        toast.error('MikroTik respondeu, mas sem status OK.')
-      }
-    } catch (error) {
-      console.error('Erro ao testar MikroTik:', error)
-      toast.error(error.message || 'Erro ao testar MikroTik.')
-    } finally {
-      setProcessingId(null)
-    }
+    return diagnosticarRouter(router)
   }
 
   async function diagnosticarRouter(router) {
