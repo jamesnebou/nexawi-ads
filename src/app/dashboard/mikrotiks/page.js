@@ -129,6 +129,11 @@ export default function MikrotiksPage() {
   const [routerSelecionado, setRouterSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
 
+  const [diagnosticsOpen, setDiagnosticsOpen] = useState(false)
+  const [diagnosticsRouter, setDiagnosticsRouter] = useState(null)
+  const [diagnosticsData, setDiagnosticsData] = useState(null)
+  const [diagnosticsLoadingId, setDiagnosticsLoadingId] = useState(null)
+
   const [form, setForm] = useState(DEFAULT_FORM)
 
   const canCreate = Boolean(permissions.create)
@@ -294,6 +299,54 @@ export default function MikrotiksPage() {
     } finally {
       setProcessingId(null)
     }
+  }
+
+  async function diagnosticarRouter(router) {
+    setDiagnosticsRouter(router)
+    setDiagnosticsData(null)
+    setDiagnosticsOpen(true)
+    setDiagnosticsLoadingId(router.id)
+
+    try {
+      const data = await adminApiFetch('/api/admin/mikrotiks/diagnostics', {
+        method: 'POST',
+        body: {
+          id: router.id,
+        },
+      })
+
+      setDiagnosticsData(data.diagnostics || null)
+
+      if (data.diagnostics?.ready) {
+        toast.success('MikroTik pronto para operar.')
+      } else {
+        toast.error('Diagnóstico encontrou pendências.')
+      }
+    } catch (error) {
+      console.error('Erro ao diagnosticar MikroTik:', error)
+
+      setDiagnosticsData({
+        ok: false,
+        ready: false,
+        error: error.message || 'Erro ao diagnosticar MikroTik',
+        checks: [],
+        summary: {
+          criticalIssues: 1,
+          warnings: 0,
+          checks: 0,
+        },
+      })
+
+      toast.error(error.message || 'Erro ao diagnosticar MikroTik.')
+    } finally {
+      setDiagnosticsLoadingId(null)
+    }
+  }
+
+  function fecharDiagnostics() {
+    setDiagnosticsOpen(false)
+    setDiagnosticsRouter(null)
+    setDiagnosticsData(null)
   }
 
   async function copiarTexto(value) {
@@ -470,6 +523,7 @@ export default function MikrotiksPage() {
           <section className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-6">
             {routersFiltrados.map((routerItem) => {
               const testing = processingId === routerItem.id
+              const diagnosing = diagnosticsLoadingId === routerItem.id
 
               return (
                 <article
@@ -570,11 +624,11 @@ export default function MikrotiksPage() {
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={() => testarRouter(routerItem)}
-                        disabled={testing}
+                        disabled={diagnosing}
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50"
                       >
-                        {testing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                        Testar conexão
+                        {diagnosing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
+                        Diagnóstico
                       </button>
 
                       <button
@@ -765,6 +819,230 @@ export default function MikrotiksPage() {
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {diagnosticsOpen && (
+        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4">
+          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-4xl flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between p-8 border-b border-white/[0.05]">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059] mb-3">
+                  <ShieldCheck size={13} />
+                  Diagnóstico técnico
+                </div>
+
+                <h2 className="text-2xl font-bold text-white">
+                  {diagnosticsRouter?.nome || 'MikroTik'}
+                </h2>
+
+                <p className="text-xs text-neutral-500 mt-1 break-all">
+                  {diagnosticsRouter?.base_url || ''}
+                </p>
+              </div>
+
+              <button onClick={fecharDiagnostics} className="p-2.5 text-neutral-500 hover:text-white">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-8 overflow-y-auto custom-scrollbar flex-grow space-y-6">
+              {diagnosticsLoadingId ? (
+                <div className="py-20 flex flex-col items-center justify-center gap-4">
+                  <Loader2 size={34} className="animate-spin text-[#6be12f]" />
+                  <p className="text-sm font-bold text-neutral-400">
+                    Executando diagnóstico no MikroTik...
+                  </p>
+                </div>
+              ) : diagnosticsData?.error ? (
+                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-5">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle size={20} className="text-red-400 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-black text-red-300">
+                        Diagnóstico falhou
+                      </p>
+                      <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
+                        {diagnosticsData.error}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : diagnosticsData ? (
+                <>
+                  <div className={`rounded-[2rem] border p-6 ${
+                    diagnosticsData.ready
+                      ? 'border-[#6be12f]/20 bg-[#6be12f]/10'
+                      : 'border-yellow-500/20 bg-yellow-500/10'
+                  }`}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div>
+                        <p className={`text-sm font-black ${
+                          diagnosticsData.ready ? 'text-[#8cf059]' : 'text-yellow-300'
+                        }`}>
+                          {diagnosticsData.ready ? 'MikroTik pronto para operar' : 'MikroTik precisa de atenção'}
+                        </p>
+
+                        <p className="text-xs text-neutral-400 mt-1">
+                          {diagnosticsData.summary?.criticalIssues || 0} críticos · {diagnosticsData.summary?.warnings || 0} avisos · {diagnosticsData.summary?.checks || 0} verificações
+                        </p>
+                      </div>
+
+                      <div className="text-xs font-bold text-neutral-500">
+                        {diagnosticsData.checkedAt ? new Date(diagnosticsData.checkedAt).toLocaleString('pt-BR') : ''}
+                      </div>
+                    </div>
+                  </div>
+
+                  {diagnosticsData.router && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
+                          Modelo
+                        </p>
+                        <p className="text-sm font-black text-white">
+                          {diagnosticsData.router.boardName || '—'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
+                          RouterOS
+                        </p>
+                        <p className="text-sm font-black text-white">
+                          {diagnosticsData.router.version || '—'}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+                        <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
+                          Uptime
+                        </p>
+                        <p className="text-sm font-black text-white">
+                          {diagnosticsData.router.uptime || '—'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <h3 className="text-lg font-black text-white mb-4">
+                      Verificações
+                    </h3>
+
+                    <div className="space-y-3">
+                      {(diagnosticsData.checks || []).map((check) => (
+                        <div
+                          key={check.id}
+                          className={`rounded-2xl border p-5 ${
+                            check.ok
+                              ? 'border-[#6be12f]/15 bg-[#6be12f]/5'
+                              : check.severity === 'critical'
+                                ? 'border-red-500/20 bg-red-500/10'
+                                : 'border-yellow-500/20 bg-yellow-500/10'
+                          }`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              check.ok ? 'bg-[#6be12f]/10 text-[#8cf059]' : 'bg-yellow-500/10 text-yellow-300'
+                            }`}>
+                              {check.ok ? <ShieldCheck size={17} /> : <AlertTriangle size={17} />}
+                            </div>
+
+                            <div className="min-w-0">
+                              <p className="text-sm font-black text-white">
+                                {check.label}
+                              </p>
+
+                              {check.message && (
+                                <p className="text-xs text-neutral-400 mt-1 leading-relaxed">
+                                  {check.message}
+                                </p>
+                              )}
+
+                              {!check.ok && check.recommendation && (
+                                <p className="text-xs text-yellow-200 mt-2 leading-relaxed">
+                                  Recomendação: {check.recommendation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5">
+                      <p className="text-sm font-black text-white mb-3">
+                        Hotspot servers
+                      </p>
+
+                      {(diagnosticsData.hotspotServers || []).length === 0 ? (
+                        <p className="text-xs text-neutral-500">Nenhum servidor hotspot encontrado.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {(diagnosticsData.hotspotServers || []).map((server) => (
+                            <div key={server.id || server.name} className="rounded-xl bg-white/[0.03] border border-white/[0.05] px-4 py-3">
+                              <p className="text-sm font-bold text-white">{server.name}</p>
+                              <p className="text-xs text-neutral-500 mt-1">
+                                Interface: {server.interface || '—'} · Profile: {server.profile || '—'} · {server.enabled ? 'Ativo' : 'Desativado'}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5">
+                      <p className="text-sm font-black text-white mb-3">
+                        Serviços RouterOS
+                      </p>
+
+                      <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
+                        {(diagnosticsData.services || []).map((service) => (
+                          <div key={service.id || service.name} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] px-4 py-3">
+                            <div>
+                              <p className="text-sm font-bold text-white">{service.name}</p>
+                              <p className="text-xs text-neutral-500">Porta {service.port || '—'} · {service.address || 'sem restrição exibida'}</p>
+                            </div>
+
+                            <span className={`text-[10px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 ${
+                              service.enabled
+                                ? 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
+                                : 'bg-red-500/10 text-red-300 border border-red-500/20'
+                            }`}>
+                              {service.enabled ? 'Ativo' : 'Off'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : null}
+            </div>
+
+            <div className="flex gap-4 p-8 border-t border-white/[0.05]">
+              <button
+                onClick={fecharDiagnostics}
+                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] border border-white/[0.05]"
+              >
+                Fechar
+              </button>
+
+              {diagnosticsRouter && (
+                <button
+                  onClick={() => diagnosticarRouter(diagnosticsRouter)}
+                  disabled={Boolean(diagnosticsLoadingId)}
+                  className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 text-black font-bold py-4 rounded-2xl text-sm flex items-center justify-center gap-2"
+                >
+                  {diagnosticsLoadingId ? <Loader2 size={18} className="animate-spin" /> : <RefreshCcw size={18} />}
+                  Rodar novamente
+                </button>
+              )}
             </div>
           </div>
         </div>
