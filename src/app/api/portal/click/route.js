@@ -1,6 +1,7 @@
 // src/app/api/portal/click/route.js
 // ============================================================
 // API segura para registrar CTA do anúncio.
+// Agora registra também hotspot_id para relatórios por ponto.
 // Registra copy, open e open_attempt sem expor a tabela ao público.
 // ============================================================
 
@@ -9,14 +10,27 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 
+function limparTexto(value = '') {
+  return String(value || '').trim()
+}
+
+function aplicarFiltroHotspot(query, hotspotId) {
+  if (hotspotId) {
+    return query.eq('hotspot_id', hotspotId)
+  }
+
+  return query.is('hotspot_id', null)
+}
+
 export async function POST(request) {
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
-    const anuncioId = String(body.anuncioId || '').trim()
-    const ipAddress = String(body.ipAddress || '').trim()
-    const tipoAcao = String(body.tipoAcao || 'open').trim()
-    const urlDestino = String(body.urlDestino || '').trim()
+    const anuncioId = limparTexto(body.anuncioId || body.anuncio_id)
+    const hotspotId = limparTexto(body.hotspotId || body.hotspot_id)
+    const ipAddress = limparTexto(body.ipAddress || body.ip_address)
+    const tipoAcao = limparTexto(body.tipoAcao || body.tipo_acao || 'open')
+    const urlDestino = limparTexto(body.urlDestino || body.url_destino)
 
     if (!anuncioId) {
       return NextResponse.json({ ok: true, skipped: true })
@@ -30,7 +44,7 @@ export async function POST(request) {
 
     const hoje = new Date().toISOString().split('T')[0]
 
-    const { data: existing, error: existingError } = await supabaseAdmin
+    let existingQuery = supabaseAdmin
       .from('anuncio_clicks')
       .select('id')
       .eq('anuncio_id', anuncioId)
@@ -39,6 +53,10 @@ export async function POST(request) {
       .gte('timestamp', `${hoje}T00:00:00.000Z`)
       .limit(1)
 
+    existingQuery = aplicarFiltroHotspot(existingQuery, hotspotId)
+
+    const { data: existing, error: existingError } = await existingQuery
+
     if (existingError) throw existingError
 
     if (!existing || existing.length === 0) {
@@ -46,6 +64,7 @@ export async function POST(request) {
         .from('anuncio_clicks')
         .insert([{
           anuncio_id: anuncioId,
+          hotspot_id: hotspotId || null,
           ip_address: ipAddress || null,
           tipo_acao: tipoAcao,
           url_destino: urlDestino || null,
@@ -54,7 +73,11 @@ export async function POST(request) {
       if (error) throw error
     }
 
-    return NextResponse.json({ ok: true })
+    return NextResponse.json({
+      ok: true,
+      hotspotId: hotspotId || null,
+      tipoAcao,
+    })
   } catch (error) {
     return NextResponse.json(
       {
