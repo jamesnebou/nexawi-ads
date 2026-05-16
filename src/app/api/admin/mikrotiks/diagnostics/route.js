@@ -69,19 +69,74 @@ export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
     const id = limparTexto(body.id)
+    const manualRouter = body.router || body.routerConfig || null
 
-    if (!id) {
+    let router = null
+    let routerConfig = null
+    let entityId = id || null
+
+    if (id) {
+      router = await getRouterById(id)
+
+      if (!router.password) {
+        return NextResponse.json(
+          { ok: false, error: 'Senha do MikroTik não configurada' },
+          { status: 400 }
+        )
+      }
+
+      routerConfig = {
+        baseUrl: router.base_url,
+        username: router.username,
+        password: router.password,
+        hotspotServer: router.hotspot_server || 'hotspot1',
+      }
+    } else if (manualRouter) {
+      const baseUrl = limparTexto(manualRouter.base_url || manualRouter.baseUrl)
+      const username = limparTexto(manualRouter.username)
+      const password = limparTexto(manualRouter.password)
+      const hotspotServer = limparTexto(manualRouter.hotspot_server || manualRouter.hotspotServer) || 'hotspot1'
+
+      if (!baseUrl) {
+        return NextResponse.json(
+          { ok: false, error: 'Base URL é obrigatória para diagnosticar' },
+          { status: 400 }
+        )
+      }
+
+      if (!username) {
+        return NextResponse.json(
+          { ok: false, error: 'Usuário é obrigatório para diagnosticar' },
+          { status: 400 }
+        )
+      }
+
+      if (!password) {
+        return NextResponse.json(
+          { ok: false, error: 'Senha é obrigatória para diagnosticar' },
+          { status: 400 }
+        )
+      }
+
+      router = {
+        id: null,
+        nome: limparTexto(manualRouter.nome) || 'MikroTik não salvo',
+        slug: limparTexto(manualRouter.slug) || '',
+        base_url: baseUrl,
+        username,
+        hotspot_server: hotspotServer,
+        status: 'Preview',
+      }
+
+      routerConfig = {
+        baseUrl,
+        username,
+        password,
+        hotspotServer,
+      }
+    } else {
       return NextResponse.json(
-        { ok: false, error: 'ID do MikroTik é obrigatório' },
-        { status: 400 }
-      )
-    }
-
-    const router = await getRouterById(id)
-
-    if (!router.password) {
-      return NextResponse.json(
-        { ok: false, error: 'Senha do MikroTik não configurada' },
+        { ok: false, error: 'Informe o ID do MikroTik ou os dados manuais para diagnóstico' },
         { status: 400 }
       )
     }
@@ -89,12 +144,7 @@ export async function POST(request) {
     const result = await callControlApi('/api/control/router/diagnostics', {
       method: 'POST',
       body: {
-        routerConfig: {
-          baseUrl: router.base_url,
-          username: router.username,
-          password: router.password,
-          hotspotServer: router.hotspot_server || 'hotspot1',
-        },
+        routerConfig,
       },
     })
 
@@ -103,11 +153,11 @@ export async function POST(request) {
       adminUser: auth.user,
       action: 'diagnostics',
       entity: 'network_routers',
-      entityId: router.id,
+      entityId,
       description: 'Executou diagnóstico de MikroTik',
       metadata: {
-        router_id: router.id,
-        router_slug: router.slug,
+        router_id: router.id || null,
+        router_slug: router.slug || '',
         ready: Boolean(result?.ready),
         criticalIssues: result?.summary?.criticalIssues || 0,
         warnings: result?.summary?.warnings || 0,
@@ -117,7 +167,7 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       router: {
-        id: router.id,
+        id: router.id || null,
         nome: router.nome,
         slug: router.slug,
         base_url: router.base_url,
