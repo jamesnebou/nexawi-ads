@@ -454,8 +454,43 @@ export default function ControleRedePage() {
     }
   }
 function isPresetActive(preset) {
-  const blocked = new Set(policy.customBlockedDomains || [])
+  const blocked = new Set(
+    (policy.customBlockedDomains || []).filter(Boolean)
+  )
+
   return (preset.domains || []).every((domain) => blocked.has(domain))
+}
+
+function togglePreset(preset) {
+  setError('')
+
+  setPolicy((current) => {
+    const blocked = new Set(
+      (current.customBlockedDomains || []).filter(Boolean)
+    )
+
+    const allowed = new Set(
+      (current.customAllowedDomains || []).filter(Boolean)
+    )
+
+    const domains = (preset.domains || []).filter(Boolean)
+    const active = domains.every((domain) => blocked.has(domain))
+
+    if (active) {
+      domains.forEach((domain) => blocked.delete(domain))
+    } else {
+      domains.forEach((domain) => {
+        blocked.add(domain)
+        allowed.delete(domain)
+      })
+    }
+
+    return {
+      ...current,
+      customBlockedDomains: Array.from(blocked),
+      customAllowedDomains: Array.from(allowed),
+    }
+  })
 }
 
 function togglePreset(preset) {
