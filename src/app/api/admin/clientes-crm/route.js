@@ -80,6 +80,30 @@ function calcularResumo(clientes = []) {
   }
 }
 
+const CLIENTE_SELECT = `
+  id,
+  empresa_id,
+  nome,
+  nome_empresa,
+  nome_responsavel,
+  email,
+  telefone,
+  cidade,
+  estado,
+  status,
+  created_at,
+  crm_etapa,
+  crm_origem,
+  crm_temperatura,
+  crm_proximo_contato,
+  crm_valor_potencial,
+  crm_observacoes,
+  crm_responsavel,
+  crm_updated_at,
+  empresa:empresas!clientes_empresa_id_fkey(id, nome_empresa, status),
+  planos(nome)
+`
+
 export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'clientes',
@@ -100,29 +124,7 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('clientes')
-      .select(`
-        id,
-        empresa_id,
-        nome,
-        nome_empresa,
-        nome_responsavel,
-        email,
-        telefone,
-        cidade,
-        estado,
-        status,
-        created_at,
-        crm_etapa,
-        crm_origem,
-        crm_temperatura,
-        crm_proximo_contato,
-        crm_valor_potencial,
-        crm_observacoes,
-        crm_responsavel,
-        crm_updated_at,
-        empresas(id, nome_empresa, status),
-        planos(nome)
-      `)
+      .select(CLIENTE_SELECT)
       .order('created_at', { ascending: false })
 
     query = auth.applyEmpresaScope(query)
@@ -253,29 +255,7 @@ export async function PATCH(request) {
       .from('clientes')
       .update(updatePayload)
       .eq('id', id)
-      .select(`
-        id,
-        empresa_id,
-        nome,
-        nome_empresa,
-        nome_responsavel,
-        email,
-        telefone,
-        cidade,
-        estado,
-        status,
-        created_at,
-        crm_etapa,
-        crm_origem,
-        crm_temperatura,
-        crm_proximo_contato,
-        crm_valor_potencial,
-        crm_observacoes,
-        crm_responsavel,
-        crm_updated_at,
-        empresas(id, nome_empresa, status),
-        planos(nome)
-      `)
+      .select(CLIENTE_SELECT)
       .single()
 
     if (error) throw error
