@@ -487,8 +487,28 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
   }
 }
 
-async function buscarPessoasOnlineReais() {
+async function buscarPessoasOnlineReais({ hotspotId = '' } = {}) {
   try {
+    if (hotspotId) {
+      const { data: hotspot, error: hotspotError } = await supabaseAdmin
+        .from('hotspots')
+        .select('id, nome, router_id')
+        .eq('id', hotspotId)
+        .maybeSingle()
+
+      if (hotspotError) throw hotspotError
+
+      if (!hotspot?.router_id) {
+        return {
+          count: 0,
+          source: 'no-router',
+          reliable: false,
+          checkedAt: new Date().toISOString(),
+          error: 'Nenhum MikroTik vinculado a este hotspot',
+        }
+      }
+    }
+
     if (CONTROL_API_MODE === 'proxy') {
       if (!CONTROL_API_BASE_URL) {
         throw new Error('CONTROL_API_BASE_URL não configurado')
@@ -706,7 +726,7 @@ export async function GET(request) {
       })
       .reduce((acc, p) => acc + Number(p.valor || 0), 0)
 
-      const pessoasOnlineReal = await buscarPessoasOnlineReais()
+      const pessoasOnlineReal = await buscarPessoasOnlineReais({ hotspotId })
 pessoasOnline = pessoasOnlineReal.count
 
     const metricas = {
