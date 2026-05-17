@@ -474,6 +474,7 @@ export default function ClientDashboardPage() {
           campanha={campanha}
           resumo={resumo}
           financeiro={financeiro}
+          leadsRecentes={leadsRecentes}
           report={commercialReport}
         />
 
@@ -654,7 +655,7 @@ export default function ClientDashboardPage() {
         @media print {
           @page {
             size: A4;
-            margin: 10mm;
+            margin: 15mm;
           }
 
           html,
@@ -761,6 +762,7 @@ export default function ClientDashboardPage() {
           .client-print-status div,
           .client-print-kpis div,
           .client-print-row,
+          .client-print-lead-row,
           .client-print-quality,
           .client-print-empty {
             border: 1px solid rgba(255,255,255,0.14);
@@ -814,12 +816,14 @@ export default function ClientDashboardPage() {
             margin-bottom: 18px;
           }
 
-          .client-print-ranking {
+          .client-print-ranking,
+          .client-print-leads {
             display: grid;
             gap: 12px;
           }
 
-          .client-print-row {
+          .client-print-row,
+          .client-print-lead-row {
             display: grid;
             grid-template-columns: 1.4fr 1.6fr;
             gap: 16px;
@@ -827,30 +831,58 @@ export default function ClientDashboardPage() {
             page-break-inside: avoid;
           }
 
-          .client-print-row > div > strong {
+          .client-print-row > div > strong,
+          .client-print-lead-row > div > strong {
             color: #8cf059 !important;
             font-size: 13px;
           }
 
-          .client-print-row-metrics {
+          .client-print-lead-row h3 {
+            color: #ffffff !important;
+            font-size: 16px;
+            margin: 6px 0 4px;
+            font-weight: 900;
+          }
+
+          .client-print-lead-row p {
+            color: #dbeafe !important;
+            font-size: 11px;
+            margin: 0;
+          }
+
+          .client-print-row-metrics,
+          .client-print-lead-data {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(3, minmax(0, 1fr));
             gap: 8px;
           }
 
-          .client-print-row-metrics span {
+          .client-print-row-metrics {
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+          }
+
+          .client-print-row-metrics span,
+          .client-print-lead-data span {
             background: #050505 !important;
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 12px;
             padding: 10px;
           }
 
-          .client-print-row-metrics b {
+          .client-print-row-metrics b,
+          .client-print-lead-data b {
             display: block;
             color: #ffffff !important;
-            font-size: 16px;
+            font-size: 12px;
             margin-top: 6px;
+            word-break: break-word;
           }
+
+          .client-print-row-metrics b {
+            font-size: 16px;
+          }
+
+          /* CLIENT_PDF_LEADS_MARGIN_PATCH */
 
           .client-print-quality {
             margin-top: 18px;
@@ -876,7 +908,7 @@ export default function ClientDashboardPage() {
   )
 }
 
-function ClientPrintableReport({ cliente, campanha, resumo, financeiro, report }) {
+function ClientPrintableReport({ cliente, campanha, resumo, financeiro, leadsRecentes = [], report }) {
   if (!report?.ok) return null
 
   const rankings = report.rankings || {}
@@ -932,6 +964,15 @@ function ClientPrintableReport({ cliente, campanha, resumo, financeiro, report }
 
       <section className="client-print-section">
         <PrintClientTitle
+          title="Leads capturados"
+          subtitle="Contatos gerados pela campanha no portal NexaWi"
+        />
+
+        <PrintClientLeads leads={leadsRecentes} />
+      </section>
+
+      <section className="client-print-section">
+        <PrintClientTitle
           title="Locais de veiculação"
           subtitle="Hotspots vinculados à sua campanha"
         />
@@ -972,6 +1013,57 @@ function PrintClientTitle({ title, subtitle }) {
       <p>NexaWi ADS</p>
       <h2>{title}</h2>
       <span>{subtitle}</span>
+    </div>
+  )
+}
+
+function PrintClientLeads({ leads = [] }) {
+  const rows = leads.slice(0, 14)
+
+  if (rows.length === 0) {
+    return (
+      <div className="client-print-empty">
+        Nenhum lead encontrado para este período.
+      </div>
+    )
+  }
+
+  return (
+    <div className="client-print-leads">
+      {rows.map((lead, index) => {
+        const nome = lead.nome || lead.name || 'Lead sem nome'
+        const telefone = lead.telefone || lead.phone || '—'
+        const email = lead.email || '—'
+        const origem = lead.anuncio_titulo || lead.anuncio || lead.campanha || 'Campanha NexaWi'
+        const data = lead.created_at || lead.timestamp || lead.data || ''
+
+        return (
+          <div key={lead.id || index} className="client-print-lead-row">
+            <div>
+              <strong>#{index + 1}</strong>
+              <h3>{nome}</h3>
+              <p>{origem}</p>
+            </div>
+
+            <div className="client-print-lead-data">
+              <span>
+                Telefone
+                <b>{telefone}</b>
+              </span>
+
+              <span>
+                E-mail
+                <b>{email}</b>
+              </span>
+
+              <span>
+                Data
+                <b>{formatDate(data)}</b>
+              </span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
