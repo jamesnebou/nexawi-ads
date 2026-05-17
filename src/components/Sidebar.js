@@ -57,6 +57,12 @@ const menu = [
     path: '/dashboard/clientes',
     icon: Users,
     module: 'clientes',
+  },
+  {
+    label: 'CRM Clientes',
+    path: '/dashboard/crm-clientes',
+    icon: Users,
+    module: 'clientes',
   },  
   {
     label: 'Hotspots',

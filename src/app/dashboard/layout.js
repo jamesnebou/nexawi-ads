@@ -32,6 +32,12 @@ const rotasProtegidas = [
     label: 'Clientes',
   },
   {
+    path: '/dashboard/crm-clientes',
+    module: 'clientes',
+    action: 'view',
+    label: 'CRM Clientes',
+  },
+  {
     path: '/dashboard/financeiro',
     module: 'financeiro',
     action: 'view',
