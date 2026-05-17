@@ -3,11 +3,8 @@
 // src/app/dashboard/layout.js
 // ============================================================
 // Layout premium da Dashboard NexaWi ADS.
-// Agora também protege acesso direto por URL.
-//
-// Exemplo:
-// - Se o admin não tem financeiro.view e digitar /dashboard/financeiro,
-//   a tela mostra AccessDenied em vez de abrir a página.
+// Protege acesso direto por URL com permissões por módulo.
+// Sprint 5: rotas multiempresa e dashboard do anunciante.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
@@ -18,13 +15,24 @@ import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admi
 import {
   Menu,
   X,
-  Loader2,
   ShieldCheck,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
 
 const rotasProtegidas = [
+  {
+    path: '/dashboard/empresas',
+    module: 'empresas',
+    action: 'view',
+    label: 'Empresas',
+  },
+  {
+    path: '/dashboard/anunciante',
+    module: 'dashboard_anunciante',
+    action: 'view',
+    label: 'Dashboard do Anunciante',
+  },
   {
     path: '/dashboard/clientes',
     module: 'clientes',
@@ -50,16 +58,16 @@ const rotasProtegidas = [
     label: 'Hotspots',
   },
   {
-  path: '/dashboard/mikrotiks',
-  module: 'hotspots',
-  action: 'view',
-  label: 'MikroTiks',
-},
+    path: '/dashboard/mikrotiks',
+    module: 'hotspots',
+    action: 'view',
+    label: 'MikroTiks',
+  },
   {
-  path: '/dashboard/rede',
-  module: 'hotspots',
-  action: 'view',
-  label: 'Controle de Rede',
+    path: '/dashboard/rede',
+    module: 'hotspots',
+    action: 'view',
+    label: 'Controle de Rede',
   },
   {
     path: '/dashboard/anuncios',
@@ -176,7 +184,6 @@ function resolverRota(pathname) {
     return rotaEncontrada
   }
 
-  // Fallback para páginas futuras dentro da dashboard.
   return {
     path: pathname,
     module: 'dashboard',
@@ -190,12 +197,10 @@ function temPermissao({ permissions, moduleName, actionName, isMaster }) {
 
   const modulo = permissions?.[moduleName]
 
-  // Compatibilidade com modelo antigo: { clientes: true }
   if (typeof modulo === 'boolean') {
     return modulo
   }
 
-  // Modelo novo: { clientes: { view: true, create: false } }
   if (modulo && typeof modulo === 'object') {
     return Boolean(modulo[actionName])
   }
