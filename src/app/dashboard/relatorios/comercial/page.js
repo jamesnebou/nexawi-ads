@@ -19,6 +19,8 @@ import {
   RefreshCw,
   CalendarDays,
   Download,
+  Printer,
+  FileText,
   Lock,
   Activity,
   MapPin,
@@ -195,6 +197,15 @@ export default function RelatorioComercialAdmin() {
     } finally {
       setCarregando(false)
     }
+  }
+
+  function gerarPDF() {
+    if (!report) {
+      toast.error('Carregue o relatório antes de gerar o PDF.')
+      return
+    }
+
+    window.print()
   }
 
   function exportarCSV() {
@@ -384,6 +395,15 @@ export default function RelatorioComercialAdmin() {
             )}
 
             <button
+              onClick={gerarPDF}
+              disabled={!report}
+              className="bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
+            >
+              <Printer size={17} />
+              Gerar PDF
+            </button>
+
+            <button
               onClick={buscarRelatorio}
               className="bg-[#6be12f] hover:bg-[#8cf059] text-black font-black py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(107,225,47,0.18)]"
             >
@@ -392,6 +412,14 @@ export default function RelatorioComercialAdmin() {
             </button>
           </div>
         </div>
+
+        <PrintReportHeader
+          periodo={periodos.find((item) => item.value === periodo)?.label || periodo}
+          cliente={clienteSelecionado ? getClienteLabel(clienteSelecionado) : 'Todos os clientes'}
+          hotspot={hotspotSelecionado ? getHotspotLabel(hotspotSelecionado) : 'Todos os hotspots'}
+          generatedAt={report?.generatedAt}
+          resumo={resumo}
+        />
 
         <PremiumFiltersPanel
           periodo={periodo}
@@ -459,8 +487,264 @@ export default function RelatorioComercialAdmin() {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
+
+        .print-report-header {
+          display: none;
+        }
+
+        @media print {
+          @page {
+            size: A4;
+            margin: 12mm;
+          }
+
+          html,
+          body {
+            background: #ffffff !important;
+            color: #111827 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          aside,
+          nav,
+          button,
+          [role="status"],
+          .fixed,
+          .sticky,
+          .Toaster,
+          .toaster,
+          .react-hot-toast,
+          .relative.z-10.mb-10.rounded-\[2rem\],
+          .group\/select,
+          .animate-ping {
+            display: none !important;
+          }
+
+          main {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+          }
+
+          .animate-fade-in-up {
+            animation: none !important;
+            opacity: 1 !important;
+            transform: none !important;
+          }
+
+          .print-report-header {
+            display: block !important;
+            break-after: avoid;
+            page-break-after: avoid;
+            margin-bottom: 18px;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 22px;
+            background: linear-gradient(135deg, #f7fee7 0%, #ffffff 45%, #f9fafb 100%) !important;
+          }
+
+          .print-brand-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: flex-start;
+            margin-bottom: 20px;
+          }
+
+          .print-kicker {
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #3f7f1f !important;
+            font-weight: 900;
+            margin-bottom: 6px;
+          }
+
+          .print-brand-row h1 {
+            font-size: 28px;
+            line-height: 1.1;
+            color: #111827 !important;
+            font-weight: 900;
+            margin: 0;
+          }
+
+          .print-subtitle {
+            font-size: 12px;
+            color: #6b7280 !important;
+            margin-top: 8px;
+            max-width: 560px;
+          }
+
+          .print-logo-box {
+            width: 120px;
+            height: 58px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+          }
+
+          .print-logo-box img {
+            max-height: 54px;
+            max-width: 120px;
+            object-fit: contain;
+          }
+
+          .print-meta-grid,
+          .print-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+          }
+
+          .print-meta-grid {
+            margin-bottom: 12px;
+          }
+
+          .print-meta-grid div,
+          .print-summary-grid div {
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            padding: 10px 12px;
+            background: #ffffff !important;
+          }
+
+          .print-meta-grid strong,
+          .print-summary-grid span {
+            display: block;
+            font-size: 9px;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #6b7280 !important;
+            font-weight: 800;
+            margin-bottom: 4px;
+          }
+
+          .print-meta-grid span {
+            display: block;
+            font-size: 11px;
+            color: #111827 !important;
+            font-weight: 700;
+          }
+
+          .print-summary-grid strong {
+            display: block;
+            font-size: 20px;
+            color: #111827 !important;
+            font-weight: 900;
+          }
+
+          .bg-\[\#050505\],
+          .bg-\[\#0a0a0a\],
+          .bg-white\/\[0\.02\],
+          .bg-white\/\[0\.03\],
+          .bg-black\/20,
+          .bg-black\/25,
+          .bg-black\/30 {
+            background: #ffffff !important;
+          }
+
+          .text-white,
+          .text-neutral-400,
+          .text-neutral-500,
+          .text-neutral-600 {
+            color: #111827 !important;
+          }
+
+          .border-white\/\[0\.05\],
+          .border-white\/\[0\.06\],
+          .border-white\/\[0\.08\],
+          .border-white\/\[0\.1\],
+          .border-\[\#6be12f\]\/20 {
+            border-color: #e5e7eb !important;
+          }
+
+          .shadow-\[0_20px_40px_rgba\(0\,0\,0\,0\.4\)\],
+          .shadow-inner,
+          .shadow-\[0_0_30px_rgba\(107\,225\,47\,0\.18\)\] {
+            box-shadow: none !important;
+          }
+
+          .rounded-\[2rem\],
+          .rounded-\[2\.5rem\],
+          .rounded-3xl {
+            border-radius: 16px !important;
+          }
+
+          .grid {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          .space-y-8 > * + * {
+            margin-top: 18px !important;
+          }
+
+          .hover\:-translate-y-1,
+          .group:hover {
+            transform: none !important;
+          }
+        }
       `}} />
     </>
+  )
+}
+
+function PrintReportHeader({ periodo, cliente, hotspot, generatedAt, resumo }) {
+  return (
+    <div className="print-report-header">
+      <div className="print-brand-row">
+        <div>
+          <p className="print-kicker">NexaWi ADS</p>
+          <h1>Relatório Comercial Premium</h1>
+          <p className="print-subtitle">
+            Performance consolidada de anúncios, hotspots, leads e interações comerciais.
+          </p>
+        </div>
+
+        <div className="print-logo-box">
+          <img src="/Nexa-logo.png" alt="NexaWi" />
+        </div>
+      </div>
+
+      <div className="print-meta-grid">
+        <div>
+          <strong>Período</strong>
+          <span>{periodo}</span>
+        </div>
+        <div>
+          <strong>Cliente</strong>
+          <span>{cliente}</span>
+        </div>
+        <div>
+          <strong>Hotspot</strong>
+          <span>{hotspot}</span>
+        </div>
+        <div>
+          <strong>Gerado em</strong>
+          <span>{formatDate(generatedAt || new Date().toISOString())}</span>
+        </div>
+      </div>
+
+      <div className="print-summary-grid">
+        <div>
+          <strong>{formatNumber(resumo?.totalVisualizacoes || 0)}</strong>
+          <span>Visualizações</span>
+        </div>
+        <div>
+          <strong>{formatNumber(resumo?.totalCliques || 0)}</strong>
+          <span>Cliques</span>
+        </div>
+        <div>
+          <strong>{formatNumber(resumo?.totalLeads || 0)}</strong>
+          <span>Leads</span>
+        </div>
+        <div>
+          <strong>{resumo?.ctrGeral || 0}%</strong>
+          <span>CTR geral</span>
+        </div>
+      </div>
+    </div>
   )
 }
 
