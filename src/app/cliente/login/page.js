@@ -7,7 +7,7 @@
 // - Cliente entra com e-mail e senha.
 // - Supabase Auth valida.
 // - API /api/cliente/me confirma se é cliente válido.
-// - Redireciona para /cliente/dashboard.
+// - Redireciona para /cliente/dashboard ou para o redirect seguro informado.
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -25,6 +25,26 @@ import {
 } from 'lucide-react'
 
 const supabase = createClient()
+
+function getClienteRedirectPath() {
+  if (typeof window === 'undefined') {
+    return '/cliente/dashboard'
+  }
+
+  const params = new URLSearchParams(window.location.search)
+  const redirect = String(params.get('redirect') || '').trim()
+
+  if (
+    redirect &&
+    redirect.startsWith('/cliente/') &&
+    !redirect.startsWith('/cliente/login') &&
+    !redirect.includes('://')
+  ) {
+    return redirect
+  }
+
+  return '/cliente/dashboard'
+}
 
 async function validarClienteLogado() {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -94,7 +114,7 @@ export default function ClientLoginPage() {
         if (data?.session?.access_token) {
           try {
             await validarClienteLogado()
-            router.replace('/cliente/dashboard')
+            router.replace(getClienteRedirectPath())
             return
           } catch {
             await supabase.auth.signOut()
@@ -159,7 +179,7 @@ export default function ClientLoginPage() {
     await validarClienteLogado()
 
     router.refresh()
-    router.replace('/cliente/dashboard')
+    router.replace(getClienteRedirectPath())
   } catch (err) {
     console.error('Erro detalhado no login do cliente:', err)
 

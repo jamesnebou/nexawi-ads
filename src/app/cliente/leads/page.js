@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
+import { createClient } from '@/lib/supabase/cliente-client'
 import {
   ArrowLeft,
   CalendarDays,
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
-const supabase = createBrowserSupabaseClient()
+const supabase = createClient()
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
