@@ -334,7 +334,7 @@ export default function RelatorioComercialAdmin() {
         }}
       />
 
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <div className="print-dark-page relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
@@ -363,7 +363,7 @@ export default function RelatorioComercialAdmin() {
             )}
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="no-print flex flex-col sm:flex-row gap-3">
             <div className="relative group/select">
               <select
                 value={periodo}
@@ -490,6 +490,135 @@ export default function RelatorioComercialAdmin() {
 
         .print-report-header {
           display: none;
+        }
+
+        /* PRINT_DARK_CONTRAST_PATCH */
+        @media print {
+          html,
+          body {
+            background: #050505 !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+
+          aside,
+          nav,
+          .fixed,
+          .sticky,
+          .no-print,
+          button,
+          select {
+            display: none !important;
+          }
+
+          main {
+            margin-left: 0 !important;
+            padding: 0 !important;
+            overflow: visible !important;
+            background: #050505 !important;
+          }
+
+          .print-dark-page {
+            background: #050505 !important;
+            color: #ffffff !important;
+            padding: 0 !important;
+          }
+
+          .print-dark-page * {
+            opacity: 1 !important;
+            text-shadow: none !important;
+            box-shadow: none !important;
+          }
+
+          .print-dark-page h1,
+          .print-dark-page h2,
+          .print-dark-page h3,
+          .print-dark-page h4,
+          .print-dark-page strong,
+          .print-dark-page .text-white,
+          .print-dark-page .font-bold,
+          .print-dark-page .font-black,
+          .print-dark-page .font-extrabold {
+            color: #ffffff !important;
+            -webkit-text-fill-color: #ffffff !important;
+          }
+
+          .print-dark-page p,
+          .print-dark-page span,
+          .print-dark-page div,
+          .print-dark-page td,
+          .print-dark-page th,
+          .print-dark-page .text-neutral-400,
+          .print-dark-page .text-neutral-500,
+          .print-dark-page .text-neutral-600,
+          .print-dark-page .text-gray-400,
+          .print-dark-page .text-gray-500 {
+            color: #dbeafe !important;
+            -webkit-text-fill-color: #dbeafe !important;
+          }
+
+          .print-dark-page .text-transparent {
+            color: #ffffff !important;
+            background: none !important;
+            -webkit-text-fill-color: #ffffff !important;
+          }
+
+          .print-dark-page .text-\[\#8cf059\],
+          .print-dark-page .text-\[\#6be12f\] {
+            color: #8cf059 !important;
+            -webkit-text-fill-color: #8cf059 !important;
+          }
+
+          .print-dark-page .bg-\[\#050505\],
+          .print-dark-page .bg-\[\#0a0a0a\],
+          .print-dark-page .bg-black\/20,
+          .print-dark-page .bg-black\/25,
+          .print-dark-page .bg-black\/30,
+          .print-dark-page .bg-white\/\[0\.02\],
+          .print-dark-page .bg-white\/\[0\.03\] {
+            background: #090909 !important;
+          }
+
+          .print-dark-page .border-white\/\[0\.04\],
+          .print-dark-page .border-white\/\[0\.05\],
+          .print-dark-page .border-white\/\[0\.06\],
+          .print-dark-page .border-white\/\[0\.08\],
+          .print-dark-page .border-white\/\[0\.1\] {
+            border-color: rgba(255, 255, 255, 0.22) !important;
+          }
+
+          .print-dark-page .rounded-\[2rem\],
+          .print-dark-page .rounded-\[2\.5rem\],
+          .print-dark-page .rounded-3xl {
+            border-radius: 20px !important;
+          }
+
+          .print-dark-page .grid,
+          .print-dark-page section,
+          .print-dark-page .space-y-4 > *,
+          .print-dark-page .space-y-8 > * {
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
+          }
+
+          .print-report-header,
+          .print-report-header * {
+            color: #111827 !important;
+            -webkit-text-fill-color: #111827 !important;
+          }
+
+          .print-report-header {
+            display: block !important;
+            background: linear-gradient(135deg, #f7fee7 0%, #ffffff 45%, #f9fafb 100%) !important;
+            border: 1px solid #e5e7eb !important;
+            margin-bottom: 24px !important;
+          }
         }
 
         @media print {
@@ -764,7 +893,7 @@ function PremiumFiltersPanel({
   onClear,
 }) {
   return (
-    <div className="relative z-10 mb-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
+    <div className="no-print relative z-10 mb-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
         <div>
           <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-3">
