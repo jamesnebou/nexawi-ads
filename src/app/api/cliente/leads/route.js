@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 
-function getDataInicio(periodo = 'ultimos_30') {
+function getDataInicio(periodo = 'todos') {
   const agora = new Date()
 
   if (periodo === 'hoje') {
@@ -27,6 +27,13 @@ function getDataInicio(periodo = 'ultimos_30') {
   }
 
   return null
+}
+
+function sanitizeSearch(value = '') {
+  return String(value || '')
+    .trim()
+    .replace(/[%,()]/g, ' ')
+    .replace(/\s+/g, ' ')
 }
 
 function calcularOrigemPrincipal(leads = []) {
@@ -54,9 +61,9 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
 
-    const periodo = searchParams.get('periodo') || 'ultimos_30'
+    const periodo = searchParams.get('periodo') || 'todos'
     const anuncioId = String(searchParams.get('anuncioId') || '').trim()
-    const busca = String(searchParams.get('busca') || '').trim()
+    const busca = sanitizeSearch(searchParams.get('busca') || '')
 
     const { cliente } = auth
 
@@ -68,7 +75,8 @@ export async function GET(request) {
 
     if (anunciosError) throw anunciosError
 
-    const anuncioIds = (anuncios || []).map((ad) => ad.id).filter(Boolean)
+    const anunciosList = anuncios || []
+    const anuncioIds = anunciosList.map((ad) => ad.id).filter(Boolean)
 
     if (anuncioIds.length === 0) {
       return NextResponse.json({
@@ -88,20 +96,10 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('leads')
-      .select(`
-        id,
-        nome,
-        email,
-        telefone,
-        created_at,
-        anuncio_id,
-        hotspot_id,
-        anuncios(titulo),
-        hotspots(nome)
-      `)
+      .select('id, nome, email, telefone, created_at, anuncio_id, hotspot_id')
       .in('anuncio_id', anuncioIds)
       .order('created_at', { ascending: false })
-      .limit(500)
+      .limit(1000)
 
     const dataInicio = getDataInicio(periodo)
 
@@ -114,13 +112,41 @@ export async function GET(request) {
     }
 
     if (busca) {
-      const termo = busca.replace(/[%,()]/g, ' ').replace(/\s+/g, ' ')
-      query = query.or(`nome.ilike.%${termo}%,email.ilike.%${termo}%,telefone.ilike.%${termo}%`)
+      query = query.or(`nome.ilike.%${busca}%,email.ilike.%${busca}%,telefone.ilike.%${busca}%`)
     }
 
-    const { data: leads, error: leadsError } = await query
+    const { data: leadsData, error: leadsError } = await query
 
     if (leadsError) throw leadsError
+
+    const rawLeads = leadsData || []
+    const hotspotIds = [...new Set(rawLeads.map((lead) => lead.hotspot_id).filter(Boolean))]
+
+    let hotspots = []
+
+    if (hotspotIds.length > 0) {
+      const { data, error } = await supabaseAdmin
+        .from('hotspots')
+        .select('id, nome')
+        .in('id', hotspotIds)
+
+      if (error) throw error
+
+      hotspots = data || []
+    }
+
+    const anunciosById = new Map(anunciosList.map((ad) => [ad.id, ad]))
+    const hotspotsById = new Map(hotspots.map((hotspot) => [hotspot.id, hotspot]))
+
+    const leads = rawLeads.map((lead) => ({
+      ...lead,
+      anuncios: {
+        titulo: anunciosById.get(lead.anuncio_id)?.titulo || 'Campanha NexaWi',
+      },
+      hotspots: {
+        nome: hotspotsById.get(lead.hotspot_id)?.nome || 'Hotspot',
+      },
+    }))
 
     const hojeInicio = new Date()
     hojeInicio.setHours(0, 0, 0, 0)
@@ -128,8 +154,6 @@ export async function GET(request) {
     const mesInicio = new Date()
     mesInicio.setDate(1)
     mesInicio.setHours(0, 0, 0, 0)
-
-    const leadsList = leads || []
 
     return NextResponse.json({
       ok: true,
@@ -139,13 +163,13 @@ export async function GET(request) {
         busca,
       },
       resumo: {
-        total: leadsList.length,
-        hoje: leadsList.filter((lead) => new Date(lead.created_at).getTime() >= hojeInicio.getTime()).length,
-        mes: leadsList.filter((lead) => new Date(lead.created_at).getTime() >= mesInicio.getTime()).length,
-        origemPrincipal: calcularOrigemPrincipal(leadsList),
+        total: leads.length,
+        hoje: leads.filter((lead) => new Date(lead.created_at).getTime() >= hojeInicio.getTime()).length,
+        mes: leads.filter((lead) => new Date(lead.created_at).getTime() >= mesInicio.getTime()).length,
+        origemPrincipal: calcularOrigemPrincipal(leads),
       },
-      leads: leadsList,
-      anuncios: anuncios || [],
+      leads,
+      anuncios: anunciosList,
     })
   } catch (error) {
     return NextResponse.json(

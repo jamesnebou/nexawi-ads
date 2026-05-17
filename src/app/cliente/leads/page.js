@@ -98,7 +98,7 @@ export default function ClienteLeadsPage() {
     mes: 0,
     origemPrincipal: null,
   })
-  const [periodo, setPeriodo] = useState('ultimos_30')
+  const [periodo, setPeriodo] = useState('todos')
   const [anuncioId, setAnuncioId] = useState('')
   const [busca, setBusca] = useState('')
   const [buscaAplicada, setBuscaAplicada] = useState('')
@@ -108,7 +108,7 @@ export default function ClienteLeadsPage() {
     return anuncios.find((item) => item.id === anuncioId)
   }, [anuncios, anuncioId])
 
-  const temFiltros = periodo !== 'ultimos_30' || Boolean(anuncioId) || Boolean(buscaAplicada)
+  const temFiltros = periodo !== 'todos' || Boolean(anuncioId) || Boolean(buscaAplicada)
 
   useEffect(() => {
     carregarLeads()
@@ -143,7 +143,7 @@ export default function ClienteLeadsPage() {
   }
 
   function limparFiltros() {
-    setPeriodo('ultimos_30')
+    setPeriodo('todos')
     setAnuncioId('')
     setBusca('')
     setBuscaAplicada('')
@@ -385,7 +385,7 @@ export default function ClienteLeadsPage() {
 
             {temFiltros && (
               <div className="mt-5 flex flex-wrap gap-2">
-                {periodo !== 'ultimos_30' && (
+                {periodo !== 'todos' && (
                   <Badge label="Período" value={periodos.find((item) => item.value === periodo)?.label || periodo} />
                 )}
                 {anuncioSelecionado && (
