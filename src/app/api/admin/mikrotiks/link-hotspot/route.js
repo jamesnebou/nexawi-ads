@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { applyNexawiNetworkPolicy } from '@/lib/routeros-rest'
 
 export const runtime = 'nodejs'
 
@@ -29,7 +30,9 @@ function boolValue(value, fallback = false) {
 
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
-  const secret = process.env.NEXAWI_CRON_SECRET
+  const secret = process.env.NEXAWI_CONTROL_SECRET || process.env.NEXAWI_CRON_SECRET
+  const controlSecret = process.env.NEXAWI_CONTROL_SECRET || secret
+  const cronSecret = process.env.NEXAWI_CRON_SECRET || secret
 
   if (!baseUrl) throw new Error('CONTROL_API_BASE_URL não configurado')
   if (!secret) throw new Error('NEXAWI_CRON_SECRET não configurado')
@@ -38,7 +41,8 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'x-control-secret': secret,
+      'x-control-secret': controlSecret,
+      'x-cron-secret': cronSecret,
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
@@ -218,23 +222,38 @@ export async function POST(request) {
           policy: policyPayload,
         })
 
+        const routerConfig = {
+          baseUrl: router.base_url,
+          username: router.username,
+          password: router.password,
+          hotspotServer: router.hotspot_server || 'hotspot1',
+        }
+
+        const applyPayload = {
+          ...policyPayload,
+          routerConfig,
+        }
+
         try {
           policyApply = await callControlApi('/api/control/router/policy/apply', {
             method: 'POST',
-            body: {
-              ...policyPayload,
-              routerConfig: {
-                baseUrl: router.base_url,
-                username: router.username,
-                password: router.password,
-                hotspotServer: router.hotspot_server || 'hotspot1',
-              },
-            },
+            body: applyPayload,
           })
-        } catch (error) {
+        } catch (controlError) {
+          try {
+            policyApply = await applyNexawiNetworkPolicy(applyPayload)
+          } catch (directError) {
+            policyApply = {
+              ok: false,
+              error: `${directError.message || 'Falha direta no MikroTik'} | Control API: ${controlError.message || 'falhou'}`,
+            }
+          }
+        }
+
+        if (!policyApply) {
           policyApply = {
             ok: false,
-            error: error.message || 'Erro ao aplicar política base',
+            error: 'Erro ao aplicar politica base',
           }
         }
       }

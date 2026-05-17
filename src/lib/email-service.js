@@ -10,6 +10,15 @@ function boolEnv(value = '') {
   return String(value || '').toLowerCase() === 'true'
 }
 
+function escapeHtml(value = '') {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function getTransporter() {
   const host = process.env.SMTP_HOST
   const port = Number(process.env.SMTP_PORT || 587)
@@ -101,8 +110,9 @@ export async function sendAdminAlertEmail({
 
   const subject = `${subjectPrefix} ${title}`
 
-  const safeTitle = String(title || '')
-  const safeMessage = String(message || 'Você recebeu uma nova notificação interna da NexaWi ADS.')
+  const safeTitle = escapeHtml(title || '')
+  const rawMessage = String(message || 'Você recebeu uma nova notificação interna da NexaWi ADS.')
+  const safeMessage = escapeHtml(rawMessage).replace(/\n/g, '<br />')
 
   const html = `
     <div style="font-family: Arial, sans-serif; background:#050505; color:#ffffff; padding:32px;">
@@ -139,7 +149,7 @@ export async function sendAdminAlertEmail({
     </div>
   `
 
-  const text = `${safeTitle}\n\n${safeMessage}\n\nAbrir no painel: ${urlFinal}\n\nNexaWi ADS`
+  const text = `${String(title || '')}\n\n${rawMessage}\n\nAbrir no painel: ${urlFinal}\n\nNexaWi ADS`
 
   return sendEmail({
     to,

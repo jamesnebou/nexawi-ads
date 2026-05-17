@@ -100,7 +100,9 @@ function csvCell(value) {
 
 export default function CrmClientesPage() {
   const [clientes, setClientes] = useState([])
+  const [prospects, setProspects] = useState([])
   const [resumo, setResumo] = useState({})
+  const [resumoProspects, setResumoProspects] = useState({})
   const [permissions, setPermissions] = useState({})
   const [origens, setOrigens] = useState([])
 
@@ -126,6 +128,7 @@ export default function CrmClientesPage() {
   const canUpdate = permissions.update !== false
   const canExport = permissions.export !== false
   const temFiltros = Boolean(etapa) || Boolean(temperatura) || Boolean(origem) || Boolean(buscaAplicada)
+  const totalRegistros = clientes.length + prospects.length
 
   useEffect(() => {
     carregarCrm()
@@ -142,12 +145,25 @@ export default function CrmClientesPage() {
       if (origem) params.set('origem', origem)
       if (buscaAplicada) params.set('busca', buscaAplicada)
 
-      const data = await adminApiFetch(`/api/admin/clientes-crm?${params.toString()}`)
+      const queryString = params.toString()
+      const [clientesData, prospectsData] = await Promise.all([
+        adminApiFetch(`/api/admin/clientes-crm?${queryString}`),
+        adminApiFetch(`/api/admin/crm-prospects?${queryString}`),
+      ])
 
-      setClientes(data.clientes || [])
-      setResumo(data.resumo || {})
-      setPermissions(data.permissions || {})
-      setOrigens(data.options?.origens || [])
+      const origensUnicas = [
+        ...new Set([
+          ...(clientesData.options?.origens || []),
+          ...(prospectsData.options?.origens || []),
+        ].filter(Boolean)),
+      ].sort()
+
+      setClientes(clientesData.clientes || [])
+      setProspects(prospectsData.prospects || [])
+      setResumo(clientesData.resumo || {})
+      setResumoProspects(prospectsData.resumo || {})
+      setPermissions(clientesData.permissions || prospectsData.permissions || {})
+      setOrigens(origensUnicas)
     } catch (error) {
       console.error('Erro ao carregar CRM clientes:', error)
       toast.error(error.message || 'Erro ao carregar CRM.')
@@ -170,7 +186,7 @@ export default function CrmClientesPage() {
   }
 
   function editarCliente(cliente) {
-    setEditingId(cliente.id)
+    setEditingId(`cliente:${cliente.id}`)
     setForm({
       crm_etapa: cliente.crm_etapa || 'novo_lead',
       crm_origem: cliente.crm_origem || 'Manual',
@@ -193,7 +209,7 @@ export default function CrmClientesPage() {
       return
     }
 
-    setSavingId(clienteId)
+    setSavingId(`cliente:${clienteId}`)
 
     try {
       const data = await adminApiFetch('/api/admin/clientes-crm', {
@@ -221,24 +237,93 @@ export default function CrmClientesPage() {
     }
   }
 
+  function editarProspect(prospect) {
+    setEditingId(`prospect:${prospect.id}`)
+    setForm({
+      crm_etapa: prospect.etapa || 'novo_lead',
+      crm_origem: prospect.origem || 'Landing Page',
+      crm_temperatura: prospect.temperatura || 'Quente',
+      crm_proximo_contato: prospect.proximo_contato || '',
+      crm_valor_potencial: prospect.valor_potencial || '',
+      crm_observacoes: prospect.observacoes || '',
+      crm_responsavel: prospect.responsavel_interno || '',
+    })
+  }
+
+  async function salvarProspect(prospectId) {
+    if (!canUpdate) {
+      toast.error('Voce nao tem permissao para atualizar prospects.')
+      return
+    }
+
+    const prospect = prospects.find((item) => item.id === prospectId)
+
+    if (!prospect) {
+      toast.error('Prospect nao encontrado.')
+      return
+    }
+
+    setSavingId(`prospect:${prospectId}`)
+
+    try {
+      const data = await adminApiFetch('/api/admin/crm-prospects', {
+        method: 'PATCH',
+        body: {
+          id: prospectId,
+          empresa: prospect.empresa,
+          responsavel: prospect.responsavel,
+          email: prospect.email,
+          telefone: prospect.telefone,
+          cidade: prospect.cidade,
+          segmento: prospect.segmento,
+          etapa: form.crm_etapa,
+          origem: form.crm_origem,
+          temperatura: form.crm_temperatura,
+          proximo_contato: form.crm_proximo_contato,
+          valor_potencial: form.crm_valor_potencial,
+          observacoes: form.crm_observacoes,
+          responsavel_interno: form.crm_responsavel,
+        },
+      })
+
+      setProspects((current) =>
+        current.map((item) =>
+          item.id === prospectId ? { ...item, ...data.prospect } : item
+        )
+      )
+
+      toast.success('Prospect atualizado com sucesso.')
+      cancelarEdicao()
+      carregarCrm()
+    } catch (error) {
+      console.error('Erro ao salvar prospect:', error)
+      toast.error(error.message || 'Erro ao salvar prospect.')
+    } finally {
+      setSavingId('')
+    }
+  }
+
   function exportarCSV() {
     if (!canExport) {
       toast.error('Você não tem permissão para exportar.')
       return
     }
 
-    if (clientes.length === 0) {
-      toast.error('Nenhum cliente para exportar.')
+    if (totalRegistros === 0) {
+      toast.error('Nenhum registro para exportar.')
       return
     }
 
     const linhas = [
-      ['Empresa', 'Responsável', 'E-mail', 'Telefone', 'Etapa', 'Origem', 'Temperatura', 'Próximo contato', 'Valor potencial', 'Responsável interno', 'Observações'],
+      ['Tipo', 'Empresa', 'Responsável', 'E-mail', 'Telefone', 'Cidade', 'Segmento', 'Etapa', 'Origem', 'Temperatura', 'Próximo contato', 'Valor potencial', 'Responsável interno', 'Observações'],
       ...clientes.map((cliente) => [
+        'Cliente',
         cliente.nome_empresa || '',
         cliente.nome_responsavel || cliente.nome || '',
         cliente.email || '',
         cliente.telefone || '',
+        cliente.cidade || '',
+        '',
         getEtapaLabel(cliente.crm_etapa),
         cliente.crm_origem || '',
         cliente.crm_temperatura || '',
@@ -246,6 +331,22 @@ export default function CrmClientesPage() {
         Number(cliente.crm_valor_potencial || 0),
         cliente.crm_responsavel || '',
         cliente.crm_observacoes || '',
+      ]),
+      ...prospects.map((prospect) => [
+        'Prospect landing',
+        prospect.empresa || '',
+        prospect.responsavel || '',
+        prospect.email || '',
+        prospect.telefone || '',
+        prospect.cidade || '',
+        prospect.segmento || '',
+        getEtapaLabel(prospect.etapa),
+        prospect.origem || '',
+        prospect.temperatura || '',
+        formatDate(prospect.proximo_contato),
+        Number(prospect.valor_potencial || 0),
+        prospect.responsavel_interno || '',
+        prospect.observacoes || '',
       ]),
     ]
 
@@ -265,12 +366,12 @@ export default function CrmClientesPage() {
   }
 
   const cards = [
-    { label: 'Prospects', value: resumo.total || 0, detail: 'no funil atual', icon: Users, accent: 'text-[#8cf059]' },
-    { label: 'Novos leads', value: resumo.novos || 0, detail: 'entraram no CRM', icon: Target, accent: 'text-blue-300' },
-    { label: 'Em contato', value: resumo.emContato || 0, detail: 'conversa iniciada', icon: Phone, accent: 'text-cyan-300' },
-    { label: 'Propostas', value: resumo.propostas || 0, detail: 'enviadas', icon: Mail, accent: 'text-orange-300' },
-    { label: 'Fechados', value: resumo.fechados || 0, detail: 'viraram cliente', icon: CheckCircle2, accent: 'text-[#8cf059]' },
-    { label: 'Valor potencial', value: formatCurrency(resumo.valorPotencial || 0), detail: 'pipeline estimado', icon: DollarSign, accent: 'text-purple-300', currency: true },
+    { label: 'CRM total', value: totalRegistros, detail: 'clientes e leads', icon: Users, accent: 'text-[#8cf059]' },
+    { label: 'Landing', value: prospects.length, detail: 'captados em /anunciar', icon: Target, accent: 'text-blue-300' },
+    { label: 'Novos leads', value: (resumo.novos || 0) + (resumoProspects.novos || 0), detail: 'entraram no CRM', icon: Target, accent: 'text-blue-300' },
+    { label: 'Em contato', value: (resumo.emContato || 0) + (resumoProspects.emContato || 0), detail: 'conversa iniciada', icon: Phone, accent: 'text-cyan-300' },
+    { label: 'Fechados', value: (resumo.fechados || 0) + (resumoProspects.fechados || 0), detail: 'viraram cliente', icon: CheckCircle2, accent: 'text-[#8cf059]' },
+    { label: 'Valor potencial', value: formatCurrency((resumo.valorPotencial || 0) + (resumoProspects.valorPotencial || 0)), detail: 'pipeline estimado', icon: DollarSign, accent: 'text-purple-300', currency: true },
   ]
 
   return (
@@ -299,7 +400,7 @@ export default function CrmClientesPage() {
               <button
                 type="button"
                 onClick={exportarCSV}
-                disabled={clientes.length === 0}
+                disabled={totalRegistros === 0}
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Download size={17} />
@@ -404,9 +505,68 @@ export default function CrmClientesPage() {
         </section>
 
         <KanbanCrmPreview
-          clientes={clientes}
+          clientes={[
+            ...prospects.map((prospect) => ({
+              id: `prospect:${prospect.id}`,
+              nome_empresa: prospect.empresa,
+              nome_responsavel: prospect.responsavel,
+              crm_etapa: prospect.etapa,
+              crm_temperatura: prospect.temperatura,
+              crm_valor_potencial: prospect.valor_potencial,
+              crm_proximo_contato: prospect.proximo_contato,
+            })),
+            ...clientes,
+          ]}
           onSelectEtapa={setEtapa}
         />
+
+        <section className="relative z-10 rounded-[2rem] border border-[#6be12f]/10 bg-[#6be12f]/[0.03] p-5 sm:p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-3">
+                <Target size={13} />
+                Landing Page
+              </div>
+
+              <h2 className="text-xl font-black text-white tracking-tight">
+                Leads captados pela pagina /anunciar
+              </h2>
+
+              <p className="text-sm text-neutral-500 mt-1">
+                {formatNumber(prospects.length)} prospect(s) vindos do formulario publico.
+              </p>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="py-16 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border-t-2 border-[#6be12f]/60 animate-spin" />
+            </div>
+          ) : prospects.length === 0 ? (
+            <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-10 text-center">
+              <Target size={30} className="mx-auto text-neutral-600 mb-4" />
+              <h3 className="text-lg font-bold text-white">Nenhum lead da landing ainda</h3>
+              <p className="text-sm text-neutral-500 mt-2">Quando alguem preencher /anunciar, o registro aparece aqui automaticamente.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {prospects.map((prospect) => (
+                <ProspectCrmCard
+                  key={prospect.id}
+                  prospect={prospect}
+                  canUpdate={canUpdate}
+                  isEditing={editingId === `prospect:${prospect.id}`}
+                  isSaving={savingId === `prospect:${prospect.id}`}
+                  form={form}
+                  setForm={setForm}
+                  onEdit={() => editarProspect(prospect)}
+                  onCancel={cancelarEdicao}
+                  onSave={() => salvarProspect(prospect.id)}
+                />
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-4 mb-6">
@@ -437,8 +597,8 @@ export default function CrmClientesPage() {
                   key={cliente.id}
                   cliente={cliente}
                   canUpdate={canUpdate}
-                  isEditing={editingId === cliente.id}
-                  isSaving={savingId === cliente.id}
+                  isEditing={editingId === `cliente:${cliente.id}`}
+                  isSaving={savingId === `cliente:${cliente.id}`}
                   form={form}
                   setForm={setForm}
                   onEdit={() => editarCliente(cliente)}
@@ -664,6 +824,88 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
               >
                 <Save size={16} />
                 {isSaving ? 'Salvando...' : 'Salvar CRM'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ProspectCrmCard({ prospect, canUpdate, isEditing, isSaving, form, setForm, onEdit, onCancel, onSave }) {
+  return (
+    <div className="rounded-3xl border border-[#6be12f]/10 bg-[#050505] p-5 hover:border-[#6be12f]/25 transition-colors">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_1.3fr_1.2fr_1fr_auto] gap-5 items-center">
+        <div>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <EtapaBadge etapa={prospect.etapa} />
+            <span className="inline-flex items-center rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+              Landing
+            </span>
+          </div>
+
+          <p className="text-base font-black text-white truncate">
+            {prospect.empresa || 'Empresa sem nome'}
+          </p>
+
+          <p className="text-xs text-neutral-500 mt-1 truncate">
+            {prospect.responsavel || 'Responsavel nao informado'}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <InfoPill icon={Phone} label="Telefone" value={prospect.telefone || '-'} />
+          <InfoPill icon={Mail} label="E-mail" value={prospect.email || '-'} />
+        </div>
+
+        <div className="grid gap-2 text-xs text-neutral-500">
+          <p>Cidade: {prospect.cidade || '-'}</p>
+          <p>Segmento: {prospect.segmento || '-'}</p>
+          <p>Origem: {prospect.origem || 'Landing Page'}</p>
+        </div>
+
+        <div className="grid gap-2 text-xs text-neutral-500">
+          <p>Temp.: {prospect.temperatura || 'Quente'}</p>
+          <p>Proximo: {formatDate(prospect.proximo_contato)}</p>
+          <p>Resp.: {prospect.responsavel_interno || '-'}</p>
+          {prospect.observacoes && <p className="line-clamp-2">{prospect.observacoes}</p>}
+        </div>
+
+        {canUpdate && (
+          <button
+            type="button"
+            onClick={isEditing ? onCancel : onEdit}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
+          >
+            {isEditing ? <XCircle size={15} /> : <Edit3 size={15} />}
+            {isEditing ? 'Fechar' : 'Editar'}
+          </button>
+        )}
+      </div>
+
+      {isEditing && (
+        <div className="mt-5 rounded-3xl border border-[#6be12f]/15 bg-[#6be12f]/5 p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            <FieldSelect label="Etapa" value={form.crm_etapa} onChange={(value) => setForm((current) => ({ ...current, crm_etapa: value }))} options={etapas} />
+            <FieldSelect label="Temperatura" value={form.crm_temperatura} onChange={(value) => setForm((current) => ({ ...current, crm_temperatura: value }))} options={temperaturas.map((item) => ({ value: item, label: item }))} />
+            <FieldInput label="Origem" value={form.crm_origem} onChange={(value) => setForm((current) => ({ ...current, crm_origem: value }))} placeholder="Landing Page, indicacao..." />
+            <FieldInput label="Valor potencial" type="number" value={form.crm_valor_potencial} onChange={(value) => setForm((current) => ({ ...current, crm_valor_potencial: value }))} placeholder="650" />
+            <FieldInput label="Proximo contato" type="date" value={form.crm_proximo_contato} onChange={(value) => setForm((current) => ({ ...current, crm_proximo_contato: value }))} />
+            <FieldInput label="Responsavel interno" value={form.crm_responsavel} onChange={(value) => setForm((current) => ({ ...current, crm_responsavel: value }))} placeholder="James, comercial..." />
+            <div className="lg:col-span-2">
+              <FieldInput label="Observacoes" value={form.crm_observacoes} onChange={(value) => setForm((current) => ({ ...current, crm_observacoes: value }))} placeholder="Ex: pediu proposta, quer anunciar em Barueri..." />
+            </div>
+
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={onSave}
+                disabled={isSaving}
+                className="w-full rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-black text-black hover:bg-[#8cf059] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <Save size={16} />
+                {isSaving ? 'Salvando...' : 'Salvar prospect'}
               </button>
             </div>
           </div>

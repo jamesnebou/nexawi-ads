@@ -15,6 +15,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { getNexawiNetworkPolicyStatus } from '@/lib/routeros-rest'
 
 export const runtime = 'nodejs'
 
@@ -145,7 +146,9 @@ async function ensureNetworkPolicyForHotspot({ hotspotId, routerId }) {
 
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
-  const secret = process.env.NEXAWI_CRON_SECRET
+  const secret = process.env.NEXAWI_CONTROL_SECRET || process.env.NEXAWI_CRON_SECRET
+  const controlSecret = process.env.NEXAWI_CONTROL_SECRET || secret
+  const cronSecret = process.env.NEXAWI_CRON_SECRET || secret
 
   if (!baseUrl) throw new Error('CONTROL_API_BASE_URL não configurado')
   if (!secret) throw new Error('NEXAWI_CRON_SECRET não configurado')
@@ -154,7 +157,8 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'x-control-secret': secret,
+      'x-control-secret': controlSecret,
+      'x-cron-secret': cronSecret,
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
@@ -410,12 +414,24 @@ export async function POST(request) {
 
       const context = await resolveHotspotRouterContext(id)
 
-      const result = await callControlApi('/api/control/router/policy/status', {
-        method: 'POST',
-        body: {
-          routerConfig: context.routerConfig,
-        },
-      })
+      let result = null
+
+      try {
+        result = await callControlApi('/api/control/router/policy/status', {
+          method: 'POST',
+          body: {
+            routerConfig: context.routerConfig,
+          },
+        })
+      } catch (controlError) {
+        try {
+          result = await getNexawiNetworkPolicyStatus({
+            routerConfig: context.routerConfig,
+          })
+        } catch (directError) {
+          throw new Error(`${directError.message || 'Falha direta no MikroTik'} | Control API: ${controlError.message || 'falhou'}`)
+        }
+      }
 
       await logAdminAction({
         request,

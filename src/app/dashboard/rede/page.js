@@ -76,6 +76,20 @@ const QUICK_PRESETS = [
     badge: 'Forte',
   },
   {
+    id: 'betting',
+    title: 'Apostas',
+    description: 'Bloqueia casas de apostas e plataformas de cassino mais comuns em redes abertas.',
+    domains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com'],
+    badge: 'Forte',
+  },
+  {
+    id: 'adult',
+    title: 'Adulto / pornografia',
+    description: 'Bloqueia sites adultos populares e plataformas de conteudo sensivel para redes familiares.',
+    domains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com'],
+    badge: 'Forte',
+  },
+  {
     id: 'heavy_games',
     title: 'Jogos pesados',
     description: 'Reforça bloqueio de plataformas de jogos, CDNs e launchers comuns.',
@@ -386,6 +400,7 @@ export default function ControleRedePage() {
   }, [allRules])
 
   const canUpdate = Boolean(permissions.update)
+  const statusUnavailable = Boolean(status?.unavailable)
 
   async function carregarStatus() {
     setError('')
@@ -872,6 +887,22 @@ function togglePreset(preset) {
         </div>
       )}
 
+      {statusUnavailable && (
+        <div className="relative z-10 mb-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-100">
+          <p className="font-black text-yellow-200 mb-1">
+            MikroTik inacessivel no momento
+          </p>
+          <p className="text-xs leading-relaxed text-yellow-100/85">
+            A politica salva foi carregada, mas as regras ativas nao puderam ser lidas diretamente do roteador agora. Isso nao significa que as regras foram removidas.
+          </p>
+          {status?.error && (
+            <p className="mt-2 text-[11px] leading-relaxed text-yellow-100/65 break-all">
+              Detalhe tecnico: {status.error}
+            </p>
+          )}
+        </div>
+      )}
+
       {!canUpdate && (
         <div className="relative z-10 mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-bold text-neutral-400">
           Modo leitura: você pode visualizar a política, mas não pode aplicar ou resetar regras.
@@ -880,26 +911,26 @@ function togglePreset(preset) {
 
       <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
-          icon={status?.enabled ? ShieldCheck : ShieldOff}
+          icon={statusUnavailable ? AlertTriangle : status?.enabled ? ShieldCheck : ShieldOff}
           label="Status"
-          value={status?.enabled ? 'Ativa' : 'Inativa'}
-          accent={status?.enabled}
+          value={statusUnavailable ? 'Indisponivel' : status?.enabled ? 'Ativa' : 'Inativa'}
+          accent={!statusUnavailable && status?.enabled}
         />
         <StatCard
           icon={Router}
           label="Regras Filter"
-          value={status?.filterCount ?? 0}
+          value={statusUnavailable ? '-' : status?.filterCount ?? 0}
         />
         <StatCard
           icon={Globe}
           label="Regras NAT"
-          value={status?.natCount ?? 0}
+          value={statusUnavailable ? '-' : status?.natCount ?? 0}
         />
         <StatCard
           icon={AlertTriangle}
           label="Inválidas"
-          value={invalidRules.length}
-          accent={invalidRules.length === 0}
+          value={statusUnavailable ? '-' : invalidRules.length}
+          accent={!statusUnavailable && invalidRules.length === 0}
         />
       </section>
 
@@ -1165,11 +1196,26 @@ function togglePreset(preset) {
 
               <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
                 <Activity size={14} />
-                {allRules.length} regras
+                {statusUnavailable ? 'consulta indisponivel' : `${allRules.length} regras`}
               </div>
             </div>
 
-            {allRules.length === 0 ? (
+            {statusUnavailable ? (
+              <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-8 text-center">
+                <AlertTriangle className="mx-auto text-yellow-300 mb-3" size={32} />
+                <p className="text-sm font-bold text-yellow-100">
+                  Nao foi possivel ler as regras ativas do MikroTik.
+                </p>
+                <p className="text-xs text-yellow-100/70 mt-1">
+                  Verifique a conexao com o roteador ou a Control API. As regras ja aplicadas podem continuar ativas no MikroTik.
+                </p>
+                {status?.error && (
+                  <p className="mt-3 text-[11px] leading-relaxed text-yellow-100/55 break-all">
+                    Detalhe tecnico: {status.error}
+                  </p>
+                )}
+              </div>
+            ) : allRules.length === 0 ? (
               <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
                 <Wifi className="mx-auto text-neutral-600 mb-3" size={32} />
                 <p className="text-sm font-bold text-neutral-400">

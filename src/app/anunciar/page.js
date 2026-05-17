@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
   CheckCircle2,
+  Instagram,
   Loader2,
   MapPin,
   MousePointerClick,
@@ -23,11 +24,88 @@ const formInicial = {
   website: '',
 }
 
+const WHATSAPP_NEXAWI = '5577988656394'
+
+function formatCurrency(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value || 0))
+}
+
+function getPlanoFromUrl() {
+  if (typeof window === 'undefined') {
+    return { plano: '', planoId: '', ciclo: '', valor: '' }
+  }
+
+  const params = new URLSearchParams(window.location.search)
+
+  return {
+    plano: params.get('plano') || '',
+    planoId: params.get('plano_id') || '',
+    ciclo: params.get('ciclo') || '',
+    valor: params.get('valor') || '',
+  }
+}
+
+function buildWhatsAppUrl({ form, planoInteresse }) {
+  const detalhesPlano = planoInteresse.plano
+    ? `Tenho interesse no plano ${planoInteresse.plano}${planoInteresse.ciclo ? ` (${planoInteresse.ciclo})` : ''}${planoInteresse.valor ? ` de ${formatCurrency(planoInteresse.valor)}` : ''}.`
+    : 'Tenho interesse em anunciar na NexaWi ADS.'
+
+  const message = [
+    'Ola, equipe NexaWi!',
+    detalhesPlano,
+    form.empresa ? `Empresa: ${form.empresa}` : '',
+    form.responsavel ? `Responsavel: ${form.responsavel}` : '',
+    form.telefone ? `WhatsApp: ${form.telefone}` : '',
+    form.cidade ? `Cidade: ${form.cidade}` : '',
+  ].filter(Boolean).join('\n')
+
+  return `https://wa.me/${WHATSAPP_NEXAWI}?text=${encodeURIComponent(message)}`
+}
+
 export default function AnunciarPage() {
   const [form, setForm] = useState(formInicial)
+  const [planoInteresse, setPlanoInteresse] = useState({ plano: '', planoId: '', ciclo: '', valor: '' })
+  const [redirectSeconds, setRedirectSeconds] = useState(5)
+  const [whatsappUrl, setWhatsappUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+
+  const planoSelecionadoLabel = useMemo(() => {
+    if (!planoInteresse.plano) return ''
+
+    return [
+      planoInteresse.plano,
+      planoInteresse.ciclo,
+      planoInteresse.valor ? formatCurrency(planoInteresse.valor) : '',
+    ].filter(Boolean).join(' - ')
+  }, [planoInteresse])
+
+  useEffect(() => {
+    setPlanoInteresse(getPlanoFromUrl())
+  }, [])
+
+  useEffect(() => {
+    if (!success || !whatsappUrl) return undefined
+
+    setRedirectSeconds(5)
+
+    const interval = window.setInterval(() => {
+      setRedirectSeconds((current) => Math.max(current - 1, 0))
+    }, 1000)
+
+    const timeout = window.setTimeout(() => {
+      window.location.href = whatsappUrl
+    }, 5000)
+
+    return () => {
+      window.clearInterval(interval)
+      window.clearTimeout(timeout)
+    }
+  }, [success, whatsappUrl])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -36,10 +114,17 @@ export default function AnunciarPage() {
     setError('')
 
     try {
+      const whatsappDestino = buildWhatsAppUrl({ form, planoInteresse })
       const response = await fetch('/api/public/prospects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          plano_interesse: planoInteresse.plano,
+          plano_id: planoInteresse.planoId,
+          ciclo_interesse: planoInteresse.ciclo,
+          valor_potencial: planoInteresse.valor,
+        }),
       })
 
       const data = await response.json().catch(() => null)
@@ -48,6 +133,7 @@ export default function AnunciarPage() {
         throw new Error(data?.error || 'Erro ao enviar interesse.')
       }
 
+      setWhatsappUrl(whatsappDestino)
       setSuccess(true)
       setForm(formInicial)
     } catch (err) {
@@ -107,6 +193,27 @@ export default function AnunciarPage() {
                 </div>
               </div>
             </div>
+            <a
+              href="https://www.instagram.com/nexawi_ads/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 flex items-center justify-between gap-4 rounded-[2rem] border border-[#6be12f]/20 bg-[#6be12f]/10 p-5 transition-all hover:border-[#8cf059]/40 hover:bg-[#6be12f]/15"
+            >
+              <div className="flex items-center gap-4">
+                <div className="rounded-2xl bg-black/30 border border-[#6be12f]/20 p-3">
+                  <Instagram className="text-[#8cf059]" size={22} />
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest font-extrabold text-[#8cf059]">
+                    Acompanhe a NexaWi
+                  </p>
+                  <p className="text-sm font-black text-white mt-1">
+                    @nexawi_ads
+                  </p>
+                </div>
+              </div>
+              <ArrowRight className="text-[#8cf059]" size={18} />
+            </a>
           </div>
 
           <div className="rounded-[2.5rem] border border-white/[0.08] bg-white/[0.03] p-6 sm:p-8 shadow-[0_25px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
@@ -121,16 +228,30 @@ export default function AnunciarPage() {
                 </h2>
 
                 <p className="text-sm text-neutral-500 mt-3 leading-relaxed">
-                  Recebemos seus dados. Em breve a equipe NexaWi entra em contato para apresentar as opções de anúncio.
+                  Recebemos seus dados. Em alguns segundos voce sera direcionado para o WhatsApp com a mensagem pronta.
                 </p>
 
-                <button
-                  type="button"
-                  onClick={() => setSuccess(false)}
+                {planoSelecionadoLabel && (
+                  <div className="mt-6 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-left">
+                    <p className="text-[11px] uppercase tracking-widest font-extrabold text-[#8cf059] mb-1">
+                      Plano escolhido
+                    </p>
+                    <p className="text-sm font-bold text-white">
+                      {planoSelecionadoLabel}
+                    </p>
+                  </div>
+                )}
+
+                <p className="text-xs text-neutral-600 mt-5">
+                  Redirecionando em {redirectSeconds}s.
+                </p>
+
+                <a
+                  href={whatsappUrl}
                   className="mt-8 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-3 text-sm font-bold text-white hover:bg-white/[0.06]"
                 >
-                  Enviar outro interesse
-                </button>
+                  Ir agora para o WhatsApp
+                </a>
               </div>
             ) : (
               <>
@@ -165,6 +286,17 @@ export default function AnunciarPage() {
                   <Field label="E-mail" type="email" value={form.email} onChange={(v) => updateField('email', v)} />
                   <Field label="Cidade" value={form.cidade} onChange={(v) => updateField('cidade', v)} />
                   <Field label="Segmento" value={form.segmento} onChange={(v) => updateField('segmento', v)} />
+
+                  {planoSelecionadoLabel && (
+                    <div className="sm:col-span-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4">
+                      <p className="text-[11px] uppercase tracking-widest font-extrabold text-[#8cf059] mb-1">
+                        Plano de interesse
+                      </p>
+                      <p className="text-sm font-bold text-white">
+                        {planoSelecionadoLabel}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="sm:col-span-2">
                     <label className="block text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2">

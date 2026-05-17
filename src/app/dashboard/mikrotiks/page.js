@@ -483,6 +483,91 @@ export default function MikrotiksPage() {
     }
   }
 
+  function renderOnboardingPanel(diagnostics) {
+    const onboarding = diagnostics?.onboarding
+
+    if (!onboarding) return null
+
+    return (
+      <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-5">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
+          <div>
+            <p className="text-sm font-black text-white">
+              Onboarding RouterOS
+            </p>
+            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+              Checklist e comandos para validar o MikroTik antes de colocar o hotspot em producao.
+            </p>
+          </div>
+
+          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+            {onboarding.hotspotSubnet}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
+          {(onboarding.checklist || []).map((item) => (
+            <div
+              key={item.id}
+              className={`rounded-xl border px-4 py-3 ${
+                item.done
+                  ? 'border-[#6be12f]/15 bg-[#6be12f]/5'
+                  : 'border-yellow-500/20 bg-yellow-500/10'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                <div className={`mt-0.5 w-5 h-5 rounded-full flex items-center justify-center ${
+                  item.done ? 'bg-[#6be12f] text-black' : 'bg-yellow-500/15 text-yellow-300'
+                }`}>
+                  {item.done ? <Check size={13} /> : <AlertTriangle size={13} />}
+                </div>
+
+                <div className="min-w-0">
+                  <p className="text-xs font-black text-white">
+                    {item.label}
+                  </p>
+                  <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
+                    {item.detail}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="space-y-3">
+          {(onboarding.commands || []).map((command) => (
+            <div key={command.title} className="rounded-xl border border-white/[0.05] bg-[#0a0a0a] p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                <div>
+                  <p className="text-xs font-black text-white">
+                    {command.title}
+                  </p>
+                  <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
+                    {command.description}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(command.value)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+                >
+                  <Copy size={13} />
+                  Copiar
+                </button>
+              </div>
+
+              <code className="block whitespace-pre-wrap break-all rounded-lg bg-black/60 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
+                {command.value}
+              </code>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   async function excluirRouter(id) {
     if (!canDelete) {
       toast.error('Você não tem permissão para excluir MikroTiks.')
@@ -1089,6 +1174,8 @@ export default function MikrotiksPage() {
                     </div>
                   </div>
                 )}
+
+                {!formDiagnosticsLoading && formDiagnostics && !formDiagnostics.error && renderOnboardingPanel(formDiagnostics)}
               </div>
 
               {routerSelecionado && (
@@ -1325,6 +1412,8 @@ export default function MikrotiksPage() {
                       </div>
                     </div>
                   </div>
+
+                  {renderOnboardingPanel(diagnosticsData)}
                 </>
               ) : null}
             </div>

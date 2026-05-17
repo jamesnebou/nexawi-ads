@@ -17,6 +17,54 @@ function normalizeRouterBaseUrl(value = '') {
   return withProtocol.replace(/\/$/, '')
 }
 
+function getRouterHost(baseUrl = '') {
+  try {
+    return new URL(baseUrl).hostname
+  } catch {
+    return ''
+  }
+}
+
+function isPrivateRouterHost(baseUrl = '') {
+  const host = getRouterHost(baseUrl).toLowerCase()
+
+  if (!host) return false
+  if (host === 'localhost' || host.endsWith('.local')) return true
+  if (host.startsWith('127.') || host.startsWith('10.') || host.startsWith('192.168.')) return true
+
+  const parts = host.split('.').map((part) => Number(part))
+
+  return (
+    parts.length === 4 &&
+    parts.every((part) => Number.isInteger(part)) &&
+    parts[0] === 172 &&
+    parts[1] >= 16 &&
+    parts[1] <= 31
+  )
+}
+
+function getRouterBaseUrlCandidates(baseUrl = '') {
+  const candidates = [baseUrl]
+
+  if (baseUrl.startsWith('https://') && isPrivateRouterHost(baseUrl)) {
+    candidates.push(baseUrl.replace(/^https:\/\//i, 'http://'))
+  }
+
+  return [...new Set(candidates)]
+}
+
+function formatFetchError(error) {
+  const cause = error?.cause
+  const parts = [
+    error?.message,
+    cause?.code,
+    cause?.errno,
+    cause?.message,
+  ]
+
+  return parts.filter(Boolean).join(' / ') || 'fetch failed'
+}
+
 function getRouterConfig(routerConfig = {}) {
   const baseUrl =
     routerConfig.baseUrl ||
@@ -73,12 +121,32 @@ async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) 
     'Content-Type': 'application/json',
   }
 
-  const response = await fetch(`${baseUrl}/rest${path}`, {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    cache: 'no-store',
-  })
+  const payload = body ? JSON.stringify(body) : undefined
+  const fetchErrors = []
+  let response = null
+  let usedBaseUrl = baseUrl
+
+  for (const candidateBaseUrl of getRouterBaseUrlCandidates(baseUrl)) {
+    try {
+      response = await fetch(`${candidateBaseUrl}/rest${path}`, {
+        method,
+        headers,
+        body: payload,
+        cache: 'no-store',
+      })
+      usedBaseUrl = candidateBaseUrl
+      break
+    } catch (error) {
+      const host = getRouterHost(candidateBaseUrl) || candidateBaseUrl
+      fetchErrors.push(`${candidateBaseUrl.startsWith('https://') ? 'https' : 'http'}://${host}: ${formatFetchError(error)}`)
+    }
+  }
+
+  if (!response) {
+    throw new Error(
+      `RouterOS REST ${method} ${path} sem conexao: ${fetchErrors.join(' | ')}`
+    )
+  }
 
   let data = null
   const text = await response.text()
@@ -91,7 +159,7 @@ async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) 
 
   if (!response.ok) {
     throw new Error(
-      `RouterOS REST ${method} ${path} falhou: ${response.status} ${response.statusText} | ${JSON.stringify(data)}`
+      `RouterOS REST ${method} ${path} falhou em ${usedBaseUrl}: ${response.status} ${response.statusText} | ${JSON.stringify(data)}`
     )
   }
 
@@ -100,6 +168,31 @@ async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) 
 
 function routerFlag(value) {
   return value === true || value === 'true' || value === 'yes' || value === 'enabled'
+}
+
+function ipToNumber(value = '') {
+  const parts = String(value || '').split('.').map((part) => Number(part))
+
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return null
+  }
+
+  return parts.reduce((acc, part) => ((acc << 8) + part) >>> 0, 0)
+}
+
+function cidrContainsIp(cidr = '', ip = '') {
+  const [network, prefixRaw] = String(cidr || '').split('/')
+  const networkNumber = ipToNumber(network)
+  const ipNumber = ipToNumber(ip)
+  const prefix = Number(prefixRaw)
+
+  if (networkNumber === null || ipNumber === null || !Number.isInteger(prefix) || prefix < 0 || prefix > 32) {
+    return false
+  }
+
+  const mask = prefix === 0 ? 0 : (0xffffffff << (32 - prefix)) >>> 0
+
+  return (networkNumber & mask) === (ipNumber & mask)
 }
 
 function queueNameFromMac(macAddress = '') {
@@ -784,6 +877,45 @@ const STREAMING_PRESET_DOMAINS = [
   'nflxvideo.net',
 ]
 
+const BETTING_PRESET_DOMAINS = [
+  'bet365.com',
+  'betano.com',
+  'betfair.com',
+  'superbet.com',
+  'sportingbet.com',
+  'kto.com',
+  'estrelabet.com',
+  'betnacional.com',
+  'novibet.com',
+  'stake.com',
+  'blaze.com',
+  'blaze-1.com',
+  'bet7k.com',
+  'pixbet.com',
+  'vbet.com',
+  'betsson.com',
+  'betway.com',
+]
+
+const ADULT_PRESET_DOMAINS = [
+  'pornhub.com',
+  'pornhubpremium.com',
+  'xvideos.com',
+  'xnxx.com',
+  'redtube.com',
+  'youporn.com',
+  'tube8.com',
+  'xhamster.com',
+  'spankbang.com',
+  'xhamsterlive.com',
+  'chaturbate.com',
+  'stripchat.com',
+  'livejasmin.com',
+  'cam4.com',
+  'onlyfans.com',
+  'fansly.com',
+]
+
 const HEAVY_GAMES_PRESET_DOMAINS = [
   'roblox.com',
   'rbxcdn.com',
@@ -822,6 +954,18 @@ const STRONG_PRESETS = [
     id: 'streaming',
     triggerDomains: ['netflix.com', 'nflxvideo.net'],
     domains: STREAMING_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+  {
+    id: 'betting',
+    triggerDomains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com'],
+    domains: BETTING_PRESET_DOMAINS,
+    usesMetaInfrastructure: false,
+  },
+  {
+    id: 'adult',
+    triggerDomains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com'],
+    domains: ADULT_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
   {
@@ -1430,6 +1574,22 @@ function normalizeHotspotServer(server = {}) {
   }
 }
 
+function normalizeInterfaceAddress(address = {}) {
+  const rawAddress = address.address || ''
+  const ip = String(rawAddress).split('/')[0] || ''
+
+  return {
+    id: address['.id'] || '',
+    address: rawAddress,
+    ip,
+    network: address.network || '',
+    interface: address.interface || '',
+    disabled: routerFlag(address.disabled),
+    enabled: !routerFlag(address.disabled),
+    comment: address.comment || '',
+  }
+}
+
 function makeDiagnosticCheck({ id, label, ok, severity = 'info', message = '', recommendation = '' }) {
   return {
     id,
@@ -1444,16 +1604,23 @@ function makeDiagnosticCheck({ id, label, ok, severity = 'info', message = '', r
 export async function routerDiagnostics({ routerConfig } = {}) {
   const { hotspotServer } = getRouterConfig(routerConfig || {})
   const targetHotspotServer = routerConfig?.hotspotServer || hotspotServer || 'hotspot1'
+  const configuredHotspotSubnet =
+    routerConfig?.hotspotSubnet ||
+    routerConfig?.hotspot_subnet ||
+    process.env.NEXAWI_HOTSPOT_SUBNET ||
+    '192.168.88.0/24'
 
   const [
     resourceResult,
     servicesResult,
+    interfaceAddressesResult,
     hotspotServersResult,
     hotspotProfilesResult,
     policyStatusResult,
   ] = await Promise.allSettled([
     routerosFetch('/system/resource', { routerConfig }),
     routerosFetch('/ip/service', { routerConfig }),
+    routerosFetch('/ip/address', { routerConfig }),
     routerosFetch('/ip/hotspot', { routerConfig }),
     routerosFetch('/ip/hotspot/profile', { routerConfig }),
     getNexawiNetworkPolicyStatus({ routerConfig }),
@@ -1461,6 +1628,7 @@ export async function routerDiagnostics({ routerConfig } = {}) {
 
   const resource = settledValue(resourceResult, null)
   const servicesRaw = settledValue(servicesResult, [])
+  const interfaceAddressesRaw = settledValue(interfaceAddressesResult, [])
   const hotspotServersRaw = settledValue(hotspotServersResult, [])
   const hotspotProfilesRaw = settledValue(hotspotProfilesResult, [])
   const policyStatus = settledValue(policyStatusResult, null)
@@ -1468,6 +1636,9 @@ export async function routerDiagnostics({ routerConfig } = {}) {
   const services = Array.isArray(servicesRaw) ? servicesRaw.map(normalizeService) : []
   const hotspotServers = Array.isArray(hotspotServersRaw)
     ? hotspotServersRaw.map(normalizeHotspotServer)
+    : []
+  const interfaceAddresses = Array.isArray(interfaceAddressesRaw)
+    ? interfaceAddressesRaw.map(normalizeInterfaceAddress)
     : []
 
   const hotspotProfiles = Array.isArray(hotspotProfilesRaw)
@@ -1488,6 +1659,15 @@ export async function routerDiagnostics({ routerConfig } = {}) {
 
   const selectedHotspotServer =
     hotspotServers.find((server) => server.name === targetHotspotServer) || null
+  const hotspotInterfaceAddresses = selectedHotspotServer?.interface
+    ? interfaceAddresses.filter((address) =>
+        address.enabled &&
+        address.interface === selectedHotspotServer.interface
+      )
+    : []
+  const subnetMatchesHotspotInterface = hotspotInterfaceAddresses.some((address) =>
+    cidrContainsIp(configuredHotspotSubnet, address.ip)
+  )
 
   const checks = [
     makeDiagnosticCheck({
@@ -1556,6 +1736,21 @@ export async function routerDiagnostics({ routerConfig } = {}) {
     }),
 
     makeDiagnosticCheck({
+      id: 'hotspot_subnet',
+      label: 'Sub-rede do hotspot',
+      ok: Boolean(selectedHotspotServer?.enabled && subnetMatchesHotspotInterface),
+      severity: selectedHotspotServer?.enabled && subnetMatchesHotspotInterface ? 'success' : 'critical',
+      message: selectedHotspotServer?.interface
+        ? `Sub-rede configurada ${configuredHotspotSubnet}. Interface ${selectedHotspotServer.interface}: ${
+            hotspotInterfaceAddresses.map((item) => item.address).join(', ') || 'sem IP encontrado'
+          }.`
+        : `Sub-rede configurada ${configuredHotspotSubnet}. Hotspot server sem interface valida.`,
+      recommendation: selectedHotspotServer?.enabled && subnetMatchesHotspotInterface
+        ? ''
+        : 'Ajuste NEXAWI_HOTSPOT_SUBNET/politica do hotspot ou corrija o IP da interface do hotspot no RouterOS.',
+    }),
+
+    makeDiagnosticCheck({
       id: 'policy_status',
       label: 'Política NexaWi legível',
       ok: Boolean(policyStatus?.ok),
@@ -1577,6 +1772,7 @@ export async function routerDiagnostics({ routerConfig } = {}) {
     ready: criticalIssues.length === 0,
     checkedAt: new Date().toISOString(),
     targetHotspotServer,
+    configuredHotspotSubnet,
     summary: {
       criticalIssues: criticalIssues.length,
       warnings: warnings.length,
@@ -1596,6 +1792,8 @@ export async function routerDiagnostics({ routerConfig } = {}) {
         }
       : null,
     services,
+    interfaceAddresses,
+    hotspotInterfaceAddresses,
     hotspotServers,
     hotspotProfiles,
     selectedHotspotServer,

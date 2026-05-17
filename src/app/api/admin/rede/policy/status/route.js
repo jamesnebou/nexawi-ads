@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getNexawiNetworkPolicyStatus } from '@/lib/routeros-rest'
 
 export const runtime = 'nodejs'
 
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
-  const secret = process.env.NEXAWI_CRON_SECRET
+  const secret = process.env.NEXAWI_CONTROL_SECRET || process.env.NEXAWI_CRON_SECRET
+  const controlSecret = process.env.NEXAWI_CONTROL_SECRET || secret
+  const cronSecret = process.env.NEXAWI_CRON_SECRET || secret
 
   if (!baseUrl) throw new Error('CONTROL_API_BASE_URL não configurado')
   if (!secret) throw new Error('NEXAWI_CRON_SECRET não configurado')
@@ -15,7 +18,8 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
     method,
     headers: {
       'Content-Type': 'application/json',
-      'x-control-secret': secret,
+      'x-control-secret': controlSecret,
+      'x-cron-secret': cronSecret,
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
@@ -36,6 +40,35 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
   }
 
   return data
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function isControlUnauthorized(error) {
+  const message = String(error?.message || '').toLowerCase()
+  return message.includes('nÃ£o autorizado') || message.includes('não autorizado')
+}
+
+function createUnavailableStatus(error) {
+  const cause = error?.cause
+  const causeMessage = cause?.message || cause?.code || cause?.errno || ''
+  const detail = [
+    error?.message || 'Router unavailable',
+    causeMessage ? `Cause: ${causeMessage}` : '',
+  ].filter(Boolean).join(' | ')
+
+  return {
+    ok: false,
+    enabled: false,
+    unavailable: true,
+    error: detail || 'Router unavailable',
+    filterCount: 0,
+    natCount: 0,
+    dnsCount: 0,
+    filters: [],
+    natRules: [],
+    dnsRules: [],
+    checkedAt: new Date().toISOString(),
+  }
 }
 
 async function resolveNetworkContext({ hotspotId, hotspotSlug }) {
@@ -122,12 +155,26 @@ export async function GET(request) {
 
     const context = await resolveNetworkContext({ hotspotId, hotspotSlug })
 
-    const status = await callControlApi('/api/control/router/policy/status', {
-      method: 'POST',
-      body: {
-        routerConfig: context.routerConfig,
-      },
-    })
+    let status = null
+
+    try {
+      status = await callControlApi('/api/control/router/policy/status', {
+        method: 'POST',
+        body: {
+          routerConfig: context.routerConfig,
+        },
+      })
+    } catch (controlError) {
+      try {
+        status = await getNexawiNetworkPolicyStatus({
+          routerConfig: context.routerConfig,
+        })
+      } catch (directError) {
+        status = createUnavailableStatus(
+          new Error(`${directError.message || 'Falha direta no MikroTik'} | Control API: ${controlError.message || 'falhou'}`)
+        )
+      }
+    }
 
     return NextResponse.json({
       ok: true,

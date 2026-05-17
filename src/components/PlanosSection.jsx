@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import Link from 'next/link'
 
 function formatPrice(value) {
   return new Intl.NumberFormat('pt-BR', {
@@ -21,6 +22,17 @@ function resolveSlugFromPathname(pathname = '/') {
   }
 
   return ''
+}
+
+function buildPlanoHref(plano, modoPreco) {
+  const params = new URLSearchParams()
+
+  params.set('plano', plano.titulo)
+  params.set('plano_id', plano.id)
+  params.set('valor', String(Number(plano.valor || 0)))
+  params.set('ciclo', modoPreco)
+
+  return `/anunciar?${params.toString()}`
 }
 
 const PLANOS_META = [
@@ -301,10 +313,8 @@ export default function PlanosSection({ slug = '' }) {
                 </ul>
               </div>
 
-              <a
-                href={config?.whatsapp_destino || 'https://wa.me/77988656394'}
-                target="_blank"
-                rel="noopener noreferrer"
+              <Link
+                href={buildPlanoHref(plano, modoPreco)}
                 className={`w-full block text-center px-8 py-4 rounded-xl transition-all duration-300 font-extrabold text-xl mt-auto ${
                   plano.destaque
                     ? 'bg-[#6be12f] text-black shadow-[0_0_25px_rgba(107,225,47,0.55)] hover:shadow-[0_0_45px_rgba(107,225,47,0.75)] hover:-translate-y-1'
@@ -312,7 +322,7 @@ export default function PlanosSection({ slug = '' }) {
                 }`}
               >
                 {plano.cta}
-              </a>
+              </Link>
             </div>
           )
         })}

@@ -820,14 +820,12 @@ useEffect(() => {
       >
         Portal do Cliente
       </Link>
-      <a
-        href="https://wa.me/77988656394"
-        target="_blank"
-        rel="noopener noreferrer"
+      <Link
+        href="/anunciar"
         className="text-sm font-bold text-black bg-[#6be12f] px-5 py-2.5 rounded-xl hover:opacity-90 hover:shadow-[0_0_20px_rgba(107,225,47,0.6)] transition-all duration-300"
       >
-        Falar com um consultor Nexa
-      </a>
+        Quero anunciar
+      </Link>
     </div>
 
     {/* BOTÃO MOBILE – CHAMATIVO */}
@@ -857,15 +855,13 @@ useEffect(() => {
         >
           Portal do Cliente
         </Link>
-        <a
-          href="https://wa.me/77988656394"
-          target="_blank"
-          rel="noopener noreferrer"
+        <Link
+          href="/anunciar"
           className="w-full text-xs font-bold text-black py-2.5 px-3 rounded-lg bg-[#6be12f] hover:bg-[#8cf059] hover:shadow-[0_0_22px_rgba(107,225,47,0.7)] transition-all text-center"
           onClick={() => setMobileQuickOpen(false)}
         >
-          Falar com um consultor Nexa
-        </a>
+          Quero anunciar
+        </Link>
       </div>
     </div>
   )}
@@ -1525,13 +1521,12 @@ useEffect(() => {
           </div>
         </section>
       <div className="flex justify-center">
-        <a
-  href="#"
-  onClick={handleOpenContact}
+        <Link
+  href="/anunciar"
   className="px-8 py-4 bg-[#6be12f] text-black font-extrabold rounded-xl shadow-[0_0_20px_rgba(107,225,47,0.6)] hover:shadow-[0_0_50px_rgba(107,225,47,0.6)] transition-all duration-300 hover:-translate-y-1"
 >
-          Fale com um dos nossos consultores!
-        </a>
+          Quero receber uma proposta
+        </Link>
       </div>
     </div>
   </div>
@@ -1571,12 +1566,19 @@ useEffect(() => {
               >
                 Privacidade
               </a>
-              <a
-                href="#"
-                onClick={handleOpenContact}
+              <Link
+                href="/anunciar"
                 className="hover:text-[#8cf059] transition-colors"
               >
                 Contato
+              </Link>
+              <a
+                href="https://www.instagram.com/nexawi_ads/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-[#8cf059] transition-colors"
+              >
+                Instagram
               </a>
             </div>
           </div>
@@ -1849,7 +1851,20 @@ useEffect(() => {
     </p>
 
     <div>
-      <label className="block text-sm font-semibold mb-1" htmlFor="contact-name">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 mb-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gray-500">
+          Acompanhe a NexaWi
+        </p>
+        <a
+          href="https://www.instagram.com/nexawi_ads/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-flex items-center text-sm font-extrabold text-[#8cf059] hover:text-white transition-colors"
+        >
+          @nexawi_ads
+        </a>
+      </div>
+<label className="block text-sm font-semibold mb-1" htmlFor="contact-name">
         Nome
       </label>
       <input

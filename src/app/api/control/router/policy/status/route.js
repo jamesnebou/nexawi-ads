@@ -11,9 +11,12 @@ function validateControlSecret(request) {
     request.headers.get('x-control-secret') ||
     request.headers.get('x-cron-secret')
 
-  const expected = process.env.NEXAWI_CRON_SECRET
+  const expectedSecrets = [
+    process.env.NEXAWI_CONTROL_SECRET,
+    process.env.NEXAWI_CRON_SECRET,
+  ].filter(Boolean)
 
-  return Boolean(expected && received && received === expected)
+  return Boolean(received && expectedSecrets.includes(received))
 }
 
 async function handleStatus(request, body = {}) {
