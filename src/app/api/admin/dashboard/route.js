@@ -623,7 +623,6 @@ export async function GET(request) {
       if (hotspotId) {
         queryLeadsHoje = queryLeadsHoje.eq('hotspot_id', hotspotId)
         queryLeadsMes = queryLeadsMes.eq('hotspot_id', hotspotId)
-        queryPessoasOnline = queryPessoasOnline.eq('hotspot_id', hotspotId)
       }
 
       const [
