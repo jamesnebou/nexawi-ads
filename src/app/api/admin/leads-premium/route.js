@@ -4,6 +4,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 
 export const runtime = 'nodejs'
 
+const STATUS_VALIDOS = ['Novo', 'Contatado', 'Convertido', 'Perdido']
+
 function getDataInicio(periodo = 'todos') {
   const agora = new Date()
 
@@ -36,6 +38,15 @@ function sanitizeSearch(value = '') {
     .replace(/\s+/g, ' ')
 }
 
+function normalizeStatus(value = '') {
+  const status = String(value || '').trim()
+  return STATUS_VALIDOS.includes(status) ? status : 'Novo'
+}
+
+function cleanText(value = '') {
+  return String(value || '').trim()
+}
+
 function calcularOrigemPrincipal(leads = []) {
   const map = new Map()
 
@@ -49,6 +60,49 @@ function calcularOrigemPrincipal(leads = []) {
     .sort((a, b) => b.total - a.total)
 
   return ranking[0] || null
+}
+
+function contarPorStatus(leads = []) {
+  const base = {
+    Novo: 0,
+    Contatado: 0,
+    Convertido: 0,
+    Perdido: 0,
+  }
+
+  leads.forEach((lead) => {
+    const status = normalizeStatus(lead.crm_status)
+    base[status] = (base[status] || 0) + 1
+  })
+
+  return base
+}
+
+async function carregarBase({ clienteId = '' } = {}) {
+  const { data: clientesData, error: clientesError } = await supabaseAdmin
+    .from('clientes')
+    .select('id, nome, nome_empresa, email, status')
+    .order('nome_empresa', { ascending: true })
+
+  if (clientesError) throw clientesError
+
+  let anunciosQuery = supabaseAdmin
+    .from('anuncios')
+    .select('id, titulo, ativo, cliente_id, created_at')
+    .order('created_at', { ascending: false })
+
+  if (clienteId) {
+    anunciosQuery = anunciosQuery.eq('cliente_id', clienteId)
+  }
+
+  const { data: anunciosData, error: anunciosError } = await anunciosQuery
+
+  if (anunciosError) throw anunciosError
+
+  return {
+    clientes: clientesData || [],
+    anuncios: anunciosData || [],
+  }
 }
 
 export async function GET(request) {
@@ -65,55 +119,49 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
 
     const periodo = searchParams.get('periodo') || 'todos'
-    const clienteId = String(searchParams.get('clienteId') || '').trim()
-    const anuncioId = String(searchParams.get('anuncioId') || '').trim()
+    const clienteId = cleanText(searchParams.get('clienteId') || '')
+    const anuncioId = cleanText(searchParams.get('anuncioId') || '')
     const busca = sanitizeSearch(searchParams.get('busca') || '')
+    const statusFiltro = cleanText(searchParams.get('status') || '')
 
-    const { data: clientesData, error: clientesError } = await supabaseAdmin
-      .from('clientes')
-      .select('id, nome, nome_empresa, email, status')
-      .order('nome_empresa', { ascending: true })
-
-    if (clientesError) throw clientesError
-
-    let anunciosQuery = supabaseAdmin
-      .from('anuncios')
-      .select('id, titulo, ativo, cliente_id, created_at')
-      .order('created_at', { ascending: false })
-
-    if (clienteId) {
-      anunciosQuery = anunciosQuery.eq('cliente_id', clienteId)
-    }
-
-    const { data: anunciosData, error: anunciosError } = await anunciosQuery
-
-    if (anunciosError) throw anunciosError
-
-    const clientes = clientesData || []
-    const anuncios = anunciosData || []
+    const { clientes, anuncios } = await carregarBase({ clienteId })
     const anuncioIds = anuncios.map((ad) => ad.id).filter(Boolean)
 
     if (anuncioIds.length === 0) {
       return NextResponse.json({
         ok: true,
         periodo,
-        filtros: { clienteId, anuncioId, busca },
+        filtros: { clienteId, anuncioId, busca, status: statusFiltro },
         resumo: {
           total: 0,
           hoje: 0,
           mes: 0,
           origemPrincipal: null,
+          porStatus: contarPorStatus([]),
         },
         leads: [],
         anuncios,
         clientes,
+        statusOptions: STATUS_VALIDOS,
         permissions: auth.permissions?.leads || {},
       })
     }
 
     let query = supabaseAdmin
       .from('leads')
-      .select('id, nome, email, telefone, created_at, anuncio_id, hotspot_id')
+      .select(`
+        id,
+        nome,
+        email,
+        telefone,
+        created_at,
+        anuncio_id,
+        hotspot_id,
+        crm_status,
+        crm_observacoes,
+        crm_proximo_contato,
+        crm_updated_at
+      `)
       .in('anuncio_id', anuncioIds)
       .order('created_at', { ascending: false })
       .limit(3000)
@@ -156,13 +204,14 @@ export async function GET(request) {
     const anunciosById = new Map(anuncios.map((ad) => [ad.id, ad]))
     const hotspotsById = new Map(hotspots.map((hotspot) => [hotspot.id, hotspot]))
 
-    const leads = rawLeads.map((lead) => {
+    let leads = rawLeads.map((lead) => {
       const anuncio = anunciosById.get(lead.anuncio_id)
       const cliente = clientesById.get(anuncio?.cliente_id)
       const hotspot = hotspotsById.get(lead.hotspot_id)
 
       return {
         ...lead,
+        crm_status: normalizeStatus(lead.crm_status),
         anuncios: {
           id: anuncio?.id || lead.anuncio_id,
           titulo: anuncio?.titulo || 'Campanha NexaWi',
@@ -183,6 +232,10 @@ export async function GET(request) {
       }
     })
 
+    if (statusFiltro && STATUS_VALIDOS.includes(statusFiltro)) {
+      leads = leads.filter((lead) => normalizeStatus(lead.crm_status) === statusFiltro)
+    }
+
     const hojeInicio = new Date()
     hojeInicio.setHours(0, 0, 0, 0)
 
@@ -197,16 +250,19 @@ export async function GET(request) {
         clienteId,
         anuncioId,
         busca,
+        status: statusFiltro,
       },
       resumo: {
         total: leads.length,
         hoje: leads.filter((lead) => new Date(lead.created_at).getTime() >= hojeInicio.getTime()).length,
         mes: leads.filter((lead) => new Date(lead.created_at).getTime() >= mesInicio.getTime()).length,
         origemPrincipal: calcularOrigemPrincipal(leads),
+        porStatus: contarPorStatus(leads),
       },
       leads,
       anuncios,
       clientes,
+      statusOptions: STATUS_VALIDOS,
       permissions: auth.permissions?.leads || {},
     })
   } catch (error) {
@@ -214,6 +270,74 @@ export async function GET(request) {
       {
         ok: false,
         error: error.message || 'Erro ao carregar leads administrativos',
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function PATCH(request) {
+  const auth = await requireAdmin(request, {
+    module: 'leads',
+    action: 'update',
+  })
+
+  if (auth.errorResponse) {
+    return auth.errorResponse
+  }
+
+  try {
+    const body = await request.json().catch(() => ({}))
+
+    const id = cleanText(body.id || body.leadId || '')
+    const crmStatus = normalizeStatus(body.crm_status || body.status || 'Novo')
+    const crmObservacoes = cleanText(body.crm_observacoes || body.observacoes || '')
+    const crmProximoContato = cleanText(body.crm_proximo_contato || body.proximoContato || '')
+
+    if (!id) {
+      return NextResponse.json(
+        { ok: false, error: 'ID do lead é obrigatório' },
+        { status: 400 }
+      )
+    }
+
+    const updatePayload = {
+      crm_status: crmStatus,
+      crm_observacoes: crmObservacoes || null,
+      crm_proximo_contato: crmProximoContato || null,
+      crm_updated_at: new Date().toISOString(),
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('leads')
+      .update(updatePayload)
+      .eq('id', id)
+      .select(`
+        id,
+        nome,
+        email,
+        telefone,
+        created_at,
+        anuncio_id,
+        hotspot_id,
+        crm_status,
+        crm_observacoes,
+        crm_proximo_contato,
+        crm_updated_at
+      `)
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({
+      ok: true,
+      lead: data,
+    })
+  } catch (error) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: error.message || 'Erro ao atualizar lead',
       },
       { status: 500 }
     )

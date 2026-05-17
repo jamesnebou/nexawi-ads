@@ -4,17 +4,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   CalendarDays,
+  CheckCircle2,
+  Clock,
   Download,
+  Edit3,
   Mail,
   MapPin,
   Megaphone,
   Phone,
   RefreshCw,
+  Save,
   Search,
   TrendingUp,
   Users,
   Building2,
   XCircle,
+  AlertTriangle,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -27,6 +32,15 @@ const periodos = [
   { value: 'mes_atual', label: 'Mês atual' },
   { value: 'todos', label: 'Todo período' },
 ]
+
+const statusOptions = ['Novo', 'Contatado', 'Convertido', 'Perdido']
+
+const statusStyles = {
+  Novo: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
+  Contatado: 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20',
+  Convertido: 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20',
+  Perdido: 'bg-red-500/10 text-red-300 border-red-500/20',
+}
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -62,6 +76,11 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
+function formatDate(value) {
+  if (!value) return '—'
+  return new Date(value).toLocaleDateString('pt-BR')
+}
+
 function formatDateTime(value) {
   if (!value) return '—'
 
@@ -87,6 +106,10 @@ function getClienteLabel(cliente = {}) {
   return cliente.nome_empresa || cliente.nome || cliente.email || 'Cliente sem nome'
 }
 
+function normalizeStatus(value = '') {
+  return statusOptions.includes(value) ? value : 'Novo'
+}
+
 export default function AdminLeadsPage() {
   const [leads, setLeads] = useState([])
   const [anuncios, setAnuncios] = useState([])
@@ -97,14 +120,28 @@ export default function AdminLeadsPage() {
     hoje: 0,
     mes: 0,
     origemPrincipal: null,
+    porStatus: {
+      Novo: 0,
+      Contatado: 0,
+      Convertido: 0,
+      Perdido: 0,
+    },
   })
 
   const [periodo, setPeriodo] = useState('todos')
   const [clienteId, setClienteId] = useState('')
   const [anuncioId, setAnuncioId] = useState('')
+  const [statusFiltro, setStatusFiltro] = useState('')
   const [busca, setBusca] = useState('')
   const [buscaAplicada, setBuscaAplicada] = useState('')
   const [loading, setLoading] = useState(true)
+  const [editingLeadId, setEditingLeadId] = useState('')
+  const [savingLeadId, setSavingLeadId] = useState('')
+  const [crmForm, setCrmForm] = useState({
+    crm_status: 'Novo',
+    crm_observacoes: '',
+    crm_proximo_contato: '',
+  })
 
   const clienteSelecionado = useMemo(() => {
     return clientes.find((item) => item.id === clienteId)
@@ -114,12 +151,19 @@ export default function AdminLeadsPage() {
     return anuncios.find((item) => item.id === anuncioId)
   }, [anuncios, anuncioId])
 
-  const temFiltros = periodo !== 'todos' || Boolean(clienteId) || Boolean(anuncioId) || Boolean(buscaAplicada)
+  const temFiltros =
+    periodo !== 'todos' ||
+    Boolean(clienteId) ||
+    Boolean(anuncioId) ||
+    Boolean(statusFiltro) ||
+    Boolean(buscaAplicada)
+
   const canExport = permissions.export !== false
+  const canUpdate = permissions.update !== false
 
   useEffect(() => {
     carregarLeads()
-  }, [periodo, clienteId, anuncioId, buscaAplicada])
+  }, [periodo, clienteId, anuncioId, statusFiltro, buscaAplicada])
 
   async function carregarLeads() {
     setLoading(true)
@@ -130,6 +174,7 @@ export default function AdminLeadsPage() {
 
       if (clienteId) params.set('clienteId', clienteId)
       if (anuncioId) params.set('anuncioId', anuncioId)
+      if (statusFiltro) params.set('status', statusFiltro)
       if (buscaAplicada) params.set('busca', buscaAplicada)
 
       const data = await adminApiFetch(`/api/admin/leads-premium?${params.toString()}`)
@@ -143,6 +188,12 @@ export default function AdminLeadsPage() {
         hoje: 0,
         mes: 0,
         origemPrincipal: null,
+        porStatus: {
+          Novo: 0,
+          Contatado: 0,
+          Convertido: 0,
+          Perdido: 0,
+        },
       })
 
       if (clienteId && anuncioId) {
@@ -164,6 +215,7 @@ export default function AdminLeadsPage() {
     setPeriodo('todos')
     setClienteId('')
     setAnuncioId('')
+    setStatusFiltro('')
     setBusca('')
     setBuscaAplicada('')
   }
@@ -180,7 +232,7 @@ export default function AdminLeadsPage() {
     }
 
     const linhas = [
-      ['Cliente', 'Nome', 'Telefone', 'E-mail', 'Campanha', 'Hotspot', 'Data'],
+      ['Cliente', 'Nome', 'Telefone', 'E-mail', 'Campanha', 'Hotspot', 'Status', 'Próximo contato', 'Observações', 'Data'],
       ...leads.map((lead) => [
         getClienteLabel(lead.clientes),
         lead.nome || '',
@@ -188,6 +240,9 @@ export default function AdminLeadsPage() {
         lead.email || '',
         lead.anuncios?.titulo || '',
         lead.hotspots?.nome || '',
+        normalizeStatus(lead.crm_status),
+        formatDate(lead.crm_proximo_contato),
+        lead.crm_observacoes || '',
         formatDateTime(lead.created_at),
       ]),
     ]
@@ -201,7 +256,7 @@ export default function AdminLeadsPage() {
 
     const link = document.createElement('a')
     link.href = url
-    link.download = `leads_admin_nexawi_${new Date().toISOString().slice(0, 10)}.csv`
+    link.download = `leads_crm_admin_nexawi_${new Date().toISOString().slice(0, 10)}.csv`
 
     document.body.appendChild(link)
     link.click()
@@ -215,6 +270,67 @@ export default function AdminLeadsPage() {
     setBuscaAplicada(busca.trim())
   }
 
+  function startEditLead(lead) {
+    setEditingLeadId(lead.id)
+    setCrmForm({
+      crm_status: normalizeStatus(lead.crm_status),
+      crm_observacoes: lead.crm_observacoes || '',
+      crm_proximo_contato: lead.crm_proximo_contato || '',
+    })
+  }
+
+  function cancelEditLead() {
+    setEditingLeadId('')
+    setSavingLeadId('')
+    setCrmForm({
+      crm_status: 'Novo',
+      crm_observacoes: '',
+      crm_proximo_contato: '',
+    })
+  }
+
+  async function salvarLead(leadId) {
+    if (!canUpdate) {
+      toast.error('Você não tem permissão para atualizar leads.')
+      return
+    }
+
+    setSavingLeadId(leadId)
+
+    try {
+      const data = await adminApiFetch('/api/admin/leads-premium', {
+        method: 'PATCH',
+        body: {
+          id: leadId,
+          crm_status: crmForm.crm_status,
+          crm_observacoes: crmForm.crm_observacoes,
+          crm_proximo_contato: crmForm.crm_proximo_contato,
+        },
+      })
+
+      setLeads((current) =>
+        current.map((lead) =>
+          lead.id === leadId
+            ? {
+                ...lead,
+                ...data.lead,
+                crm_status: normalizeStatus(data.lead?.crm_status),
+              }
+            : lead
+        )
+      )
+
+      toast.success('Lead atualizado com sucesso.')
+      cancelEditLead()
+      carregarLeads()
+    } catch (error) {
+      console.error('Erro ao salvar lead:', error)
+      toast.error(error.message || 'Erro ao salvar lead.')
+    } finally {
+      setSavingLeadId('')
+    }
+  }
+
   const cards = [
     {
       label: 'Total de leads',
@@ -224,18 +340,32 @@ export default function AdminLeadsPage() {
       accent: 'text-[#8cf059]',
     },
     {
-      label: 'Leads hoje',
-      value: resumo.hoje,
-      detail: 'capturados hoje',
-      icon: TrendingUp,
-      accent: 'text-cyan-400',
+      label: 'Novos',
+      value: resumo.porStatus?.Novo || 0,
+      detail: 'ainda não tratados',
+      icon: AlertTriangle,
+      accent: 'text-blue-400',
     },
     {
-      label: 'Leads no mês',
-      value: resumo.mes,
-      detail: 'mês atual',
-      icon: CalendarDays,
-      accent: 'text-orange-400',
+      label: 'Contatados',
+      value: resumo.porStatus?.Contatado || 0,
+      detail: 'em atendimento',
+      icon: Clock,
+      accent: 'text-yellow-300',
+    },
+    {
+      label: 'Convertidos',
+      value: resumo.porStatus?.Convertido || 0,
+      detail: 'viraram oportunidade',
+      icon: CheckCircle2,
+      accent: 'text-[#8cf059]',
+    },
+    {
+      label: 'Perdidos',
+      value: resumo.porStatus?.Perdido || 0,
+      detail: 'sem conversão',
+      icon: XCircle,
+      accent: 'text-red-300',
     },
     {
       label: 'Origem principal',
@@ -267,7 +397,7 @@ export default function AdminLeadsPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
               <Users size={13} />
-              Central de leads
+              CRM de leads
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
@@ -275,7 +405,7 @@ export default function AdminLeadsPage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Consulte, filtre e exporte os contatos capturados em todos os clientes da rede NexaWi.
+              Consulte, filtre, acompanhe status e registre observações dos contatos capturados na rede NexaWi.
             </p>
           </div>
 
@@ -303,7 +433,7 @@ export default function AdminLeadsPage() {
           </div>
         </header>
 
-        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8">
           {cards.map((card) => (
             <div key={card.label} className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
               <div className="flex items-center justify-between mb-6">
@@ -328,7 +458,7 @@ export default function AdminLeadsPage() {
         </section>
 
         <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_1.4fr_auto] gap-4 items-end">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_1fr_1.4fr_auto] gap-4 items-end">
             <FilterSelect
               label="Período"
               icon={CalendarDays}
@@ -367,6 +497,20 @@ export default function AdminLeadsPage() {
                 ...anuncios.map((ad) => ({
                   value: ad.id,
                   label: ad.titulo || 'Anúncio sem título',
+                })),
+              ]}
+            />
+
+            <FilterSelect
+              label="Status"
+              icon={CheckCircle2}
+              value={statusFiltro}
+              onChange={setStatusFiltro}
+              options={[
+                { value: '', label: 'Todos os status' },
+                ...statusOptions.map((status) => ({
+                  value: status,
+                  label: status,
                 })),
               ]}
             />
@@ -417,6 +561,9 @@ export default function AdminLeadsPage() {
               {anuncioSelecionado && (
                 <Badge label="Campanha" value={anuncioSelecionado.titulo || 'Anúncio'} />
               )}
+              {statusFiltro && (
+                <Badge label="Status" value={statusFiltro} />
+              )}
               {buscaAplicada && (
                 <Badge label="Busca" value={buscaAplicada} />
               )}
@@ -451,7 +598,18 @@ export default function AdminLeadsPage() {
           ) : (
             <div className="grid gap-3">
               {leads.map((lead) => (
-                <LeadCard key={lead.id} lead={lead} />
+                <LeadCard
+                  key={lead.id}
+                  lead={lead}
+                  canUpdate={canUpdate}
+                  isEditing={editingLeadId === lead.id}
+                  isSaving={savingLeadId === lead.id}
+                  crmForm={crmForm}
+                  setCrmForm={setCrmForm}
+                  onEdit={() => startEditLead(lead)}
+                  onCancel={cancelEditLead}
+                  onSave={() => salvarLead(lead.id)}
+                />
               ))}
             </div>
           )}
@@ -504,11 +662,35 @@ function Badge({ label, value }) {
   )
 }
 
-function LeadCard({ lead }) {
+function StatusBadge({ status }) {
+  const normalized = normalizeStatus(status)
+
+  return (
+    <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${statusStyles[normalized]}`}>
+      {normalized}
+    </span>
+  )
+}
+
+function LeadCard({
+  lead,
+  canUpdate,
+  isEditing,
+  isSaving,
+  crmForm,
+  setCrmForm,
+  onEdit,
+  onCancel,
+  onSave,
+}) {
   return (
     <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 hover:border-[#6be12f]/20 transition-colors">
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr_1.1fr_1fr] gap-5 items-center">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr_1.1fr_1fr_auto] gap-5 items-center">
         <div>
+          <div className="mb-2">
+            <StatusBadge status={lead.crm_status} />
+          </div>
+
           <p className="text-base font-black text-white truncate">
             {lead.nome || 'Lead sem nome'}
           </p>
@@ -516,6 +698,13 @@ function LeadCard({ lead }) {
           <p className="text-xs text-neutral-500 mt-1">
             Capturado em {formatDateTime(lead.created_at)}
           </p>
+
+          {lead.crm_proximo_contato && (
+            <p className="text-[11px] text-yellow-300 mt-2 flex items-center gap-1.5">
+              <Clock size={12} />
+              Próximo contato: {formatDate(lead.crm_proximo_contato)}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -530,8 +719,84 @@ function LeadCard({ lead }) {
 
         <div className="grid gap-2">
           <SmallInfo icon={MapPin} value={lead.hotspots?.nome || 'Hotspot'} />
+          {lead.crm_observacoes && (
+            <p className="text-xs text-neutral-500 line-clamp-2">
+              {lead.crm_observacoes}
+            </p>
+          )}
         </div>
+
+        {canUpdate && (
+          <button
+            type="button"
+            onClick={isEditing ? onCancel : onEdit}
+            className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
+          >
+            {isEditing ? <XCircle size={15} /> : <Edit3 size={15} />}
+            {isEditing ? 'Fechar' : 'Editar'}
+          </button>
+        )}
       </div>
+
+      {isEditing && (
+        <div className="mt-5 rounded-3xl border border-[#6be12f]/15 bg-[#6be12f]/5 p-5">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr_2fr_auto] gap-4 items-end">
+            <label>
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 block">
+                Status
+              </span>
+
+              <select
+                value={crmForm.crm_status}
+                onChange={(e) => setCrmForm((current) => ({ ...current, crm_status: e.target.value }))}
+                className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
+              >
+                {statusOptions.map((status) => (
+                  <option key={status} value={status} className="bg-[#0a0a0a]">
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label>
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 block">
+                Próximo contato
+              </span>
+
+              <input
+                type="date"
+                value={crmForm.crm_proximo_contato || ''}
+                onChange={(e) => setCrmForm((current) => ({ ...current, crm_proximo_contato: e.target.value }))}
+                className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
+              />
+            </label>
+
+            <label>
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 block">
+                Observações internas
+              </span>
+
+              <input
+                value={crmForm.crm_observacoes}
+                onChange={(e) => setCrmForm((current) => ({ ...current, crm_observacoes: e.target.value }))}
+                placeholder="Ex: chamou no WhatsApp, pediu orçamento, ficou de responder..."
+                className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
+              />
+            </label>
+
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={isSaving}
+              className="rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-black text-black hover:bg-[#8cf059] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              <Save size={16} />
+              {isSaving ? 'Salvando...' : 'Salvar'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
