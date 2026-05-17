@@ -493,6 +493,64 @@ export default function RelatorioComercialAdmin() {
         }
 
         /* PRINT_DARK_CONTRAST_PATCH */
+
+        /* PRINT_REMOVE_WHITE_HEADER_PATCH */
+        @media print {
+          .print-report-header,
+          .clean-print-report,
+          .print-cover,
+          .print-page,
+          .print-meta-grid.clean,
+          .print-summary-grid {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            max-height: 0 !important;
+            min-height: 0 !important;
+            overflow: hidden !important;
+            opacity: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: 0 !important;
+          }
+
+          .print-dark-page {
+            padding-top: 0 !important;
+          }
+
+          .print-dark-page > .absolute,
+          .print-dark-page .absolute.top-20 {
+            display: none !important;
+          }
+
+          .print-dark-page h1 {
+            margin-top: 0 !important;
+          }
+
+          .print-dark-page .relative.z-10.flex.flex-col.lg\:flex-row {
+            margin-bottom: 22px !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
+          }
+
+          .print-dark-page .grid.grid-cols-1.sm\:grid-cols-2.xl\:grid-cols-6 {
+            margin-top: 0 !important;
+            margin-bottom: 28px !important;
+          }
+
+          .print-dark-page .bg-white\/\[0\.02\],
+          .print-dark-page .bg-\[\#0a0a0a\],
+          .print-dark-page .bg-\[\#050505\] {
+            background: #070707 !important;
+          }
+
+          .print-dark-page h2,
+          .print-dark-page h3,
+          .print-dark-page p,
+          .print-dark-page span {
+            opacity: 1 !important;
+          }
+        }
         @media print {
           html,
           body {
