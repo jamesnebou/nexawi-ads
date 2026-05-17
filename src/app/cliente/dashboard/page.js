@@ -37,6 +37,8 @@ import {
   ExternalLink,
   Megaphone,
   CalendarDays,
+  Printer,
+  FileText,
 } from 'lucide-react'
 
 const supabase = createClient()
@@ -242,6 +244,14 @@ export default function ClientDashboardPage() {
     }
   }, [router])
 
+  function gerarPDFCliente() {
+    if (!commercialReport?.ok) {
+      return
+    }
+
+    window.print()
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut()
     router.replace('/cliente/login?logout=1')
@@ -438,15 +448,34 @@ export default function ClientDashboardPage() {
             </div>
 
            
-            <button
-  onClick={() => router.push('/cliente/suporte')}
-  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
->
-  <LifeBuoy size={17} />
-  Abrir suporte
-</button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={gerarPDFCliente}
+                disabled={!commercialReport?.ok}
+                className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Printer size={17} />
+                Gerar PDF
+              </button>
+
+              <button
+                onClick={() => router.push('/cliente/suporte')}
+                className="no-print inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
+              >
+                <LifeBuoy size={17} />
+                Abrir suporte
+              </button>
+            </div>
           </div>
         </div>
+
+        <ClientPrintableReport
+          cliente={cliente}
+          campanha={campanha}
+          resumo={resumo}
+          financeiro={financeiro}
+          report={commercialReport}
+        />
 
         {error && (
           <div className="p-5 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
@@ -616,7 +645,366 @@ export default function ClientDashboardPage() {
           animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           opacity: 0;
         }
+
+        .client-print-report {
+          display: none;
+        }
+
+        /* CLIENT_PDF_REPORT_PATCH */
+        @media print {
+          @page {
+            size: A4;
+            margin: 10mm;
+          }
+
+          html,
+          body {
+            background: #050505 !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .client-print-report,
+          .client-print-report * {
+            visibility: visible !important;
+          }
+
+          .client-print-report {
+            display: block !important;
+            position: absolute !important;
+            inset: 0 auto auto 0 !important;
+            width: 100% !important;
+            background: #050505 !important;
+            color: #ffffff !important;
+            font-family: Arial, Helvetica, sans-serif !important;
+          }
+
+          .no-print,
+          nav,
+          button,
+          .fixed,
+          .sticky {
+            display: none !important;
+          }
+
+          .client-print-cover,
+          .client-print-section {
+            page-break-after: always;
+            break-after: page;
+            background: #050505 !important;
+            color: #ffffff !important;
+            padding: 0;
+          }
+
+          .client-print-section:last-child {
+            page-break-after: auto;
+            break-after: auto;
+          }
+
+          .client-print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 24px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 24px;
+            padding: 24px;
+            background: linear-gradient(135deg, rgba(107,225,47,0.12), rgba(255,255,255,0.03)) !important;
+            margin-bottom: 18px;
+          }
+
+          .client-print-header p,
+          .client-print-title p {
+            margin: 0 0 8px;
+            font-size: 10px;
+            letter-spacing: 0.22em;
+            text-transform: uppercase;
+            font-weight: 900;
+            color: #8cf059 !important;
+          }
+
+          .client-print-header h1,
+          .client-print-title h2 {
+            margin: 0;
+            color: #ffffff !important;
+            font-size: 30px;
+            line-height: 1.1;
+            font-weight: 900;
+          }
+
+          .client-print-header span,
+          .client-print-title span {
+            display: block;
+            margin-top: 8px;
+            color: #dbeafe !important;
+            font-size: 12px;
+          }
+
+          .client-print-header img {
+            width: 120px;
+            max-height: 68px;
+            object-fit: contain;
+          }
+
+          .client-print-status {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 12px;
+            margin-bottom: 18px;
+          }
+
+          .client-print-status div,
+          .client-print-kpis div,
+          .client-print-row,
+          .client-print-quality,
+          .client-print-empty {
+            border: 1px solid rgba(255,255,255,0.14);
+            background: #090909 !important;
+            border-radius: 18px;
+            padding: 16px;
+          }
+
+          .client-print-status strong,
+          .client-print-row h3,
+          .client-print-quality h2 {
+            color: #ffffff !important;
+            font-weight: 900;
+          }
+
+          .client-print-status span,
+          .client-print-row p,
+          .client-print-quality p {
+            color: #dbeafe !important;
+            font-size: 12px;
+            line-height: 1.5;
+          }
+
+          .client-print-kpis {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          .client-print-kpis strong {
+            display: block;
+            font-size: 28px;
+            color: #ffffff !important;
+            font-weight: 900;
+          }
+
+          .client-print-kpis span,
+          .client-print-row-metrics span {
+            display: block;
+            margin-top: 6px;
+            font-size: 9px;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #dbeafe !important;
+            font-weight: 900;
+          }
+
+          .client-print-title {
+            border-bottom: 1px solid rgba(140,240,89,0.45);
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+          }
+
+          .client-print-ranking {
+            display: grid;
+            gap: 12px;
+          }
+
+          .client-print-row {
+            display: grid;
+            grid-template-columns: 1.4fr 1.6fr;
+            gap: 16px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+
+          .client-print-row > div > strong {
+            color: #8cf059 !important;
+            font-size: 13px;
+          }
+
+          .client-print-row-metrics {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 8px;
+          }
+
+          .client-print-row-metrics span {
+            background: #050505 !important;
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 10px;
+          }
+
+          .client-print-row-metrics b {
+            display: block;
+            color: #ffffff !important;
+            font-size: 16px;
+            margin-top: 6px;
+          }
+
+          .client-print-quality {
+            margin-top: 18px;
+          }
+
+          .client-print-quality > div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+          }
+
+          .client-print-quality > div span {
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 999px;
+            padding: 8px 12px;
+            color: #dbeafe !important;
+            font-size: 11px;
+          }
+        }
       `}} />
+    </div>
+  )
+}
+
+function ClientPrintableReport({ cliente, campanha, resumo, financeiro, report }) {
+  if (!report?.ok) return null
+
+  const rankings = report.rankings || {}
+  const qualidade = report.qualidadeDados || {}
+  const rankingAnuncios = rankings.anuncios || []
+  const rankingHotspots = rankings.hotspots || []
+
+  return (
+    <div className="client-print-report">
+      <section className="client-print-cover">
+        <div className="client-print-header">
+          <div>
+            <p>NEXAWI ADS</p>
+            <h1>Relatório de Performance</h1>
+            <span>
+              {cliente?.nome_empresa || cliente?.nome || 'Cliente NexaWi'}
+            </span>
+          </div>
+
+          <img src="/Nexa-logo.png" alt="NexaWi" />
+        </div>
+
+        <div className="client-print-status">
+          <div>
+            <strong>{campanha?.label || 'Status da campanha'}</strong>
+            <span>{campanha?.message || 'Resumo comercial da sua campanha NexaWi.'}</span>
+          </div>
+
+          <div>
+            <strong>{cliente?.plano_nome || 'Plano NexaWi'}</strong>
+            <span>Plano atual</span>
+          </div>
+        </div>
+
+        <div className="client-print-kpis">
+          <PrintClientKpi label="Anúncios ativos" value={formatNumber(resumo?.anunciosAtivos)} />
+          <PrintClientKpi label="Visualizações" value={formatNumber(report.resumo?.totalVisualizacoes)} />
+          <PrintClientKpi label="Cliques no CTA" value={formatNumber(report.resumo?.totalCliques)} />
+          <PrintClientKpi label="Leads" value={formatNumber(report.resumo?.totalLeads)} />
+          <PrintClientKpi label="CTR geral" value={`${report.resumo?.ctrGeral || 0}%`} />
+          <PrintClientKpi label="Hotspots" value={formatNumber(report.resumo?.hotspotsComCampanha)} />
+        </div>
+      </section>
+
+      <section className="client-print-section">
+        <PrintClientTitle
+          title="Ranking de campanhas"
+          subtitle="Anúncios com maior entrega no período"
+        />
+
+        <PrintClientRanking items={rankingAnuncios} type="anuncio" />
+      </section>
+
+      <section className="client-print-section">
+        <PrintClientTitle
+          title="Locais de veiculação"
+          subtitle="Hotspots vinculados à sua campanha"
+        />
+
+        <PrintClientRanking items={rankingHotspots} type="hotspot" />
+
+        <div className="client-print-quality">
+          <h2>Qualidade dos dados</h2>
+          <p>
+            {qualidade.usaFallbackHistorico
+              ? 'Parte dos dados antigos foi calculada por vínculo histórico. Os novos eventos já usam hotspot real.'
+              : 'Os eventos recentes estão usando hotspot real para cálculo de performance.'}
+          </p>
+
+          <div>
+            <span>Views com hotspot real: {formatNumber(qualidade.viewsComHotspotReal)}</span>
+            <span>Cliques com hotspot real: {formatNumber(qualidade.clicksComHotspotReal)}</span>
+            <span>Gerado em: {formatDate(report.generatedAt)}</span>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function PrintClientKpi({ label, value }) {
+  return (
+    <div>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </div>
+  )
+}
+
+function PrintClientTitle({ title, subtitle }) {
+  return (
+    <div className="client-print-title">
+      <p>NexaWi ADS</p>
+      <h2>{title}</h2>
+      <span>{subtitle}</span>
+    </div>
+  )
+}
+
+function PrintClientRanking({ items = [], type }) {
+  const rows = items.slice(0, 10)
+
+  if (rows.length === 0) {
+    return (
+      <div className="client-print-empty">
+        Nenhum dado encontrado para este período.
+      </div>
+    )
+  }
+
+  return (
+    <div className="client-print-ranking">
+      {rows.map((item, index) => (
+        <div key={item.id || index} className="client-print-row">
+          <div>
+            <strong>#{index + 1}</strong>
+            <h3>{type === 'anuncio' ? item.titulo : item.nome}</h3>
+            <p>{type === 'anuncio' ? item.cliente_nome || 'Campanha NexaWi' : item.cidade || item.cliente_nome || 'Hotspot NexaWi'}</p>
+          </div>
+
+          <div className="client-print-row-metrics">
+            <span>Views <b>{formatNumber(item.visualizacoes)}</b></span>
+            <span>Cliques <b>{formatNumber(item.cliques)}</b></span>
+            <span>Leads <b>{formatNumber(item.leads)}</b></span>
+            <span>CTR <b>{item.ctr || 0}%</b></span>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
