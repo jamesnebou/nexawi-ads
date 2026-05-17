@@ -31,6 +31,9 @@ import { countOnlineHotspotClients } from '@/lib/routeros-rest'
 
 export const runtime = 'nodejs'
 
+const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
+const CONTROL_API_BASE_URL = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
+
 const CORES_PADRAO = ['#6be12f', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4']
 
 const ONBOARDING_LABELS = {
@@ -486,13 +489,41 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
 
 async function buscarPessoasOnlineReais() {
   try {
+    if (CONTROL_API_MODE === 'proxy') {
+      if (!CONTROL_API_BASE_URL) {
+        throw new Error('CONTROL_API_BASE_URL não configurado')
+      }
+
+      const response = await fetch(`${CONTROL_API_BASE_URL}/api/control/router/online`, {
+        method: 'GET',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.error || 'Control API não retornou online real')
+      }
+
+      return {
+        count: Number(data.online || 0),
+        source: data.source || 'control-api-routeros',
+        reliable: Boolean(data.reliable),
+        checkedAt: data.checkedAt || new Date().toISOString(),
+        error: '',
+      }
+    }
+
     const result = await countOnlineHotspotClients()
 
     return {
-      count: result.count || 0,
+      count: Number(result.count || 0),
       source: 'routeros',
       reliable: true,
-      checkedAt: result.checkedAt,
+      checkedAt: result.checkedAt || new Date().toISOString(),
       error: '',
     }
   } catch (error) {
@@ -500,7 +531,7 @@ async function buscarPessoasOnlineReais() {
 
     return {
       count: 0,
-      source: 'routeros',
+      source: CONTROL_API_MODE === 'proxy' ? 'control-api-routeros' : 'routeros',
       reliable: false,
       checkedAt: new Date().toISOString(),
       error: error.message || 'Erro ao consultar MikroTik',
