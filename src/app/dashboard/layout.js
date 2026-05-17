@@ -80,6 +80,12 @@ const rotasProtegidas = [
     label: 'Relatório de Acesso',
   },
   {
+    path: '/dashboard/relatorios/comercial',
+    module: 'relatorios',
+    action: 'view',
+    label: 'Relatório Comercial',
+  },
+  {
     path: '/dashboard/cidades',
     module: 'configuracoes',
     action: 'view',

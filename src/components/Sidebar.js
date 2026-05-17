@@ -107,6 +107,12 @@ const menu = [
     module: 'relatorios',
   },
   {
+    label: 'Relatório Comercial',
+    path: '/dashboard/relatorios/comercial',
+    icon: BarChart2,
+    module: 'relatorios',
+  },
+  {
   label: 'Notificações',
   path: '/dashboard/notificacoes',
   icon: Bell,
