@@ -562,6 +562,49 @@ function togglePreset(preset) {
 
  
 
+  function normalizePolicyDomain(value = '') {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/^www\./, '')
+      .split('/')[0]
+      .split('?')[0]
+      .split('#')[0]
+  }
+
+  function domainsConflict(domainA = '', domainB = '') {
+    const cleanA = normalizePolicyDomain(domainA)
+    const cleanB = normalizePolicyDomain(domainB)
+
+    if (!cleanA || !cleanB) return false
+
+    return (
+      cleanA === cleanB ||
+      cleanA.endsWith(`.${cleanB}`) ||
+      cleanB.endsWith(`.${cleanA}`)
+    )
+  }
+
+  function sanitizePolicyForApply(currentPolicy = {}) {
+    const allowedDomains = cleanDomainList(currentPolicy.customAllowedDomains || [])
+    const blockedDomains = cleanDomainList(currentPolicy.customBlockedDomains || [])
+
+    const removedBlockedByAllowed = blockedDomains.filter((blockedDomain) =>
+      allowedDomains.some((allowedDomain) => domainsConflict(blockedDomain, allowedDomain))
+    )
+
+    const cleanBlockedDomains = blockedDomains.filter((blockedDomain) =>
+      !allowedDomains.some((allowedDomain) => domainsConflict(blockedDomain, allowedDomain))
+    )
+
+    return {
+      cleanBlockedDomains,
+      cleanAllowedDomains: allowedDomains,
+      removedBlockedByAllowed,
+    }
+  }
+
   function removeBlockedDomain(domain) {
     setPolicy((current) => ({
       ...current,
@@ -591,6 +634,16 @@ function togglePreset(preset) {
     try {
       setProcessing(true)
 
+      const sanitizedPolicy = sanitizePolicyForApply(policy)
+
+      if (sanitizedPolicy.removedBlockedByAllowed.length > 0) {
+        setPolicy((current) => ({
+          ...current,
+          customBlockedDomains: sanitizedPolicy.cleanBlockedDomains,
+          customAllowedDomains: sanitizedPolicy.cleanAllowedDomains,
+        }))
+      }
+
       const data = await adminApiFetch('/api/admin/rede/policy/apply', {
         method: 'POST',
         body: {
@@ -604,8 +657,8 @@ function togglePreset(preset) {
           blockTlsGames: policy.blockTlsGames,
           downloadLimit: policy.downloadLimit || '10M',
           uploadLimit: policy.uploadLimit || '3M',
-          customBlockedDomains: policy.customBlockedDomains || [],
-          customAllowedDomains: policy.customAllowedDomains || [],
+          customBlockedDomains: sanitizedPolicy.cleanBlockedDomains,
+          customAllowedDomains: sanitizedPolicy.cleanAllowedDomains,
         },
       })
 
@@ -641,6 +694,12 @@ function togglePreset(preset) {
       )
 
       const notices = []
+
+      if (sanitizedPolicy.removedBlockedByAllowed.length > 0) {
+        notices.push(
+          `A dashboard removeu automaticamente dos bloqueados: ${sanitizedPolicy.removedBlockedByAllowed.join(', ')}. Sites Permitidos têm prioridade.`
+        )
+      }
 
       if (Array.isArray(allowedOverridesBlockedDomains) && allowedOverridesBlockedDomains.length > 0) {
         notices.push(
