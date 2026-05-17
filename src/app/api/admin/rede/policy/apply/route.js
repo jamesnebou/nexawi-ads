@@ -23,6 +23,29 @@ function uniqueDomains(list = []) {
   )]
 }
 
+function domainsConflict(domainA = '', domainB = '') {
+  const cleanA = normalizeDomain(domainA)
+  const cleanB = normalizeDomain(domainB)
+
+  if (!cleanA || !cleanB) return false
+
+  return (
+    cleanA === cleanB ||
+    cleanA.endsWith(`.${cleanB}`) ||
+    cleanB.endsWith(`.${cleanA}`)
+  )
+}
+
+function domainMatchesAny(domain = '', domains = []) {
+  return uniqueDomains(domains).some((candidate) => domainsConflict(domain, candidate))
+}
+
+function filterDomainsAgainstAllowed(domains = [], allowedDomains = []) {
+  const allowed = uniqueDomains(allowedDomains)
+
+  return uniqueDomains(domains).filter((domain) => !domainMatchesAny(domain, allowed))
+}
+
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
   const secret = process.env.NEXAWI_CRON_SECRET
@@ -145,8 +168,19 @@ export async function POST(request) {
 
     if (policyError) throw policyError
 
-    const blockedDomains = uniqueDomains(body.customBlockedDomains || [])
+    const requestedBlockedDomains = uniqueDomains(body.customBlockedDomains || [])
     const allowedDomains = uniqueDomains(body.customAllowedDomains || [])
+
+    // Segurança backend:
+    // Sites Permitidos têm prioridade máxima, mesmo se a API for chamada direto.
+    const blockedDomains = filterDomainsAgainstAllowed(
+      requestedBlockedDomains,
+      allowedDomains
+    )
+
+    const allowedOverridesBlockedDomains = requestedBlockedDomains.filter((domain) =>
+      domainMatchesAny(domain, allowedDomains)
+    )
 
     await supabaseAdmin
       .from('network_policy_domains')
@@ -191,6 +225,16 @@ export async function POST(request) {
       },
     })
 
+    const resultWithBackendPolicyMeta = {
+      ...(result || {}),
+      allowedOverridesBlockedDomains: uniqueDomains([
+        ...(result?.allowedOverridesBlockedDomains || []),
+        ...allowedOverridesBlockedDomains,
+      ]),
+      backendRemovedBlockedByAllowed: allowedOverridesBlockedDomains,
+      backendSanitizedDomains: allowedOverridesBlockedDomains.length > 0,
+    }
+
     return NextResponse.json({
       ok: true,
       hotspot: context.hotspot,
@@ -204,7 +248,7 @@ export async function POST(request) {
       },
       policy,
       domains: domainRows,
-      result,
+      result: resultWithBackendPolicyMeta,
     })
   } catch (error) {
     return NextResponse.json(
