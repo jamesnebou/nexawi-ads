@@ -411,7 +411,6 @@ async function buscarUltimosAcessosClientes(clientes = []) {
 async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
   const tiposAbertura = ['open', 'open_attempt']
 
-  // Sem filtro de hotspot: mantém o comportamento global anterior.
   if (!hotspotId) {
     const [
       { count: linksCopiados, error: copiasError },
@@ -437,9 +436,6 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
     }
   }
 
-  // Com filtro de hotspot:
-  // 1. Eventos novos contam pelo hotspot_id real.
-  // 2. Eventos antigos sem hotspot_id contam pelo vínculo anuncio_hotspots.
   const { data: vinculos, error: vinculosError } = await supabaseAdmin
     .from('anuncio_hotspots')
     .select('anuncio_id, hotspot_id')
@@ -485,59 +481,6 @@ async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
     linksCopiadosComHotspotReal: (clicksReais || []).filter((click) => click.tipo_acao === 'copy').length,
     tentativasAbrirComHotspotReal: (clicksReais || []).filter((click) => tiposAbertura.includes(click.tipo_acao)).length,
     usaFallbackHistorico: clicksHistoricos.length > 0,
-  }
-} = {}) {
-  let anuncioIdsDoHotspot = null
-
-  if (hotspotId) {
-    const { data: vinculos, error: vinculosError } = await supabaseAdmin
-      .from('anuncio_hotspots')
-      .select('anuncio_id')
-      .eq('hotspot_id', hotspotId)
-
-    if (vinculosError) throw vinculosError
-
-    anuncioIdsDoHotspot = (vinculos || [])
-      .map((v) => v.anuncio_id)
-      .filter(Boolean)
-
-    if (anuncioIdsDoHotspot.length === 0) {
-      return {
-        linksCopiados: 0,
-        tentativasAbrir: 0,
-      }
-    }
-  }
-
-  let queryCopias = supabaseAdmin
-    .from('anuncio_clicks')
-    .select('*', { count: 'exact', head: true })
-    .eq('tipo_acao', 'copy')
-
-  let queryAberturas = supabaseAdmin
-    .from('anuncio_clicks')
-    .select('*', { count: 'exact', head: true })
-    .in('tipo_acao', ['open', 'open_attempt'])
-
-  if (anuncioIdsDoHotspot) {
-    queryCopias = queryCopias.in('anuncio_id', anuncioIdsDoHotspot)
-    queryAberturas = queryAberturas.in('anuncio_id', anuncioIdsDoHotspot)
-  }
-
-  const [
-    { count: linksCopiados, error: copiasError },
-    { count: tentativasAbrir, error: aberturasError },
-  ] = await Promise.all([
-    queryCopias,
-    queryAberturas,
-  ])
-
-  if (copiasError) throw copiasError
-  if (aberturasError) throw aberturasError
-
-  return {
-    linksCopiados: linksCopiados || 0,
-    tentativasAbrir: tentativasAbrir || 0,
   }
 }
 
