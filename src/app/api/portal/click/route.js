@@ -36,7 +36,7 @@ async function validarVinculoAnuncioHotspot({ anuncioId, hotspotId }) {
 
   const { data, error } = await supabaseAdmin
     .from('anuncio_hotspots')
-    .select('id')
+    .select('anuncio_id, hotspot_id')
     .eq('anuncio_id', anuncioId)
     .eq('hotspot_id', hotspotId)
     .limit(1)
