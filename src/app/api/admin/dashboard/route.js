@@ -409,6 +409,84 @@ async function buscarUltimosAcessosClientes(clientes = []) {
 
 
 async function contarInteracoesAnuncios({ hotspotId = '' } = {}) {
+  const tiposAbertura = ['open', 'open_attempt']
+
+  // Sem filtro de hotspot: mantém o comportamento global anterior.
+  if (!hotspotId) {
+    const [
+      { count: linksCopiados, error: copiasError },
+      { count: tentativasAbrir, error: aberturasError },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from('anuncio_clicks')
+        .select('*', { count: 'exact', head: true })
+        .eq('tipo_acao', 'copy'),
+
+      supabaseAdmin
+        .from('anuncio_clicks')
+        .select('*', { count: 'exact', head: true })
+        .in('tipo_acao', tiposAbertura),
+    ])
+
+    if (copiasError) throw copiasError
+    if (aberturasError) throw aberturasError
+
+    return {
+      linksCopiados: linksCopiados || 0,
+      tentativasAbrir: tentativasAbrir || 0,
+    }
+  }
+
+  // Com filtro de hotspot:
+  // 1. Eventos novos contam pelo hotspot_id real.
+  // 2. Eventos antigos sem hotspot_id contam pelo vínculo anuncio_hotspots.
+  const { data: vinculos, error: vinculosError } = await supabaseAdmin
+    .from('anuncio_hotspots')
+    .select('anuncio_id, hotspot_id')
+    .eq('hotspot_id', hotspotId)
+
+  if (vinculosError) throw vinculosError
+
+  const anuncioIdsDoHotspot = (vinculos || [])
+    .map((v) => v.anuncio_id)
+    .filter(Boolean)
+
+  const { data: clicksReais, error: clicksReaisError } = await supabaseAdmin
+    .from('anuncio_clicks')
+    .select('id, anuncio_id, hotspot_id, tipo_acao')
+    .eq('hotspot_id', hotspotId)
+    .in('tipo_acao', ['copy', ...tiposAbertura])
+
+  if (clicksReaisError) throw clicksReaisError
+
+  let clicksHistoricos = []
+
+  if (anuncioIdsDoHotspot.length > 0) {
+    const { data, error } = await supabaseAdmin
+      .from('anuncio_clicks')
+      .select('id, anuncio_id, hotspot_id, tipo_acao')
+      .is('hotspot_id', null)
+      .in('anuncio_id', anuncioIdsDoHotspot)
+      .in('tipo_acao', ['copy', ...tiposAbertura])
+
+    if (error) throw error
+
+    clicksHistoricos = data || []
+  }
+
+  const clicks = [
+    ...(clicksReais || []),
+    ...clicksHistoricos,
+  ]
+
+  return {
+    linksCopiados: clicks.filter((click) => click.tipo_acao === 'copy').length,
+    tentativasAbrir: clicks.filter((click) => tiposAbertura.includes(click.tipo_acao)).length,
+    linksCopiadosComHotspotReal: (clicksReais || []).filter((click) => click.tipo_acao === 'copy').length,
+    tentativasAbrirComHotspotReal: (clicksReais || []).filter((click) => tiposAbertura.includes(click.tipo_acao)).length,
+    usaFallbackHistorico: clicksHistoricos.length > 0,
+  }
+} = {}) {
   let anuncioIdsDoHotspot = null
 
   if (hotspotId) {
