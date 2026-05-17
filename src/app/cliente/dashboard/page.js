@@ -467,13 +467,7 @@ export default function ClientDashboardPage() {
                 Ver leads
               </a>
 
-              <a
-                href="/cliente/leads"
-                className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15"
-              >
-                <Users size={17} />
-                Ver leads
-              </a>
+              
 
               <button
                 onClick={() => router.push('/cliente/suporte')}

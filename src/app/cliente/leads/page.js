@@ -28,18 +28,39 @@ const periodos = [
   { value: 'todos', label: 'Todo período' },
 ]
 
-async function clienteApiFetch(path, { method = 'GET', body } = {}) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+async function getClienteAccessToken() {
+  const { data: sessionData } = await supabase.auth.getSession()
 
-  if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão do cliente não encontrada. Faça login novamente.')
+  if (sessionData?.session?.access_token) {
+    return sessionData.session.access_token
+  }
+
+  const { data: refreshedData } = await supabase.auth.refreshSession()
+
+  if (refreshedData?.session?.access_token) {
+    return refreshedData.session.access_token
+  }
+
+  return ''
+}
+
+async function clienteApiFetch(path, { method = 'GET', body } = {}) {
+  const token = await getClienteAccessToken()
+
+  if (!token) {
+    const currentPath =
+      typeof window !== 'undefined'
+        ? `${window.location.pathname}${window.location.search || ''}`
+        : '/cliente/leads'
+
+    throw new Error(`SESSION_MISSING::${currentPath}`)
   }
 
   const response = await fetch(path, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${sessionData.session.access_token}`,
+      Authorization: `Bearer ${token}`,
     },
     cache: 'no-store',
     body: body ? JSON.stringify(body) : undefined,
@@ -136,6 +157,19 @@ export default function ClienteLeadsPage() {
       })
     } catch (error) {
       console.error('Erro ao carregar leads:', error)
+
+      if (String(error.message || '').startsWith('SESSION_MISSING::')) {
+        const redirectTo = String(error.message || '').replace('SESSION_MISSING::', '') || '/cliente/leads'
+
+        toast.error('Sessão do cliente não encontrada. Faça login novamente.')
+
+        setTimeout(() => {
+          router.push(`/cliente/login?redirect=${encodeURIComponent(redirectTo)}`)
+        }, 900)
+
+        return
+      }
+
       toast.error(error.message || 'Erro ao carregar leads.')
     } finally {
       setLoading(false)
