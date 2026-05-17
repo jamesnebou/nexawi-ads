@@ -23,6 +23,8 @@ import {
   Activity,
   MapPin,
   ShieldCheck,
+  Filter,
+  XCircle,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -89,11 +91,35 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`
 }
 
+function extractArray(data, keys = []) {
+  if (Array.isArray(data)) return data
+
+  for (const key of keys) {
+    if (Array.isArray(data?.[key])) return data[key]
+  }
+
+  return []
+}
+
+function getClienteLabel(cliente = {}) {
+  return cliente.nome_empresa || cliente.nome || cliente.email || 'Cliente sem nome'
+}
+
+function getHotspotLabel(hotspot = {}) {
+  const cidade = hotspot.cidade ? ` · ${hotspot.cidade}` : ''
+  return `${hotspot.nome || 'Hotspot sem nome'}${cidade}`
+}
+
 export default function RelatorioComercialAdmin() {
   const [report, setReport] = useState(null)
   const [permissions, setPermissions] = useState(permissoesIniciais)
   const [periodo, setPeriodo] = useState('ultimos_30')
+  const [clienteId, setClienteId] = useState('')
+  const [hotspotId, setHotspotId] = useState('')
+  const [clientes, setClientes] = useState([])
+  const [hotspots, setHotspots] = useState([])
   const [carregando, setCarregando] = useState(true)
+  const [carregandoFiltros, setCarregandoFiltros] = useState(true)
 
   const resumo = report?.resumo || {}
   const rankings = report?.rankings || {}
@@ -101,10 +127,45 @@ export default function RelatorioComercialAdmin() {
   const rankingAnuncios = rankings.anuncios || []
   const rankingHotspots = rankings.hotspots || []
   const canExport = Boolean(permissions.export)
+  const temFiltrosAtivos = periodo !== 'ultimos_30' || Boolean(clienteId) || Boolean(hotspotId)
+  const clienteSelecionado = clientes.find((cliente) => cliente.id === clienteId)
+  const hotspotSelecionado = hotspots.find((hotspot) => hotspot.id === hotspotId)
+
+  useEffect(() => {
+    carregarFiltros()
+  }, [])
 
   useEffect(() => {
     buscarRelatorio()
-  }, [periodo])
+  }, [periodo, clienteId, hotspotId])
+
+  async function carregarFiltros() {
+    setCarregandoFiltros(true)
+
+    try {
+      const [clientesData, hotspotsData] = await Promise.all([
+        adminApiFetch('/api/admin/clientes'),
+        adminApiFetch('/api/admin/hotspots'),
+      ])
+
+      const clientesList = extractArray(clientesData, ['clientes', 'items', 'data'])
+      const hotspotsList = extractArray(hotspotsData, ['hotspots', 'items', 'data'])
+
+      setClientes(clientesList)
+      setHotspots(hotspotsList)
+    } catch (error) {
+      console.error('Erro ao carregar filtros do relatório comercial:', error)
+      toast.error(error.message || 'Erro ao carregar filtros.')
+    } finally {
+      setCarregandoFiltros(false)
+    }
+  }
+
+  function limparFiltros() {
+    setPeriodo('ultimos_30')
+    setClienteId('')
+    setHotspotId('')
+  }
 
   async function buscarRelatorio() {
     setCarregando(true)
@@ -112,6 +173,14 @@ export default function RelatorioComercialAdmin() {
     try {
       const params = new URLSearchParams()
       params.set('periodo', periodo)
+
+      if (clienteId) {
+        params.set('clienteId', clienteId)
+      }
+
+      if (hotspotId) {
+        params.set('hotspotId', hotspotId)
+      }
 
       const data = await adminApiFetch(`/api/admin/relatorios/comercial?${params.toString()}`)
 
@@ -180,7 +249,7 @@ export default function RelatorioComercialAdmin() {
     link.setAttribute('href', url)
     link.setAttribute(
       'download',
-      `relatorio_comercial_${periodoLabel.replace(/\s+/g, '_').toLowerCase()}_${new Date().toISOString().slice(0, 10)}.csv`
+      `relatorio_comercial_${periodoLabel.replace(/\s+/g, '_').toLowerCase()}_${clienteSelecionado ? getClienteLabel(clienteSelecionado).replace(/\s+/g, '_').toLowerCase() + '_' : ''}${hotspotSelecionado ? getHotspotLabel(hotspotSelecionado).replace(/\s+/g, '_').toLowerCase() + '_' : ''}${new Date().toISOString().slice(0, 10)}.csv`
     )
 
     document.body.appendChild(link)
@@ -324,6 +393,22 @@ export default function RelatorioComercialAdmin() {
           </div>
         </div>
 
+        <PremiumFiltersPanel
+          periodo={periodo}
+          setPeriodo={setPeriodo}
+          clienteId={clienteId}
+          setClienteId={setClienteId}
+          hotspotId={hotspotId}
+          setHotspotId={setHotspotId}
+          clientes={clientes}
+          hotspots={hotspots}
+          carregandoFiltros={carregandoFiltros}
+          temFiltrosAtivos={temFiltrosAtivos}
+          clienteSelecionado={clienteSelecionado}
+          hotspotSelecionado={hotspotSelecionado}
+          onClear={limparFiltros}
+        />
+
         <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-10">
           {cards.map((card, index) => (
             <CommercialCard key={card.label} card={card} index={index} />
@@ -376,6 +461,146 @@ export default function RelatorioComercialAdmin() {
         }
       `}} />
     </>
+  )
+}
+
+function PremiumFiltersPanel({
+  periodo,
+  setPeriodo,
+  clienteId,
+  setClienteId,
+  hotspotId,
+  setHotspotId,
+  clientes,
+  hotspots,
+  carregandoFiltros,
+  temFiltrosAtivos,
+  clienteSelecionado,
+  hotspotSelecionado,
+  onClear,
+}) {
+  return (
+    <div className="relative z-10 mb-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-5">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-3">
+            <Filter size={13} className="text-[#6be12f]" />
+            Filtros premium
+          </div>
+
+          <h2 className="text-xl font-black text-white tracking-tight">
+            Refine a leitura comercial
+          </h2>
+
+          <p className="text-sm text-neutral-500 mt-1 max-w-2xl">
+            Analise o desempenho por período, cliente ou hotspot específico.
+          </p>
+        </div>
+
+        {temFiltrosAtivos && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-3 text-sm font-bold text-white hover:bg-white/[0.06] transition-all"
+          >
+            <XCircle size={16} />
+            Limpar filtros
+          </button>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
+        <FilterSelect
+          label="Período"
+          icon={CalendarDays}
+          value={periodo}
+          onChange={setPeriodo}
+          disabled={false}
+          options={periodos.map((item) => ({
+            value: item.value,
+            label: item.label,
+          }))}
+        />
+
+        <FilterSelect
+          label="Cliente"
+          icon={Users}
+          value={clienteId}
+          onChange={setClienteId}
+          disabled={carregandoFiltros}
+          options={[
+            { value: '', label: carregandoFiltros ? 'Carregando clientes...' : 'Todos os clientes' },
+            ...clientes.map((cliente) => ({
+              value: cliente.id,
+              label: getClienteLabel(cliente),
+            })),
+          ]}
+        />
+
+        <FilterSelect
+          label="Hotspot"
+          icon={MapPin}
+          value={hotspotId}
+          onChange={setHotspotId}
+          disabled={carregandoFiltros}
+          options={[
+            { value: '', label: carregandoFiltros ? 'Carregando hotspots...' : 'Todos os hotspots' },
+            ...hotspots.map((hotspot) => ({
+              value: hotspot.id,
+              label: getHotspotLabel(hotspot),
+            })),
+          ]}
+        />
+      </div>
+
+      {temFiltrosAtivos && (
+        <div className="mt-5 flex flex-wrap gap-2">
+          {periodo !== 'ultimos_30' && (
+            <FilterBadge label="Período" value={periodos.find((item) => item.value === periodo)?.label || periodo} />
+          )}
+
+          {clienteSelecionado && (
+            <FilterBadge label="Cliente" value={getClienteLabel(clienteSelecionado)} />
+          )}
+
+          {hotspotSelecionado && (
+            <FilterBadge label="Hotspot" value={getHotspotLabel(hotspotSelecionado)} />
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function FilterSelect({ label, icon: Icon, value, onChange, options, disabled }) {
+  return (
+    <label className="block">
+      <span className="flex items-center gap-2 text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2">
+        <Icon size={13} className="text-[#6be12f]" />
+        {label}
+      </span>
+
+      <select
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 block px-5 py-3.5 transition-all cursor-pointer shadow-inner hover:border-white/[0.1] outline-none disabled:opacity-50"
+      >
+        {options.map((item) => (
+          <option key={item.value || item.label} value={item.value} className="bg-[#0a0a0a]">
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function FilterBadge({ label, value }) {
+  return (
+    <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs text-[#8cf059]">
+      <strong>{label}:</strong> {value}
+    </span>
   )
 }
 
