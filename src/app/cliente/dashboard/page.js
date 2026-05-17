@@ -1456,15 +1456,24 @@ function MiniMetric({ icon: Icon, label, value }) {
 function RecentLeads({ leads }) {
   return (
     <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
-      <div className="mb-7">
-        <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
-          <Users size={21} className="text-[#6be12f]" />
-          Leads recentes
-        </h2>
+      <div className="mb-7 flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <Users size={21} className="text-[#6be12f]" />
+            Leads recentes
+          </h2>
 
-        <p className="text-sm text-neutral-500 mt-1">
-          Contatos capturados pelas suas campanhas
-        </p>
+          <p className="text-sm text-neutral-500 mt-1">
+            Contatos capturados pelas suas campanhas
+          </p>
+        </div>
+
+        <a
+          href="/cliente/leads"
+          className="inline-flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-extrabold text-white hover:bg-white/[0.06] transition-colors"
+        >
+          Ver todos os leads
+        </a>
       </div>
 
       {leads.length === 0 ? (
