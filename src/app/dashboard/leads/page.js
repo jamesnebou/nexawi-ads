@@ -1,41 +1,32 @@
 'use client'
 
-// src/app/dashboard/leads/page.js
-// ============================================================
-// Aba Leads da dashboard NexaWi ADS.
-//
-// Agora esta tela respeita as permissões retornadas pela API:
-// - leads.view: permite visualizar leads
-// - leads.delete: mostra Excluir lead
-// - leads.export: mostra Exportar CSV
-//
-// Importante:
-// - A segurança real fica na API /api/admin/leads.
-// - Esta tela apenas melhora a experiência visual.
-// ============================================================
-
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
-  Search,
+  CalendarDays,
   Download,
-  UserPlus,
-  Wifi,
-  Shield,
-  ShieldOff,
-  MonitorPlay,
-  Trash2,
-  Lock,
+  Mail,
+  MapPin,
+  Megaphone,
+  Phone,
+  RefreshCw,
+  Search,
+  TrendingUp,
+  Users,
+  Building2,
+  XCircle,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
 
-const permissoesIniciais = {
-  view: false,
-  delete: false,
-  export: false,
-}
+const periodos = [
+  { value: 'hoje', label: 'Hoje' },
+  { value: 'ultimos_7', label: 'Últimos 7 dias' },
+  { value: 'ultimos_30', label: 'Últimos 30 dias' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'todos', label: 'Todo período' },
+]
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -71,50 +62,110 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
-export default function Leads() {
-  const [leads, setLeads] = useState([])
-  const [hotspots, setHotspots] = useState([])
-  const [anuncios, setAnuncios] = useState([])
-  const [permissions, setPermissions] = useState(permissoesIniciais)
-  const [loading, setLoading] = useState(true)
-  const [busca, setBusca] = useState('')
-  const [filtroHotspot, setFiltroHotspot] = useState('Todos')
-  const [filtroLgpd, setFiltroLgpd] = useState('Todos')
-  const [confirmDelete, setConfirmDelete] = useState(null)
+function formatDateTime(value) {
+  if (!value) return '—'
 
-  const canDelete = Boolean(permissions.delete)
-  const canExport = Boolean(permissions.export)
-  const readOnlyMode = !canDelete && !canExport
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat('pt-BR').format(Number(value || 0))
+}
+
+function csvCell(value) {
+  const text = String(value ?? '')
+  return `"${text.replace(/"/g, '""')}"`
+}
+
+function getClienteLabel(cliente = {}) {
+  return cliente.nome_empresa || cliente.nome || cliente.email || 'Cliente sem nome'
+}
+
+export default function AdminLeadsPage() {
+  const [leads, setLeads] = useState([])
+  const [anuncios, setAnuncios] = useState([])
+  const [clientes, setClientes] = useState([])
+  const [permissions, setPermissions] = useState({})
+  const [resumo, setResumo] = useState({
+    total: 0,
+    hoje: 0,
+    mes: 0,
+    origemPrincipal: null,
+  })
+
+  const [periodo, setPeriodo] = useState('todos')
+  const [clienteId, setClienteId] = useState('')
+  const [anuncioId, setAnuncioId] = useState('')
+  const [busca, setBusca] = useState('')
+  const [buscaAplicada, setBuscaAplicada] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  const clienteSelecionado = useMemo(() => {
+    return clientes.find((item) => item.id === clienteId)
+  }, [clientes, clienteId])
+
+  const anuncioSelecionado = useMemo(() => {
+    return anuncios.find((item) => item.id === anuncioId)
+  }, [anuncios, anuncioId])
+
+  const temFiltros = periodo !== 'todos' || Boolean(clienteId) || Boolean(anuncioId) || Boolean(buscaAplicada)
+  const canExport = permissions.export !== false
 
   useEffect(() => {
-    buscarDados()
-  }, [busca, filtroHotspot, filtroLgpd])
+    carregarLeads()
+  }, [periodo, clienteId, anuncioId, buscaAplicada])
 
-  async function buscarDados() {
+  async function carregarLeads() {
     setLoading(true)
 
     try {
       const params = new URLSearchParams()
+      params.set('periodo', periodo)
 
-      if (busca) params.set('busca', busca)
-      if (filtroHotspot) params.set('hotspot', filtroHotspot)
-      if (filtroLgpd) params.set('lgpd', filtroLgpd)
+      if (clienteId) params.set('clienteId', clienteId)
+      if (anuncioId) params.set('anuncioId', anuncioId)
+      if (buscaAplicada) params.set('busca', buscaAplicada)
 
-      const data = await adminApiFetch(`/api/admin/leads?${params.toString()}`)
+      const data = await adminApiFetch(`/api/admin/leads-premium?${params.toString()}`)
 
       setLeads(data.leads || [])
-      setHotspots(data.hotspots || [])
       setAnuncios(data.anuncios || [])
-      setPermissions({
-        ...permissoesIniciais,
-        ...(data.permissions || {}),
+      setClientes(data.clientes || [])
+      setPermissions(data.permissions || {})
+      setResumo(data.resumo || {
+        total: 0,
+        hoje: 0,
+        mes: 0,
+        origemPrincipal: null,
       })
+
+      if (clienteId && anuncioId) {
+        const anuncioExiste = (data.anuncios || []).some((ad) => ad.id === anuncioId)
+
+        if (!anuncioExiste) {
+          setAnuncioId('')
+        }
+      }
     } catch (error) {
-      console.error('Erro ao buscar leads:', error)
+      console.error('Erro ao carregar leads admin:', error)
       toast.error(error.message || 'Erro ao carregar leads.')
     } finally {
       setLoading(false)
     }
+  }
+
+  function limparFiltros() {
+    setPeriodo('todos')
+    setClienteId('')
+    setAnuncioId('')
+    setBusca('')
+    setBuscaAplicada('')
   }
 
   function exportarCSV() {
@@ -123,22 +174,21 @@ export default function Leads() {
       return
     }
 
-    function csvCell(value) {
-      const text = String(value ?? '')
-      return `"${text.replace(/"/g, '""')}"`
+    if (leads.length === 0) {
+      toast.error('Nenhum lead para exportar.')
+      return
     }
 
     const linhas = [
-      ['Nome', 'E-mail', 'Telefone', 'CPF', 'Hotspot', 'Anúncio Visto', 'Aceite LGPD', 'Data de Captura'],
-      ...leadsFiltrados.map((l) => [
-        l.nome || '',
-        l.email || '',
-        l.telefone || '',
-        l.cpf || '',
-        nomeHotspot(l.hotspot_id),
-        nomeAnuncio(l.anuncio_id),
-        l.aceite_lgpd ? 'Sim' : 'Não',
-        new Date(l.created_at).toLocaleString('pt-BR'),
+      ['Cliente', 'Nome', 'Telefone', 'E-mail', 'Campanha', 'Hotspot', 'Data'],
+      ...leads.map((lead) => [
+        getClienteLabel(lead.clientes),
+        lead.nome || '',
+        lead.telefone || '',
+        lead.email || '',
+        lead.anuncios?.titulo || '',
+        lead.hotspots?.nome || '',
+        formatDateTime(lead.created_at),
       ]),
     ]
 
@@ -150,8 +200,8 @@ export default function Leads() {
     const url = URL.createObjectURL(blob)
 
     const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `leads_${new Date().toISOString().slice(0, 10)}.csv`)
+    link.href = url
+    link.download = `leads_admin_nexawi_${new Date().toISOString().slice(0, 10)}.csv`
 
     document.body.appendChild(link)
     link.click()
@@ -160,47 +210,41 @@ export default function Leads() {
     URL.revokeObjectURL(url)
   }
 
-  function solicitarExclusaoLead(id) {
-    if (!canDelete) {
-      toast.error('Você não tem permissão para excluir leads.')
-      return
-    }
-
-    setConfirmDelete(id)
+  function aplicarBusca(e) {
+    e.preventDefault()
+    setBuscaAplicada(busca.trim())
   }
 
-  async function excluirLead(id) {
-    if (!canDelete) {
-      toast.error('Você não tem permissão para excluir leads.')
-      return
-    }
-
-    try {
-      await adminApiFetch('/api/admin/leads', {
-        method: 'POST',
-        body: {
-          action: 'delete',
-          id,
-        },
-      })
-
-      toast.success('Lead excluído com sucesso!')
-      setConfirmDelete(null)
-      await buscarDados()
-    } catch (error) {
-      console.error('Erro ao excluir lead:', error)
-      toast.error(error.message || 'Erro ao excluir lead.')
-    }
-  }
-
-  const nomeHotspot = (id) => hotspots.find((h) => h.id === id)?.nome || 'Desconhecido'
-
-  const nomeAnuncio = (id) => {
-    if (!id) return 'Orgânico / Sem anúncio'
-    return anuncios.find((a) => a.id === id)?.titulo || 'Anúncio excluído'
-  }
-
-  const leadsFiltrados = leads
+  const cards = [
+    {
+      label: 'Total de leads',
+      value: resumo.total,
+      detail: 'no filtro atual',
+      icon: Users,
+      accent: 'text-[#8cf059]',
+    },
+    {
+      label: 'Leads hoje',
+      value: resumo.hoje,
+      detail: 'capturados hoje',
+      icon: TrendingUp,
+      accent: 'text-cyan-400',
+    },
+    {
+      label: 'Leads no mês',
+      value: resumo.mes,
+      detail: 'mês atual',
+      icon: CalendarDays,
+      accent: 'text-orange-400',
+    },
+    {
+      label: 'Origem principal',
+      value: resumo.origemPrincipal?.total || 0,
+      detail: resumo.origemPrincipal?.titulo || 'Sem origem dominante',
+      icon: Megaphone,
+      accent: 'text-purple-400',
+    },
+  ]
 
   return (
     <>
@@ -213,288 +257,208 @@ export default function Leads() {
             borderRadius: '16px',
             border: '1px solid rgba(255,255,255,0.1)',
           },
-          success: {
-            iconTheme: {
-              primary: '#6be12f',
-              secondary: '#0a0a0a',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#0a0a0a',
-            },
-          },
         }}
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
+
+        <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <div>
-            <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
-              <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
-                <UserPlus className="text-[#6be12f]" size={24} />
-              </div>
-              Leads Capturados
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
+              <Users size={13} />
+              Central de leads
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+              Leads capturados
             </h1>
 
-            <p className="text-sm text-neutral-500 mt-2 font-medium">
-              {leads.length} lead{leads.length !== 1 ? 's' : ''} na sua base de dados
+            <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
+              Consulte, filtre e exporte os contatos capturados em todos os clientes da rede NexaWi.
             </p>
+          </div>
 
-            {readOnlyMode && (
-              <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
-                <Lock size={14} className="text-neutral-500" />
-                Modo leitura: você pode visualizar, mas não excluir ou exportar leads.
+          <div className="flex flex-col sm:flex-row gap-3">
+            {canExport && (
+              <button
+                type="button"
+                onClick={exportarCSV}
+                disabled={leads.length === 0}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Download size={17} />
+                Exportar CSV
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={carregarLeads}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]"
+            >
+              <RefreshCw size={17} />
+              Atualizar
+            </button>
+          </div>
+        </header>
+
+        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          {cards.map((card) => (
+            <div key={card.label} className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500">
+                  {card.label}
+                </p>
+
+                <div className="rounded-2xl border border-white/[0.05] bg-[#0a0a0a] p-2.5">
+                  <card.icon size={18} className={card.accent} />
+                </div>
               </div>
+
+              <p className="text-4xl font-light text-white">
+                {formatNumber(card.value)}
+              </p>
+
+              <p className="text-xs text-neutral-500 mt-2 truncate">
+                {card.detail}
+              </p>
+            </div>
+          ))}
+        </section>
+
+        <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
+          <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_1.4fr_auto] gap-4 items-end">
+            <FilterSelect
+              label="Período"
+              icon={CalendarDays}
+              value={periodo}
+              onChange={setPeriodo}
+              options={periodos.map((item) => ({
+                value: item.value,
+                label: item.label,
+              }))}
+            />
+
+            <FilterSelect
+              label="Cliente"
+              icon={Building2}
+              value={clienteId}
+              onChange={(value) => {
+                setClienteId(value)
+                setAnuncioId('')
+              }}
+              options={[
+                { value: '', label: 'Todos os clientes' },
+                ...clientes.map((cliente) => ({
+                  value: cliente.id,
+                  label: getClienteLabel(cliente),
+                })),
+              ]}
+            />
+
+            <FilterSelect
+              label="Campanha"
+              icon={Megaphone}
+              value={anuncioId}
+              onChange={setAnuncioId}
+              options={[
+                { value: '', label: 'Todas as campanhas' },
+                ...anuncios.map((ad) => ({
+                  value: ad.id,
+                  label: ad.titulo || 'Anúncio sem título',
+                })),
+              ]}
+            />
+
+            <form onSubmit={aplicarBusca}>
+              <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 flex items-center gap-2">
+                <Search size={13} className="text-[#6be12f]" />
+                Buscar lead
+              </span>
+
+              <div className="flex gap-2">
+                <input
+                  value={busca}
+                  onChange={(e) => setBusca(e.target.value)}
+                  placeholder="Nome, e-mail ou telefone..."
+                  className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
+                />
+
+                <button
+                  type="submit"
+                  className="rounded-2xl bg-white/[0.04] border border-white/[0.06] px-5 text-sm font-bold text-white hover:bg-white/[0.07] transition-colors"
+                >
+                  Buscar
+                </button>
+              </div>
+            </form>
+
+            {temFiltros && (
+              <button
+                type="button"
+                onClick={limparFiltros}
+                className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-3.5 text-sm font-bold text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
+              >
+                <XCircle size={16} />
+                Limpar
+              </button>
             )}
           </div>
 
-          {canExport && (
-            <button
-              onClick={exportarCSV}
-              disabled={leadsFiltrados.length === 0}
-              className="flex items-center justify-center gap-2 bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed text-neutral-300 hover:text-white font-bold px-6 py-3.5 rounded-2xl transition-all duration-300 text-sm border border-white/[0.05] hover:border-white/[0.1] shadow-inner"
-            >
-              <Download size={18} />
-              Exportar CSV
-            </button>
+          {temFiltros && (
+            <div className="mt-5 flex flex-wrap gap-2">
+              {periodo !== 'todos' && (
+                <Badge label="Período" value={periodos.find((item) => item.value === periodo)?.label || periodo} />
+              )}
+              {clienteSelecionado && (
+                <Badge label="Cliente" value={getClienteLabel(clienteSelecionado)} />
+              )}
+              {anuncioSelecionado && (
+                <Badge label="Campanha" value={anuncioSelecionado.titulo || 'Anúncio'} />
+              )}
+              {buscaAplicada && (
+                <Badge label="Busca" value={buscaAplicada} />
+              )}
+            </div>
           )}
-        </div>
+        </section>
 
-        <div className="flex flex-col xl:flex-row gap-4 mb-8">
-          <div className="relative flex-1 group/input">
-            <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-
-            <input
-              type="text"
-              placeholder="Buscar por nome, e-mail, telefone ou CPF..."
-              value={busca}
-              onChange={(e) => setBusca(e.target.value)}
-              className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-12 pr-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-            />
+        <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">
+                Lista de contatos
+              </h2>
+              <p className="text-sm text-neutral-500 mt-1">
+                {formatNumber(leads.length)} lead(s) encontrados
+              </p>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative min-w-[220px] group/select">
-              <select
-                value={filtroHotspot}
-                onChange={(e) => setFiltroHotspot(e.target.value)}
-                className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all appearance-none pr-12 cursor-pointer shadow-inner"
-              >
-                <option value="Todos" className="bg-[#0a0a0a]">
-                  Todos os hotspots
-                </option>
-
-                {hotspots.map((h) => (
-                  <option key={h.id} value={h.id} className="bg-[#0a0a0a]">
-                    {h.nome}
-                  </option>
-                ))}
-              </select>
-
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-5 text-neutral-600 group-hover/select:text-[#6be12f] transition-colors">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
-                </svg>
-              </div>
+          {loading ? (
+            <div className="py-24 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-full border-t-2 border-[#6be12f]/60 animate-spin" />
             </div>
-
-            <div className="flex bg-[#0a0a0a] border border-white/[0.05] rounded-2xl p-1.5 flex-shrink-0 shadow-inner">
-              {['Todos', 'Aceito', 'Não aceito'].map((f) => (
-                <button
-                  key={f}
-                  onClick={() => setFiltroLgpd(f)}
-                  className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                    filtroLgpd === f
-                      ? 'bg-white/[0.05] text-white shadow-sm border border-white/[0.05]'
-                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.02] border border-transparent'
-                  }`}
-                >
-                  {f}
-                </button>
+          ) : leads.length === 0 ? (
+            <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-12 text-center">
+              <Users size={34} className="mx-auto text-neutral-600 mb-4" />
+              <h3 className="text-lg font-bold text-white">Nenhum lead encontrado</h3>
+              <p className="text-sm text-neutral-500 mt-2">
+                Ajuste os filtros ou aguarde novas capturas no portal.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-3">
+              {leads.map((lead) => (
+                <LeadCard key={lead.id} lead={lead} />
               ))}
             </div>
-          </div>
-        </div>
-
-        <div className="bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-[2.5rem] shadow-[0_20px_40px_rgba(0,0,0,0.5)] overflow-hidden">
-          <div className="overflow-x-auto custom-scrollbar">
-            {loading ? (
-              <div className="flex items-center justify-center py-32">
-                <div className="relative w-16 h-16 flex items-center justify-center">
-                  <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin"></div>
-                  <UserPlus className="text-[#6be12f] animate-pulse" size={24} />
-                </div>
-              </div>
-            ) : leadsFiltrados.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-32 text-center">
-                <div className="w-20 h-20 rounded-full bg-white/[0.02] border border-white/[0.05] flex items-center justify-center mb-6 shadow-inner">
-                  <UserPlus size={32} className="text-neutral-600" />
-                </div>
-
-                <p className="text-xl font-bold text-white tracking-tight mb-2">
-                  Nenhum lead encontrado
-                </p>
-
-                <p className="text-neutral-500 text-sm max-w-md">
-                  Tente ajustar os filtros de busca ou aguarde novas conexões na sua rede.
-                </p>
-              </div>
-            ) : (
-              <table className="min-w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/[0.05] bg-white/[0.01]">
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Lead</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Contato</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Hotspot</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Anúncio Visto</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">LGPD</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap">Capturado em</th>
-
-                    {canDelete && (
-                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest px-8 py-6 whitespace-nowrap text-right">
-                        Ações
-                      </th>
-                    )}
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-white/[0.02]">
-                  {leadsFiltrados.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
-                      <td className="px-8 py-5 whitespace-nowrap">
-                        <div className="flex items-center gap-4">
-                          <div className="w-11 h-11 rounded-full bg-[#050505] border border-white/[0.05] flex items-center justify-center text-neutral-500 font-bold text-sm flex-shrink-0 shadow-inner group-hover:text-[#8cf059] group-hover:border-[#6be12f]/30 transition-all duration-300">
-                            {lead.nome?.charAt(0).toUpperCase() || '?'}
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors truncate">
-                              {lead.nome || '—'}
-                            </p>
-
-                            <p className="text-xs text-neutral-500 truncate mt-1 font-medium">
-                              {lead.email || '—'}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      <td className="px-8 py-5 whitespace-nowrap">
-                        <div className="flex flex-col justify-center">
-                          <span className="text-sm font-bold text-neutral-300">
-                            {lead.telefone || '—'}
-                          </span>
-
-                          <span className="text-xs text-neutral-500 mt-1 font-medium">
-                            CPF: {lead.cpf || '—'}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
-                          <Wifi size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
-                          <span className="truncate max-w-[150px]">
-                            {nomeHotspot(lead.hotspot_id)}
-                          </span>
-                        </span>
-                      </td>
-
-                      <td className="px-8 py-5 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#050505] border border-white/[0.05] text-xs font-bold text-neutral-400 shadow-inner group-hover:border-white/[0.1] transition-colors">
-                          <MonitorPlay size={14} className="text-neutral-600 group-hover:text-[#6be12f] transition-colors flex-shrink-0" />
-                          <span className="truncate max-w-[150px]">
-                            {nomeAnuncio(lead.anuncio_id)}
-                          </span>
-                        </span>
-                      </td>
-
-                      <td className="px-8 py-5 whitespace-nowrap">
-                        {lead.aceite_lgpd ? (
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#6be12f]/10 border border-[#6be12f]/20 text-[11px] font-bold uppercase tracking-widest text-[#8cf059]">
-                            <Shield size={14} className="flex-shrink-0" />
-                            Aceito
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-[11px] font-bold uppercase tracking-widest text-red-400">
-                            <ShieldOff size={14} className="flex-shrink-0" />
-                            Não aceito
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="px-8 py-5 text-sm text-neutral-500 font-medium whitespace-nowrap">
-                        {new Date(lead.created_at).toLocaleString('pt-BR', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </td>
-
-                      {canDelete && (
-                        <td className="px-8 py-5 whitespace-nowrap text-right">
-                          <button
-                            onClick={() => solicitarExclusaoLead(lead.id)}
-                            className="inline-flex items-center justify-center w-9 h-9 rounded-xl bg-[#050505] border border-white/[0.05] hover:border-red-500/30 hover:text-red-400 text-neutral-500 transition-all shadow-inner"
-                            title="Excluir lead"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        </div>
+          )}
+        </section>
       </div>
 
-      {confirmDelete && canDelete && (
-        <div className="fixed inset-0 bg-[#050505]/80 backdrop-blur-2xl flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-md p-8 text-center shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
-            <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
-              <Trash2 size={32} className="text-red-500" />
-            </div>
-
-            <h2 className="text-2xl font-bold text-white mb-3 tracking-tight">
-              Excluir lead?
-            </h2>
-
-            <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
-              Esta ação não pode ser desfeita. O lead será removido permanentemente da base.
-            </p>
-
-            <div className="flex gap-4">
-              <button
-                onClick={() => setConfirmDelete(null)}
-                className="flex-1 py-4 rounded-2xl font-bold text-sm text-neutral-500 hover:text-white bg-white/[0.02] hover:bg-white/[0.05] border border-white/[0.05] transition-all duration-300"
-              >
-                Cancelar
-              </button>
-
-              <button
-                onClick={() => excluirLead(confirmDelete)}
-                className="flex-1 bg-red-500 hover:bg-red-400 text-white font-bold py-4 rounded-2xl text-sm transition-all duration-300 shadow-[0_0_20px_rgba(239,68,68,0.2)] hover:shadow-[0_0_30px_rgba(239,68,68,0.4)] hover:-translate-y-1"
-              >
-                Sim, Excluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style dangerouslySetInnerHTML={{ __html: `
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
-
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(30px); }
           to { opacity: 1; transform: translateY(0); }
@@ -506,5 +470,89 @@ export default function Leads() {
         }
       `}} />
     </>
+  )
+}
+
+function FilterSelect({ label, icon: Icon, value, onChange, options }) {
+  return (
+    <label>
+      <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 flex items-center gap-2">
+        <Icon size={13} className="text-[#6be12f]" />
+        {label}
+      </span>
+
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
+      >
+        {options.map((item) => (
+          <option key={item.value || item.label} value={item.value} className="bg-[#0a0a0a]">
+            {item.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function Badge({ label, value }) {
+  return (
+    <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs text-[#8cf059]">
+      <strong>{label}:</strong> {value}
+    </span>
+  )
+}
+
+function LeadCard({ lead }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 hover:border-[#6be12f]/20 transition-colors">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr_1.1fr_1fr] gap-5 items-center">
+        <div>
+          <p className="text-base font-black text-white truncate">
+            {lead.nome || 'Lead sem nome'}
+          </p>
+
+          <p className="text-xs text-neutral-500 mt-1">
+            Capturado em {formatDateTime(lead.created_at)}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <ContactPill icon={Phone} label="Telefone" value={lead.telefone || '—'} />
+          <ContactPill icon={Mail} label="E-mail" value={lead.email || '—'} />
+        </div>
+
+        <div className="grid gap-2">
+          <SmallInfo icon={Building2} value={getClienteLabel(lead.clientes)} />
+          <SmallInfo icon={Megaphone} value={lead.anuncios?.titulo || 'Campanha NexaWi'} />
+        </div>
+
+        <div className="grid gap-2">
+          <SmallInfo icon={MapPin} value={lead.hotspots?.nome || 'Hotspot'} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ContactPill({ icon: Icon, label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3">
+      <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600 flex items-center gap-2 mb-1">
+        <Icon size={12} className="text-[#6be12f]" />
+        {label}
+      </p>
+      <p className="text-sm font-bold text-white break-all">{value}</p>
+    </div>
+  )
+}
+
+function SmallInfo({ icon: Icon, value }) {
+  return (
+    <p className="text-xs text-neutral-500 flex items-center gap-2 min-w-0">
+      <Icon size={13} className="text-[#6be12f] flex-shrink-0" />
+      <span className="truncate">{value}</span>
+    </p>
   )
 }
