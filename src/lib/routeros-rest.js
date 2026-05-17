@@ -848,6 +848,45 @@ function domainMatchesPreset(domain = '', preset = {}) {
   })
 }
 
+const META_SHARED_INFRASTRUCTURE_DOMAINS = uniqueDomains([
+  ...META_PRESET_DOMAINS,
+  ...INSTAGRAM_PRESET_DOMAINS,
+  'whatsapp.com',
+  'whatsapp.net',
+])
+
+function domainConflicts(domainA = '', domainB = '') {
+  const cleanA = normalizeDomain(domainA)
+  const cleanB = normalizeDomain(domainB)
+
+  if (!cleanA || !cleanB) return false
+
+  return (
+    cleanA === cleanB ||
+    cleanA.endsWith(`.${cleanB}`) ||
+    cleanB.endsWith(`.${cleanA}`)
+  )
+}
+
+function domainMatchesAny(domain = '', domains = []) {
+  return uniqueDomains(domains).some((candidate) => domainConflicts(domain, candidate))
+}
+
+function filterDomainsAgainstAllowed(domains = [], allowedDomains = []) {
+  const allowed = uniqueDomains(allowedDomains)
+
+  return uniqueDomains(domains).filter((domain) => !domainMatchesAny(domain, allowed))
+}
+
+function presetConflictsWithAllowed(preset = {}, allowedDomains = []) {
+  const presetDomains = uniqueDomains([
+    ...(preset.triggerDomains || []),
+    ...(preset.domains || []),
+  ])
+
+  return presetDomains.some((domain) => domainMatchesAny(domain, allowedDomains))
+}
+
 function getActiveStrongPresets(customBlockedDomains = [], options = {}) {
   const requested = uniqueDomains(customBlockedDomains)
 
@@ -1093,21 +1132,50 @@ export async function applyNexawiNetworkPolicy(options = {}) {
   const forceDns = options.forceDns !== false
 
   const requestedBlockedDomains = uniqueDomains(options.customBlockedDomains || [])
-  const activeStrongPresets = getActiveStrongPresets(requestedBlockedDomains, options)
+  const customAllowedDomains = uniqueDomains(options.customAllowedDomains || [])
 
-  const applyMetaPreset =
-    shouldApplyMetaPreset(requestedBlockedDomains, options) ||
+  // Permitidos têm prioridade máxima:
+  // se um domínio está permitido, ele não pode permanecer no bloco de bloqueados.
+  const blockedDomainsAfterAllow = filterDomainsAgainstAllowed(
+    requestedBlockedDomains,
+    customAllowedDomains
+  )
+
+  const requestedStrongPresets = getActiveStrongPresets(blockedDomainsAfterAllow, options)
+
+  const skippedStrongPresetIds = requestedStrongPresets
+    .filter((preset) => presetConflictsWithAllowed(preset, customAllowedDomains))
+    .map((preset) => preset.id)
+
+  const activeStrongPresets = requestedStrongPresets.filter(
+    (preset) => !presetConflictsWithAllowed(preset, customAllowedDomains)
+  )
+
+  const shouldExpandMetaDomains =
+    shouldApplyMetaPreset(blockedDomainsAfterAllow, options) ||
     activeStrongPresets.some((preset) => preset.usesMetaInfrastructure)
+
+  const allowedUsesMetaInfrastructure = customAllowedDomains.some((domain) =>
+    domainMatchesAny(domain, META_SHARED_INFRASTRUCTURE_DOMAINS)
+  )
+
+  // O bloqueio forte por IP da Meta derruba serviços compartilhados,
+  // como Instagram. Se algum domínio Meta/Instagram estiver permitido,
+  // não aplicamos address-list forte de Meta.
+  const applyMetaPreset = shouldExpandMetaDomains && !allowedUsesMetaInfrastructure
 
   const expandedPresetDomains = activeStrongPresets.flatMap((preset) => preset.domains || [])
 
-  const customBlockedDomains = uniqueDomains([
-    ...requestedBlockedDomains,
-    ...(applyMetaPreset ? META_PRESET_DOMAINS : []),
+  const customBlockedDomains = filterDomainsAgainstAllowed([
+    ...blockedDomainsAfterAllow,
+    ...(shouldExpandMetaDomains ? META_PRESET_DOMAINS : []),
     ...expandedPresetDomains,
-  ])
+  ], customAllowedDomains)
 
-  const customAllowedDomains = uniqueDomains(options.customAllowedDomains || [])
+  const allowedOverridesBlockedDomains = requestedBlockedDomains.filter((domain) =>
+    domainMatchesAny(domain, customAllowedDomains)
+  )
+
   const blockDoh = options.blockDoh !== false && forceDns
 
   const reset = await resetNexawiNetworkPolicy({ routerConfig })
@@ -1309,6 +1377,10 @@ export async function applyNexawiNetworkPolicy(options = {}) {
       activeStrongPresetIds: activeStrongPresets.map((preset) => preset.id),
       customBlockedDomains,
       customAllowedDomains,
+      shouldExpandMetaDomains,
+      allowedUsesMetaInfrastructure,
+      allowedOverridesBlockedDomains,
+      skippedStrongPresetIds,
     },
     reset,
     dnsSettings,
