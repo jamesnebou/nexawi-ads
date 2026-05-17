@@ -403,6 +403,11 @@ export default function CrmClientesPage() {
           </div>
         </section>
 
+        <KanbanCrmPreview
+          clientes={clientes}
+          onSelectEtapa={setEtapa}
+        />
+
         <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
@@ -446,6 +451,116 @@ export default function CrmClientesPage() {
         </section>
       </div>
     </>
+  )
+}
+
+function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
+  const total = clientes.length
+
+  const columns = etapas.map((etapa) => {
+    const items = clientes.filter((cliente) => cliente.crm_etapa === etapa.value)
+
+    return {
+      ...etapa,
+      count: items.length,
+      items: items.slice(0, 4),
+    }
+  })
+
+  return (
+    <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
+      {/* KANBAN_CRM_CLIENTES_PATCH */}
+      <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
+        <div>
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-3">
+            <Target size={13} />
+            Funil comercial
+          </div>
+
+          <h2 className="text-xl font-black text-white tracking-tight">
+            Visão Kanban dos prospects
+          </h2>
+
+          <p className="text-sm text-neutral-500 mt-1">
+            {formatNumber(total)} empresa(s) distribuídas por etapa comercial.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4">
+        {columns.map((column) => (
+          <div
+            key={column.value}
+            className="rounded-3xl border border-white/[0.05] bg-[#050505] p-4 min-h-[220px]"
+          >
+            <button
+              type="button"
+              onClick={() => onSelectEtapa(column.value)}
+              className="w-full flex items-start justify-between gap-3 text-left mb-4"
+            >
+              <div>
+                <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest ${etapaStyles[column.value] || etapaStyles.novo_lead}`}>
+                  {column.label}
+                </span>
+
+                <p className="text-xs text-neutral-500 mt-2">
+                  {formatNumber(column.count)} empresa(s)
+                </p>
+              </div>
+            </button>
+
+            {column.items.length === 0 ? (
+              <div className="rounded-2xl border border-white/[0.04] bg-white/[0.01] p-4 text-center">
+                <p className="text-xs text-neutral-600">
+                  Sem prospects nesta etapa.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                {column.items.map((cliente) => (
+                  <div
+                    key={cliente.id}
+                    className="rounded-2xl border border-white/[0.05] bg-black/30 p-3"
+                  >
+                    <p className="text-sm font-black text-white truncate">
+                      {cliente.nome_empresa || 'Empresa sem nome'}
+                    </p>
+
+                    <p className="text-[11px] text-neutral-500 truncate mt-1">
+                      {cliente.nome_responsavel || cliente.nome || 'Sem responsável'}
+                    </p>
+
+                    <div className="mt-3 grid gap-1.5 text-[11px] text-neutral-500">
+                      <span>
+                        Temp.: <strong className="text-white">{cliente.crm_temperatura || 'Morno'}</strong>
+                      </span>
+
+                      <span>
+                        Valor: <strong className="text-white">{formatCurrency(cliente.crm_valor_potencial || 0)}</strong>
+                      </span>
+
+                      <span>
+                        Próx.: <strong className="text-white">{formatDate(cliente.crm_proximo_contato)}</strong>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+
+                {column.count > column.items.length && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectEtapa(column.value)}
+                    className="rounded-2xl border border-white/[0.05] bg-white/[0.02] px-3 py-2 text-[11px] font-bold text-neutral-400 hover:text-white hover:bg-white/[0.04] transition-colors"
+                  >
+                    Ver todos desta etapa
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </section>
   )
 }
 
