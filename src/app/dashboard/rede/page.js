@@ -372,6 +372,7 @@ export default function ControleRedePage() {
   const [allowedInput, setAllowedInput] = useState('')
 
   const [message, setMessage] = useState('')
+  const [policyNotice, setPolicyNotice] = useState(null)
   const [error, setError] = useState('')
 
   const allRules = useMemo(() => {
@@ -389,6 +390,7 @@ export default function ControleRedePage() {
   async function carregarStatus() {
     setError('')
     setMessage('')
+    setPolicyNotice(null)
 
     const query = new URLSearchParams()
 
@@ -579,6 +581,7 @@ function togglePreset(preset) {
   async function aplicarPolitica() {
     setError('')
     setMessage('')
+    setPolicyNotice(null)
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
       setError('Selecione um hotspot antes de aplicar a política.')
@@ -610,6 +613,60 @@ function togglePreset(preset) {
       setHotspot(data.hotspot || hotspot)
       setMikrotik(data.router || mikrotik)
 
+      const policyMeta =
+        data.result?.config ||
+        data.result?.policyConfig ||
+        data.result?.meta ||
+        data.result ||
+        {}
+
+      const allowedOverridesBlockedDomains =
+        policyMeta.allowedOverridesBlockedDomains ||
+        data.result?.allowedOverridesBlockedDomains ||
+        []
+
+      const skippedStrongPresetIds =
+        policyMeta.skippedStrongPresetIds ||
+        data.result?.skippedStrongPresetIds ||
+        []
+
+      const allowedUsesMetaInfrastructure = Boolean(
+        policyMeta.allowedUsesMetaInfrastructure ||
+        data.result?.allowedUsesMetaInfrastructure
+      )
+
+      const applyMetaPreset = Boolean(
+        policyMeta.applyMetaPreset ||
+        data.result?.applyMetaPreset
+      )
+
+      const notices = []
+
+      if (Array.isArray(allowedOverridesBlockedDomains) && allowedOverridesBlockedDomains.length > 0) {
+        notices.push(
+          `Permitidos venceram bloqueios: ${allowedOverridesBlockedDomains.join(', ')} estava em conflito, mas foi mantido liberado.`
+        )
+      }
+
+      if (Array.isArray(skippedStrongPresetIds) && skippedStrongPresetIds.length > 0) {
+        notices.push(
+          `Preset forte ignorado por conflito com Sites Permitidos: ${skippedStrongPresetIds.join(', ')}.`
+        )
+      }
+
+      if (allowedUsesMetaInfrastructure && !applyMetaPreset) {
+        notices.push(
+          'Bloqueio forte de Meta/IP não foi aplicado porque existe domínio permitido usando infraestrutura compartilhada, como Instagram/WhatsApp.'
+        )
+      }
+
+      if (notices.length > 0) {
+        setPolicyNotice({
+          title: 'Sites Permitidos priorizados',
+          items: notices,
+        })
+      }
+
       setMessage('Política de rede aplicada com sucesso neste hotspot.')
       await carregarStatus()
     } catch (err) {
@@ -629,6 +686,7 @@ function togglePreset(preset) {
 
     setError('')
     setMessage('')
+    setPolicyNotice(null)
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
       setError('Selecione um hotspot antes de resetar a política.')
@@ -736,6 +794,22 @@ function togglePreset(preset) {
       {message && (
         <div className="relative z-10 mb-6 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-bold text-[#8cf059]">
           {message}
+        </div>
+      )}
+
+      {policyNotice && (
+        <div className="relative z-10 mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
+          <p className="font-black text-blue-200 mb-2">
+            {policyNotice.title}
+          </p>
+
+          <div className="space-y-1.5">
+            {(policyNotice.items || []).map((item, index) => (
+              <p key={index} className="text-xs leading-relaxed text-blue-100/90">
+                {item}
+              </p>
+            ))}
+          </div>
         </div>
       )}
 
