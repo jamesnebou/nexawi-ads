@@ -102,6 +102,7 @@ export async function GET(request) {
       .from('clientes')
       .select(`
         id,
+        empresa_id,
         nome,
         nome_empresa,
         nome_responsavel,
@@ -119,9 +120,12 @@ export async function GET(request) {
         crm_observacoes,
         crm_responsavel,
         crm_updated_at,
+        empresas(id, nome_empresa, status),
         planos(nome)
       `)
       .order('created_at', { ascending: false })
+
+    query = auth.applyEmpresaScope(query)
 
     if (etapa && CRM_ETAPAS.includes(etapa)) {
       query = query.eq('crm_etapa', etapa)
@@ -169,12 +173,15 @@ export async function GET(request) {
         temperatura,
         origem,
         busca,
+        empresa_id: auth.activeEmpresaId || null,
       },
       options: {
         etapas: CRM_ETAPAS,
         temperaturas: CRM_TEMPERATURAS,
         origens,
+        empresas: auth.empresas || [],
       },
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.clientes || {},
     })
   } catch (error) {
@@ -210,6 +217,25 @@ export async function PATCH(request) {
       )
     }
 
+    let checkQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id')
+      .eq('id', id)
+      .limit(1)
+
+    checkQuery = auth.applyEmpresaScope(checkQuery)
+
+    const { data: clientePermitido, error: checkError } = await checkQuery.maybeSingle()
+
+    if (checkError) throw checkError
+
+    if (!clientePermitido) {
+      return NextResponse.json(
+        { ok: false, error: 'Cliente não encontrado ou fora do escopo da empresa.' },
+        { status: 404 }
+      )
+    }
+
     const updatePayload = {
       crm_etapa: normalizarEtapa(body.crm_etapa),
       crm_origem: limparTexto(body.crm_origem) || 'Manual',
@@ -229,6 +255,7 @@ export async function PATCH(request) {
       .eq('id', id)
       .select(`
         id,
+        empresa_id,
         nome,
         nome_empresa,
         nome_responsavel,
@@ -246,6 +273,7 @@ export async function PATCH(request) {
         crm_observacoes,
         crm_responsavel,
         crm_updated_at,
+        empresas(id, nome_empresa, status),
         planos(nome)
       `)
       .single()

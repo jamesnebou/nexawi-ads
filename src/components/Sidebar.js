@@ -3,12 +3,7 @@
 // src/components/Sidebar.js
 // ============================================================
 // Sidebar principal da dashboard premium NexaWi ADS.
-//
-// Agora:
-// - Mostra o e-mail do admin logado.
-// - Usa /api/admin/me para buscar permissões.
-// - Esconde abas quando o admin não tem nenhuma permissão no módulo.
-// - Mantém logout oficial em /logout.
+// Sprint 5: adiciona Empresas e Dashboard do Anunciante.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
@@ -35,6 +30,7 @@ import {
   Bell,
   Network,
   Router as RouterIcon,
+  Building2,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -45,6 +41,18 @@ const menu = [
     path: '/dashboard',
     icon: LayoutDashboard,
     module: 'dashboard',
+  },
+  {
+    label: 'Empresas',
+    path: '/dashboard/empresas',
+    icon: Building2,
+    module: 'empresas',
+  },
+  {
+    label: 'Dashboard Anunciante',
+    path: '/dashboard/anunciante',
+    icon: BarChart2,
+    module: 'dashboard_anunciante',
   },
   {
     label: 'Anúncios',
@@ -63,7 +71,7 @@ const menu = [
     path: '/dashboard/crm-clientes',
     icon: Users,
     module: 'clientes',
-  },  
+  },
   {
     label: 'Hotspots',
     path: '/dashboard/hotspots',
@@ -71,16 +79,16 @@ const menu = [
     module: 'hotspots',
   },
   {
-  label: 'MikroTiks',
-  path: '/dashboard/mikrotiks',
-  icon: RouterIcon,
-  module: 'hotspots',
-},
+    label: 'MikroTiks',
+    path: '/dashboard/mikrotiks',
+    icon: RouterIcon,
+    module: 'hotspots',
+  },
   {
-  label: 'Controle de Rede',
-  path: '/dashboard/rede',
-  icon: Network,
-  module: 'hotspots',
+    label: 'Controle de Rede',
+    path: '/dashboard/rede',
+    icon: Network,
+    module: 'hotspots',
   },
   {
     label: 'Financeiro',
@@ -119,16 +127,16 @@ const menu = [
     module: 'relatorios',
   },
   {
-  label: 'Notificações',
-  path: '/dashboard/notificacoes',
-  icon: Bell,
-  module: 'dashboard',
+    label: 'Notificações',
+    path: '/dashboard/notificacoes',
+    icon: Bell,
+    module: 'dashboard',
   },
   {
-  label: 'Suporte',
-  path: '/dashboard/suporte',
-  icon: LifeBuoy,
-  module: 'suporte',
+    label: 'Suporte',
+    path: '/dashboard/suporte',
+    icon: LifeBuoy,
+    module: 'suporte',
   },
   {
     label: 'Auditoria',
@@ -189,12 +197,10 @@ function temAlgumaPermissaoNoModulo(permissions, moduleName, isMaster = false) {
 
   const modulo = permissions?.[moduleName]
 
-  // Compatibilidade com modelo antigo: { clientes: true }
   if (typeof modulo === 'boolean') {
     return modulo
   }
 
-  // Modelo novo: { clientes: { view: true, create: false } }
   if (modulo && typeof modulo === 'object') {
     return Object.values(modulo).some(Boolean)
   }
@@ -207,29 +213,30 @@ export default function Sidebar({ onClose }) {
   const router = useRouter()
 
   const [userEmail, setUserEmail] = useState('Carregando...')
+  const [empresaNome, setEmpresaNome] = useState('')
   const [permissions, setPermissions] = useState({})
   const [isMaster, setIsMaster] = useState(false)
   const [carregandoPermissoes, setCarregandoPermissoes] = useState(true)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
 
   async function buscarNotificacoesNaoLidas() {
-  try {
-    const data = await adminApiFetch('/api/admin/notificacoes?limit=30')
-    setUnreadNotifications(Number(data.unreadCount || 0))
-  } catch (error) {
-    console.error('Erro ao buscar notificações não lidas:', error)
+    try {
+      const data = await adminApiFetch('/api/admin/notificacoes?limit=30')
+      setUnreadNotifications(Number(data.unreadCount || 0))
+    } catch (error) {
+      console.error('Erro ao buscar notificações não lidas:', error)
+    }
   }
-}
-useEffect(() => {
-  buscarNotificacoesNaoLidas()
 
-  const interval = setInterval(() => {
+  useEffect(() => {
     buscarNotificacoesNaoLidas()
-  }, 30000)
 
-  return () => clearInterval(interval)
-}, [])
+    const interval = setInterval(() => {
+      buscarNotificacoesNaoLidas()
+    }, 30000)
 
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     async function carregarAdminLogado() {
@@ -245,12 +252,18 @@ useEffect(() => {
           'Admin não identificado'
         )
 
+        const activeEmpresaId = data?.adminProfile?.empresa_scope?.activeEmpresaId
+        const empresaAtiva = (data?.adminProfile?.empresas || [])
+          .find((item) => item.empresa_id === activeEmpresaId)
+
+        setEmpresaNome(empresaAtiva?.empresa?.nome_empresa || '')
         setPermissions(data?.permissions || {})
         setIsMaster(Boolean(data?.isMaster))
       } catch (error) {
         console.error('Erro ao carregar admin logado:', error)
 
         setUserEmail('Sessão não identificada')
+        setEmpresaNome('')
         setPermissions({})
         setIsMaster(false)
       } finally {
@@ -263,6 +276,7 @@ useEffect(() => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user?.email) {
         setUserEmail('Sessão não identificada')
+        setEmpresaNome('')
         setPermissions({})
         setIsMaster(false)
         return
@@ -284,10 +298,6 @@ useEffect(() => {
 
   function handleSignOut() {
     if (onClose) onClose()
-
-    // Logout oficial.
-    // A página /logout faz supabase.auth.signOut(),
-    // limpa tokens locais e manda para /login?logout=1.
     router.push('/logout')
   }
 
@@ -318,10 +328,6 @@ useEffect(() => {
         ) : (
           menuPermitido.map((item) => {
             const Icon = item.icon
-
-            // Corrige destaque:
-            // /dashboard só fica ativo na visão geral.
-            // As outras rotas ficam ativas também em subpáginas.
             const active =
               item.path === '/dashboard'
                 ? pathname === '/dashboard'
@@ -339,7 +345,7 @@ useEffect(() => {
                     ? 'text-white bg-white/[0.05] border-white/[0.05] shadow-inner'
                     : 'text-gray-500 hover:text-white hover:bg-white/[0.02] border-transparent hover:border-white/[0.02]'
                 }`}
-               >
+              >
                 {active && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-[#6be12f] rounded-r-full shadow-[0_0_15px_rgba(34,197,94,0.6)]" />
                 )}
@@ -354,15 +360,15 @@ useEffect(() => {
                 />
 
                 <span className="flex-1 text-left truncate">
-                 {item.label}
+                  {item.label}
                 </span>
 
-                 {item.path === '/dashboard/notificacoes' && unreadNotifications > 0 && (
-                   <span className="relative flex h-3 w-3 flex-shrink-0 ml-auto">
-                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
-                     <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
-                    </span>
-                 )}
+                {item.path === '/dashboard/notificacoes' && unreadNotifications > 0 && (
+                  <span className="relative flex h-3 w-3 flex-shrink-0 ml-auto">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75"></span>
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500"></span>
+                  </span>
+                )}
               </button>
             )
           })
@@ -370,7 +376,6 @@ useEffect(() => {
       </nav>
 
       <div className="p-5 border-t border-white/[0.05] relative z-10 bg-[#050505] space-y-4">
-        {/* Caixa do usuário logado */}
         <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 backdrop-blur-xl shadow-[0_0_24px_rgba(107,225,47,0.06)]">
           <div className="absolute -right-8 -top-8 w-20 h-20 rounded-full bg-[#6be12f]/15 blur-2xl pointer-events-none" />
 
@@ -386,13 +391,16 @@ useEffect(() => {
             <div className="flex items-center gap-2 min-w-0">
               <Mail size={12} className="text-[#8cf059] flex-shrink-0" />
 
-              <p
-                className="text-[11px] leading-snug font-bold text-white truncate"
-                title={userEmail}
-              >
+              <p className="text-[11px] leading-snug font-bold text-white truncate" title={userEmail}>
                 {userEmail}
               </p>
             </div>
+
+            {empresaNome && (
+              <p className="text-[10px] leading-snug font-bold text-[#8cf059] truncate mt-2" title={empresaNome}>
+                Empresa: {empresaNome}
+              </p>
+            )}
           </div>
         </div>
 
@@ -400,10 +408,7 @@ useEffect(() => {
           onClick={handleSignOut}
           className="group w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[13px] font-bold tracking-wide text-gray-500 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 border border-transparent transition-all duration-300"
         >
-          <LogOut
-            size={18}
-            className="group-hover:-translate-x-1 transition-transform duration-300"
-          />
+          <LogOut size={18} className="group-hover:-translate-x-1 transition-transform duration-300" />
           Sair do Sistema
         </button>
       </div>
