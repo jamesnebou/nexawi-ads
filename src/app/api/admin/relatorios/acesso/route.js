@@ -1,12 +1,6 @@
 // src/app/api/admin/relatorios/acesso/route.js
 // ============================================================
 // API administrativa segura para Relatório de Acesso.
-// Substitui a view antiga hotspot_access_report acessada direto
-// pelo navegador.
-//
-// Permissões aplicadas:
-// - GET relatório: relatorios.view
-// - Exportação: relatorios.export fica no front, porque o CSV é gerado no navegador
 //
 // Métricas:
 // - Visualizações por hotspot
@@ -14,6 +8,10 @@
 // - Links copiados
 // - Tentativas de abrir CTA
 // - Taxa de clique aproximada
+//
+// Importante:
+// - Eventos novos usam hotspot_id real em anuncio_views/anuncio_clicks.
+// - Eventos antigos sem hotspot_id usam fallback pelo vínculo anuncio_hotspots.
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -58,6 +56,11 @@ function uniqueCount(rows = [], keyName = 'ip_address') {
   return set.size
 }
 
+function calcularTaxa(cliques, views) {
+  if (!views || views <= 0) return 0
+  return Number(((cliques / views) * 100).toFixed(2))
+}
+
 async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }) {
   const dataInicio = getDataInicio(periodo)
 
@@ -72,6 +75,7 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
     const selectColumns = [
       'id',
       'anuncio_id',
+      'hotspot_id',
       'ip_address',
       extras,
       colunaData,
@@ -98,6 +102,18 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
   }
 
   throw ultimoErro
+}
+
+function eventoPertenceAoHotspot(evento, hotspotId, idsAnunciosDoHotspot = []) {
+  if (evento.hotspot_id) {
+    return evento.hotspot_id === hotspotId
+  }
+
+  return idsAnunciosDoHotspot.includes(evento.anuncio_id)
+}
+
+function contarEventosComHotspotReal(rows = []) {
+  return rows.filter((row) => Boolean(row.hotspot_id)).length
 }
 
 export async function GET(request) {
@@ -171,11 +187,11 @@ export async function GET(request) {
       const idsAnunciosDoHotspot = vinculosPorHotspot.get(hotspot.id) || []
 
       const viewsDoHotspot = views.filter((view) =>
-        idsAnunciosDoHotspot.includes(view.anuncio_id)
+        eventoPertenceAoHotspot(view, hotspot.id, idsAnunciosDoHotspot)
       )
 
       const clicksDoHotspot = clicks.filter((click) =>
-        idsAnunciosDoHotspot.includes(click.anuncio_id)
+        eventoPertenceAoHotspot(click, hotspot.id, idsAnunciosDoHotspot)
       )
 
       const copiasDoHotspot = clicksDoHotspot.filter((click) =>
@@ -188,7 +204,10 @@ export async function GET(request) {
 
       const totalViews = uniqueCount(viewsDoHotspot)
       const totalClicks = uniqueCount(clicksDoHotspot)
-      const taxaClique = totalViews > 0 ? (totalClicks / totalViews) * 100 : 0
+      const taxaClique = calcularTaxa(totalClicks, totalViews)
+
+      const viewsComHotspotReal = contarEventosComHotspotReal(viewsDoHotspot)
+      const clicksComHotspotReal = contarEventosComHotspotReal(clicksDoHotspot)
 
       const cliente = clientePorId.get(hotspot.cliente_id)
 
@@ -202,7 +221,13 @@ export async function GET(request) {
         total_unique_clicks: totalClicks,
         total_links_copiados: uniqueCount(copiasDoHotspot),
         total_tentativas_abrir: uniqueCount(aberturasDoHotspot),
-        taxa_clique: Number(taxaClique.toFixed(2)),
+        taxa_clique: taxaClique,
+
+        views_com_hotspot_real: viewsComHotspotReal,
+        clicks_com_hotspot_real: clicksComHotspotReal,
+        usa_fallback_historico:
+          viewsDoHotspot.some((view) => !view.hotspot_id) ||
+          clicksDoHotspot.some((click) => !click.hotspot_id),
       }
     })
 
@@ -210,13 +235,19 @@ export async function GET(request) {
       (a, b) => b.total_unique_views - a.total_unique_views
     )
 
+    const totalViews = relatorio.reduce((acc, item) => acc + item.total_unique_views, 0)
+    const totalClicks = relatorio.reduce((acc, item) => acc + item.total_unique_clicks, 0)
+
     const resumo = {
       totalHotspots: relatorio.length,
       hotspotsComAcesso: relatorio.filter((item) => item.total_unique_views > 0).length,
-      totalViews: relatorio.reduce((acc, item) => acc + item.total_unique_views, 0),
-      totalClicks: relatorio.reduce((acc, item) => acc + item.total_unique_clicks, 0),
+      totalViews,
+      totalClicks,
       totalCopias: relatorio.reduce((acc, item) => acc + item.total_links_copiados, 0),
       totalTentativasAbrir: relatorio.reduce((acc, item) => acc + item.total_tentativas_abrir, 0),
+      totalViewsComHotspotReal: relatorio.reduce((acc, item) => acc + item.views_com_hotspot_real, 0),
+      totalClicksComHotspotReal: relatorio.reduce((acc, item) => acc + item.clicks_com_hotspot_real, 0),
+      taxaCliqueGeral: calcularTaxa(totalClicks, totalViews),
     }
 
     return NextResponse.json({
