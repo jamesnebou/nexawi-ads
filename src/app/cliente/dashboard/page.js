@@ -105,6 +105,10 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
+function formatNumber(value) {
+  return new Intl.NumberFormat('pt-BR').format(Number(value || 0))
+}
+
 function statusCampanhaStyle(status) {
   if (status === 'no_ar') {
     return {
@@ -163,6 +167,7 @@ export default function ClientDashboardPage() {
   const [leadsRecentes, setLeadsRecentes] = useState([])
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [hotspotsVinculados, setHotspotsVinculados] = useState([])
+  const [commercialReport, setCommercialReport] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -193,6 +198,14 @@ export default function ClientDashboardPage() {
 
         const data = await clienteApiFetch('/api/cliente/dashboard')
 
+        let commercialData = null
+
+        try {
+          commercialData = await clienteApiFetch('/api/cliente/relatorio-comercial?periodo=ultimos_30')
+        } catch (reportError) {
+          console.error('Erro ao carregar relatório comercial:', reportError)
+        }
+
         await registrarAcessoPortalCliente()
 
         if (!isMounted) return
@@ -205,6 +218,7 @@ export default function ClientDashboardPage() {
         setLeadsRecentes(data.leadsRecentes || [])
         setPagamentosRecentes(data.pagamentosRecentes || [])
         setHotspotsVinculados(data.hotspotsVinculados || [])
+        setCommercialReport(commercialData || null)
         setLoading(false)
       } catch (err) {
         console.error('Erro ao carregar painel do cliente:', err)
@@ -483,6 +497,8 @@ export default function ClientDashboardPage() {
           ))}
         </div>
 
+        <CommercialReportSection report={commercialReport} />
+
         <div className="grid grid-cols-1 xl:grid-cols-[1.2fr_0.8fr] gap-6 mb-10">
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
             <div className="mb-7">
@@ -601,6 +617,212 @@ export default function ClientDashboardPage() {
           opacity: 0;
         }
       `}} />
+    </div>
+  )
+}
+
+function CommercialReportSection({ report }) {
+  if (!report?.ok) return null
+
+  const resumo = report.resumo || {}
+  const rankings = report.rankings || {}
+  const qualidade = report.qualidadeDados || {}
+
+  const rankingAnuncios = rankings.anuncios || []
+  const rankingHotspots = rankings.hotspots || []
+
+  const cards = [
+    {
+      label: 'Alcance total',
+      value: formatNumber(resumo.totalVisualizacoes),
+      detail: 'visualizações nos últimos 30 dias',
+      icon: Eye,
+      accent: 'text-blue-400',
+    },
+    {
+      label: 'Ações no CTA',
+      value: formatNumber(resumo.totalCliques),
+      detail: 'cliques e tentativas de abertura',
+      icon: MousePointerClick,
+      accent: 'text-purple-400',
+    },
+    {
+      label: 'Leads gerados',
+      value: formatNumber(resumo.totalLeads),
+      detail: 'contatos capturados',
+      icon: Users,
+      accent: 'text-orange-400',
+    },
+    {
+      label: 'CTR comercial',
+      value: `${resumo.ctrGeral || 0}%`,
+      detail: 'taxa geral de interesse',
+      icon: TrendingUp,
+      accent: 'text-cyan-400',
+    },
+  ]
+
+  return (
+    <section className="mb-10 animate-fade-in-up">
+      <div className="relative overflow-hidden rounded-[2.5rem] border border-[#6be12f]/15 bg-gradient-to-br from-[#6be12f]/10 via-white/[0.025] to-white/[0.015] p-6 sm:p-8">
+        <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-[#6be12f]/10 blur-[90px]" />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-start justify-between gap-6 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
+              <TrendingUp size={13} />
+              Relatório comercial premium
+            </div>
+
+            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Performance real da sua campanha
+            </h2>
+
+            <p className="text-sm text-neutral-500 mt-2 max-w-2xl leading-relaxed">
+              Dados consolidados por anúncios, hotspots e interações reais registradas no portal NexaWi.
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-black/20 border border-white/[0.06] px-5 py-4 min-w-[220px]">
+            <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-1">
+              Período analisado
+            </p>
+            <p className="text-sm font-bold text-white">
+              Últimos 30 dias
+            </p>
+            <p className="text-[11px] text-neutral-600 mt-1">
+              Gerado em {formatDate(report.generatedAt)}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+          {cards.map((card) => (
+            <CommercialMetric key={card.label} card={card} />
+          ))}
+        </div>
+
+        <div className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-5">
+          <CommercialRanking
+            title="Ranking de anúncios"
+            subtitle="Campanhas com maior exposição"
+            icon={Megaphone}
+            items={rankingAnuncios}
+            emptyTitle="Sem dados de anúncios"
+            type="anuncio"
+          />
+
+          <CommercialRanking
+            title="Ranking de hotspots"
+            subtitle="Locais com maior entrega"
+            icon={Wifi}
+            items={rankingHotspots}
+            emptyTitle="Sem dados de hotspots"
+            type="hotspot"
+          />
+        </div>
+
+        <div className="relative z-10 mt-6 rounded-2xl border border-white/[0.05] bg-black/20 p-4">
+          <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2">
+            Qualidade dos dados
+          </p>
+
+          <p className="text-xs text-neutral-400 leading-relaxed">
+            {qualidade.usaFallbackHistorico
+              ? 'Parte dos dados antigos foi calculada por vínculo histórico de anúncio com hotspot. Os novos eventos já usam hotspot real.'
+              : 'Os eventos recentes estão usando hotspot real para cálculo de performance.'}
+          </p>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] text-neutral-400">
+              Views com hotspot real: {formatNumber(qualidade.viewsComHotspotReal)}
+            </span>
+            <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] text-neutral-400">
+              Cliques com hotspot real: {formatNumber(qualidade.clicksComHotspotReal)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CommercialMetric({ card }) {
+  return (
+    <div className="rounded-3xl border border-white/[0.06] bg-[#050505]/70 p-5">
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500">
+          {card.label}
+        </p>
+
+        <div className="p-2.5 rounded-2xl bg-white/[0.03] border border-white/[0.05]">
+          <card.icon size={17} className={card.accent} />
+        </div>
+      </div>
+
+      <p className="text-3xl font-light text-white tracking-tight">
+        {card.value}
+      </p>
+
+      <p className="text-xs text-neutral-600 mt-2">
+        {card.detail}
+      </p>
+    </div>
+  )
+}
+
+function CommercialRanking({ title, subtitle, icon: Icon, items, emptyTitle, type }) {
+  return (
+    <div className="rounded-[2rem] border border-white/[0.06] bg-[#050505]/70 p-6">
+      <div className="flex items-start justify-between gap-4 mb-6">
+        <div>
+          <h3 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
+            <Icon size={19} className="text-[#6be12f]" />
+            {title}
+          </h3>
+
+          <p className="text-xs text-neutral-500 mt-1">
+            {subtitle}
+          </p>
+        </div>
+      </div>
+
+      {items.length === 0 ? (
+        <EmptyState
+          icon={Icon}
+          title={emptyTitle}
+          description="Assim que houver novas interações, o ranking será atualizado."
+        />
+      ) : (
+        <div className="space-y-3">
+          {items.slice(0, 5).map((item, index) => (
+            <div key={item.id || index} className="rounded-2xl bg-black/25 border border-white/[0.05] p-4">
+              <div className="flex items-start justify-between gap-4 mb-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold text-white truncate">
+                    {index + 1}. {type === 'anuncio' ? item.titulo : item.nome}
+                  </p>
+                  <p className="text-xs text-neutral-500 truncate mt-1">
+                    {type === 'anuncio'
+                      ? item.cliente_nome || 'Campanha NexaWi'
+                      : item.cidade || item.cliente_nome || 'Hotspot NexaWi'}
+                  </p>
+                </div>
+
+                <span className="rounded-full bg-[#6be12f]/10 border border-[#6be12f]/20 px-3 py-1 text-[11px] font-black text-[#8cf059]">
+                  {item.ctr || 0}% CTR
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                <MiniMetric icon={Eye} label="Views" value={formatNumber(item.visualizacoes)} />
+                <MiniMetric icon={MousePointerClick} label="Cliques" value={formatNumber(item.cliques)} />
+                <MiniMetric icon={Users} label="Leads" value={formatNumber(item.leads)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
