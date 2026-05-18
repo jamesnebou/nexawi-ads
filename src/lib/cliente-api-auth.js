@@ -1,11 +1,10 @@
 // src/lib/cliente-api-auth.js
 // ============================================================
 // Helper de autenticação para APIs do cliente.
-// Objetivo:
-// - Ler o token enviado pelo navegador.
-// - Validar o usuário no Supabase Auth.
-// - Encontrar o cliente pelo e-mail logado.
-// - Garantir que o cliente só veja os próprios dados.
+// Sprint 5 Multiempresa:
+// - Localiza cliente pelo e-mail logado
+// - Inclui empresa_id e dados da empresa quando existir
+// - Garante que a área /cliente continue funcionando com dados antigos
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -13,6 +12,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 
 const CLIENTE_SELECT = `
   id,
+  empresa_id,
   nome,
   nome_empresa,
   nome_responsavel,
@@ -29,7 +29,8 @@ const CLIENTE_SELECT = `
   onboarding_motivo_trava,
   onboarding_updated_at,
   created_at,
-  planos(nome)
+  planos(nome),
+  empresa:empresas!clientes_empresa_id_fkey(id, nome_empresa, email, telefone, cidade, estado, status)
 `
 
 function getBearerToken(request) {
@@ -51,7 +52,6 @@ async function buscarClientePorEmail(email = '') {
 
   if (!emailNormalizado) return null
 
-  // 1. Busca exata case-insensitive.
   const { data: clientesDiretos, error: clienteDiretoError } = await supabaseAdmin
     .from('clientes')
     .select(CLIENTE_SELECT)
@@ -64,8 +64,6 @@ async function buscarClientePorEmail(email = '') {
     return clientesDiretos[0]
   }
 
-  // 2. Fallback seguro para casos com espaço invisível no banco.
-  // Busca candidatos e confirma igualdade normalizada em JS.
   const { data: candidatos, error: candidatosError } = await supabaseAdmin
     .from('clientes')
     .select(CLIENTE_SELECT)
@@ -77,6 +75,52 @@ async function buscarClientePorEmail(email = '') {
   return (candidatos || []).find((cliente) => {
     return limparEmail(cliente.email) === emailNormalizado
   }) || null
+}
+
+async function buscarEmpresaPorUsuario({ userId, email }) {
+  if (userId) {
+    const { data, error } = await supabaseAdmin
+      .from('empresa_usuarios')
+      .select('empresa_id, role, empresas(id, nome_empresa, email, telefone, cidade, estado, status)')
+      .eq('user_id', userId)
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle()
+
+    if (error) throw error
+    if (data?.empresa_id) return data
+  }
+
+  const emailNormalizado = limparEmail(email)
+
+  if (!emailNormalizado) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('empresa_usuarios')
+    .select('empresa_id, role, empresas(id, nome_empresa, email, telefone, cidade, estado, status)')
+    .ilike('email', emailNormalizado)
+    .eq('active', true)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
+}
+
+async function buscarClientePorEmpresa(empresaId = '') {
+  if (!empresaId) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('clientes')
+    .select(CLIENTE_SELECT)
+    .eq('empresa_id', empresaId)
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data || null
 }
 
 export async function requireCliente(request) {
@@ -115,7 +159,13 @@ export async function requireCliente(request) {
       }
     }
 
-    const cliente = await buscarClientePorEmail(email)
+    let cliente = await buscarClientePorEmail(email)
+    let membership = null
+
+    if (!cliente) {
+      membership = await buscarEmpresaPorUsuario({ userId: user.id, email })
+      cliente = await buscarClientePorEmpresa(membership?.empresa_id)
+    }
 
     if (!cliente) {
       return {
@@ -139,9 +189,19 @@ export async function requireCliente(request) {
       }
     }
 
+    const empresaId = cliente.empresa_id || membership?.empresa_id || null
+    const empresa = cliente.empresa || membership?.empresas || null
+
     return {
       user,
-      cliente,
+      cliente: {
+        ...cliente,
+        empresa_id: empresaId,
+        empresa,
+      },
+      empresaId,
+      empresa,
+      membership,
       errorResponse: null,
     }
   } catch (error) {
