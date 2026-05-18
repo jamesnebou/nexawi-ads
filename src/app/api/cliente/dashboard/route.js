@@ -1,18 +1,10 @@
 // src/app/api/cliente/dashboard/route.js
 // ============================================================
 // API segura para Dashboard do Cliente.
-// O cliente só enxerga dados vinculados ao próprio cadastro.
-//
-// Retorna:
-// - dados do cliente
-// - plano
-// - anúncios
-// - visualizações
-// - cliques
-// - leads capturados
-// - pagamentos
-// - hotspots vinculados
-// - status da campanha
+// Sprint 5 Multiempresa:
+// - O cliente vê somente dados da própria empresa/conta
+// - Usa empresa_id quando existir
+// - Mantém fallback por cliente_id para dados antigos
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -107,7 +99,19 @@ function calcularFinanceiro(pagamentos = []) {
   }
 }
 
-async function buscarHotspotsVinculados(anuncioIds = []) {
+function aplicarEscopoClienteEmpresa(query, { clienteId, empresaId }) {
+  if (empresaId && clienteId) {
+    return query.or(`empresa_id.eq.${empresaId},cliente_id.eq.${clienteId}`)
+  }
+
+  if (empresaId) {
+    return query.eq('empresa_id', empresaId)
+  }
+
+  return query.eq('cliente_id', clienteId)
+}
+
+async function buscarHotspotsVinculados({ anuncioIds = [], empresaId = '' }) {
   if (!anuncioIds.length) return []
 
   try {
@@ -115,7 +119,7 @@ async function buscarHotspotsVinculados(anuncioIds = []) {
       .from('anuncio_hotspots')
       .select(`
         anuncio_id,
-        hotspots(id, nome, status)
+        hotspots(id, empresa_id, nome, status)
       `)
       .in('anuncio_id', anuncioIds)
 
@@ -126,9 +130,13 @@ async function buscarHotspotsVinculados(anuncioIds = []) {
     ;(data || []).forEach((item) => {
       const hotspot = item.hotspots
 
-      if (hotspot?.id && !map.has(hotspot.id)) {
+      if (!hotspot?.id) return
+      if (empresaId && hotspot.empresa_id && hotspot.empresa_id !== empresaId) return
+
+      if (!map.has(hotspot.id)) {
         map.set(hotspot.id, {
           id: hotspot.id,
+          empresa_id: hotspot.empresa_id || null,
           nome: hotspot.nome || 'Hotspot',
           status: hotspot.status || '',
         })
@@ -142,6 +150,43 @@ async function buscarHotspotsVinculados(anuncioIds = []) {
   }
 }
 
+async function buscarLeadsRecentes({ anuncioIds = [], empresaId = '' }) {
+  if (!anuncioIds.length && !empresaId) {
+    return { leadsRecentes: [], totalLeads: 0 }
+  }
+
+  let leadsQuery = supabaseAdmin
+    .from('leads')
+    .select('id, empresa_id, nome, email, telefone, created_at, anuncio_id, hotspot_id, hotspots(nome)')
+    .order('created_at', { ascending: false })
+    .limit(20)
+
+  let countQuery = supabaseAdmin
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+
+  if (empresaId) {
+    leadsQuery = leadsQuery.eq('empresa_id', empresaId)
+    countQuery = countQuery.eq('empresa_id', empresaId)
+  } else {
+    leadsQuery = leadsQuery.in('anuncio_id', anuncioIds)
+    countQuery = countQuery.in('anuncio_id', anuncioIds)
+  }
+
+  const [
+    { data: leadsData, error: leadsError },
+    { count: leadsCount, error: leadsCountError },
+  ] = await Promise.all([leadsQuery, countQuery])
+
+  if (leadsError) throw leadsError
+  if (leadsCountError) throw leadsCountError
+
+  return {
+    leadsRecentes: leadsData || [],
+    totalLeads: leadsCount || 0,
+  }
+}
+
 export async function GET(request) {
   const auth = await requireCliente(request)
 
@@ -150,27 +195,39 @@ export async function GET(request) {
   }
 
   try {
-    const { cliente } = auth
+    const { cliente, empresaId, empresa } = auth
+    const clienteId = cliente.id
+
+    let anunciosQuery = supabaseAdmin
+      .from('anuncios')
+      .select(`
+        *,
+        anuncio_views(count),
+        anuncio_clicks(count)
+      `)
+      .order('created_at', { ascending: false })
+
+    anunciosQuery = aplicarEscopoClienteEmpresa(anunciosQuery, {
+      clienteId,
+      empresaId,
+    })
+
+    let pagamentosQuery = supabaseAdmin
+      .from('pagamentos')
+      .select('*')
+      .order('created_at', { ascending: false })
+
+    pagamentosQuery = aplicarEscopoClienteEmpresa(pagamentosQuery, {
+      clienteId,
+      empresaId,
+    })
 
     const [
       { data: anunciosData, error: anunciosError },
       { data: pagamentosData, error: pagamentosError },
     ] = await Promise.all([
-      supabaseAdmin
-        .from('anuncios')
-        .select(`
-          *,
-          anuncio_views(count),
-          anuncio_clicks(count)
-        `)
-        .eq('cliente_id', cliente.id)
-        .order('created_at', { ascending: false }),
-
-      supabaseAdmin
-        .from('pagamentos')
-        .select('*')
-        .eq('cliente_id', cliente.id)
-        .order('created_at', { ascending: false }),
+      anunciosQuery,
+      pagamentosQuery,
     ])
 
     if (anunciosError) throw anunciosError
@@ -192,32 +249,10 @@ export async function GET(request) {
 
     const anuncioIds = anuncios.map((ad) => ad.id).filter(Boolean)
 
-    let leadsRecentes = []
-    let totalLeads = 0
-
-    if (anuncioIds.length > 0) {
-      const { data: leadsData, error: leadsError } = await supabaseAdmin
-        .from('leads')
-        .select('id, nome, email, telefone, created_at, anuncio_id, hotspot_id, hotspots(nome)')
-        .in('anuncio_id', anuncioIds)
-        .order('created_at', { ascending: false })
-        .limit(20)
-
-      if (leadsError) throw leadsError
-
-      leadsRecentes = leadsData || []
-
-      const { count: leadsCount, error: leadsCountError } = await supabaseAdmin
-        .from('leads')
-        .select('*', { count: 'exact', head: true })
-        .in('anuncio_id', anuncioIds)
-
-      if (leadsCountError) throw leadsCountError
-
-      totalLeads = leadsCount || 0
-    }
-
-    const hotspotsVinculados = await buscarHotspotsVinculados(anuncioIds)
+    const [leadsResult, hotspotsVinculados] = await Promise.all([
+      buscarLeadsRecentes({ anuncioIds, empresaId }),
+      buscarHotspotsVinculados({ anuncioIds, empresaId }),
+    ])
 
     const anunciosAtivos = anuncios.filter((ad) => ad.ativo === true).length
     const anunciosInativos = anuncios.filter((ad) => ad.ativo === false).length
@@ -234,10 +269,22 @@ export async function GET(request) {
 
     return NextResponse.json({
       ok: true,
+      empresa: empresa
+        ? {
+            id: empresa.id,
+            nome_empresa: empresa.nome_empresa || '',
+            email: empresa.email || '',
+            telefone: empresa.telefone || '',
+            cidade: empresa.cidade || '',
+            estado: empresa.estado || '',
+            status: empresa.status || '',
+          }
+        : null,
       cliente: {
         id: cliente.id,
+        empresa_id: empresaId || cliente.empresa_id || null,
         nome: cliente.nome || '',
-        nome_empresa: cliente.nome_empresa || '',
+        nome_empresa: empresa?.nome_empresa || cliente.nome_empresa || '',
         email: cliente.email || '',
         telefone: cliente.telefone || '',
         cidade: cliente.cidade || '',
@@ -254,15 +301,20 @@ export async function GET(request) {
         totalAnuncios: anuncios.length,
         totalVisualizacoes,
         totalCliques,
-        totalLeads,
+        totalLeads: leadsResult.totalLeads,
         ctrGeral: calcularCtr(totalCliques, totalVisualizacoes),
         hotspotsVinculados: hotspotsVinculados.length,
       },
       financeiro,
       anuncios,
-      leadsRecentes,
+      leadsRecentes: leadsResult.leadsRecentes,
       pagamentosRecentes: (pagamentosData || []).slice(0, 5).map(normalizarPagamento),
       hotspotsVinculados,
+      multiempresa: {
+        empresa_id: empresaId || cliente.empresa_id || null,
+        usaEmpresaId: Boolean(empresaId),
+        fallbackClienteId: cliente.id,
+      },
     })
   } catch (error) {
     return NextResponse.json(
