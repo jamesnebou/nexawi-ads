@@ -25,6 +25,14 @@ function getDataInicio(periodo = 'ultimos_30') {
   return null
 }
 
+function aplicarEscopo(query, auth) {
+  if (auth?.applyEmpresaScope) {
+    return auth.applyEmpresaScope(query)
+  }
+
+  return query
+}
+
 function calcularCtr(cliques, views) {
   if (!views || views <= 0) return 0
   return Number(((cliques / views) * 100).toFixed(2))
@@ -40,7 +48,7 @@ function uniqueCount(rows = [], keyName = 'ip_address') {
   return set.size
 }
 
-async function buscarEventos({ tabela, anuncioIds, periodo, extras = [] }) {
+async function buscarEventos({ tabela, anuncioIds, periodo, auth, extras = [] }) {
   if (!anuncioIds.length) return []
 
   const dataInicio = getDataInicio(periodo)
@@ -50,6 +58,7 @@ async function buscarEventos({ tabela, anuncioIds, periodo, extras = [] }) {
   for (const colunaData of colunasDeData) {
     const selectColumns = [
       'id',
+      'empresa_id',
       'anuncio_id',
       'hotspot_id',
       'ip_address',
@@ -61,6 +70,8 @@ async function buscarEventos({ tabela, anuncioIds, periodo, extras = [] }) {
       .from(tabela)
       .select(selectColumns)
       .in('anuncio_id', anuncioIds)
+
+    query = aplicarEscopo(query, auth)
 
     if (dataInicio) {
       query = query.gte(colunaData, dataInicio)
@@ -76,15 +87,17 @@ async function buscarEventos({ tabela, anuncioIds, periodo, extras = [] }) {
   throw ultimoErro
 }
 
-async function buscarLeads({ anuncioIds, periodo }) {
+async function buscarLeads({ anuncioIds, periodo, auth }) {
   if (!anuncioIds.length) return []
 
   const dataInicio = getDataInicio(periodo)
 
   let query = supabaseAdmin
     .from('leads')
-    .select('id, nome, email, telefone, anuncio_id, hotspot_id, created_at')
+    .select('id, empresa_id, nome, email, telefone, anuncio_id, hotspot_id, created_at')
     .in('anuncio_id', anuncioIds)
+
+  query = aplicarEscopo(query, auth)
 
   if (dataInicio) {
     query = query.gte('created_at', dataInicio)
@@ -142,11 +155,14 @@ export async function buildCommercialReport({
   periodo = 'ultimos_30',
   clienteId = '',
   hotspotId = '',
+  auth = null,
 } = {}) {
   let anunciosQuery = supabaseAdmin
     .from('anuncios')
-    .select('id, titulo, ativo, cliente_id, url_destino, tipo_media, created_at')
+    .select('id, empresa_id, titulo, ativo, cliente_id, url_destino, tipo_media, created_at')
     .order('created_at', { ascending: false })
+
+  anunciosQuery = aplicarEscopo(anunciosQuery, auth)
 
   if (clienteId) {
     anunciosQuery = anunciosQuery.eq('cliente_id', clienteId)
@@ -163,7 +179,7 @@ export async function buildCommercialReport({
     return {
       ok: true,
       periodo,
-      filtros: { clienteId, hotspotId },
+      filtros: { clienteId, hotspotId, empresaId: auth?.activeEmpresaId || null },
       resumo: {
         totalVisualizacoes: 0,
         totalCliques: 0,
@@ -187,33 +203,58 @@ export async function buildCommercialReport({
     }
   }
 
+  const hotspotIdsPermitidos = []
+
+  let hotspotsPermitidosQuery = supabaseAdmin
+    .from('hotspots')
+    .select('id')
+
+  hotspotsPermitidosQuery = aplicarEscopo(hotspotsPermitidosQuery, auth)
+
+  const { data: hotspotsPermitidos, error: hotspotsPermitidosError } = await hotspotsPermitidosQuery
+
+  if (hotspotsPermitidosError) throw hotspotsPermitidosError
+
+  ;(hotspotsPermitidos || []).forEach((item) => {
+    if (item.id) hotspotIdsPermitidos.push(item.id)
+  })
+
+  let vinculosQuery = supabaseAdmin
+    .from('anuncio_hotspots')
+    .select('anuncio_id, hotspot_id')
+    .in('anuncio_id', anuncioIds)
+
+  if (hotspotIdsPermitidos.length > 0) {
+    vinculosQuery = vinculosQuery.in('hotspot_id', hotspotIdsPermitidos)
+  }
+
   const [
     { data: vinculosData, error: vinculosError },
     views,
     clicks,
     leads,
   ] = await Promise.all([
-    supabaseAdmin
-      .from('anuncio_hotspots')
-      .select('anuncio_id, hotspot_id')
-      .in('anuncio_id', anuncioIds),
+    vinculosQuery,
 
     buscarEventos({
       tabela: 'anuncio_views',
       anuncioIds,
       periodo,
+      auth,
     }),
 
     buscarEventos({
       tabela: 'anuncio_clicks',
       anuncioIds,
       periodo,
+      auth,
       extras: ['tipo_acao'],
     }),
 
     buscarLeads({
       anuncioIds,
       periodo,
+      auth,
     }),
   ])
 
@@ -236,7 +277,9 @@ export async function buildCommercialReport({
   if (hotspotIds.length > 0) {
     let hotspotQuery = supabaseAdmin
       .from('hotspots')
-      .select('id, nome, status, cidade, cliente_id')
+      .select('id, empresa_id, nome, status, cidade, cliente_id')
+
+    hotspotQuery = aplicarEscopo(hotspotQuery, auth)
 
     if (hotspotId) {
       hotspotQuery = hotspotQuery.eq('id', hotspotId)
@@ -261,10 +304,14 @@ export async function buildCommercialReport({
   let clientes = []
 
   if (clienteIds.length > 0) {
-    const { data, error } = await supabaseAdmin
+    let clientesQuery = supabaseAdmin
       .from('clientes')
-      .select('id, nome, nome_empresa')
+      .select('id, empresa_id, nome, nome_empresa')
       .in('id', clienteIds)
+
+    clientesQuery = aplicarEscopo(clientesQuery, auth)
+
+    const { data, error } = await clientesQuery
 
     if (error) throw error
 
@@ -293,6 +340,7 @@ export async function buildCommercialReport({
 
     return {
       id: ad.id,
+      empresa_id: ad.empresa_id || null,
       titulo: ad.titulo || 'Anúncio sem título',
       ativo: Boolean(ad.ativo),
       cliente_id: ad.cliente_id,
@@ -324,6 +372,7 @@ export async function buildCommercialReport({
 
     return {
       id: hotspot.id,
+      empresa_id: hotspot.empresa_id || null,
       nome: hotspot.nome || 'Hotspot',
       status: hotspot.status || '',
       cidade: hotspot.cidade || '',
@@ -351,6 +400,7 @@ export async function buildCommercialReport({
     filtros: {
       clienteId,
       hotspotId,
+      empresaId: auth?.activeEmpresaId || null,
     },
     resumo: {
       totalVisualizacoes,
