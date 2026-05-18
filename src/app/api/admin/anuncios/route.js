@@ -1,28 +1,11 @@
 // src/app/api/admin/anuncios/route.js
 // ============================================================
 // API administrativa segura para a aba Anúncios.
-// Substitui o acesso direto do navegador às tabelas:
-// - anuncios
-// - anuncio_hotspots
-// - anuncio_views
-// - anuncio_clicks
-// - clientes
-// - hotspots
-//
-// Agora:
-// Dashboard → API admin → valida admin → valida permissão → service_role → Supabase
-//
-// Permissões aplicadas:
-// - GET anúncios: anuncios.view
-// - Criar anúncio: anuncios.create
-// - Editar anúncio: anuncios.update
-// - Excluir anúncio: anuncios.delete
-// - Ativar anúncio: anuncios.activate
-// - Pausar anúncio: anuncios.pause
-//
-// Auditoria:
-// - Registra criação, edição, ativação, pausa e exclusão de anúncios.
-// - Registra alterações de vínculos com hotspots.
+// Sprint 5 Multiempresa:
+// - Lista clientes/hotspots/anúncios por empresa
+// - Cria anúncio vinculado à empresa ativa
+// - Valida cliente e hotspots dentro do escopo permitido
+// - Métricas e ações respeitam empresa_id
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -45,6 +28,13 @@ function sanitizeBusca(value = '') {
     .replace(/\s+/g, ' ')
 }
 
+function sanitizeUuid(value = '') {
+  const clean = limparTexto(value)
+  if (!clean) return null
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+  return uuidRegex.test(clean) ? clean : null
+}
+
 function permissaoNegada(modulo, acao) {
   return NextResponse.json(
     {
@@ -55,10 +45,31 @@ function permissaoNegada(modulo, acao) {
   )
 }
 
-function sanitizarAnuncioPayload(anuncio = {}) {
+function resolveEmpresaIdForWrite(auth, providedEmpresaId = '') {
+  const provided = sanitizeUuid(providedEmpresaId)
+
+  if (auth.isMaster) {
+    return provided || auth.activeEmpresaId || null
+  }
+
+  if (provided && !auth.allowedEmpresaIds?.includes(provided)) {
+    throw new Error('Você não tem acesso a esta empresa.')
+  }
+
+  const empresaId = provided || auth.activeEmpresaId || auth.allowedEmpresaIds?.[0] || null
+
+  if (!empresaId) {
+    throw new Error('Nenhuma empresa vinculada ao usuário para criar/editar anúncio.')
+  }
+
+  return empresaId
+}
+
+function sanitizarAnuncioPayload(anuncio = {}, empresaId = null) {
   const duracao = Number(anuncio.duracao_segundos || 15)
 
   return {
+    empresa_id: empresaId,
     titulo: limparTexto(anuncio.titulo),
     descricao: limparTexto(anuncio.descricao),
     media_url: limparTexto(anuncio.media_url),
@@ -89,21 +100,24 @@ function validarAnuncio(payload, hotspotIds = []) {
   return ''
 }
 
-async function buscarMetricasDoAnuncio(anuncioId) {
+async function buscarMetricasDoAnuncio(anuncioId, auth) {
+  let viewsQuery = supabaseAdmin
+    .from('anuncio_views')
+    .select('*', { count: 'exact', head: true })
+    .eq('anuncio_id', anuncioId)
+
+  let clicksQuery = supabaseAdmin
+    .from('anuncio_clicks')
+    .select('*', { count: 'exact', head: true })
+    .eq('anuncio_id', anuncioId)
+
+  viewsQuery = auth.applyEmpresaScope(viewsQuery)
+  clicksQuery = auth.applyEmpresaScope(clicksQuery)
+
   const [
     { count: viewsCount, error: viewsError },
     { count: clicksCount, error: clicksError },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from('anuncio_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('anuncio_id', anuncioId),
-
-    supabaseAdmin
-      .from('anuncio_clicks')
-      .select('*', { count: 'exact', head: true })
-      .eq('anuncio_id', anuncioId),
-  ])
+  ] = await Promise.all([viewsQuery, clicksQuery])
 
   if (viewsError) throw viewsError
   if (clicksError) throw clicksError
@@ -114,11 +128,12 @@ async function buscarMetricasDoAnuncio(anuncioId) {
   }
 }
 
-async function buscarAnuncioBasico(anuncioId) {
-  const { data, error } = await supabaseAdmin
+async function buscarAnuncioBasico(anuncioId, auth) {
+  let query = supabaseAdmin
     .from('anuncios')
     .select(`
       id,
+      empresa_id,
       titulo,
       descricao,
       media_url,
@@ -132,7 +147,10 @@ async function buscarAnuncioBasico(anuncioId) {
       created_at
     `)
     .eq('id', anuncioId)
-    .maybeSingle()
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query.maybeSingle()
 
   if (error) throw error
 
@@ -152,21 +170,24 @@ async function buscarHotspotIdsDoAnuncio(anuncioId) {
     .filter(Boolean)
 }
 
-async function contarEventosDoAnuncio(anuncioId) {
+async function contarEventosDoAnuncio(anuncioId, auth) {
+  let viewsQuery = supabaseAdmin
+    .from('anuncio_views')
+    .select('*', { count: 'exact', head: true })
+    .eq('anuncio_id', anuncioId)
+
+  let clicksQuery = supabaseAdmin
+    .from('anuncio_clicks')
+    .select('*', { count: 'exact', head: true })
+    .eq('anuncio_id', anuncioId)
+
+  viewsQuery = auth.applyEmpresaScope(viewsQuery)
+  clicksQuery = auth.applyEmpresaScope(clicksQuery)
+
   const [
     { count: viewsCount, error: viewsError },
     { count: clicksCount, error: clicksError },
-  ] = await Promise.all([
-    supabaseAdmin
-      .from('anuncio_views')
-      .select('*', { count: 'exact', head: true })
-      .eq('anuncio_id', anuncioId),
-
-    supabaseAdmin
-      .from('anuncio_clicks')
-      .select('*', { count: 'exact', head: true })
-      .eq('anuncio_id', anuncioId),
-  ])
+  ] = await Promise.all([viewsQuery, clicksQuery])
 
   if (viewsError) throw viewsError
   if (clicksError) throw clicksError
@@ -175,6 +196,55 @@ async function contarEventosDoAnuncio(anuncioId) {
     views_removidas: viewsCount || 0,
     clicks_removidos: clicksCount || 0,
   }
+}
+
+async function validarClienteNoEscopo(clienteId, empresaId, auth) {
+  let query = supabaseAdmin
+    .from('clientes')
+    .select('id, empresa_id')
+    .eq('id', clienteId)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query.maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error('Cliente não encontrado ou fora do escopo da empresa.')
+
+  if (empresaId && data.empresa_id && data.empresa_id !== empresaId) {
+    throw new Error('Cliente selecionado pertence a outra empresa.')
+  }
+
+  return data
+}
+
+async function validarHotspotsNoEscopo(hotspotIds, empresaId, auth) {
+  if (!hotspotIds.length) return []
+
+  let query = supabaseAdmin
+    .from('hotspots')
+    .select('id, empresa_id')
+    .in('id', hotspotIds)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query
+
+  if (error) throw error
+
+  const encontrados = data || []
+  const idsEncontrados = new Set(encontrados.map((item) => item.id))
+  const faltando = hotspotIds.filter((id) => !idsEncontrados.has(id))
+
+  if (faltando.length > 0) {
+    throw new Error('Um ou mais hotspots não existem ou estão fora do escopo da empresa.')
+  }
+
+  if (empresaId && encontrados.some((item) => item.empresa_id && item.empresa_id !== empresaId)) {
+    throw new Error('Um ou mais hotspots pertencem a outra empresa.')
+  }
+
+  return encontrados
 }
 
 export async function GET(request) {
@@ -198,18 +268,26 @@ export async function GET(request) {
     const filterEstado = searchParams.get('filterEstado') || ''
     const filterCidade = searchParams.get('filterCidade') || ''
 
-    const { data: clientes, error: clientesError } = await supabaseAdmin
+    let clientesQuery = supabaseAdmin
       .from('clientes')
-      .select('id, nome, estado, cidade')
+      .select('id, empresa_id, nome, estado, cidade')
       .order('nome', { ascending: true })
+
+    clientesQuery = auth.applyEmpresaScope(clientesQuery)
+
+    const { data: clientes, error: clientesError } = await clientesQuery
 
     if (clientesError) throw clientesError
 
-    const { data: hotspotsData, error: hotspotsError } = await supabaseAdmin
+    let hotspotsQuery = supabaseAdmin
       .from('hotspots')
-      .select('id, nome, status, cliente_id, estado, cidade')
+      .select('id, empresa_id, nome, status, cliente_id, estado, cidade')
       .eq('status', 'Ativo')
       .order('nome', { ascending: true })
+
+    hotspotsQuery = auth.applyEmpresaScope(hotspotsQuery)
+
+    const { data: hotspotsData, error: hotspotsError } = await hotspotsQuery
 
     if (hotspotsError) throw hotspotsError
 
@@ -225,6 +303,8 @@ export async function GET(request) {
     let anuncioIdsFiltradosPorHotspot = null
 
     if (filterHotspotId) {
+      await validarHotspotsNoEscopo([filterHotspotId], auth.activeEmpresaId, auth)
+
       const { data: vinculos, error: vinculosError } = await supabaseAdmin
         .from('anuncio_hotspots')
         .select('anuncio_id')
@@ -242,6 +322,7 @@ export async function GET(request) {
           clientes: clientes || [],
           hotspots,
           anuncios: [],
+          empresaScope: auth.empresaScope,
           permissions: auth.permissions?.anuncios || {},
         })
       }
@@ -251,6 +332,7 @@ export async function GET(request) {
       .from('anuncios')
       .select(`
         id,
+        empresa_id,
         titulo,
         descricao,
         media_url,
@@ -269,6 +351,8 @@ export async function GET(request) {
         )
       `)
       .order('created_at', { ascending: false })
+
+    query = auth.applyEmpresaScope(query)
 
     if (filterStatus === 'ativo') {
       query = query.eq('ativo', true)
@@ -311,7 +395,7 @@ export async function GET(request) {
         .map((ah) => ah.hotspots?.nome)
         .filter(Boolean)
 
-      const metricas = await buscarMetricasDoAnuncio(anuncio.id)
+      const metricas = await buscarMetricasDoAnuncio(anuncio.id, auth)
 
       return {
         ...anuncio,
@@ -327,6 +411,7 @@ export async function GET(request) {
       clientes: clientes || [],
       hotspots,
       anuncios,
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.anuncios || {},
     })
   } catch (error) {
@@ -367,13 +452,20 @@ export async function POST(request) {
         )
       }
 
-      const anuncioAntes = await buscarAnuncioBasico(id)
+      const anuncioAntes = await buscarAnuncioBasico(id, auth)
+
+      if (!anuncioAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Anúncio não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
 
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .update({ ativo })
         .eq('id', id)
-        .select('id, titulo, ativo, cliente_id, tipo_media')
+        .select('id, empresa_id, titulo, ativo, cliente_id, tipo_media')
         .single()
 
       if (error) throw error
@@ -386,6 +478,7 @@ export async function POST(request) {
         entityId: data.id,
         description: ativo ? 'Ativou um anúncio' : 'Pausou um anúncio',
         metadata: {
+          empresa_id: data.empresa_id || anuncioAntes?.empresa_id || '',
           anuncio_id: data.id,
           titulo: data.titulo || anuncioAntes?.titulo || '',
           cliente_id: data.cliente_id || anuncioAntes?.cliente_id || null,
@@ -416,9 +509,17 @@ export async function POST(request) {
         )
       }
 
-      const anuncioAntes = await buscarAnuncioBasico(id)
+      const anuncioAntes = await buscarAnuncioBasico(id, auth)
+
+      if (!anuncioAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Anúncio não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
+
       const hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(id)
-      const eventosAntes = await contarEventosDoAnuncio(id)
+      const eventosAntes = await contarEventosDoAnuncio(id, auth)
 
       const { error: linksDeleteError } = await supabaseAdmin
         .from('anuncio_hotspots')
@@ -427,18 +528,23 @@ export async function POST(request) {
 
       if (linksDeleteError) throw linksDeleteError
 
-      const { error: viewsDeleteError } = await supabaseAdmin
+      let viewsDeleteQuery = supabaseAdmin
         .from('anuncio_views')
         .delete()
         .eq('anuncio_id', id)
 
-      if (viewsDeleteError) throw viewsDeleteError
-
-      const { error: clicksDeleteError } = await supabaseAdmin
+      let clicksDeleteQuery = supabaseAdmin
         .from('anuncio_clicks')
         .delete()
         .eq('anuncio_id', id)
 
+      viewsDeleteQuery = auth.applyEmpresaScope(viewsDeleteQuery)
+      clicksDeleteQuery = auth.applyEmpresaScope(clicksDeleteQuery)
+
+      const { error: viewsDeleteError } = await viewsDeleteQuery
+      if (viewsDeleteError) throw viewsDeleteError
+
+      const { error: clicksDeleteError } = await clicksDeleteQuery
       if (clicksDeleteError) throw clicksDeleteError
 
       const { error } = await supabaseAdmin
@@ -456,6 +562,7 @@ export async function POST(request) {
         entityId: id,
         description: 'Excluiu um anúncio',
         metadata: {
+          empresa_id: anuncioAntes?.empresa_id || '',
           anuncio_id: id,
           titulo: anuncioAntes?.titulo || '',
           cliente_id: anuncioAntes?.cliente_id || null,
@@ -474,7 +581,8 @@ export async function POST(request) {
       })
     }
 
-    const payload = sanitizarAnuncioPayload(body.anuncio || {})
+    const empresaId = resolveEmpresaIdForWrite(auth, body.anuncio?.empresa_id)
+    const payload = sanitizarAnuncioPayload(body.anuncio || {}, empresaId)
     const hotspotIds = Array.isArray(body.hotspotIds)
       ? body.hotspotIds.map((id) => String(id)).filter(Boolean)
       : []
@@ -487,6 +595,9 @@ export async function POST(request) {
         { status: 400 }
       )
     }
+
+    await validarClienteNoEscopo(payload.cliente_id, empresaId, auth)
+    await validarHotspotsNoEscopo(hotspotIds, empresaId, auth)
 
     let anuncioId = null
     let anuncioAntes = null
@@ -506,7 +617,15 @@ export async function POST(request) {
         )
       }
 
-      anuncioAntes = await buscarAnuncioBasico(anuncioId)
+      anuncioAntes = await buscarAnuncioBasico(anuncioId, auth)
+
+      if (!anuncioAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Anúncio não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
+
       hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(anuncioId)
 
       const { data, error } = await supabaseAdmin
@@ -558,7 +677,7 @@ export async function POST(request) {
       if (linksError) throw linksError
     }
 
-    const anuncioAtual = await buscarAnuncioBasico(anuncioId)
+    const anuncioAtual = await buscarAnuncioBasico(anuncioId, auth)
 
     await logAdminAction({
       request,
@@ -568,6 +687,7 @@ export async function POST(request) {
       entityId: anuncioId,
       description: action === 'update' ? 'Atualizou um anúncio' : 'Criou um novo anúncio',
       metadata: {
+        empresa_id: anuncioAtual?.empresa_id || payload.empresa_id || '',
         anuncio_id: anuncioId,
         titulo_anterior: anuncioAntes?.titulo || null,
         titulo_atual: anuncioAtual?.titulo || payload.titulo,
