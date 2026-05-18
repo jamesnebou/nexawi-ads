@@ -18,14 +18,23 @@ export default function LocationSelector() {
   // 2. Busca as Cidades sempre que o usuário escolhe um Estado
   useEffect(() => {
     if (!estadoSelecionado) {
-      setCidades([]); // Limpa as cidades se nenhum estado estiver selecionado
       return;
     }
 
+    let ativo = true;
+
     fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoSelecionado}/municipios`)
       .then((resposta) => resposta.json())
-      .then((dados) => setCidades(dados));
+      .then((dados) => {
+        if (ativo) setCidades(dados);
+      });
+
+    return () => {
+      ativo = false;
+    };
   }, [estadoSelecionado]);
+
+  const cidadesDisponiveis = estadoSelecionado ? cidades : [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "15px", maxWidth: "300px" }}>
@@ -66,7 +75,7 @@ export default function LocationSelector() {
 
         {/* A mágica do filtro por digitação acontece aqui */}
         <datalist id="lista-cidades">
-          {cidades.map((cidade) => (
+          {cidadesDisponiveis.map((cidade) => (
             <option key={cidade.id} value={cidade.nome} />
           ))}
         </datalist>

@@ -46,6 +46,7 @@ export async function sendEmail({
   subject,
   text = '',
   html = '',
+  attachments = [],
 }) {
   try {
     const transporter = getTransporter()
@@ -68,6 +69,7 @@ export async function sendEmail({
       subject,
       text,
       html,
+      attachments,
     })
 
     return {

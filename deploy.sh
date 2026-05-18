@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
-set -e
+set -euo pipefail
 
-cd /srv/nexawi/control-api
+APP_DIR="/srv/nexawi/control-api"
+PM2_USER="nexawiadmin"
+PM2_APP="nexawi-control"
+
+cd "$APP_DIR"
 
 wait_for_url() {
   local url="$1"
@@ -13,11 +17,11 @@ wait_for_url() {
 
   until curl -fsS "$url" >/dev/null; do
     if [ "$attempt" -ge "$max_attempts" ]; then
-      echo "ERRO: ${label} não respondeu após ${max_attempts} tentativas."
+      echo "ERRO: ${label} nao respondeu apos ${max_attempts} tentativas."
       echo "==> Status PM2"
-      su - nexawiadmin -c 'pm2 list'
-      echo "==> Últimos logs"
-      su - nexawiadmin -c 'pm2 logs nexawi-control --lines 80 --nostream'
+      su - "$PM2_USER" -c 'pm2 list'
+      echo "==> Ultimos logs"
+      su - "$PM2_USER" -c "pm2 logs ${PM2_APP} --lines 80 --nostream"
       exit 1
     fi
 
@@ -29,13 +33,16 @@ wait_for_url() {
   echo "OK: ${label} respondeu."
 }
 
-echo "==> Conferindo alterações locais"
+echo "==> Conferindo alteracoes locais"
 git status --short
 
-echo "==> Atualizando código do GitHub"
+echo "==> Salvando referencia antes do deploy"
+git rev-parse --short HEAD > .last_deploy_before
+
+echo "==> Atualizando codigo do GitHub"
 git pull origin main
 
-echo "==> Instalando dependências"
+echo "==> Instalando dependencias"
 npm install --include=dev
 
 echo "==> Limpando build antigo"
@@ -44,16 +51,16 @@ rm -rf .next
 echo "==> Gerando build"
 npm run build
 
-echo "==> Ajustando permissões"
-chown -R nexawiadmin:nexawiadmin /srv/nexawi/control-api
+echo "==> Ajustando permissoes"
+chown -R "${PM2_USER}:${PM2_USER}" "$APP_DIR"
 
 echo "==> Reiniciando PM2"
-su - nexawiadmin -c 'pm2 restart nexawi-control --update-env'
+su - "$PM2_USER" -c "pm2 restart ${PM2_APP} --update-env"
 
 echo "==> Status PM2"
-su - nexawiadmin -c 'pm2 list'
+su - "$PM2_USER" -c 'pm2 list'
 
 wait_for_url "http://localhost:3001/api/control/router/health" "Health check local"
 wait_for_url "http://localhost:3001/api/control/router/online" "Online check local"
 
-echo "Deploy concluído com sucesso."
+echo "Deploy concluido com sucesso."

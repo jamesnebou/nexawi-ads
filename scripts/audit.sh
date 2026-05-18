@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
+set -euo pipefail
+
+APP_DIR="/srv/nexawi/control-api"
 
 echo "=================================================="
-echo "NEXAWI ADS - AUDITORIA RÁPIDA"
+echo "NEXAWI ADS - AUDITORIA RAPIDA"
 echo "Data: $(date)"
 echo "=================================================="
 
-cd /srv/nexawi/control-api || exit 1
+cd "$APP_DIR"
 
 echo ""
 echo "== Git =="
@@ -18,22 +21,27 @@ su - nexawiadmin -c 'pm2 list'
 
 echo ""
 echo "== Health Control API =="
-curl -s http://localhost:3001/api/control/router/health | head -c 500
+curl -fsS http://localhost:3001/api/control/router/health | head -c 500
 echo ""
 
 echo ""
 echo "== Online Control API =="
-curl -s http://localhost:3001/api/control/router/online
+curl -fsS http://localhost:3001/api/control/router/online
 echo ""
 
 echo ""
 echo "== Reconcile =="
-/srv/nexawi/control-api/scripts/reconcile.sh
+"$APP_DIR/scripts/reconcile.sh"
 echo ""
 
 echo ""
-echo "== Preset Meta/DoH no código =="
-grep -n "META_PRESET_DOMAINS\|createdAddressListRulesCount\|NEXAWI_BLOCK_DOH" src/lib/routeros-rest.js | head -20
+echo "== Relatorio comercial mensal cron =="
+"$APP_DIR/scripts/monthly-commercial-report.sh" --dry-run
+echo ""
+
+echo ""
+echo "== Presets e policy no codigo =="
+grep -n "META_PRESET_DOMAINS\|createdAddressListRulesCount\|NEXAWI_BLOCK_DOH" src/lib/routeros-rest.js | head -20 || true
 
 echo ""
 echo "== Policy status GET/POST =="
@@ -41,5 +49,5 @@ grep -n "export async function POST\|export async function GET" src/app/api/cont
 
 echo ""
 echo "=================================================="
-echo "Auditoria concluída."
+echo "Auditoria concluida."
 echo "=================================================="

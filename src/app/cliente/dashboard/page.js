@@ -9,6 +9,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
 import {
@@ -459,13 +460,13 @@ export default function ClientDashboardPage() {
               </button>
 
               {/* TOP_CLIENT_LEADS_BUTTON */}
-              <a
+              <Link
                 href="/cliente/leads"
                 className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15"
               >
                 <Users size={17} />
                 Ver leads
-              </a>
+              </Link>
 
               
 
@@ -1479,12 +1480,12 @@ function RecentLeads({ leads }) {
           </p>
         </div>
 
-        <a
+        <Link
           href="/cliente/leads"
           className="inline-flex items-center justify-center rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-extrabold text-white hover:bg-white/[0.06] transition-colors"
         >
           Ver todos os leads
-        </a>
+        </Link>
       </div>
 
       {leads.length === 0 ? (

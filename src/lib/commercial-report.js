@@ -1,28 +1,38 @@
 import { supabaseAdmin } from '@/lib/supabase-admin'
 
-function getDataInicio(periodo = 'ultimos_30') {
+function getPeriodoRange(periodo = 'ultimos_30') {
   const agora = new Date()
 
   if (periodo === 'hoje') {
     agora.setHours(0, 0, 0, 0)
-    return agora.toISOString()
+    return { inicio: agora.toISOString(), fim: null }
   }
 
   if (periodo === 'ultimos_7') {
     agora.setDate(agora.getDate() - 7)
-    return agora.toISOString()
+    return { inicio: agora.toISOString(), fim: null }
   }
 
   if (periodo === 'ultimos_30') {
     agora.setDate(agora.getDate() - 30)
-    return agora.toISOString()
+    return { inicio: agora.toISOString(), fim: null }
   }
 
   if (periodo === 'mes_atual') {
-    return new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString()
+    return {
+      inicio: new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString(),
+      fim: null,
+    }
   }
 
-  return null
+  if (periodo === 'mes_anterior') {
+    return {
+      inicio: new Date(agora.getFullYear(), agora.getMonth() - 1, 1).toISOString(),
+      fim: new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString(),
+    }
+  }
+
+  return { inicio: null, fim: null }
 }
 
 function aplicarEscopo(query, auth) {
@@ -51,7 +61,7 @@ function uniqueCount(rows = [], keyName = 'ip_address') {
 async function buscarEventos({ tabela, anuncioIds, periodo, auth, extras = [] }) {
   if (!anuncioIds.length) return []
 
-  const dataInicio = getDataInicio(periodo)
+  const range = getPeriodoRange(periodo)
   const colunasDeData = ['timestamp', 'created_at']
   let ultimoErro = null
 
@@ -73,8 +83,12 @@ async function buscarEventos({ tabela, anuncioIds, periodo, auth, extras = [] })
 
     query = aplicarEscopo(query, auth)
 
-    if (dataInicio) {
-      query = query.gte(colunaData, dataInicio)
+    if (range.inicio) {
+      query = query.gte(colunaData, range.inicio)
+    }
+
+    if (range.fim) {
+      query = query.lt(colunaData, range.fim)
     }
 
     const { data, error } = await query
@@ -90,7 +104,7 @@ async function buscarEventos({ tabela, anuncioIds, periodo, auth, extras = [] })
 async function buscarLeads({ anuncioIds, periodo, auth }) {
   if (!anuncioIds.length) return []
 
-  const dataInicio = getDataInicio(periodo)
+  const range = getPeriodoRange(periodo)
 
   let query = supabaseAdmin
     .from('leads')
@@ -99,8 +113,12 @@ async function buscarLeads({ anuncioIds, periodo, auth }) {
 
   query = aplicarEscopo(query, auth)
 
-  if (dataInicio) {
-    query = query.gte('created_at', dataInicio)
+  if (range.inicio) {
+    query = query.gte('created_at', range.inicio)
+  }
+
+  if (range.fim) {
+    query = query.lt('created_at', range.fim)
   }
 
   const { data, error } = await query

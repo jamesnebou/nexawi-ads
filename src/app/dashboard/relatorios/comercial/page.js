@@ -20,7 +20,7 @@ import {
   CalendarDays,
   Download,
   Printer,
-  FileText,
+  Mail,
   Lock,
   Activity,
   MapPin,
@@ -88,11 +88,6 @@ function formatDate(value) {
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
-function csvCell(value) {
-  const text = String(value ?? '')
-  return `"${text.replace(/"/g, '""')}"`
-}
-
 function extractArray(data, keys = []) {
   if (Array.isArray(data)) return data
 
@@ -122,6 +117,7 @@ export default function RelatorioComercialAdmin() {
   const [hotspots, setHotspots] = useState([])
   const [carregando, setCarregando] = useState(true)
   const [carregandoFiltros, setCarregandoFiltros] = useState(true)
+  const [enviandoEmail, setEnviandoEmail] = useState(false)
 
   const resumo = report?.resumo || {}
   const rankings = report?.rankings || {}
@@ -208,65 +204,109 @@ export default function RelatorioComercialAdmin() {
     window.print()
   }
 
-  function exportarCSV() {
+  async function exportarCSV() {
     if (!canExport) {
       toast.error('Você não tem permissão para exportar relatórios.')
       return
     }
 
-    const linhas = [
-      [
-        'Tipo',
-        'Nome',
-        'Cliente/Cidade',
-        'Visualizações',
-        'Cliques',
-        'Leads',
-        'Usuários únicos',
-        'CTR (%)',
-      ],
-      ...rankingAnuncios.map((item) => [
-        'Anúncio',
-        item.titulo || '',
-        item.cliente_nome || '',
-        item.visualizacoes || 0,
-        item.cliques || 0,
-        item.leads || 0,
-        item.usuarios_unicos || 0,
-        item.ctr || 0,
-      ]),
-      ...rankingHotspots.map((item) => [
-        'Hotspot',
-        item.nome || '',
-        item.cidade || item.cliente_nome || '',
-        item.visualizacoes || 0,
-        item.cliques || 0,
-        item.leads || 0,
-        item.usuarios_unicos || 0,
-        item.ctr || 0,
-      ]),
-    ]
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
-    const csvContent = '\uFEFF' + linhas
-      .map((linha) => linha.map(csvCell).join(';'))
-      .join('\n')
+      if (sessionError || !sessionData?.session?.access_token) {
+        throw new Error('Sessao administrativa nao encontrada. Faca login novamente.')
+      }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
+      const params = new URLSearchParams()
+      params.set('periodo', periodo)
+      params.set('format', 'csv')
 
-    const periodoLabel = periodos.find((item) => item.value === periodo)?.label || periodo
+      if (clienteId) params.set('clienteId', clienteId)
+      if (hotspotId) params.set('hotspotId', hotspotId)
 
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute(
-      'download',
-      `relatorio_comercial_${periodoLabel.replace(/\s+/g, '_').toLowerCase()}_${clienteSelecionado ? getClienteLabel(clienteSelecionado).replace(/\s+/g, '_').toLowerCase() + '_' : ''}${hotspotSelecionado ? getHotspotLabel(hotspotSelecionado).replace(/\s+/g, '_').toLowerCase() + '_' : ''}${new Date().toISOString().slice(0, 10)}.csv`
-    )
+      const response = await fetch(`/api/admin/relatorios/comercial?${params.toString()}`, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        cache: 'no-store',
+      })
 
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error || 'Erro ao exportar relatorio comercial.')
+      }
+
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const disposition = response.headers.get('content-disposition') || ''
+      const match = disposition.match(/filename="([^"]+)"/)
+      const filename = match?.[1] || `relatorio_comercial_${new Date().toISOString().slice(0, 10)}.csv`
+
+      const link = document.createElement('a')
+      link.setAttribute('href', url)
+      link.setAttribute('download', filename)
+
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      return
+    } catch (error) {
+      console.error('Erro ao exportar relatorio comercial:', error)
+      toast.error(error.message || 'Erro ao exportar relatorio comercial.')
+      return
+    }
+
+  }
+
+  async function enviarRelatorioEmail() {
+    if (!canExport) {
+      toast.error('Voce nao tem permissao para enviar relatorios.')
+      return
+    }
+
+    if (!report) {
+      toast.error('Carregue o relatorio antes de enviar por e-mail.')
+      return
+    }
+
+    setEnviandoEmail(true)
+
+    try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+      if (sessionError || !sessionData?.session?.access_token) {
+        throw new Error('Sessao administrativa nao encontrada. Faca login novamente.')
+      }
+
+      const response = await fetch('/api/admin/relatorios/comercial/email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${sessionData.session.access_token}`,
+        },
+        cache: 'no-store',
+        body: JSON.stringify({
+          periodo,
+          clienteId,
+          hotspotId,
+        }),
+      })
+
+      const data = await response.json().catch(() => null)
+
+      if (!response.ok) {
+        throw new Error(data?.error || 'Erro ao enviar relatorio comercial por e-mail.')
+      }
+
+      toast.success('Relatorio enviado por e-mail.')
+    } catch (error) {
+      console.error('Erro ao enviar relatorio comercial por e-mail:', error)
+      toast.error(error.message || 'Erro ao enviar relatorio comercial por e-mail.')
+    } finally {
+      setEnviandoEmail(false)
+    }
   }
 
   const cards = [
@@ -391,6 +431,21 @@ export default function RelatorioComercialAdmin() {
               >
                 <Download size={17} />
                 Exportar
+              </button>
+            )}
+
+            {canExport && (
+              <button
+                onClick={enviarRelatorioEmail}
+                disabled={!report || enviandoEmail}
+                className="bg-white/[0.02] hover:bg-white/[0.05] disabled:opacity-50 disabled:cursor-not-allowed border border-white/[0.05] hover:border-white/[0.1] text-white font-bold py-3.5 px-5 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-inner"
+              >
+                {enviandoEmail ? (
+                  <RefreshCw size={17} className="animate-spin" />
+                ) : (
+                  <Mail size={17} />
+                )}
+                Enviar e-mail
               </button>
             )}
 

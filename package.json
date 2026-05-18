@@ -7,7 +7,7 @@
     "radius": "node src/app/api/radius-server.mjs",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
