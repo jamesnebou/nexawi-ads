@@ -1,17 +1,10 @@
 // src/app/api/admin/relatorios/acesso/route.js
 // ============================================================
 // API administrativa segura para Relatório de Acesso.
-//
-// Métricas:
-// - Visualizações por hotspot
-// - Cliques por hotspot
-// - Links copiados
-// - Tentativas de abrir CTA
-// - Taxa de clique aproximada
-//
-// Importante:
-// - Eventos novos usam hotspot_id real em anuncio_views/anuncio_clicks.
-// - Eventos antigos sem hotspot_id usam fallback pelo vínculo anuncio_hotspots.
+// Sprint 5 Multiempresa:
+// - Filtra hotspots, clientes e eventos por empresa
+// - Mantém fallback histórico por vínculo anuncio_hotspots
+// - Eventos novos usam empresa_id + hotspot_id real
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -61,7 +54,7 @@ function calcularTaxa(cliques, views) {
   return Number(((cliques / views) * 100).toFixed(2))
 }
 
-async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }) {
+async function buscarEventosComData({ tabela, anuncioIds, periodo, auth, extras = '' }) {
   const dataInicio = getDataInicio(periodo)
 
   if (!anuncioIds || anuncioIds.length === 0) {
@@ -74,6 +67,7 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
   for (const colunaData of colunasDeData) {
     const selectColumns = [
       'id',
+      'empresa_id',
       'anuncio_id',
       'hotspot_id',
       'ip_address',
@@ -87,6 +81,8 @@ async function buscarEventosComData({ tabela, anuncioIds, periodo, extras = '' }
       .from(tabela)
       .select(selectColumns)
       .in('anuncio_id', anuncioIds)
+
+    query = auth.applyEmpresaScope(query)
 
     if (dataInicio) {
       query = query.gte(colunaData, dataInicio)
@@ -130,28 +126,42 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const periodo = searchParams.get('periodo') || 'ultimos_30'
 
+    let hotspotsQuery = supabaseAdmin
+      .from('hotspots')
+      .select('id, empresa_id, nome, cliente_id, status, cidade')
+      .order('nome', { ascending: true })
+
+    let clientesQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id, nome')
+
+    hotspotsQuery = auth.applyEmpresaScope(hotspotsQuery)
+    clientesQuery = auth.applyEmpresaScope(clientesQuery)
+
     const [
       { data: hotspots, error: hotspotsError },
       { data: clientes, error: clientesError },
-      { data: vinculos, error: vinculosError },
     ] = await Promise.all([
-      supabaseAdmin
-        .from('hotspots')
-        .select('id, nome, cliente_id, status, cidade')
-        .order('nome', { ascending: true }),
-
-      supabaseAdmin
-        .from('clientes')
-        .select('id, nome'),
-
-      supabaseAdmin
-        .from('anuncio_hotspots')
-        .select('anuncio_id, hotspot_id'),
+      hotspotsQuery,
+      clientesQuery,
     ])
 
     if (hotspotsError) throw hotspotsError
     if (clientesError) throw clientesError
-    if (vinculosError) throw vinculosError
+
+    const hotspotIds = (hotspots || []).map((hotspot) => hotspot.id)
+
+    let vinculos = []
+
+    if (hotspotIds.length > 0) {
+      const { data: vinculosData, error: vinculosError } = await supabaseAdmin
+        .from('anuncio_hotspots')
+        .select('anuncio_id, hotspot_id')
+        .in('hotspot_id', hotspotIds)
+
+      if (vinculosError) throw vinculosError
+      vinculos = vinculosData || []
+    }
 
     const anuncioIds = [
       ...new Set((vinculos || []).map((v) => v.anuncio_id).filter(Boolean)),
@@ -162,12 +172,14 @@ export async function GET(request) {
         tabela: 'anuncio_views',
         anuncioIds,
         periodo,
+        auth,
       }),
 
       buscarEventosComData({
         tabela: 'anuncio_clicks',
         anuncioIds,
         periodo,
+        auth,
         extras: 'tipo_acao',
       }),
     ])
@@ -212,6 +224,7 @@ export async function GET(request) {
       const cliente = clientePorId.get(hotspot.cliente_id)
 
       return {
+        empresa_id: hotspot.empresa_id || null,
         hotspot_id: hotspot.id,
         hotspot_nome: hotspot.nome || 'Sem nome',
         cliente_nome: cliente?.nome || '',
@@ -222,7 +235,6 @@ export async function GET(request) {
         total_links_copiados: uniqueCount(copiasDoHotspot),
         total_tentativas_abrir: uniqueCount(aberturasDoHotspot),
         taxa_clique: taxaClique,
-
         views_com_hotspot_real: viewsComHotspotReal,
         clicks_com_hotspot_real: clicksComHotspotReal,
         usa_fallback_historico:
@@ -255,6 +267,7 @@ export async function GET(request) {
       periodo,
       resumo,
       relatorio: relatorioOrdenado,
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.relatorios || {},
     })
   } catch (error) {

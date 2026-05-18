@@ -25,10 +25,12 @@ export async function GET(request) {
       periodo,
       clienteId,
       hotspotId,
+      auth,
     })
 
     return NextResponse.json({
       ...report,
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.relatorios || {},
     })
   } catch (error) {

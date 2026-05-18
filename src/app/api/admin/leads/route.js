@@ -1,15 +1,10 @@
 // src/app/api/admin/leads/route.js
 // ============================================================
 // API administrativa segura para a aba Leads.
-// Substitui o acesso direto do navegador às tabelas:
-// - leads
-// - hotspots
-// - anuncios
-//
-// Permissões aplicadas:
-// - GET leads: leads.view
-// - Excluir lead: leads.delete
-// - Exportar leads: leads.export fica no front, porque o CSV é gerado no navegador
+// Sprint 5 Multiempresa:
+// - Lista leads por empresa
+// - Lista filtros de hotspots/anúncios por empresa
+// - Exclui lead somente dentro do escopo permitido
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -57,6 +52,7 @@ export async function GET(request) {
       .from('leads')
       .select(`
         id,
+        empresa_id,
         nome,
         email,
         telefone,
@@ -69,6 +65,8 @@ export async function GET(request) {
         ip_address
       `)
       .order('created_at', { ascending: false })
+
+    leadsQuery = auth.applyEmpresaScope(leadsQuery)
 
     if (filtroHotspot !== 'Todos') {
       leadsQuery = leadsQuery.eq('hotspot_id', filtroHotspot)
@@ -88,14 +86,27 @@ export async function GET(request) {
       )
     }
 
+    let hotspotsQuery = supabaseAdmin
+      .from('hotspots')
+      .select('id, empresa_id, nome')
+      .order('nome')
+
+    let anunciosQuery = supabaseAdmin
+      .from('anuncios')
+      .select('id, empresa_id, titulo')
+      .order('titulo')
+
+    hotspotsQuery = auth.applyEmpresaScope(hotspotsQuery)
+    anunciosQuery = auth.applyEmpresaScope(anunciosQuery)
+
     const [
       { data: leadsData, error: leadsError },
       { data: hotspotsData, error: hotspotsError },
       { data: anunciosData, error: anunciosError },
     ] = await Promise.all([
       leadsQuery,
-      supabaseAdmin.from('hotspots').select('id, nome').order('nome'),
-      supabaseAdmin.from('anuncios').select('id, titulo').order('titulo'),
+      hotspotsQuery,
+      anunciosQuery,
     ])
 
     if (leadsError) throw leadsError
@@ -107,6 +118,7 @@ export async function GET(request) {
       leads: leadsData || [],
       hotspots: hotspotsData || [],
       anuncios: anunciosData || [],
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.leads || {},
     })
   } catch (error) {
@@ -145,13 +157,23 @@ export async function POST(request) {
         )
       }
 
-      const { data: leadAntes, error: leadAntesError } = await supabaseAdmin
+      let leadAntesQuery = supabaseAdmin
         .from('leads')
-        .select('id, nome, email, hotspot_id, anuncio_id, aceite_lgpd, created_at')
+        .select('id, empresa_id, nome, email, hotspot_id, anuncio_id, aceite_lgpd, created_at')
         .eq('id', id)
-        .maybeSingle()
+
+      leadAntesQuery = auth.applyEmpresaScope(leadAntesQuery)
+
+      const { data: leadAntes, error: leadAntesError } = await leadAntesQuery.maybeSingle()
 
       if (leadAntesError) throw leadAntesError
+
+      if (!leadAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Lead não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
 
       const { error } = await supabaseAdmin
         .from('leads')
@@ -168,6 +190,7 @@ export async function POST(request) {
         entityId: id,
         description: 'Excluiu um lead capturado',
         metadata: {
+          empresa_id: leadAntes?.empresa_id || '',
           lead_id: id,
           nome: leadAntes?.nome || '',
           email: leadAntes?.email || '',
