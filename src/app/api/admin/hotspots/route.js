@@ -1,14 +1,11 @@
 // src/app/api/admin/hotspots/route.js
 // ============================================================
 // API administrativa segura para a aba Hotspots.
-// Agora a aba Hotspots vira centro operacional:
-//
-// - Lista hotspots
-// - Mostra MikroTik vinculado
-// - Mostra política de rede
-// - Mostra domínios bloqueados/liberados
-// - Mostra sessões online estimadas
-// - Permite criar, editar, excluir e testar MikroTik
+// Sprint 5 Multiempresa:
+// - Lista hotspots por escopo de empresa
+// - Vincula hotspot à empresa ativa
+// - Restringe teste/edição/exclusão ao tenant permitido
+// - Propaga empresa_id para política de rede
 // ============================================================
 
 import { NextResponse } from 'next/server'
@@ -63,6 +60,26 @@ function sanitizeUuid(value = '') {
   return uuidRegex.test(clean) ? clean : null
 }
 
+function resolveEmpresaIdForWrite(auth, providedEmpresaId = '') {
+  const provided = sanitizeUuid(providedEmpresaId)
+
+  if (auth.isMaster) {
+    return provided || auth.activeEmpresaId || null
+  }
+
+  if (provided && !auth.allowedEmpresaIds?.includes(provided)) {
+    throw new Error('Você não tem acesso a esta empresa.')
+  }
+
+  const empresaId = provided || auth.activeEmpresaId || auth.allowedEmpresaIds?.[0] || null
+
+  if (!empresaId) {
+    throw new Error('Nenhuma empresa vinculada ao usuário para criar/editar hotspot.')
+  }
+
+  return empresaId
+}
+
 function sanitizarHotspotPayload(hotspot = {}, { forUpdate = false } = {}) {
   const nome = limparTexto(hotspot.nome)
   const payload = {
@@ -75,8 +92,6 @@ function sanitizarHotspotPayload(hotspot = {}, { forUpdate = false } = {}) {
     router_id: sanitizeUuid(hotspot.router_id || hotspot.routerId),
   }
 
-  // Em criação, gera slug.
-  // Em edição, só altera slug se o payload enviar slug explicitamente.
   if (!forUpdate || hotspot.slug) {
     payload.slug = hotspot.slug ? limparTexto(hotspot.slug) : slugify(nome)
   }
@@ -90,18 +105,40 @@ function validarHotspot(payload) {
   return ''
 }
 
-async function getRouterOptions() {
-  const { data, error } = await supabaseAdmin
+async function getRouterOptions(auth) {
+  let query = supabaseAdmin
     .from('network_routers')
-    .select('id, nome, slug, base_url, username, hotspot_server, status, localizacao')
+    .select('id, empresa_id, nome, slug, base_url, username, hotspot_server, status, localizacao')
     .order('nome', { ascending: true })
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query
 
   if (error) throw error
 
   return data || []
 }
 
-async function ensureNetworkPolicyForHotspot({ hotspotId, routerId }) {
+async function ensureRouterInScope({ auth, routerId }) {
+  if (!routerId) return null
+
+  let query = supabaseAdmin
+    .from('network_routers')
+    .select('id, empresa_id')
+    .eq('id', routerId)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query.maybeSingle()
+
+  if (error) throw error
+  if (!data) throw new Error('MikroTik não encontrado ou fora do escopo da empresa.')
+
+  return data
+}
+
+async function ensureNetworkPolicyForHotspot({ hotspotId, routerId, empresaId }) {
   if (!hotspotId) return null
 
   if (!routerId) {
@@ -109,6 +146,7 @@ async function ensureNetworkPolicyForHotspot({ hotspotId, routerId }) {
       .from('network_policies')
       .update({
         active: false,
+        empresa_id: empresaId || null,
         updated_at: new Date().toISOString(),
       })
       .eq('hotspot_id', hotspotId)
@@ -119,6 +157,7 @@ async function ensureNetworkPolicyForHotspot({ hotspotId, routerId }) {
   const payload = {
     hotspot_id: hotspotId,
     router_id: routerId,
+    empresa_id: empresaId || null,
     hotspot_subnet: '192.168.88.0/24',
     force_dns: true,
     block_quic: true,
@@ -181,25 +220,31 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
   return data
 }
 
-async function resolveHotspotRouterContext(hotspotId) {
-  const { data: hotspot, error: hotspotError } = await supabaseAdmin
+async function resolveHotspotRouterContext(hotspotId, auth) {
+  let hotspotQuery = supabaseAdmin
     .from('hotspots')
-    .select('id, nome, slug, status, router_id')
+    .select('id, empresa_id, nome, slug, status, router_id')
     .eq('id', hotspotId)
-    .maybeSingle()
+
+  hotspotQuery = auth.applyEmpresaScope(hotspotQuery)
+
+  const { data: hotspot, error: hotspotError } = await hotspotQuery.maybeSingle()
 
   if (hotspotError) throw hotspotError
-  if (!hotspot) throw new Error('Hotspot não encontrado')
+  if (!hotspot) throw new Error('Hotspot não encontrado ou fora do escopo da empresa.')
   if (!hotspot.router_id) throw new Error('Este hotspot ainda não tem MikroTik vinculado')
 
-  const { data: router, error: routerError } = await supabaseAdmin
+  let routerQuery = supabaseAdmin
     .from('network_routers')
     .select('*')
     .eq('id', hotspot.router_id)
-    .maybeSingle()
+
+  routerQuery = auth.applyEmpresaScope(routerQuery)
+
+  const { data: router, error: routerError } = await routerQuery.maybeSingle()
 
   if (routerError) throw routerError
-  if (!router) throw new Error('MikroTik vinculado não encontrado')
+  if (!router) throw new Error('MikroTik vinculado não encontrado ou fora do escopo da empresa.')
 
   return {
     hotspot,
@@ -231,8 +276,10 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('hotspots')
-      .select('id, nome, slug, estado, cidade, endereco, parceiro, status, router_id, created_at, updated_at')
+      .select('id, empresa_id, nome, slug, estado, cidade, endereco, parceiro, status, router_id, created_at, updated_at')
       .order('created_at', { ascending: false })
+
+    query = auth.applyEmpresaScope(query)
 
     if (status !== 'Todos') {
       query = query.eq('status', status)
@@ -250,19 +297,22 @@ export async function GET(request) {
 
     const hotspotList = hotspots || []
     const hotspotIds = hotspotList.map((h) => h.id)
-    const routerIds = [...new Set(hotspotList.map((h) => h.router_id).filter(Boolean))]
 
-    const routers = await getRouterOptions()
+    const routers = await getRouterOptions(auth)
 
     const routersById = new Map(routers.map((router) => [router.id, router]))
 
     let policies = []
 
     if (hotspotIds.length > 0) {
-      const { data: policyData, error: policyError } = await supabaseAdmin
+      let policyQuery = supabaseAdmin
         .from('network_policies')
         .select('*')
         .in('hotspot_id', hotspotIds)
+
+      policyQuery = auth.applyEmpresaScope(policyQuery)
+
+      const { data: policyData, error: policyError } = await policyQuery
 
       if (policyError) throw policyError
       policies = policyData || []
@@ -297,11 +347,15 @@ export async function GET(request) {
     const onlineByHotspotId = new Map()
 
     if (hotspotIds.length > 0) {
-      const { data: sessionsData } = await supabaseAdmin
+      let sessionsQuery = supabaseAdmin
         .from('auth_sessions')
         .select('hotspot_id')
         .in('hotspot_id', hotspotIds)
         .eq('session_state', 'authorized')
+
+      sessionsQuery = auth.applyEmpresaScope(sessionsQuery)
+
+      const { data: sessionsData } = await sessionsQuery
 
       for (const session of sessionsData || []) {
         const current = onlineByHotspotId.get(session.hotspot_id) || 0
@@ -341,6 +395,7 @@ export async function GET(request) {
         router: router
           ? {
               id: router.id,
+              empresa_id: router.empresa_id,
               nome: router.nome,
               slug: router.slug,
               base_url: router.base_url,
@@ -367,6 +422,7 @@ export async function GET(request) {
       ok: true,
       hotspots: items,
       routers,
+      empresaScope: auth.empresaScope,
       permissions: auth.permissions?.hotspots || {},
       totals: {
         hotspots: items.length,
@@ -412,7 +468,7 @@ export async function POST(request) {
         )
       }
 
-      const context = await resolveHotspotRouterContext(id)
+      const context = await resolveHotspotRouterContext(id, auth)
 
       let result = null
 
@@ -441,6 +497,7 @@ export async function POST(request) {
         entityId: context.hotspot.id,
         description: 'Testou conexão do MikroTik vinculado ao hotspot',
         metadata: {
+          empresa_id: context.hotspot.empresa_id || '',
           hotspot_id: context.hotspot.id,
           hotspot_slug: context.hotspot.slug,
           router_id: context.router.id,
@@ -454,6 +511,7 @@ export async function POST(request) {
         hotspot: context.hotspot,
         router: {
           id: context.router.id,
+          empresa_id: context.router.empresa_id,
           nome: context.router.nome,
           slug: context.router.slug,
           base_url: context.router.base_url,
@@ -478,13 +536,23 @@ export async function POST(request) {
         )
       }
 
-      const { data: hotspotAntes, error: hotspotAntesError } = await supabaseAdmin
+      let hotspotAntesQuery = supabaseAdmin
         .from('hotspots')
-        .select('id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
+        .select('id, empresa_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
         .eq('id', id)
-        .maybeSingle()
+
+      hotspotAntesQuery = auth.applyEmpresaScope(hotspotAntesQuery)
+
+      const { data: hotspotAntes, error: hotspotAntesError } = await hotspotAntesQuery.maybeSingle()
 
       if (hotspotAntesError) throw hotspotAntesError
+
+      if (!hotspotAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Hotspot não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
 
       const { error } = await supabaseAdmin
         .from('hotspots')
@@ -501,6 +569,7 @@ export async function POST(request) {
         entityId: id,
         description: 'Excluiu um hotspot',
         metadata: {
+          empresa_id: hotspotAntes?.empresa_id || '',
           hotspot_id: id,
           nome: hotspotAntes?.nome || '',
           slug: hotspotAntes?.slug || '',
@@ -532,7 +601,32 @@ export async function POST(request) {
         )
       }
 
+      let hotspotAntesQuery = supabaseAdmin
+        .from('hotspots')
+        .select('id, empresa_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
+        .eq('id', id)
+
+      hotspotAntesQuery = auth.applyEmpresaScope(hotspotAntesQuery)
+
+      const { data: hotspotAntes, error: hotspotAntesError } = await hotspotAntesQuery.maybeSingle()
+
+      if (hotspotAntesError) throw hotspotAntesError
+
+      if (!hotspotAntes) {
+        return NextResponse.json(
+          { ok: false, error: 'Hotspot não encontrado ou fora do escopo da empresa.' },
+          { status: 404 }
+        )
+      }
+
       const payload = sanitizarHotspotPayload(body.hotspot || {}, { forUpdate: true })
+      const empresaId = resolveEmpresaIdForWrite(auth, body.hotspot?.empresa_id || hotspotAntes.empresa_id)
+      payload.empresa_id = empresaId
+
+      if (payload.router_id) {
+        await ensureRouterInScope({ auth, routerId: payload.router_id })
+      }
+
       const erroValidacao = validarHotspot(payload)
 
       if (erroValidacao) {
@@ -541,14 +635,6 @@ export async function POST(request) {
           { status: 400 }
         )
       }
-
-      const { data: hotspotAntes, error: hotspotAntesError } = await supabaseAdmin
-        .from('hotspots')
-        .select('id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
-        .eq('id', id)
-        .maybeSingle()
-
-      if (hotspotAntesError) throw hotspotAntesError
 
       const { data, error } = await supabaseAdmin
         .from('hotspots')
@@ -562,6 +648,7 @@ export async function POST(request) {
       await ensureNetworkPolicyForHotspot({
         hotspotId: data.id,
         routerId: data.router_id,
+        empresaId: data.empresa_id,
       })
 
       await logAdminAction({
@@ -572,6 +659,7 @@ export async function POST(request) {
         entityId: data.id,
         description: 'Atualizou um hotspot',
         metadata: {
+          empresa_id: data.empresa_id || '',
           hotspot_id: data.id,
           nome_anterior: hotspotAntes?.nome || '',
           nome_atual: data.nome,
@@ -603,6 +691,13 @@ export async function POST(request) {
       }
 
       const payload = sanitizarHotspotPayload(body.hotspot || {}, { forUpdate: false })
+      const empresaId = resolveEmpresaIdForWrite(auth, body.hotspot?.empresa_id)
+      payload.empresa_id = empresaId
+
+      if (payload.router_id) {
+        await ensureRouterInScope({ auth, routerId: payload.router_id })
+      }
+
       const erroValidacao = validarHotspot(payload)
 
       if (erroValidacao) {
@@ -623,6 +718,7 @@ export async function POST(request) {
       await ensureNetworkPolicyForHotspot({
         hotspotId: data.id,
         routerId: data.router_id,
+        empresaId: data.empresa_id,
       })
 
       await logAdminAction({
@@ -633,6 +729,7 @@ export async function POST(request) {
         entityId: data.id,
         description: 'Criou um novo hotspot',
         metadata: {
+          empresa_id: data.empresa_id || '',
           hotspot_id: data.id,
           nome: data.nome,
           slug: data.slug,
