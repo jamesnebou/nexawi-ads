@@ -25,6 +25,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
@@ -255,6 +256,42 @@ function calcularMetricas({ pagamentosTodos, clientes }) {
   }
 }
 
+async function montarAssinaturas(clientes = []) {
+  const relevantes = (clientes || []).filter((cliente) => cliente.plano_id || cliente.empresa_id)
+
+  return Promise.all(
+    relevantes.map(async (cliente) => {
+      const contexto = await getSaasFinanceContext({
+        clienteId: cliente.id,
+        empresaId: cliente.empresa_id || '',
+      })
+
+      return {
+        cliente_id: cliente.id,
+        empresa_id: cliente.empresa_id || null,
+        cliente_nome: cliente.nome || '',
+        empresa_nome: cliente.nome_empresa || cliente.empresas?.nome_empresa || '',
+        status_cliente: cliente.status || '',
+        plano: contexto.plano
+          ? {
+              id: contexto.plano.id,
+              nome: contexto.plano.nome,
+              preco: Number(contexto.plano.preco || 0),
+              ciclo_cobranca: contexto.plano.ciclo_cobranca || 'mensal',
+              intervalo_relatorio: contexto.plano.intervalo_relatorio || 'mensal',
+            }
+          : null,
+        status_pagamento: contexto.status_pagamento,
+        status_operacional: contexto.status_operacional,
+        motivo_bloqueio: contexto.motivo_bloqueio,
+        limites: contexto.limites,
+        uso: contexto.uso,
+        financeiro: contexto.resumo_financeiro,
+      }
+    })
+  )
+}
+
 async function buscarPagamentoBasico(pagamentoId) {
   const { data, error } = await supabaseAdmin
     .from('pagamentos')
@@ -291,7 +328,7 @@ export async function GET(request) {
     ] = await Promise.all([
       supabaseAdmin
         .from('clientes')
-        .select('id, nome, status, plano_id, planos(id, nome, preco)')
+        .select('id, empresa_id, nome, nome_empresa, status, plano_id, planos(id, nome, preco)')
         .order('nome'),
 
       supabaseAdmin
@@ -318,6 +355,7 @@ export async function GET(request) {
       pagamentosTodos: pagamentosComStatus,
       clientes: clientes || [],
     })
+    const assinaturas = await montarAssinaturas(clientes || [])
 
     let filtrados = aplicarFiltroPeriodo(pagamentosComStatus, periodo)
 
@@ -348,6 +386,7 @@ export async function GET(request) {
       pagamentos: filtrados,
       clientes: clientes || [],
       planos: planos || [],
+      assinaturas,
       metricas,
       permissions: auth.permissions?.financeiro || {},
     })

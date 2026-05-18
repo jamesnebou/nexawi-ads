@@ -12,6 +12,11 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import {
+  assertSaasAccountActive,
+  assertSaasPlanLimit,
+  getSaasFinanceContext,
+} from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
@@ -418,9 +423,10 @@ export async function GET(request) {
     return NextResponse.json(
       {
         ok: false,
+        code: error.code || null,
         error: error.message || 'Erro ao buscar anúncios',
       },
-      { status: 500 }
+      { status: error.status || 500 }
     )
   }
 }
@@ -649,6 +655,14 @@ export async function POST(request) {
         return permissaoNegada('anuncios', 'create')
       }
 
+      const saasContext = await getSaasFinanceContext({
+        empresaId,
+        clienteId: payload.cliente_id,
+      })
+
+      assertSaasAccountActive(saasContext)
+      assertSaasPlanLimit(saasContext, 'criativos')
+
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .insert([payload])
@@ -719,8 +733,9 @@ export async function POST(request) {
       {
         ok: false,
         error: error.message || 'Erro ao salvar anúncio',
+        code: error.code || null,
       },
-      { status: 500 }
+      { status: error.status || 500 }
     )
   }
 }

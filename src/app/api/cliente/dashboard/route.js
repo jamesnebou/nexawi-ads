@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireCliente } from '@/lib/cliente-api-auth'
+import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
@@ -24,12 +25,12 @@ function calcularCtr(cliques, visualizacoes) {
   return Number(((cliques / visualizacoes) * 100).toFixed(2))
 }
 
-function calcularStatusCampanha({ anunciosAtivos, totalAnuncios, cliente }) {
-  if (cliente.status === 'Inadimplente') {
+function calcularStatusCampanha({ anunciosAtivos, totalAnuncios, cliente, assinatura }) {
+  if (cliente.status === 'Inadimplente' || assinatura?.bloqueado) {
     return {
       status: 'financeiro_pendente',
       label: 'Financeiro pendente',
-      message: 'Sua conta possui pendência financeira. Regularize para manter sua campanha ativa.',
+      message: assinatura?.motivo_bloqueio || 'Sua conta possui pendência financeira. Regularize para manter sua campanha ativa.',
     }
   }
 
@@ -260,11 +261,13 @@ export async function GET(request) {
     const totalCliques = anuncios.reduce((acc, ad) => acc + Number(ad.cliques || 0), 0)
 
     const financeiro = calcularFinanceiro(pagamentosData || [])
+    const assinaturaContext = await getSaasFinanceContext({ clienteId, empresaId })
 
     const campanha = calcularStatusCampanha({
       anunciosAtivos,
       totalAnuncios: anuncios.length,
       cliente,
+      assinatura: assinaturaContext,
     })
 
     return NextResponse.json({
@@ -293,6 +296,22 @@ export async function GET(request) {
         plano_nome: cliente.planos?.nome || 'Sem plano',
         onboarding_status: cliente.onboarding_status || '',
         onboarding_travado: Boolean(cliente.onboarding_travado),
+      },
+      assinatura: {
+        status_pagamento: assinaturaContext.status_pagamento,
+        status_operacional: assinaturaContext.status_operacional,
+        bloqueado: assinaturaContext.bloqueado,
+        motivo_bloqueio: assinaturaContext.motivo_bloqueio,
+        limites: assinaturaContext.limites,
+        uso: assinaturaContext.uso,
+        plano: assinaturaContext.plano
+          ? {
+              id: assinaturaContext.plano.id,
+              nome: assinaturaContext.plano.nome,
+              preco: Number(assinaturaContext.plano.preco || 0),
+              ciclo_cobranca: assinaturaContext.plano.ciclo_cobranca || 'mensal',
+            }
+          : null,
       },
       campanha,
       resumo: {

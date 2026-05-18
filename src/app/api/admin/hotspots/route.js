@@ -13,6 +13,11 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { logAdminAction } from '@/lib/admin-audit-log'
 import { getNexawiNetworkPolicyStatus } from '@/lib/routeros-rest'
+import {
+  assertSaasAccountActive,
+  assertSaasPlanLimit,
+  getSaasFinanceContext,
+} from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
@@ -694,6 +699,14 @@ export async function POST(request) {
       const empresaId = resolveEmpresaIdForWrite(auth, body.hotspot?.empresa_id)
       payload.empresa_id = empresaId
 
+      const saasContext = await getSaasFinanceContext({
+        empresaId,
+        clienteId: payload.cliente_id,
+      })
+
+      assertSaasAccountActive(saasContext)
+      assertSaasPlanLimit(saasContext, 'pontos')
+
       if (payload.router_id) {
         await ensureRouterInScope({ auth, routerId: payload.router_id })
       }
@@ -757,8 +770,9 @@ export async function POST(request) {
       {
         ok: false,
         error: error.message || 'Erro ao salvar hotspot',
+        code: error.code || null,
       },
-      { status: 500 }
+      { status: error.status || 500 }
     )
   }
 }

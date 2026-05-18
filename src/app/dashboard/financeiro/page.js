@@ -117,6 +117,7 @@ export default function Pagamentos() {
   const [pagamentos, setPagamentos] = useState([])
   const [clientes, setClientes] = useState([])
   const [planos, setPlanos] = useState([])
+  const [assinaturas, setAssinaturas] = useState([])
   const [permissions, setPermissions] = useState(permissoesIniciais)
 
   const [metricas, setMetricas] = useState({
@@ -179,6 +180,7 @@ export default function Pagamentos() {
       setPagamentos(data.pagamentos || [])
       setClientes(data.clientes || [])
       setPlanos(data.planos || [])
+      setAssinaturas(data.assinaturas || [])
       setMetricas(data.metricas || {})
       setPermissions({
         ...permissoesIniciais,
@@ -466,6 +468,30 @@ export default function Pagamentos() {
     }
   }
 
+  function statusAssinaturaLabel(status) {
+    const labels = {
+      em_dia: 'Em dia',
+      pendente: 'Pendente',
+      inadimplente: 'Inadimplente',
+      sem_cobranca: 'Sem cobrança',
+      ativo: 'Ativa',
+      pausado: 'Pausada',
+      bloqueado: 'Bloqueada',
+    }
+
+    return labels[status] || status || '—'
+  }
+
+  function corStatusOperacional(status) {
+    if (status === 'bloqueado') return 'bg-red-500/10 text-red-400 border border-red-500/20'
+    if (status === 'pausado') return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+    return 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
+  }
+
+  function formatarLimite(uso, limite) {
+    return limite && limite > 0 ? `${uso || 0}/${limite}` : `${uso || 0}/∞`
+  }
+
   const cards = [
     {
       label: 'Recebido no mês',
@@ -616,6 +642,87 @@ export default function Pagamentos() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden shadow-2xl backdrop-blur-xl mb-10">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-6 py-5 border-b border-white/[0.05]">
+            <div>
+              <h2 className="text-lg font-extrabold text-white tracking-tight">
+                Assinaturas SaaS
+              </h2>
+              <p className="text-xs text-neutral-500 mt-1">
+                Status de pagamento, bloqueio operacional e limites por plano.
+              </p>
+            </div>
+
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest">
+              {assinaturas.length} assinatura(s)
+            </span>
+          </div>
+
+          {assinaturas.length === 0 ? (
+            <div className="px-6 py-10 text-sm text-neutral-500">
+              Nenhuma assinatura vinculada a plano foi encontrada.
+            </div>
+          ) : (
+            <div className="overflow-x-auto custom-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/[0.05] bg-white/[0.01]">
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Cliente</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Plano</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pagamento</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Operação</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pontos</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
+                  </tr>
+                </thead>
+
+                <tbody className="divide-y divide-white/[0.02]">
+                  {assinaturas.map((assinatura) => (
+                    <tr key={`${assinatura.empresa_id || assinatura.cliente_id}`} className="hover:bg-white/[0.02] transition-colors duration-300">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-white">
+                          {assinatura.empresa_nome || assinatura.cliente_nome || 'Cliente'}
+                        </div>
+                        <div className="text-xs text-neutral-500">
+                          {assinatura.cliente_nome}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-bold text-neutral-300">
+                          {assinatura.plano?.nome || 'Sem plano'}
+                        </div>
+                        <div className="text-xs text-neutral-500">
+                          {fmt(assinatura.plano?.preco || 0)} / {assinatura.plano?.ciclo_cobranca || 'mensal'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(assinatura.status_pagamento === 'inadimplente' ? 'Vencido' : assinatura.status_pagamento === 'em_dia' ? 'Pago' : 'Pendente')}`}>
+                          {statusAssinaturaLabel(assinatura.status_pagamento)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatusOperacional(assinatura.status_operacional)}`}>
+                          {statusAssinaturaLabel(assinatura.status_operacional)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
+                        {formatarLimite(assinatura.uso?.criativos, assinatura.limites?.criativos)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
+                        {formatarLimite(assinatura.uso?.pontos, assinatura.limites?.pontos)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-red-300 whitespace-nowrap">
+                        {fmt(assinatura.financeiro?.total_vencido || 0)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
