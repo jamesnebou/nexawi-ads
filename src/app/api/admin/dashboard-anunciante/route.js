@@ -43,6 +43,64 @@ function getDataInicio(periodo = 'ultimos_30') {
   return null
 }
 
+async function resolverEmpresaDashboard(auth) {
+  if (auth.activeEmpresaId) {
+    return auth.activeEmpresaId
+  }
+
+  const primeiraEmpresaDoEscopo = auth.empresas?.find((item) => item.empresa_id)?.empresa_id
+
+  if (primeiraEmpresaDoEscopo) {
+    return primeiraEmpresaDoEscopo
+  }
+
+  if (!auth.isMaster) {
+    return ''
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('empresas')
+    .select('id')
+    .in('status', ['ativo', 'prospect', 'pausado'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+
+  return data?.id || ''
+}
+
+function montarRespostaSemEmpresa({ auth, periodo }) {
+  return {
+    ok: true,
+    periodo,
+    semEmpresaAtiva: true,
+    empresa: null,
+    resumo: {
+      campanhas: 0,
+      campanhasAtivas: 0,
+      hotspots: 0,
+      leads: 0,
+      visualizacoes: 0,
+      cliques: 0,
+      usuariosUnicos: 0,
+      ctr: 0,
+    },
+    campanhas: [],
+    hotspots: [],
+    leadsRecentes: [],
+    qualidadeDados: {
+      viewsComHotspotReal: 0,
+      clicksComHotspotReal: 0,
+      usaFallbackHistorico: false,
+    },
+    empresaScope: auth.empresaScope,
+    permissions: auth.empresaPermissions?.dashboard_anunciante || auth.permissions?.dashboard_anunciante || {},
+    message: 'Nenhuma empresa ativa foi encontrada para este usuário.',
+  }
+}
+
 async function buscarEventosDaEmpresa({ tabela, empresaId, periodo, extras = '' }) {
   const dataInicio = getDataInicio(periodo)
   const colunasDeData = ['timestamp', 'created_at']
@@ -104,7 +162,6 @@ export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'dashboard_anunciante',
     action: 'view',
-    requireEmpresa: true,
   })
 
   if (auth.errorResponse) return auth.errorResponse
@@ -112,7 +169,11 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const periodo = searchParams.get('periodo') || 'ultimos_30'
-    const empresaId = auth.activeEmpresaId
+    const empresaId = await resolverEmpresaDashboard(auth)
+
+    if (!empresaId) {
+      return NextResponse.json(montarRespostaSemEmpresa({ auth, periodo }))
+    }
 
     const [empresaRes, anunciosRes, hotspotsRes, leads, views, clicks] = await Promise.all([
       supabaseAdmin
@@ -238,7 +299,11 @@ export async function GET(request) {
         clicksComHotspotReal,
         usaFallbackHistorico: views.some((item) => !item.hotspot_id) || clicks.some((item) => !item.hotspot_id),
       },
-      empresaScope: auth.empresaScope,
+      empresaScope: {
+        ...auth.empresaScope,
+        activeEmpresaId: empresaId,
+        isScoped: Boolean(empresaId),
+      },
       permissions: auth.empresaPermissions?.dashboard_anunciante || auth.permissions?.dashboard_anunciante || {},
     })
   } catch (error) {
