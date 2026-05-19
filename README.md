@@ -56,6 +56,13 @@ Manual completo para novos roteadores:
 docs/manual-mikrotik-nexawi.md
 ```
 
+Checklist operacional para abrir uma nova cidade:
+
+```txt
+docs/checklist-nova-cidade.md
+/dashboard/cidades/checklist
+```
+
 Endereco validado:
 
 ```txt

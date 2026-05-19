@@ -29,6 +29,7 @@ import {
   Router as RouterIcon,
   Building2,
   FileText,
+  ClipboardCheck,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -110,6 +111,12 @@ const menu = [
     label: 'Cidades',
     path: '/dashboard/cidades',
     icon: MapPin,
+    module: 'configuracoes',
+  },
+  {
+    label: 'Checklist Cidade',
+    path: '/dashboard/cidades/checklist',
+    icon: ClipboardCheck,
     module: 'configuracoes',
   },
   {

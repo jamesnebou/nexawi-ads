@@ -18,6 +18,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
+import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   MapPin,
@@ -36,6 +37,7 @@ import {
   CheckCircle2,
   Loader2,
   Lock,
+  ClipboardCheck,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -637,16 +639,26 @@ export default function DashboardCidadesPage() {
               )}
             </div>
 
-            {canUpdate && (
-              <button
-                type="button"
-                onClick={abrirNovaCidade}
-                className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold px-6 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/dashboard/cidades/checklist"
+                className="w-full sm:w-auto bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-white font-bold px-6 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2"
               >
-                <Plus size={18} />
-                Nova cidade
-              </button>
-            )}
+                <ClipboardCheck size={18} />
+                Checklist cidade
+              </Link>
+
+              {canUpdate && (
+                <button
+                  type="button"
+                  onClick={abrirNovaCidade}
+                  className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold px-6 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+                >
+                  <Plus size={18} />
+                  Nova cidade
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="rounded-[2rem] border border-white/[0.05] bg-[#0a0a0a] backdrop-blur-xl p-4 sm:p-5 shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
