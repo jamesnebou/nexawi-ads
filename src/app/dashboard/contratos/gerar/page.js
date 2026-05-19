@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
-import { ArrowLeft, Building2, Copy, Database, FileText, Printer, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, Building2, Copy, Database, FileText, Mail, Printer, RefreshCw, Save } from 'lucide-react'
 import Link from 'next/link'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -68,6 +68,7 @@ export default function GerarContratoPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
+  const [sending, setSending] = useState(false)
   const [data, setData] = useState(null)
   const [form, setForm] = useState({})
   const [contratoSalvo, setContratoSalvo] = useState(null)
@@ -131,9 +132,11 @@ export default function GerarContratoPage() {
       setData(result)
       setForm(flatten(result.fields || {}))
       toast.success('Prévia atualizada.')
+      return result
     } catch (error) {
       console.error('Erro ao atualizar prévia:', error)
       toast.error(error.message || 'Erro ao atualizar prévia.')
+      return null
     } finally {
       setGenerating(false)
     }
@@ -161,11 +164,52 @@ export default function GerarContratoPage() {
 
       setContratoSalvo(saved.contrato)
       toast.success('Contrato salvo como rascunho.')
+      return { result, saved }
     } catch (error) {
       console.error('Erro ao salvar rascunho:', error)
       toast.error(error.message || 'Erro ao salvar rascunho.')
+      return null
     } finally {
       setSavingDraft(false)
+    }
+  }
+
+  async function enviarContrato() {
+    setSending(true)
+
+    try {
+      const result = await gerarContratoAtualizado()
+      setData(result)
+      setForm(flatten(result.fields || {}))
+
+      const response = await adminApiFetch('/api/admin/contratos/enviar', {
+        method: 'POST',
+        body: {
+          id: contratoSalvo?.id,
+          source,
+          empresa_id: result.fields?.meta?.empresa_id || '',
+          cliente_id: result.fields?.meta?.cliente_id || '',
+          fields: result.fields,
+          html: result.html,
+          cliente_email: result.fields?.contratante?.email || '',
+          nexawi_email: 'contato@nexawi.com.br',
+        },
+      })
+
+      if (response.contrato) {
+        setContratoSalvo(response.contrato)
+      }
+
+      if (response.ok) {
+        toast.success('Contrato enviado para o cliente e para a NexaWi.')
+      } else {
+        toast.error(response.message || 'Contrato salvo, mas o envio não foi concluído.')
+      }
+    } catch (error) {
+      console.error('Erro ao enviar contrato:', error)
+      toast.error(error.message || 'Erro ao enviar contrato.')
+    } finally {
+      setSending(false)
     }
   }
 
@@ -218,25 +262,29 @@ export default function GerarContratoPage() {
             {contratoSalvo?.id && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-bold text-[#8cf059]">
                 <Database size={14} />
-                Rascunho salvo: {contratoSalvo.id.slice(0, 8)}
+                {contratoSalvo.status === 'enviado' ? 'Contrato enviado' : 'Rascunho salvo'}: {contratoSalvo.id.slice(0, 8)}
               </div>
             )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <button onClick={atualizarPrevia} disabled={generating || loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
+            <button onClick={atualizarPrevia} disabled={generating || loading || sending} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
               <RefreshCw size={17} />
               Atualizar prévia
             </button>
-            <button onClick={salvarRascunho} disabled={savingDraft || loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-60">
+            <button onClick={salvarRascunho} disabled={savingDraft || loading || sending} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-60">
               <Database size={17} />
               {savingDraft ? 'Salvando...' : 'Salvar rascunho'}
             </button>
-            <button onClick={copiarContrato} disabled={!html} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
+            <button onClick={enviarContrato} disabled={sending || loading || !html} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm font-extrabold text-blue-300 hover:bg-blue-500/15 disabled:opacity-60">
+              <Mail size={17} />
+              {sending ? 'Enviando...' : 'Enviar por e-mail'}
+            </button>
+            <button onClick={copiarContrato} disabled={!html || sending} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
               <Copy size={17} />
               Copiar
             </button>
-            <button onClick={imprimir} disabled={!html} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-60">
+            <button onClick={imprimir} disabled={!html || sending} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-60">
               <Printer size={17} />
               Imprimir/PDF
             </button>
@@ -256,7 +304,7 @@ export default function GerarContratoPage() {
             <aside className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 h-fit print:hidden">
               <div className="mb-5">
                 <h2 className="text-lg font-black text-white">Campos editáveis</h2>
-                <p className="text-xs text-neutral-500 mt-1">Altere e clique em “Atualizar prévia” ou “Salvar rascunho”.</p>
+                <p className="text-xs text-neutral-500 mt-1">Altere e clique em “Atualizar prévia”, “Salvar rascunho” ou “Enviar por e-mail”.</p>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-3 mb-5">
@@ -327,7 +375,7 @@ export default function GerarContratoPage() {
                 <div className="rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-5">
                   <FileText className="text-[#8cf059] mb-3" size={24} />
                   <h3 className="text-base font-black text-white">Pronto para revisar</h3>
-                  <p className="text-sm text-neutral-400 mt-2">Clique em atualizar prévia, salvar rascunho ou imprimir/PDF.</p>
+                  <p className="text-sm text-neutral-400 mt-2">Clique em atualizar prévia, salvar rascunho, enviar por e-mail ou imprimir/PDF.</p>
                 </div>
               )}
             </aside>
