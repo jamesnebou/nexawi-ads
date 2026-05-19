@@ -229,9 +229,12 @@ export default function GerarContratoPage() {
   }
 
   function imprimir() {
-    atualizarPrevia().then(() => {
-      setTimeout(() => window.print(), 250)
-    })
+    if (!html) {
+      toast.error('Atualize a prévia antes de imprimir.')
+      return
+    }
+
+    window.print()
   }
 
   return (
