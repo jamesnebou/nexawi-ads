@@ -49,6 +49,6 @@ echo "==> Reiniciando PM2"
 su - "$PM2_USER" -c "pm2 restart ${PM2_APP} --update-env"
 
 echo "==> Validando health"
-curl -fsS http://localhost:3001/api/control/router/health >/dev/null
+curl -fsS http://localhost:3001/api/health >/dev/null
 
 echo "Rollback concluido."

@@ -20,13 +20,18 @@ echo "== PM2 =="
 su - nexawiadmin -c 'pm2 list'
 
 echo ""
-echo "== Health Control API =="
-curl -fsS http://localhost:3001/api/control/router/health | head -c 500
+echo "== Health Aplicacao =="
+curl -fsS http://localhost:3001/api/health | head -c 500
+echo ""
+
+echo ""
+echo "== Health RouterOS =="
+curl -fsS http://localhost:3001/api/control/router/health | head -c 500 || true
 echo ""
 
 echo ""
 echo "== Online Control API =="
-curl -fsS http://localhost:3001/api/control/router/online
+curl -fsS http://localhost:3001/api/control/router/online || true
 echo ""
 
 echo ""

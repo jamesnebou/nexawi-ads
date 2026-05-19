@@ -33,6 +33,19 @@ wait_for_url() {
   echo "OK: ${label} respondeu."
 }
 
+warn_for_url() {
+  local url="$1"
+  local label="$2"
+
+  echo "==> Verificando ${label}"
+
+  if curl -fsS "$url" >/dev/null; then
+    echo "OK: ${label} respondeu."
+  else
+    echo "AVISO: ${label} nao respondeu. O app subiu, mas a integracao operacional precisa ser verificada."
+  fi
+}
+
 echo "==> Conferindo alteracoes locais"
 git status --short
 
@@ -60,7 +73,8 @@ su - "$PM2_USER" -c "pm2 restart ${PM2_APP} --update-env"
 echo "==> Status PM2"
 su - "$PM2_USER" -c 'pm2 list'
 
-wait_for_url "http://localhost:3001/api/control/router/health" "Health check local"
-wait_for_url "http://localhost:3001/api/control/router/online" "Online check local"
+wait_for_url "http://localhost:3001/api/health" "Health check da aplicacao"
+warn_for_url "http://localhost:3001/api/control/router/health" "Health RouterOS"
+warn_for_url "http://localhost:3001/api/control/router/online" "Online RouterOS"
 
 echo "Deploy concluido com sucesso."
