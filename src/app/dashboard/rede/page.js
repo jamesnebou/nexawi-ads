@@ -16,6 +16,7 @@ import {
   Plus,
   RefreshCcw,
   Router,
+  Search,
   Server,
   ShieldCheck,
   ShieldOff,
@@ -237,15 +238,27 @@ function InfoCard({ icon: Icon, label, value, description }) {
 function RuleRow({ rule }) {
   const invalid = Boolean(rule.invalid)
   const disabled = Boolean(rule.disabled)
+  const typeLabel = {
+    filter: 'Filter',
+    nat: 'NAT',
+    dns: 'DNS',
+  }[rule.ruleType] || 'Regra'
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-3 rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
       <div>
-        <p className="text-sm font-extrabold text-white break-all">
-          {rule.comment || 'Regra sem comentário'}
-        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-neutral-400">
+            {typeLabel}
+          </span>
+          <p className="text-sm font-extrabold text-white break-all">
+            {rule.comment || 'Regra sem comentario'}
+          </p>
+        </div>
         <p className="text-xs text-neutral-500 mt-1">
-          {rule.chain || '-'} · {rule.action || '-'} · {rule.protocol || '-'}
+          {rule.ruleType === 'dns'
+            ? `${rule.type || 'DNS'} · ${rule.name || rule.regexp || '-'}`
+            : `${rule.chain || '-'} · ${rule.action || '-'} · ${rule.protocol || '-'}`}
         </p>
       </div>
 
@@ -254,7 +267,7 @@ function RuleRow({ rule }) {
           Origem
         </p>
         <p className="text-xs font-bold text-neutral-300 mt-1">
-          {rule.srcAddress || '-'}
+          {rule.ruleType === 'dns' ? rule.name || '-' : rule.srcAddress || '-'}
         </p>
       </div>
 
@@ -263,7 +276,9 @@ function RuleRow({ rule }) {
           Destino
         </p>
         <p className="text-xs font-bold text-neutral-300 mt-1 break-all">
-          {rule.tlsHost || rule.dstPort || rule.toPorts || '-'}
+          {rule.ruleType === 'dns'
+            ? rule.regexp || rule.address || '-'
+            : rule.tlsHost || rule.dstPort || rule.toPorts || '-'}
         </p>
       </div>
 
@@ -381,6 +396,8 @@ export default function ControleRedePage() {
 
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+  const [hotspots, setHotspots] = useState([])
+  const [hotspotsLoading, setHotspotsLoading] = useState(false)
 
   const [status, setStatus] = useState(null)
   const [permissions, setPermissions] = useState({ view: false, update: false })
@@ -392,23 +409,83 @@ export default function ControleRedePage() {
 
   const [blockedInput, setBlockedInput] = useState('')
   const [allowedInput, setAllowedInput] = useState('')
+  const [ruleSearch, setRuleSearch] = useState('')
+  const [ruleTypeFilter, setRuleTypeFilter] = useState('all')
 
   const [message, setMessage] = useState('')
   const [policyNotice, setPolicyNotice] = useState(null)
   const [error, setError] = useState('')
 
   const allRules = useMemo(() => {
-    const filters = status?.filters || []
-    const natRules = status?.natRules || []
-    return [...filters, ...natRules]
+    const filters = (status?.filters || []).map((rule) => ({ ...rule, ruleType: 'filter' }))
+    const natRules = (status?.natRules || []).map((rule) => ({ ...rule, ruleType: 'nat' }))
+    const dnsRules = (status?.dnsRules || []).map((rule) => ({ ...rule, ruleType: 'dns' }))
+    return [...filters, ...natRules, ...dnsRules]
   }, [status])
 
   const invalidRules = useMemo(() => {
     return allRules.filter((rule) => rule.invalid)
   }, [allRules])
 
+  const visibleRules = useMemo(() => {
+    const search = normalizeDomain(ruleSearch) || String(ruleSearch || '').trim().toLowerCase()
+
+    return allRules.filter((rule) => {
+      const matchesType = ruleTypeFilter === 'all' || rule.ruleType === ruleTypeFilter
+
+      if (!matchesType) return false
+      if (!search) return true
+
+      const haystack = [
+        rule.comment,
+        rule.chain,
+        rule.action,
+        rule.protocol,
+        rule.srcAddress,
+        rule.dstPort,
+        rule.toPorts,
+        rule.tlsHost,
+        rule.name,
+        rule.regexp,
+        rule.address,
+        rule.type,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+
+      return haystack.includes(search)
+    })
+  }, [allRules, ruleSearch, ruleTypeFilter])
+
+  const activePresetTitles = useMemo(() => {
+    const blocked = new Set((policy.customBlockedDomains || []).map((domain) => normalizeDomain(domain)))
+
+    return QUICK_PRESETS
+      .filter((preset) => {
+        const domains = (preset.domains || []).map((domain) => normalizeDomain(domain)).filter(Boolean)
+        return domains.length > 0 && domains.every((domain) => blocked.has(domain))
+      })
+      .map((preset) => preset.title)
+  }, [policy.customBlockedDomains])
+
+  const currentHotspotId = hotspotIdFromUrl || hotspot?.id || ''
+  const selectedHotspotFromList = hotspots.find((item) => item.id === currentHotspotId)
+
   const canUpdate = Boolean(permissions.update)
   const statusUnavailable = Boolean(status?.unavailable)
+
+  async function carregarHotspots() {
+    try {
+      setHotspotsLoading(true)
+      const data = await adminApiFetch('/api/admin/rede/hotsposts')
+      setHotspots(data.hotspots || [])
+    } catch (err) {
+      console.error('Erro ao carregar hotspots de rede:', err)
+    } finally {
+      setHotspotsLoading(false)
+    }
+  }
 
   async function carregarStatus() {
     setError('')
@@ -427,7 +504,10 @@ export default function ControleRedePage() {
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
       setLoading(false)
-      setError('Selecione um hotspot para gerenciar a rede.')
+      setStatus(null)
+      setHotspot(null)
+      setMikrotik(null)
+      setError('')
       return
     }
 
@@ -477,6 +557,11 @@ customAllowedDomains: cleanDomainList(allowedDomains),
     } finally {
       setLoading(false)
     }
+  }
+
+  function selecionarHotspot(hotspotId) {
+    if (!hotspotId) return
+    router.push(`/dashboard/rede?hotspotId=${encodeURIComponent(hotspotId)}`)
   }
 
 function getPresetDomains(preset) {
@@ -799,6 +884,10 @@ function togglePreset(preset) {
   
 
   useEffect(() => {
+    carregarHotspots()
+  }, [])
+
+  useEffect(() => {
     carregarStatus()
   }, [hotspotIdFromUrl, hotspotSlugFromUrl])
 
@@ -867,6 +956,47 @@ function togglePreset(preset) {
         </div>
       </header>
 
+      <section className="relative z-10 mb-6 rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-black text-white">
+              Operar hotspot
+            </p>
+            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+              Escolha o ponto Wi-Fi, confira o resumo e aplique a politica somente no MikroTik vinculado.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 lg:min-w-[520px]">
+            <select
+              value={currentHotspotId}
+              disabled={hotspotsLoading || processing}
+              onChange={(event) => selecionarHotspot(event.target.value)}
+              className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
+            >
+              <option value="">
+                {hotspotsLoading ? 'Carregando hotspots...' : 'Selecione um hotspot'}
+              </option>
+              {hotspots.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.nome || item.slug} {item.router?.nome ? `- ${item.router.nome}` : ''}
+                </option>
+              ))}
+            </select>
+
+            {selectedHotspotFromList?.slug && (
+              <button
+                type="button"
+                onClick={() => router.push(`/portal/${selectedHotspotFromList.slug}`)}
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm font-bold text-neutral-300 hover:bg-white/[0.06] hover:text-white transition-all"
+              >
+                Ver portal
+              </button>
+            )}
+          </div>
+        </div>
+      </section>
+
       {error && (
         <div className="relative z-10 mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm font-bold text-red-300">
           {error}
@@ -911,13 +1041,13 @@ function togglePreset(preset) {
         </div>
       )}
 
-      {!canUpdate && (
+      {!canUpdate && (hotspotIdFromUrl || hotspotSlugFromUrl) && (
         <div className="relative z-10 mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-bold text-neutral-400">
           Modo leitura: você pode visualizar a política, mas não pode aplicar ou resetar regras.
         </div>
       )}
 
-      <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
         <StatCard
           icon={statusUnavailable ? AlertTriangle : status?.enabled ? ShieldCheck : ShieldOff}
           label="Status"
@@ -933,6 +1063,11 @@ function togglePreset(preset) {
           icon={Globe}
           label="Regras NAT"
           value={statusUnavailable ? '-' : status?.natCount ?? 0}
+        />
+        <StatCard
+          icon={Server}
+          label="Regras DNS"
+          value={statusUnavailable ? '-' : status?.dnsCount ?? 0}
         />
         <StatCard
           icon={AlertTriangle}
@@ -983,6 +1118,51 @@ function togglePreset(preset) {
                 value={mikrotik?.hotspot_server || 'hotspot1'}
                 description="Servidor hotspot usado no RouterOS"
               />
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+                <ShieldCheck size={19} className="text-[#6be12f]" />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-black text-white">Resumo operacional</h2>
+                <p className="text-xs text-neutral-500 font-medium">
+                  Conferencia rapida antes de aplicar
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <InfoCard
+                icon={ShieldOff}
+                label="Bloqueados"
+                value={(policy.customBlockedDomains || []).length}
+                description="Dominios salvos para bloqueio"
+              />
+              <InfoCard
+                icon={ShieldCheck}
+                label="Liberados"
+                value={(policy.customAllowedDomains || []).length}
+                description="Permitidos com prioridade"
+              />
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+              <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-2">
+                Presets ativos
+              </p>
+              <p className="text-sm font-bold text-white leading-relaxed">
+                {activePresetTitles.length > 0 ? activePresetTitles.join(', ') : 'Nenhum preset forte selecionado'}
+              </p>
+            </div>
+
+            <div className="mt-4 rounded-2xl border border-yellow-500/15 bg-yellow-500/5 px-4 py-3">
+              <p className="text-xs leading-relaxed text-yellow-100/80">
+                Sites liberados vencem bloqueios. Revise esta lista antes de aplicar presets fortes em redes de clientes.
+              </p>
             </div>
           </div>
 
@@ -1208,9 +1388,34 @@ function togglePreset(preset) {
 
               <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
                 <Activity size={14} />
-                {statusUnavailable ? 'consulta indisponivel' : `${allRules.length} regras`}
+                {statusUnavailable ? 'consulta indisponivel' : `${visibleRules.length}/${allRules.length} regras`}
               </div>
             </div>
+
+            {!statusUnavailable && allRules.length > 0 && (
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px] gap-3 mb-4">
+                <div className="relative">
+                  <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" />
+                  <input
+                    value={ruleSearch}
+                    onChange={(event) => setRuleSearch(event.target.value)}
+                    placeholder="Buscar por comentario, dominio, porta ou destino..."
+                    className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] pl-11 pr-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30"
+                  />
+                </div>
+
+                <select
+                  value={ruleTypeFilter}
+                  onChange={(event) => setRuleTypeFilter(event.target.value)}
+                  className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30"
+                >
+                  <option value="all">Todas as regras</option>
+                  <option value="filter">Filter</option>
+                  <option value="nat">NAT</option>
+                  <option value="dns">DNS</option>
+                </select>
+              </div>
+            )}
 
             {statusUnavailable ? (
               <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-8 text-center">
@@ -1237,10 +1442,20 @@ function togglePreset(preset) {
                   Clique em “Aplicar Política” para ativar o controle de rede.
                 </p>
               </div>
+            ) : visibleRules.length === 0 ? (
+              <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
+                <Search className="mx-auto text-neutral-600 mb-3" size={32} />
+                <p className="text-sm font-bold text-neutral-400">
+                  Nenhuma regra encontrada para o filtro atual.
+                </p>
+                <p className="text-xs text-neutral-600 mt-1">
+                  Limpe a busca ou altere o tipo de regra.
+                </p>
+              </div>
             ) : (
               <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1 custom-scrollbar">
-                {allRules.map((rule) => (
-                  <RuleRow key={`${rule.comment}-${rule.id}`} rule={rule} />
+                {visibleRules.map((rule) => (
+                  <RuleRow key={`${rule.ruleType}-${rule.comment}-${rule.id}`} rule={rule} />
                 ))}
               </div>
             )}
