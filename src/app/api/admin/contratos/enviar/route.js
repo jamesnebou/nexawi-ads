@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendEmail } from '@/lib/email-service'
 import { renderNexawiContractHtml } from '@/lib/nexawi-contract-generator'
+import { buildContractPdfAttachment } from '@/lib/contract-pdf-generator'
 
 export const runtime = 'nodejs'
 
@@ -55,8 +56,8 @@ function buildEmailHtml({ fields, contractHtml, destinatarioTipo = 'cliente' }) 
   const nomeCliente = escapeHtml(fields?.contratante?.nome_razao_social || 'Cliente NexaWi')
   const plano = escapeHtml(fields?.plano?.nome || 'Plano NexaWi')
   const intro = destinatarioTipo === 'nexawi'
-    ? `Segue uma cópia interna do contrato gerado para ${nomeCliente}.`
-    : `Segue a minuta do contrato NexaWi referente ao plano ${plano}.`
+    ? `Segue uma cópia interna do contrato gerado para ${nomeCliente}. O PDF também está anexado a este e-mail.`
+    : `Segue a minuta do contrato NexaWi referente ao plano ${plano}. O PDF também está anexado a este e-mail.`
 
   return `
     <div style="font-family: Arial, sans-serif; background:#050505; color:#ffffff; padding:28px;">
@@ -92,7 +93,7 @@ function buildEmailHtml({ fields, contractHtml, destinatarioTipo = 'cliente' }) 
         </div>
 
         <div style="padding:22px 28px; color:#777; font-size:12px; line-height:1.5;">
-          E-mail enviado automaticamente pelo sistema NexaWi ADS.
+          E-mail enviado automaticamente pelo sistema NexaWi ADS. Uma cópia em PDF segue anexada.
         </div>
       </div>
     </div>
@@ -235,6 +236,7 @@ export async function POST(request) {
 
     const subject = limparTexto(body.subject || `Contrato NexaWi — ${fields?.contratante?.nome_razao_social || 'Cliente'}`)
     const text = `${subject}\n\n${stripHtml(html)}\n\nNexaWi ADS / NexaWi Wi-Fi`
+    const pdfAttachment = buildContractPdfAttachment({ fields, html, title: subject })
 
     const [clienteResult, nexawiResult] = await Promise.all([
       sendEmail({
@@ -242,12 +244,14 @@ export async function POST(request) {
         subject,
         text,
         html: buildEmailHtml({ fields, contractHtml: html, destinatarioTipo: 'cliente' }),
+        attachments: [pdfAttachment],
       }),
       sendEmail({
         to: nexawiEmail,
         subject: `[CÓPIA INTERNA] ${subject}`,
         text,
         html: buildEmailHtml({ fields, contractHtml: html, destinatarioTipo: 'nexawi' }),
+        attachments: [pdfAttachment],
       }),
     ])
 
@@ -276,10 +280,14 @@ export async function POST(request) {
       envio: {
         cliente: clienteResult,
         nexawi: nexawiResult,
+        pdf: {
+          attached: true,
+          filename: pdfAttachment.filename,
+        },
       },
       message:
         clienteResult.ok && nexawiResult.ok
-          ? 'Contrato enviado para o cliente e para a NexaWi.'
+          ? 'Contrato enviado para o cliente e para a NexaWi com PDF anexado.'
           : 'O contrato foi salvo, mas um ou mais e-mails não foram enviados. Verifique a configuração SMTP.',
     })
   } catch (error) {
