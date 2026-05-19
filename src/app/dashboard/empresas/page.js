@@ -5,6 +5,7 @@ import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admi
 import {
   Building2,
   Edit3,
+  FileText,
   Megaphone,
   RefreshCw,
   Router,
@@ -435,12 +436,19 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
           </div>
         </div>
 
-        {canUpdate && (
-          <button onClick={onEdit} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] flex items-center justify-center gap-2">
-            <Edit3 size={15} />
-            Editar
-          </button>
-        )}
+        <div className="grid gap-2">
+          <a href={`/dashboard/contratos/gerar?source=empresa&id=${empresa.id}`} className="rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] hover:bg-[#6be12f]/15 flex items-center justify-center gap-2">
+            <FileText size={15} />
+            Gerar contrato
+          </a>
+
+          {canUpdate && (
+            <button onClick={onEdit} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] flex items-center justify-center gap-2">
+              <Edit3 size={15} />
+              Editar
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
