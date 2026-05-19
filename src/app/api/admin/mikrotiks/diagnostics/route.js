@@ -64,6 +64,9 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
     '192.168.88.0/24'
   const routerHost = getHostFromBaseUrl(routerConfig?.baseUrl || '')
   const allowedSource = process.env.NEXAWI_CONTROL_API_SOURCE || '<IP_DA_VPS_OU_VPN>/32'
+  const vpnRouterAddress = process.env.NEXAWI_ROUTER_VPN_ADDRESS || '10.99.0.2/30'
+  const vpnServerAddress = process.env.NEXAWI_VPN_SERVER_ADDRESS || '10.99.0.1/32'
+  const vpnEndpoint = process.env.NEXAWI_VPN_ENDPOINT || '<IP_PUBLICO_OU_DNS_DA_VPS>'
 
   return {
     routerHost,
@@ -83,6 +86,12 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
         detail: 'RouterOS REST usa o servico www na porta 80.',
       },
       {
+        id: 'remote_access',
+        label: 'Acesso remoto definido',
+        done: Boolean(routerHost && routerHost !== '10.70.0.2'),
+        detail: 'Use VPN/WireGuard ou IP fixo seguro antes de instalar o equipamento fora do alcance fisico.',
+      },
+      {
         id: 'hotspot_server',
         label: 'Hotspot server valido',
         done: Boolean(diagnostics?.selectedHotspotServer?.enabled),
@@ -97,8 +106,17 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
     ],
     commands: [
       {
+        title: 'WireGuard no MikroTik como cliente da VPS',
+        description: 'Caminho recomendado para locais sem IP publico ou com CGNAT. Gere as chaves fora do painel e substitua os placeholders.',
+        value: [
+          '/interface wireguard add name=wg-nexawi mtu=1420 private-key="<PRIVATE_KEY_DO_MIKROTIK>"',
+          `/ip address add address=${vpnRouterAddress} interface=wg-nexawi comment="NexaWi VPN"`,
+          `/interface wireguard peers add interface=wg-nexawi public-key="<PUBLIC_KEY_DA_VPS>" endpoint-address=${vpnEndpoint} endpoint-port=13231 allowed-address=${vpnServerAddress} persistent-keepalive=25s comment="NexaWi VPS"`,
+        ].join('\n'),
+      },
+      {
         title: 'Habilitar REST seguro por origem',
-        description: 'Troque o IP placeholder pelo IP da VPS ou da VPN que acessa o MikroTik.',
+        description: 'Restrinja ao IP da VPS ou ao IP da VPN. Nao deixe o servico www aberto para a internet.',
         value: `/ip service set www disabled=no port=80 address=${allowedSource}`,
       },
       {

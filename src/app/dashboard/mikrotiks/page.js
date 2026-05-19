@@ -115,6 +115,96 @@ function StatCard({ icon: Icon, label, value, description, accent = false }) {
   )
 }
 
+function RemoteAccessPanel() {
+  const steps = [
+    {
+      title: '1. Fechar VPN antes da instalacao',
+      description: 'Use WireGuard entre o MikroTik e a VPS para acessar o roteador mesmo sem cabo, IP publico ou presenca fisica.',
+    },
+    {
+      title: '2. Liberar REST somente pela VPN',
+      description: 'O servico www do RouterOS deve aceitar apenas o IP da VPS ou da rede VPN. Nao exponha RouterOS aberto na internet.',
+    },
+    {
+      title: '3. Validar hotspot e sub-rede',
+      description: 'Depois da VPN ativa, rode o diagnostico para confirmar hotspot server, sub-rede e politica NexaWi.',
+    },
+  ]
+
+  const commands = [
+    {
+      label: 'MikroTik como cliente WireGuard',
+      value: [
+        '/interface wireguard add name=wg-nexawi mtu=1420 private-key="<PRIVATE_KEY_DO_MIKROTIK>"',
+        '/ip address add address=10.99.0.2/30 interface=wg-nexawi comment="NexaWi VPN"',
+        '/interface wireguard peers add interface=wg-nexawi public-key="<PUBLIC_KEY_DA_VPS>" endpoint-address="<IP_PUBLICO_OU_DNS_DA_VPS>" endpoint-port=13231 allowed-address=10.99.0.1/32 persistent-keepalive=25s comment="NexaWi VPS"',
+      ].join('\n'),
+    },
+    {
+      label: 'REST restrito pela VPN',
+      value: '/ip service set www disabled=no port=80 address=10.99.0.1/32',
+    },
+  ]
+
+  return (
+    <section className="relative z-10 rounded-[2rem] border border-[#6be12f]/15 bg-[#071006] p-6 mb-8">
+      <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
+        <div className="max-w-3xl">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059] mb-4">
+            <ShieldCheck size={13} />
+            Acesso remoto recomendado
+          </div>
+
+          <h2 className="text-xl font-black text-white tracking-tight">
+            Prepare o MikroTik para operar sem cabo
+          </h2>
+
+          <p className="text-sm text-neutral-400 mt-2 leading-relaxed">
+            Em producao, o roteador pode ficar atras de CGNAT ou instalado em local sem acesso fisico.
+            A forma mais segura e previsivel e criar uma VPN antes da instalacao e deixar a Control API acessar o RouterOS por esse tunel.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-bold text-yellow-100 leading-relaxed">
+          Se o MikroTik estiver sem cabo agora, o erro de conexao e esperado. O ponto critico e sair para campo com a VPN testada.
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-6">
+        {steps.map((step) => (
+          <div key={step.title} className="rounded-2xl border border-white/[0.06] bg-black/30 p-4">
+            <p className="text-sm font-black text-white">{step.title}</p>
+            <p className="text-xs text-neutral-500 mt-2 leading-relaxed">{step.description}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-5">
+        {commands.map((command) => (
+          <div key={command.label} className="rounded-2xl border border-white/[0.06] bg-[#050505] p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <p className="text-xs font-black text-white">{command.label}</p>
+
+              <button
+                type="button"
+                onClick={() => navigator.clipboard.writeText(command.value).then(() => toast.success('Copiado!')).catch(() => toast.error('Nao foi possivel copiar.'))}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+              >
+                <Copy size={13} />
+                Copiar
+              </button>
+            </div>
+
+            <code className="block whitespace-pre-wrap break-all rounded-lg bg-black/60 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
+              {command.value}
+            </code>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 export default function MikrotiksPage() {
   const [routers, setRouters] = useState([])
   const [hotspots, setHotspots] = useState([])
@@ -675,6 +765,8 @@ export default function MikrotiksPage() {
             description="com hotspots"
           />
         </section>
+
+        <RemoteAccessPanel />
 
         <section className="relative z-10 flex flex-col lg:flex-row gap-4 mb-8">
           <div className="relative flex-1 group/input">
