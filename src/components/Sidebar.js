@@ -1,10 +1,7 @@
 'use client'
 
 // src/components/Sidebar.js
-// ============================================================
 // Sidebar principal da dashboard premium NexaWi ADS.
-// Sprint 5: adiciona Empresas e Dashboard do Anunciante.
-// ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
@@ -31,6 +28,7 @@ import {
   Network,
   Router as RouterIcon,
   Building2,
+  FileText,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -71,6 +69,12 @@ const menu = [
     path: '/dashboard/crm-clientes',
     icon: Users,
     module: 'clientes',
+  },
+  {
+    label: 'Contratos',
+    path: '/dashboard/contratos',
+    icon: FileText,
+    module: 'empresas',
   },
   {
     label: 'Hotspots',
