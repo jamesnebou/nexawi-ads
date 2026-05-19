@@ -51,6 +51,15 @@ function calcularOrigemPrincipal(leads = []) {
   return ranking[0] || null
 }
 
+function aplicarEscopoClienteEmpresa(query, { clienteId, empresaId }) {
+  if (empresaId && clienteId) {
+    return query.or(`empresa_id.eq.${empresaId},cliente_id.eq.${clienteId}`)
+  }
+
+  if (empresaId) return query.eq('empresa_id', empresaId)
+  return query.eq('cliente_id', clienteId)
+}
+
 export async function GET(request) {
   const auth = await requireCliente(request)
 
@@ -65,20 +74,34 @@ export async function GET(request) {
     const anuncioId = String(searchParams.get('anuncioId') || '').trim()
     const busca = sanitizeSearch(searchParams.get('busca') || '')
 
-    const { cliente } = auth
+    const { cliente, empresaId } = auth
+    const clienteId = cliente.id
 
-    const { data: anuncios, error: anunciosError } = await supabaseAdmin
+    let anunciosQuery = supabaseAdmin
       .from('anuncios')
       .select('id, titulo, ativo, created_at')
-      .eq('cliente_id', cliente.id)
       .order('created_at', { ascending: false })
+
+    anunciosQuery = aplicarEscopoClienteEmpresa(anunciosQuery, { clienteId, empresaId })
+
+    const { data: anuncios, error: anunciosError } = await anunciosQuery
 
     if (anunciosError) throw anunciosError
 
     const anunciosList = anuncios || []
     const anuncioIds = anunciosList.map((ad) => ad.id).filter(Boolean)
 
-    if (anuncioIds.length === 0) {
+    let query = supabaseAdmin
+      .from('leads')
+      .select('id, empresa_id, nome, email, telefone, created_at, anuncio_id, hotspot_id')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+
+    if (empresaId) {
+      query = query.eq('empresa_id', empresaId)
+    } else if (anuncioIds.length > 0) {
+      query = query.in('anuncio_id', anuncioIds)
+    } else {
       return NextResponse.json({
         ok: true,
         periodo,
@@ -90,16 +113,9 @@ export async function GET(request) {
           origemPrincipal: null,
         },
         leads: [],
-        anuncios: [],
+        anuncios: anunciosList,
       })
     }
-
-    let query = supabaseAdmin
-      .from('leads')
-      .select('id, nome, email, telefone, created_at, anuncio_id, hotspot_id')
-      .in('anuncio_id', anuncioIds)
-      .order('created_at', { ascending: false })
-      .limit(1000)
 
     const dataInicio = getDataInicio(periodo)
 
@@ -170,6 +186,11 @@ export async function GET(request) {
       },
       leads,
       anuncios: anunciosList,
+      multiempresa: {
+        empresa_id: empresaId || cliente.empresa_id || null,
+        usaEmpresaId: Boolean(empresaId),
+        fallbackClienteId: cliente.id,
+      },
     })
   } catch (error) {
     return NextResponse.json(

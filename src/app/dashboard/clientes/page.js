@@ -17,6 +17,7 @@
 // - Cliente travado por pendência
 // - Responsável interno pela implantação
 // - Cards operacionais de acompanhamento
+// - Botão para gerar contrato automático do cliente
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -47,6 +48,7 @@ import {
   UserCheck,
   Clock3,
   CheckCircle2,
+  FileText,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -240,7 +242,8 @@ export default function Clientes() {
   const canCreate = Boolean(permissions.create)
   const canUpdate = Boolean(permissions.update)
   const canDelete = Boolean(permissions.delete)
-  const showActionsColumn = canUpdate || canDelete
+  const canGenerateContract = Boolean(permissions.view || permissions.update || permissions.create)
+  const showActionsColumn = canUpdate || canDelete || canGenerateContract
 
   useEffect(() => {
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
@@ -892,6 +895,16 @@ async function copiarAcessoCliente() {
                         {showActionsColumn && (
                           <td className="px-6 py-5 text-right">
                             <div className="flex items-center justify-end gap-2 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                              {canGenerateContract && (
+                                <a
+                                  href={`/dashboard/contratos/gerar?source=cliente&id=${cliente.id}`}
+                                  className="p-2.5 text-neutral-500 hover:text-[#8cf059] hover:bg-[#6be12f]/10 rounded-xl transition-all duration-300 border border-transparent hover:border-[#6be12f]/20"
+                                  title="Gerar contrato do cliente"
+                                >
+                                  <FileText size={16} />
+                                </a>
+                              )}
+
                               {canUpdate && (
   <button
     onClick={() => resetarAcessoCliente(cliente)}

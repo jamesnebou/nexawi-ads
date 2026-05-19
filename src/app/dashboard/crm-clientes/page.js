@@ -9,6 +9,7 @@ import {
   DollarSign,
   Download,
   Edit3,
+  FileText,
   Flame,
   Mail,
   Phone,
@@ -790,16 +791,26 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
           {cliente.crm_observacoes && <p className="line-clamp-2">{cliente.crm_observacoes}</p>}
         </div>
 
-        {canUpdate && (
-          <button
-            type="button"
-            onClick={isEditing ? onCancel : onEdit}
-            className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
+        <div className="grid gap-2">
+          <a
+            href={`/dashboard/contratos/gerar?source=cliente&id=${cliente.id}`}
+            className="rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] hover:bg-[#6be12f]/15 transition-colors flex items-center justify-center gap-2"
           >
-            {isEditing ? <XCircle size={15} /> : <Edit3 size={15} />}
-            {isEditing ? 'Fechar' : 'Editar'}
-          </button>
-        )}
+            <FileText size={15} />
+            Contrato
+          </a>
+
+          {canUpdate && (
+            <button
+              type="button"
+              onClick={isEditing ? onCancel : onEdit}
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
+            >
+              {isEditing ? <XCircle size={15} /> : <Edit3 size={15} />}
+              {isEditing ? 'Fechar' : 'Editar'}
+            </button>
+          )}
+        </div>
       </div>
 
       {isEditing && (
