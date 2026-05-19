@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
-import { ArrowLeft, Building2, Copy, FileText, Printer, RefreshCw, Save } from 'lucide-react'
+import { ArrowLeft, Building2, Copy, Database, FileText, Printer, RefreshCw, Save } from 'lucide-react'
 import Link from 'next/link'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -67,8 +67,10 @@ export default function GerarContratoPage() {
   const [activeTab, setActiveTab] = useState('cliente')
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [savingDraft, setSavingDraft] = useState(false)
   const [data, setData] = useState(null)
   const [form, setForm] = useState({})
+  const [contratoSalvo, setContratoSalvo] = useState(null)
 
   const html = data?.html || ''
   const title = useMemo(() => {
@@ -79,6 +81,17 @@ export default function GerarContratoPage() {
   useEffect(() => {
     carregar()
   }, [source, id])
+
+  async function gerarContratoAtualizado() {
+    return adminApiFetch('/api/admin/contratos/gerar', {
+      method: 'POST',
+      body: {
+        source,
+        id,
+        updates: form,
+      },
+    })
+  }
 
   async function carregar(updates = null) {
     if (!id) {
@@ -113,14 +126,7 @@ export default function GerarContratoPage() {
     setGenerating(true)
 
     try {
-      const result = await adminApiFetch('/api/admin/contratos/gerar', {
-        method: 'POST',
-        body: {
-          source,
-          id,
-          updates: form,
-        },
-      })
+      const result = await gerarContratoAtualizado()
 
       setData(result)
       setForm(flatten(result.fields || {}))
@@ -130,6 +136,36 @@ export default function GerarContratoPage() {
       toast.error(error.message || 'Erro ao atualizar prévia.')
     } finally {
       setGenerating(false)
+    }
+  }
+
+  async function salvarRascunho() {
+    setSavingDraft(true)
+
+    try {
+      const result = await gerarContratoAtualizado()
+      setData(result)
+      setForm(flatten(result.fields || {}))
+
+      const saved = await adminApiFetch('/api/admin/contratos', {
+        method: 'POST',
+        body: {
+          id: contratoSalvo?.id,
+          source,
+          empresa_id: result.fields?.meta?.empresa_id || '',
+          cliente_id: result.fields?.meta?.cliente_id || '',
+          fields: result.fields,
+          status: 'rascunho',
+        },
+      })
+
+      setContratoSalvo(saved.contrato)
+      toast.success('Contrato salvo como rascunho.')
+    } catch (error) {
+      console.error('Erro ao salvar rascunho:', error)
+      toast.error(error.message || 'Erro ao salvar rascunho.')
+    } finally {
+      setSavingDraft(false)
     }
   }
 
@@ -161,7 +197,7 @@ export default function GerarContratoPage() {
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up print:p-0">
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 print:hidden">
           <div>
-            <Link href={source === 'cliente' ? '/dashboard/crm-clientes' : '/dashboard/empresas'} className="inline-flex items-center gap-2 text-xs font-bold text-neutral-500 hover:text-white mb-4">
+            <Link href={source === 'cliente' ? '/dashboard/clientes' : '/dashboard/empresas'} className="inline-flex items-center gap-2 text-xs font-bold text-neutral-500 hover:text-white mb-4">
               <ArrowLeft size={14} />
               Voltar
             </Link>
@@ -176,14 +212,25 @@ export default function GerarContratoPage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Revise os dados preenchidos automaticamente antes de imprimir, salvar em PDF ou enviar ao cliente.
+              Revise os dados preenchidos automaticamente antes de salvar, imprimir, gerar PDF ou enviar ao cliente.
             </p>
+
+            {contratoSalvo?.id && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-bold text-[#8cf059]">
+                <Database size={14} />
+                Rascunho salvo: {contratoSalvo.id.slice(0, 8)}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3">
             <button onClick={atualizarPrevia} disabled={generating || loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
               <RefreshCw size={17} />
               Atualizar prévia
+            </button>
+            <button onClick={salvarRascunho} disabled={savingDraft || loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-60">
+              <Database size={17} />
+              {savingDraft ? 'Salvando...' : 'Salvar rascunho'}
             </button>
             <button onClick={copiarContrato} disabled={!html} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
               <Copy size={17} />
@@ -209,7 +256,7 @@ export default function GerarContratoPage() {
             <aside className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 h-fit print:hidden">
               <div className="mb-5">
                 <h2 className="text-lg font-black text-white">Campos editáveis</h2>
-                <p className="text-xs text-neutral-500 mt-1">Altere e clique em “Atualizar prévia”.</p>
+                <p className="text-xs text-neutral-500 mt-1">Altere e clique em “Atualizar prévia” ou “Salvar rascunho”.</p>
               </div>
 
               <div className="flex gap-2 overflow-x-auto pb-3 mb-5">
@@ -280,7 +327,7 @@ export default function GerarContratoPage() {
                 <div className="rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-5">
                   <FileText className="text-[#8cf059] mb-3" size={24} />
                   <h3 className="text-base font-black text-white">Pronto para revisar</h3>
-                  <p className="text-sm text-neutral-400 mt-2">Clique em atualizar prévia, depois use imprimir/PDF para salvar o contrato.</p>
+                  <p className="text-sm text-neutral-400 mt-2">Clique em atualizar prévia, salvar rascunho ou imprimir/PDF.</p>
                 </div>
               )}
             </aside>
