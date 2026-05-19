@@ -50,6 +50,12 @@ npm run start
 
 O MikroTik de producao deve ser acessado pela VPS via WireGuard, sem depender de cabo fisico depois da instalacao.
 
+Manual completo para novos roteadores:
+
+```txt
+docs/manual-mikrotik-nexawi.md
+```
+
 Endereco validado:
 
 ```txt
