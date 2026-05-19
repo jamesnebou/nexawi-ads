@@ -69,7 +69,6 @@ async function buscarCliente(id, auth) {
       email,
       telefone,
       cpf_cnpj,
-      cpf,
       cidade,
       estado,
       endereco,
