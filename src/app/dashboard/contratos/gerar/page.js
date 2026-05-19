@@ -59,6 +59,19 @@ function fieldValue(form, key) {
   return value ?? ''
 }
 
+function isValidEmail(value = '') {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
+}
+
+function escapeHtml(value = '') {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
 export default function GerarContratoPage() {
   const searchParams = useSearchParams()
   const source = searchParams.get('source') || 'empresa'
@@ -182,6 +195,24 @@ export default function GerarContratoPage() {
       setData(result)
       setForm(flatten(result.fields || {}))
 
+      const clienteEmail = String(result.fields?.contratante?.email || '').trim()
+      const nexawiEmail = 'contato@nexawi.com.br'
+
+      if (!isValidEmail(clienteEmail)) {
+        setActiveTab('cliente')
+        toast.error('Confira o e-mail do cliente antes de enviar.')
+        return
+      }
+
+      const confirmado = window.confirm(
+        `Confirma o envio deste contrato?\n\nCliente: ${clienteEmail}\nCópia NexaWi: ${nexawiEmail}\n\nAtenção: confira se o e-mail do cliente está correto.`
+      )
+
+      if (!confirmado) {
+        toast('Envio cancelado para conferência do e-mail.')
+        return
+      }
+
       const response = await adminApiFetch('/api/admin/contratos/enviar', {
         method: 'POST',
         body: {
@@ -191,8 +222,8 @@ export default function GerarContratoPage() {
           cliente_id: result.fields?.meta?.cliente_id || '',
           fields: result.fields,
           html: result.html,
-          cliente_email: result.fields?.contratante?.email || '',
-          nexawi_email: 'contato@nexawi.com.br',
+          cliente_email: clienteEmail,
+          nexawi_email: nexawiEmail,
         },
       })
 
@@ -234,7 +265,54 @@ export default function GerarContratoPage() {
       return
     }
 
-    window.print()
+    const printWindow = window.open('', '_blank', 'width=1000,height=1200,scrollbars=yes')
+
+    if (!printWindow) {
+      toast.error('O navegador bloqueou a janela de impressão. Permita pop-ups para este site.')
+      return
+    }
+
+    printWindow.document.open()
+    printWindow.document.write(`<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 28px; background: #ffffff; color: #111111; }
+    .contract-document { font-family: Arial, sans-serif; color: #111; line-height: 1.55; font-size: 12.5px; max-width: 900px; margin: 0 auto; }
+    .contract-document h1 { font-size: 20px; text-align: center; margin: 0 0 18px; }
+    .contract-document h2 { font-size: 14px; margin: 22px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; break-after: avoid; }
+    .contract-document p { margin: 8px 0; }
+    .contract-document .muted { color: #555; text-align: center; }
+    .contract-document table { width: 100%; border-collapse: collapse; margin: 12px 0; break-inside: avoid; }
+    .contract-document th, .contract-document td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+    .contract-document th { width: 32%; background: #f5f5f5; }
+    .contract-document .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 36px; break-inside: avoid; }
+    @media print {
+      body { padding: 0; }
+      @page { margin: 14mm; }
+      .contract-document { max-width: none; font-size: 11.5px; }
+      .contract-document h1 { font-size: 18px; }
+      .contract-document h2 { font-size: 13px; }
+    }
+  </style>
+</head>
+<body>
+  ${html}
+  <script>
+    window.addEventListener('load', function () {
+      setTimeout(function () {
+        window.focus();
+        window.print();
+      }, 300);
+    });
+  </script>
+</body>
+</html>`)
+    printWindow.document.close()
   }
 
   return (
@@ -251,7 +329,7 @@ export default function GerarContratoPage() {
 
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
               <FileText size={13} />
-              Sprint 6 — Gerador de contratos
+              Gerador de Contratos
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
