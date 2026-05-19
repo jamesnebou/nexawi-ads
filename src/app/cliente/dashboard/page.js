@@ -10,8 +10,10 @@ import {
   Check,
   CheckCircle2,
   CreditCard,
+  ExternalLink,
   Eye,
   FileText,
+  Image as ImageIcon,
   KeyRound,
   LifeBuoy,
   Loader2,
@@ -21,6 +23,7 @@ import {
   Printer,
   TrendingUp,
   Users,
+  Video,
   Wifi,
   X,
 } from 'lucide-react'
@@ -214,6 +217,10 @@ export default function ClientDashboardPage() {
     }, 1500)
   }
 
+  function gerarPDFCliente() {
+    window.print()
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white">
@@ -241,9 +248,9 @@ export default function ClientDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none" />
+      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none no-print" />
 
-      <nav className="sticky top-0 z-40 bg-[#050505]/75 backdrop-blur-2xl border-b border-white/[0.04]">
+      <nav className="sticky top-0 z-40 bg-[#050505]/75 backdrop-blur-2xl border-b border-white/[0.04] no-print">
         <div className="max-w-7xl mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-24">
             <div className="flex items-center gap-3">
@@ -281,37 +288,37 @@ export default function ClientDashboardPage() {
         </div>
       </nav>
 
-      <main className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10">
+      <main id="cliente-print-area" className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10">
         <section className="mb-10">
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-5 no-print">
                 <CheckCircle2 size={13} className="text-[#6be12f]" />
                 Painel de performance
               </div>
-              <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">
-                Olá, {cliente?.nome?.split(' ')?.[0] || 'cliente'}
+              <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight print-title">
+                Relatório NexaWi — {cliente?.nome_empresa || cliente?.nome || 'Cliente'}
               </h1>
               <p className="text-gray-500 font-medium">Acompanhe o desempenho das suas campanhas na rede NexaWi.</p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button onClick={() => window.print()} className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06]">
+            <div className="flex flex-col sm:flex-row gap-3 no-print">
+              <button onClick={gerarPDFCliente} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06]">
                 <Printer size={17} />
                 Gerar PDF
               </button>
 
-              <Link href="/cliente/contratos" className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm font-extrabold text-blue-300 transition-all hover:bg-blue-500/15">
+              <Link href="/cliente/contratos" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm font-extrabold text-blue-300 transition-all hover:bg-blue-500/15">
                 <FileText size={17} />
                 Meus contratos
               </Link>
 
-              <Link href="/cliente/leads" className="no-print inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15">
+              <Link href="/cliente/leads" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15">
                 <Users size={17} />
                 Ver leads
               </Link>
 
-              <button onClick={() => router.push('/cliente/suporte')} className="no-print inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]">
+              <button onClick={() => router.push('/cliente/suporte')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]">
                 <LifeBuoy size={17} />
                 Abrir suporte
               </button>
@@ -327,7 +334,7 @@ export default function ClientDashboardPage() {
         )}
 
         {campanha && (
-          <section className={`rounded-[2rem] border p-6 sm:p-8 mb-8 ${campanhaStyle.box}`}>
+          <section className={`rounded-[2rem] border p-6 sm:p-8 mb-8 ${campanhaStyle.box} print-card`}>
             <div className="flex items-start gap-4">
               <div className="w-14 h-14 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
                 <CampanhaIcon size={24} className={campanhaStyle.text} />
@@ -341,27 +348,27 @@ export default function ClientDashboardPage() {
           </section>
         )}
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8">
+        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8 print-grid">
           {cards.map((card) => {
             const Icon = card.icon || Activity
             return (
-              <div key={card.label} className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6">
-                <div className={`w-12 h-12 rounded-2xl ${card.bg || 'bg-white/[0.06]'} flex items-center justify-center mb-6`}>
+              <div key={card.label} className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 print-card">
+                <div className={`w-12 h-12 rounded-2xl ${card.bg || 'bg-white/[0.06]'} flex items-center justify-center mb-6 no-print-icon`}>
                   <Icon size={22} className={card.text || 'text-white'} />
                 </div>
                 <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">{card.label}</p>
-                <p className="text-3xl font-light text-white">{typeof card.value === 'number' ? formatNumber(card.value) : card.value}</p>
+                <p className="text-3xl font-light text-white print-value">{typeof card.value === 'number' ? formatNumber(card.value) : card.value}</p>
               </div>
             )
           })}
         </section>
 
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
+        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 print-grid-3">
           <Panel title="Financeiro" icon={CreditCard}>
             <InfoRow label="Total pago" value={formatMoney(financeiro.totalPago || 0)} />
             <InfoRow label="Total pendente" value={formatMoney(financeiro.totalPendente || 0)} />
             <InfoRow label="Pagamentos pendentes" value={formatNumber(financeiro.pagamentosPendentes || 0)} />
-            <InfoRow label="Próximo pagamento" value={formatDate(financeiro.proximoPagamento?.vencimento)} />
+            <InfoRow label="Próximo pagamento" value={formatDate(financeiro.proximoPagamento?.vencimento || financeiro.proximoPagamento?.data_vencimento)} />
           </Panel>
 
           <Panel title="Leads recentes" icon={Users}>
@@ -376,33 +383,25 @@ export default function ClientDashboardPage() {
             {hotspotsVinculados.length === 0 ? (
               <EmptyText text="Nenhum hotspot vinculado." />
             ) : hotspotsVinculados.slice(0, 5).map((hotspot) => (
-              <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || '—'} />
+              <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || hotspot.status || '—'} />
             ))}
           </Panel>
         </section>
 
-        <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8">
+        <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8 print-card">
           <div className="flex items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-xl font-extrabold text-white">Anúncios</h2>
-              <p className="text-sm text-neutral-500 mt-1">Resumo dos anúncios vinculados à sua conta.</p>
+              <p className="text-sm text-neutral-500 mt-1">Prévia dos anúncios vinculados à sua conta.</p>
             </div>
           </div>
 
           {ads.length === 0 ? (
             <EmptyText text="Nenhum anúncio encontrado." />
           ) : (
-            <div className="grid gap-3">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 print-ads-grid">
               {ads.slice(0, 8).map((ad) => (
-                <div key={ad.id || ad.titulo} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-bold text-white">{ad.titulo || ad.nome || 'Anúncio sem título'}</p>
-                    <p className="text-xs text-neutral-500 mt-1">Status: {ad.status || '—'}</p>
-                  </div>
-                  <div className="text-xs text-neutral-500">
-                    {formatNumber(ad.visualizacoes || 0)} views · {formatNumber(ad.cliques || 0)} cliques
-                  </div>
-                </div>
+                <AdPreviewCard key={ad.id || ad.titulo} ad={ad} />
               ))}
             </div>
           )}
@@ -410,7 +409,7 @@ export default function ClientDashboardPage() {
       </main>
 
       {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 no-print">
           <form onSubmit={handlePasswordChange} className="w-full max-w-md rounded-[2rem] border border-white/[0.08] bg-[#0a0a0a] p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -445,8 +444,17 @@ export default function ClientDashboardPage() {
 
       <style jsx global>{`
         @media print {
-          .no-print, nav { display: none !important; }
-          body { background: #fff !important; }
+          .no-print, nav, .no-print-icon { display: none !important; }
+          html, body { background: #ffffff !important; color: #111111 !important; }
+          #cliente-print-area { max-width: none !important; padding: 0 !important; }
+          .print-title { color: #111111 !important; -webkit-text-fill-color: #111111 !important; background: none !important; font-size: 24px !important; }
+          .print-card { background: #ffffff !important; color: #111111 !important; border: 1px solid #dddddd !important; box-shadow: none !important; break-inside: avoid; }
+          .print-card * { color: #111111 !important; }
+          .print-value { color: #111111 !important; }
+          .print-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
+          .print-grid-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
+          .print-ads-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          @page { margin: 12mm; }
         }
       `}</style>
     </div>
@@ -457,9 +465,9 @@ function Panel({ title, icon: Icon, children }) {
   const SafeIcon = Icon || Activity
 
   return (
-    <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6">
+    <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 print-card">
       <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+        <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center no-print-icon">
           <SafeIcon size={18} className="text-[#8cf059]" />
         </div>
         <h2 className="text-lg font-extrabold text-white">{title}</h2>
@@ -471,7 +479,7 @@ function Panel({ title, icon: Icon, children }) {
 
 function InfoRow({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4 print-card">
       <p className="text-[10px] font-extrabold text-neutral-600 uppercase tracking-widest">{label}</p>
       <p className="text-sm font-bold text-white mt-1 break-words">{value}</p>
     </div>
@@ -480,8 +488,71 @@ function InfoRow({ label, value }) {
 
 function EmptyText({ text }) {
   return (
-    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5 text-center">
+    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5 text-center print-card">
       <p className="text-sm text-neutral-500">{text}</p>
+    </div>
+  )
+}
+
+function AdPreviewCard({ ad }) {
+  const isVideo = ad.tipo_media === 'video'
+  const statusLabel = ad.ativo ? 'Ativo' : 'Pausado'
+  const ctr = ad.ctr ?? (ad.visualizacoes > 0 ? Number(((Number(ad.cliques || 0) / Number(ad.visualizacoes || 1)) * 100).toFixed(2)) : 0)
+
+  return (
+    <div className="rounded-3xl border border-white/[0.05] bg-[#050505] overflow-hidden print-card">
+      <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr]">
+        <div className="relative bg-black min-h-[230px] sm:min-h-full flex items-center justify-center overflow-hidden">
+          {ad.media_url ? (
+            isVideo ? (
+              <video src={ad.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+            ) : (
+              <img src={ad.media_url} alt={ad.titulo || 'Anúncio'} className="w-full h-full object-cover" />
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-3 text-neutral-700">
+              {isVideo ? <Video size={34} /> : <ImageIcon size={34} />}
+              <span className="text-xs font-bold">Sem mídia</span>
+            </div>
+          )}
+        </div>
+
+        <div className="p-5">
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-widest text-[#8cf059] mb-2">{isVideo ? 'Vídeo' : 'Imagem'} · {statusLabel}</p>
+              <h3 className="text-lg font-black text-white">{ad.titulo || 'Anúncio sem título'}</h3>
+            </div>
+            {ad.url_destino && (
+              <a href={ad.url_destino} target="_blank" rel="noreferrer" className="no-print rounded-xl border border-white/[0.06] bg-white/[0.03] p-2 text-neutral-400 hover:text-white">
+                <ExternalLink size={16} />
+              </a>
+            )}
+          </div>
+
+          <p className="text-sm text-neutral-500 line-clamp-3 mb-5">{ad.descricao || 'Sem descrição cadastrada.'}</p>
+
+          <div className="grid grid-cols-3 gap-2 text-center">
+            <Metric label="Views" value={formatNumber(ad.visualizacoes || 0)} />
+            <Metric label="Cliques" value={formatNumber(ad.cliques || 0)} />
+            <Metric label="CTR" value={`${ctr || 0}%`} />
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-neutral-500">
+            <span>Duração: <strong className="text-white">{ad.duracao_segundos || 15}s</strong></span>
+            <span>Destino: <strong className="text-white">{ad.url_destino ? 'Configurado' : '—'}</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Metric({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] p-3 print-card">
+      <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600">{label}</p>
+      <p className="text-sm font-black text-white mt-1">{value}</p>
     </div>
   )
 }
