@@ -1,0 +1,343 @@
+'use client'
+
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
+import { ArrowLeft, Building2, Copy, FileText, Printer, RefreshCw, Save } from 'lucide-react'
+import Link from 'next/link'
+import toast, { Toaster } from 'react-hot-toast'
+
+const supabase = createBrowserSupabaseClient()
+
+const tabs = [
+  { id: 'cliente', label: 'Cliente' },
+  { id: 'plano', label: 'Plano' },
+  { id: 'exclusividade', label: 'Exclusividade' },
+  { id: 'condicoes', label: 'Condições' },
+  { id: 'previa', label: 'Prévia' },
+]
+
+async function adminApiFetch(path, { method = 'GET', body } = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    throw new Error('Sessão administrativa não encontrada.')
+  }
+
+  const response = await fetch(path, {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    cache: 'no-store',
+    body: body ? JSON.stringify(body) : undefined,
+  })
+
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+
+  if (!response.ok) {
+    throw new Error(data?.error || 'Erro na API administrativa.')
+  }
+
+  return data
+}
+
+function flatten(fields = {}) {
+  return {
+    ...(fields.contratante || {}),
+    ...Object.fromEntries(Object.entries(fields.plano || {}).map(([key, value]) => [`plano_${key}`, value])),
+    ...Object.fromEntries(Object.entries(fields.exclusividade || {}).map(([key, value]) => [`exclusividade_${key}`, value])),
+    ...Object.fromEntries(Object.entries(fields.condicoes || {}).map(([key, value]) => [`condicoes_${key}`, value])),
+  }
+}
+
+function fieldValue(form, key) {
+  const value = form?.[key]
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não'
+  return value ?? ''
+}
+
+export default function GerarContratoPage() {
+  const searchParams = useSearchParams()
+  const source = searchParams.get('source') || 'empresa'
+  const id = searchParams.get('id') || ''
+
+  const [activeTab, setActiveTab] = useState('cliente')
+  const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [data, setData] = useState(null)
+  const [form, setForm] = useState({})
+
+  const html = data?.html || ''
+  const title = useMemo(() => {
+    const nome = data?.fields?.contratante?.nome_razao_social || 'Cliente'
+    return `Contrato NexaWi — ${nome}`
+  }, [data])
+
+  useEffect(() => {
+    carregar()
+  }, [source, id])
+
+  async function carregar(updates = null) {
+    if (!id) {
+      toast.error('ID não informado para gerar contrato.')
+      setLoading(false)
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const result = await adminApiFetch('/api/admin/contratos/gerar', {
+        method: 'POST',
+        body: {
+          source,
+          id,
+          updates,
+        },
+      })
+
+      setData(result)
+      setForm(flatten(result.fields || {}))
+    } catch (error) {
+      console.error('Erro ao carregar contrato:', error)
+      toast.error(error.message || 'Erro ao gerar contrato.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function atualizarPrevia() {
+    setGenerating(true)
+
+    try {
+      const result = await adminApiFetch('/api/admin/contratos/gerar', {
+        method: 'POST',
+        body: {
+          source,
+          id,
+          updates: form,
+        },
+      })
+
+      setData(result)
+      setForm(flatten(result.fields || {}))
+      toast.success('Prévia atualizada.')
+    } catch (error) {
+      console.error('Erro ao atualizar prévia:', error)
+      toast.error(error.message || 'Erro ao atualizar prévia.')
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  function updateField(key, value) {
+    setForm((current) => ({ ...current, [key]: value }))
+  }
+
+  async function copiarContrato() {
+    const text = document.querySelector('#contract-preview')?.innerText || ''
+
+    try {
+      await navigator.clipboard.writeText(text)
+      toast.success('Contrato copiado.')
+    } catch {
+      toast.error('Não foi possível copiar automaticamente.')
+    }
+  }
+
+  function imprimir() {
+    atualizarPrevia().then(() => {
+      setTimeout(() => window.print(), 250)
+    })
+  }
+
+  return (
+    <>
+      <Toaster position="top-right" />
+
+      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up print:p-0">
+        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 print:hidden">
+          <div>
+            <Link href={source === 'cliente' ? '/dashboard/crm-clientes' : '/dashboard/empresas'} className="inline-flex items-center gap-2 text-xs font-bold text-neutral-500 hover:text-white mb-4">
+              <ArrowLeft size={14} />
+              Voltar
+            </Link>
+
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
+              <FileText size={13} />
+              Sprint 6 — Gerador de contratos
+            </div>
+
+            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+              Gerador automático de contrato
+            </h1>
+
+            <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
+              Revise os dados preenchidos automaticamente antes de imprimir, salvar em PDF ou enviar ao cliente.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button onClick={atualizarPrevia} disabled={generating || loading} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
+              <RefreshCw size={17} />
+              Atualizar prévia
+            </button>
+            <button onClick={copiarContrato} disabled={!html} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white hover:bg-white/[0.06] disabled:opacity-60">
+              <Copy size={17} />
+              Copiar
+            </button>
+            <button onClick={imprimir} disabled={!html} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-60">
+              <Printer size={17} />
+              Imprimir/PDF
+            </button>
+          </div>
+        </header>
+
+        {loading ? (
+          <div className="py-24 flex items-center justify-center print:hidden"><div className="w-14 h-14 rounded-full border-t-2 border-[#6be12f]/60 animate-spin" /></div>
+        ) : !data ? (
+          <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-12 text-center print:hidden">
+            <Building2 size={34} className="mx-auto text-neutral-600 mb-4" />
+            <h3 className="text-lg font-bold text-white">Contrato não encontrado</h3>
+            <p className="text-sm text-neutral-500 mt-2">Verifique o cliente/empresa selecionado.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-[440px_1fr] gap-6 print:block">
+            <aside className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 h-fit print:hidden">
+              <div className="mb-5">
+                <h2 className="text-lg font-black text-white">Campos editáveis</h2>
+                <p className="text-xs text-neutral-500 mt-1">Altere e clique em “Atualizar prévia”.</p>
+              </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-3 mb-5">
+                {tabs.map((tab) => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`rounded-2xl px-4 py-2 text-xs font-black whitespace-nowrap border ${activeTab === tab.id ? 'bg-[#6be12f] text-black border-[#6be12f]' : 'bg-white/[0.03] text-neutral-400 border-white/[0.05]'}`}>
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              {activeTab === 'cliente' && (
+                <FieldGroup>
+                  <Field label="Nome/Razão Social" value={fieldValue(form, 'nome_razao_social')} onChange={(v) => updateField('nome_razao_social', v)} />
+                  <Field label="CPF/CNPJ" value={fieldValue(form, 'cpf_cnpj')} onChange={(v) => updateField('cpf_cnpj', v)} />
+                  <Field label="Endereço completo" value={fieldValue(form, 'endereco_completo')} onChange={(v) => updateField('endereco_completo', v)} />
+                  <Field label="Nome do responsável" value={fieldValue(form, 'nome_responsavel')} onChange={(v) => updateField('nome_responsavel', v)} />
+                  <Field label="Nacionalidade" value={fieldValue(form, 'nacionalidade')} onChange={(v) => updateField('nacionalidade', v)} />
+                  <Field label="Estado civil" value={fieldValue(form, 'estado_civil')} onChange={(v) => updateField('estado_civil', v)} />
+                  <Field label="Profissão/Cargo" value={fieldValue(form, 'profissao_cargo')} onChange={(v) => updateField('profissao_cargo', v)} />
+                  <Field label="CPF do responsável" value={fieldValue(form, 'cpf_responsavel')} onChange={(v) => updateField('cpf_responsavel', v)} />
+                  <Field label="E-mail" value={fieldValue(form, 'email')} onChange={(v) => updateField('email', v)} />
+                  <Field label="Telefone" value={fieldValue(form, 'telefone')} onChange={(v) => updateField('telefone', v)} />
+                </FieldGroup>
+              )}
+
+              {activeTab === 'plano' && (
+                <FieldGroup>
+                  <Field label="Plano contratado" value={fieldValue(form, 'plano_nome')} onChange={(v) => updateField('plano_nome', v)} />
+                  <Field label="Tipo do plano" value={fieldValue(form, 'plano_tipo')} onChange={(v) => updateField('plano_tipo', v)} />
+                  <Field label="Valor mensal" type="number" value={fieldValue(form, 'plano_valor_mensal')} onChange={(v) => updateField('plano_valor_mensal', v)} />
+                  <Field label="Setup/implantação" type="number" value={fieldValue(form, 'plano_setup_implantacao')} onChange={(v) => updateField('plano_setup_implantacao', v)} />
+                  <Field label="Forma de pagamento" value={fieldValue(form, 'plano_forma_pagamento')} onChange={(v) => updateField('plano_forma_pagamento', v)} />
+                  <Field label="Dia de vencimento" value={fieldValue(form, 'plano_dia_vencimento')} onChange={(v) => updateField('plano_dia_vencimento', v)} />
+                  <Field label="Hotspots incluídos" type="number" value={fieldValue(form, 'plano_quantidade_hotspots')} onChange={(v) => updateField('plano_quantidade_hotspots', v)} />
+                  <Field label="Campanhas incluídas" type="number" value={fieldValue(form, 'plano_quantidade_campanhas')} onChange={(v) => updateField('plano_quantidade_campanhas', v)} />
+                  <Field label="Usuários incluídos" type="number" value={fieldValue(form, 'plano_quantidade_usuarios')} onChange={(v) => updateField('plano_quantidade_usuarios', v)} />
+                  <Field label="Data de início" type="date" value={fieldValue(form, 'plano_data_inicio')} onChange={(v) => updateField('plano_data_inicio', v)} />
+                  <Field label="Data de término" type="date" value={fieldValue(form, 'plano_data_termino')} onChange={(v) => updateField('plano_data_termino', v)} />
+                  <Field label="Observações" value={fieldValue(form, 'plano_observacoes')} onChange={(v) => updateField('plano_observacoes', v)} textarea />
+                </FieldGroup>
+              )}
+
+              {activeTab === 'exclusividade' && (
+                <FieldGroup>
+                  <Field label="Texto padrão" value={fieldValue(form, 'exclusividade_texto_padrao')} onChange={(v) => updateField('exclusividade_texto_padrao', v)} textarea />
+                  <Field label="Tipo" value={fieldValue(form, 'exclusividade_tipo')} onChange={(v) => updateField('exclusividade_tipo', v)} />
+                  <Field label="Categoria protegida" value={fieldValue(form, 'exclusividade_categoria_protegida')} onChange={(v) => updateField('exclusividade_categoria_protegida', v)} />
+                  <Field label="Local/região" value={fieldValue(form, 'exclusividade_local_regiao')} onChange={(v) => updateField('exclusividade_local_regiao', v)} />
+                  <Field label="Hotspots protegidos" value={fieldValue(form, 'exclusividade_hotspots_protegidos')} onChange={(v) => updateField('exclusividade_hotspots_protegidos', v)} />
+                  <Field label="Prazo" value={fieldValue(form, 'exclusividade_prazo')} onChange={(v) => updateField('exclusividade_prazo', v)} />
+                  <Field label="Valor" value={fieldValue(form, 'exclusividade_valor')} onChange={(v) => updateField('exclusividade_valor', v)} />
+                  <Field label="Observações" value={fieldValue(form, 'exclusividade_observacoes')} onChange={(v) => updateField('exclusividade_observacoes', v)} textarea />
+                </FieldGroup>
+              )}
+
+              {activeTab === 'condicoes' && (
+                <FieldGroup>
+                  <Field label="Foro" value={fieldValue(form, 'condicoes_foro')} onChange={(v) => updateField('condicoes_foro', v)} />
+                  <Field label="Número de vias" type="number" value={fieldValue(form, 'condicoes_numero_vias')} onChange={(v) => updateField('condicoes_numero_vias', v)} />
+                  <Field label="Local de assinatura" value={fieldValue(form, 'condicoes_local_assinatura')} onChange={(v) => updateField('condicoes_local_assinatura', v)} />
+                  <Field label="Data de assinatura" type="date" value={fieldValue(form, 'condicoes_data_assinatura')} onChange={(v) => updateField('condicoes_data_assinatura', v)} />
+                  <Field label="Canais de suporte" value={fieldValue(form, 'condicoes_suporte_canais')} onChange={(v) => updateField('condicoes_suporte_canais', v)} textarea />
+                  <Field label="Horário de atendimento" value={fieldValue(form, 'condicoes_horario_atendimento')} onChange={(v) => updateField('condicoes_horario_atendimento', v)} textarea />
+                </FieldGroup>
+              )}
+
+              {activeTab === 'previa' && (
+                <div className="rounded-3xl border border-[#6be12f]/20 bg-[#6be12f]/10 p-5">
+                  <FileText className="text-[#8cf059] mb-3" size={24} />
+                  <h3 className="text-base font-black text-white">Pronto para revisar</h3>
+                  <p className="text-sm text-neutral-400 mt-2">Clique em atualizar prévia, depois use imprimir/PDF para salvar o contrato.</p>
+                </div>
+              )}
+            </aside>
+
+            <main className="rounded-[2rem] border border-white/[0.05] bg-white p-5 sm:p-8 text-black print:border-0 print:rounded-none print:p-0">
+              <div className="print:hidden mb-5 flex items-center justify-between gap-4 border-b border-black/10 pb-4">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-widest text-neutral-500">Prévia</p>
+                  <h2 className="text-xl font-black text-black">{title}</h2>
+                </div>
+                <button onClick={atualizarPrevia} className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-xs font-black text-white">
+                  <Save size={14} />
+                  Aplicar edição
+                </button>
+              </div>
+
+              <div id="contract-preview" className="contract-preview" dangerouslySetInnerHTML={{ __html: html }} />
+            </main>
+          </div>
+        )}
+      </div>
+
+      <style jsx global>{`
+        .contract-preview .contract-document { font-family: Arial, sans-serif; color: #111; line-height: 1.55; font-size: 13px; max-width: 900px; margin: 0 auto; }
+        .contract-preview h1 { font-size: 22px; text-align: center; margin: 0 0 18px; }
+        .contract-preview h2 { font-size: 15px; margin: 24px 0 10px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .contract-preview p { margin: 8px 0; }
+        .contract-preview .muted { color: #555; text-align: center; }
+        .contract-preview table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+        .contract-preview th, .contract-preview td { border: 1px solid #ddd; padding: 8px; text-align: left; vertical-align: top; }
+        .contract-preview th { width: 32%; background: #f5f5f5; }
+        .contract-preview .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 36px; }
+        @media print {
+          body { background: #fff !important; }
+          .contract-preview .contract-document { max-width: none; font-size: 11.5px; }
+          .contract-preview h1 { font-size: 18px; }
+          .contract-preview h2 { font-size: 13px; break-after: avoid; }
+          .contract-preview table, .contract-preview p { break-inside: avoid; }
+        }
+      `}</style>
+    </>
+  )
+}
+
+function FieldGroup({ children }) {
+  return <div className="grid gap-4">{children}</div>
+}
+
+function Field({ label, value, onChange, type = 'text', textarea = false }) {
+  return (
+    <label>
+      <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 block">{label}</span>
+      {textarea ? (
+        <textarea value={value || ''} onChange={(event) => onChange(event.target.value)} rows={3} className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none resize-none" />
+      ) : (
+        <input type={type} value={value || ''} onChange={(event) => onChange(event.target.value)} className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none" />
+      )}
+    </label>
+  )
+}
