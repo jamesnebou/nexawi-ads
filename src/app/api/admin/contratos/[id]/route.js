@@ -21,26 +21,50 @@ function erro(message, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status })
 }
 
+async function getParamId(params) {
+  const resolved = typeof params?.then === 'function' ? await params : params
+  return Array.isArray(resolved?.id) ? resolved.id[0] : resolved?.id
+}
+
+async function contratoPermitidoParaAdmin(contrato, auth) {
+  if (!contrato?.id) return false
+  if (auth.isMaster) return true
+
+  if (contrato.empresa_id && auth.allowedEmpresaIds?.includes(contrato.empresa_id)) {
+    return true
+  }
+
+  if (contrato.cliente_id) {
+    let clienteQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id')
+      .eq('id', contrato.cliente_id)
+
+    clienteQuery = auth.applyEmpresaScope(clienteQuery)
+
+    const { data, error } = await clienteQuery.maybeSingle()
+    if (error) throw error
+    if (data?.id) return true
+  }
+
+  return false
+}
+
 async function carregarContrato(id, auth) {
   const contratoId = limparUuid(id)
   if (!contratoId) return null
 
-  let query = supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('empresa_contratos')
     .select('*')
     .eq('id', contratoId)
+    .maybeSingle()
 
-  if (!auth.isMaster) {
-    if (auth.allowedEmpresaIds?.length) {
-      query = query.in('empresa_id', auth.allowedEmpresaIds)
-    } else {
-      query = query.eq('empresa_id', '00000000-0000-0000-0000-000000000000')
-    }
-  }
-
-  const { data, error } = await query.maybeSingle()
   if (error) throw error
-  return data
+  if (!data) return null
+
+  const permitido = await contratoPermitidoParaAdmin(data, auth)
+  return permitido ? data : null
 }
 
 async function registrarEvento({ contratoId, eventType, auth, metadata = {} }) {
@@ -59,7 +83,7 @@ async function registrarEvento({ contratoId, eventType, auth, metadata = {} }) {
   }
 }
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   const auth = await requireAdmin(request, {
     module: 'empresas',
     action: 'view',
@@ -68,7 +92,8 @@ export async function GET(request, { params }) {
   if (auth.errorResponse) return auth.errorResponse
 
   try {
-    const contrato = await carregarContrato(params.id, auth)
+    const id = await getParamId(context?.params)
+    const contrato = await carregarContrato(id, auth)
 
     if (!contrato) {
       return erro('Contrato não encontrado ou fora do escopo permitido.', 404)
@@ -102,7 +127,7 @@ export async function GET(request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   const auth = await requireAdmin(request, {
     module: 'empresas',
     action: 'update',
@@ -112,7 +137,8 @@ export async function PATCH(request, { params }) {
 
   try {
     const body = await request.json().catch(() => ({}))
-    const contrato = await carregarContrato(params.id, auth)
+    const id = await getParamId(context?.params)
+    const contrato = await carregarContrato(id, auth)
 
     if (!contrato) {
       return erro('Contrato não encontrado ou fora do escopo permitido.', 404)
