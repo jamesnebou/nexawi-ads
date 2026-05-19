@@ -67,6 +67,12 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
   const vpnRouterAddress = process.env.NEXAWI_ROUTER_VPN_ADDRESS || '10.99.0.2/30'
   const vpnServerAddress = process.env.NEXAWI_VPN_SERVER_ADDRESS || '10.99.0.1/32'
   const vpnEndpoint = process.env.NEXAWI_VPN_ENDPOINT || '<IP_PUBLICO_OU_DNS_DA_VPS>'
+  const hasWireGuard = Boolean(
+    (diagnostics?.services || []).find((service) =>
+      service.enabled && String(service.name || '').toLowerCase().includes('wireguard')
+    )
+  )
+  const hotspotInterface = diagnostics?.selectedHotspotServer?.interface || '<INTERFACE_HOTSPOT>'
 
   return {
     routerHost,
@@ -88,7 +94,7 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
       {
         id: 'remote_access',
         label: 'Acesso remoto definido',
-        done: Boolean(routerHost && routerHost !== '10.70.0.2'),
+        done: Boolean(hasWireGuard || (routerHost && routerHost !== '10.70.0.2')),
         detail: 'Use VPN/WireGuard ou IP fixo seguro antes de instalar o equipamento fora do alcance fisico.',
       },
       {
@@ -133,6 +139,11 @@ function buildRouterOnboarding({ routerConfig, diagnostics }) {
         title: 'Validar IP da interface do hotspot',
         description: 'Compare com a sub-rede configurada na politica NexaWi.',
         value: '/ip address print detail',
+      },
+      {
+        title: 'Adicionar IP da sub-rede no hotspot',
+        description: 'Use somente se a interface do hotspot nao tiver IP dentro da sub-rede configurada.',
+        value: `/ip address add address=192.168.88.1/24 interface=${hotspotInterface} comment="NexaWi hotspot gateway"`,
       },
       {
         title: 'Habilitar DNS para politica base',
