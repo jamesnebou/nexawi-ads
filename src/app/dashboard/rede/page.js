@@ -43,8 +43,9 @@ const QUICK_PRESETS = [
   {
     id: 'meta',
     title: 'Facebook / Meta',
-    description: 'Bloqueia Facebook, Messenger e domínios essenciais da Meta com DNS, TLS, IP e DoH.',
+    description: 'Bloqueia Facebook, Messenger, CDNs e infraestrutura Meta com DNS, TLS, IP, DoH e QUIC.',
     domains: ['facebook.com'],
+    coverage: 'Facebook, Messenger, CDN Meta e IPs conhecidos',
     badge: 'Forte',
   },
   {
@@ -52,6 +53,7 @@ const QUICK_PRESETS = [
     title: 'Instagram',
     description: 'Bloqueia Instagram, CDN do Instagram e ativa infraestrutura Meta no backend.',
     domains: ['instagram.com'],
+    coverage: 'Instagram, CDN, Threads e infraestrutura compartilhada Meta',
     badge: 'Forte',
   },
   {
@@ -59,20 +61,23 @@ const QUICK_PRESETS = [
     title: 'TikTok',
     description: 'Bloqueia domínios principais do TikTok com DNS, TLS, DoH e QUIC.',
     domains: ['tiktok.com'],
+    coverage: 'TikTok, CDN, imagens, API e entrega de vídeo ByteDance',
     badge: 'Forte',
   },
   {
     id: 'youtube',
     title: 'YouTube',
-    description: 'Bloqueia YouTube, imagens, player e entrega de vídeo.',
+    description: 'Bloqueia YouTube, imagens, player, APIs e entrega de vídeo.',
     domains: ['youtube.com'],
+    coverage: 'YouTube, YouTube Kids, Shorts, thumbnails e Googlevideo',
     badge: 'Forte',
   },
   {
     id: 'streaming',
-    title: 'Netflix / Streaming',
-    description: 'Bloqueia domínios principais de entrega da Netflix para reduzir consumo de banda.',
+    title: 'Streaming',
+    description: 'Bloqueia plataformas de vídeo sob demanda e CDNs de streaming para reduzir consumo de banda.',
     domains: ['netflix.com'],
+    coverage: 'Netflix, Prime Video, Disney+, Max, Globoplay, Twitch e Pluto TV',
     badge: 'Forte',
   },
   {
@@ -80,13 +85,15 @@ const QUICK_PRESETS = [
     title: 'Apostas',
     description: 'Bloqueia casas de apostas e plataformas de cassino mais comuns em redes abertas.',
     domains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com'],
+    coverage: 'Bets populares no Brasil, cassino, odds e afiliadas principais',
     badge: 'Forte',
   },
   {
     id: 'adult',
     title: 'Adulto / pornografia',
-    description: 'Bloqueia sites adultos populares e plataformas de conteudo sensivel para redes familiares.',
+    description: 'Bloqueia sites adultos populares e plataformas de conteúdo sensível para redes familiares.',
     domains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com'],
+    coverage: 'Sites adultos, webcams, conteúdo pago e redes populares',
     badge: 'Forte',
   },
   {
@@ -94,6 +101,7 @@ const QUICK_PRESETS = [
     title: 'Jogos pesados',
     description: 'Reforça bloqueio de plataformas de jogos, CDNs e launchers comuns.',
     domains: ['roblox.com', 'epicgames.com', 'steampowered.com', 'riotgames.com'],
+    coverage: 'Roblox, Steam, Epic, Fortnite, Riot, Xbox e PlayStation',
     badge: 'Forte',
   },
 ]
@@ -1092,10 +1100,10 @@ function togglePreset(preset) {
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
     <div>
       <h2 className="text-lg font-black text-white">
-        Presets rápidos
+        Presets fortes
       </h2>
       <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-        Bloqueios inteligentes para apps grandes. O painel adiciona um domínio simples e a Control API expande para regras avançadas no MikroTik.
+        Bloqueios inteligentes para apps grandes. O painel adiciona gatilhos simples e a Control API expande para regras avançadas no MikroTik.
       </p>
     </div>
 
@@ -1135,6 +1143,10 @@ function togglePreset(preset) {
 
               <p className="text-xs text-neutral-500 leading-relaxed">
                 {preset.description}
+              </p>
+
+              <p className="text-[11px] text-neutral-400 mt-3 leading-relaxed">
+                Cobre: <span className="font-bold text-neutral-200">{preset.coverage}</span>
               </p>
 
               <p className="text-xs text-neutral-600 mt-3">

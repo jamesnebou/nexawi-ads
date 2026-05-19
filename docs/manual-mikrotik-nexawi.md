@@ -241,20 +241,30 @@ Fallback se regexp/NXDOMAIN nao for aceito:
 
 ## 9. Presets De Bloqueio
 
-O painel pode aplicar presets para:
+O painel pode aplicar presets fortes pelo menu Controle de Rede.
+O operador marca um gatilho simples no painel e a Control API expande para dominios,
+TLS hosts, DNS static, bloqueio de DoH, bloqueio de QUIC e, quando necessario,
+address-list no MikroTik.
 
-```txt
-Instagram
-TikTok
-YouTube
-Streaming
-Apostas
-Adulto
-Jogos pesados
-Meta/Facebook
-```
+Presets disponiveis:
 
-Cada preset cria regras DNS, TLS e/ou address-list conforme necessidade.
+| Preset | Gatilho no painel | Cobertura aplicada pela Control API |
+| --- | --- | --- |
+| Facebook / Meta | `facebook.com` | Facebook, Messenger, CDNs Meta e blocos de IP conhecidos da Meta |
+| Instagram | `instagram.com` | Instagram, CDN Instagram, Threads e infraestrutura compartilhada Meta |
+| TikTok | `tiktok.com` | TikTok, CDNs, APIs, imagens e entrega de video ByteDance |
+| YouTube | `youtube.com` | YouTube, YouTube Kids, Shorts, thumbnails, APIs e Googlevideo |
+| Streaming | `netflix.com` | Netflix, Prime Video, Disney+, Max, Globoplay, Twitch, Pluto TV e Paramount+ |
+| Apostas | `bet365.com`, `betano.com`, `betfair.com`, `stake.com`, `blaze.com` | Bets populares no Brasil, cassino, odds e dominios relacionados |
+| Adulto / pornografia | `pornhub.com`, `xvideos.com`, `xnxx.com`, `onlyfans.com` | Sites adultos, webcams, conteudo pago e redes populares |
+| Jogos pesados | `roblox.com`, `epicgames.com`, `steampowered.com`, `riotgames.com` | Roblox, Steam, Epic, Fortnite, Riot, Xbox e PlayStation |
+
+Observacoes:
+
+- Sites permitidos sempre vencem sites bloqueados.
+- Se um dominio permitido usa infraestrutura Meta/Instagram, o painel evita aplicar bloqueio forte por IP da Meta para nao derrubar o permitido.
+- Os presets dependem de DNS forçado para maior efetividade.
+- O bloqueio QUIC melhora o controle de apps que tentam escapar por UDP/443.
 
 ## 10. Liberacao De Cliente Do Portal
 
