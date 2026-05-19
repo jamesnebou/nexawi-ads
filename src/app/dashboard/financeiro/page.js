@@ -39,6 +39,8 @@ import {
   CalendarDays,
   ShieldAlert,
   Lock,
+  CreditCard,
+  Repeat,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -140,6 +142,8 @@ export default function Pagamentos() {
   const [pagamentoSelecionado, setPagamentoSelecionado] = useState(null)
   const [confirmDelete, setConfirmDelete] = useState(null)
   const [salvando, setSalvando] = useState(false)
+  const [asaasStatus, setAsaasStatus] = useState(null)
+  const [asaasLoadingId, setAsaasLoadingId] = useState('')
 
   const [form, setForm] = useState({
     cliente_id: '',
@@ -164,6 +168,20 @@ export default function Pagamentos() {
   useEffect(() => {
     buscarDados()
   }, [busca, filtroStatus, filtroPeriodo])
+
+  useEffect(() => {
+    carregarAsaasStatus()
+  }, [])
+
+  async function carregarAsaasStatus() {
+    try {
+      const data = await adminApiFetch('/api/admin/financeiro/asaas')
+      setAsaasStatus(data)
+    } catch (error) {
+      console.error('Erro ao carregar status Asaas:', error)
+      setAsaasStatus({ enabled: false, error: error.message })
+    }
+  }
 
   async function buscarDados() {
     setCarregando(true)
@@ -468,6 +486,43 @@ export default function Pagamentos() {
     }
   }
 
+  async function criarAssinaturaAsaas(assinatura) {
+    if (!canCreate) {
+      toast.error('Você não tem permissão para criar cobrança recorrente.')
+      return
+    }
+
+    if (!asaasStatus?.enabled) {
+      toast.error('Configure ASAAS_API_KEY antes de criar assinaturas recorrentes.')
+      return
+    }
+
+    const loadingId = `${assinatura.empresa_id || ''}:${assinatura.cliente_id || ''}`
+    setAsaasLoadingId(loadingId)
+
+    try {
+      const data = await adminApiFetch('/api/admin/financeiro/asaas', {
+        method: 'POST',
+        body: {
+          action: 'create_subscription',
+          cliente_id: assinatura.cliente_id,
+          plano_id: assinatura.plano?.id || '',
+          valor: assinatura.plano?.preco || 0,
+          data_vencimento: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
+          metodo_pagamento: 'PIX',
+        },
+      })
+
+      toast.success(data.message || 'Assinatura criada no Asaas.')
+      buscarDados()
+    } catch (error) {
+      console.error('Erro ao criar assinatura Asaas:', error)
+      toast.error(error.message || 'Erro ao criar assinatura no Asaas.')
+    } finally {
+      setAsaasLoadingId('')
+    }
+  }
+
   function statusAssinaturaLabel(status) {
     const labels = {
       em_dia: 'Em dia',
@@ -614,6 +669,39 @@ export default function Pagamentos() {
           </div>
         </div>
 
+        <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-5 sm:p-6 mb-10 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#6be12f]">
+                <CreditCard size={22} />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-extrabold text-white tracking-tight">
+                  Integração Asaas
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
+                  Cobrança recorrente por PIX, boleto ou cartão, com webhook para atualizar pagamentos e inadimplência.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              <span className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-widest border ${
+                asaasStatus?.enabled
+                  ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20'
+                  : 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20'
+              }`}>
+                {asaasStatus?.enabled ? 'Asaas configurado' : 'Asaas pendente'}
+              </span>
+
+              <span className="inline-flex items-center justify-center rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-widest bg-white/[0.03] text-neutral-400 border border-white/[0.06]">
+                {asaasStatus?.environment || 'sandbox'}
+              </span>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-10">
           {cards.map((card, index) => (
             <div
@@ -676,49 +764,75 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pontos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
+                    {canCreate && (
+                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 text-right whitespace-nowrap">Asaas</th>
+                    )}
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-white/[0.02]">
-                  {assinaturas.map((assinatura) => (
-                    <tr key={`${assinatura.empresa_id || assinatura.cliente_id}`} className="hover:bg-white/[0.02] transition-colors duration-300">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-white">
-                          {assinatura.empresa_nome || assinatura.cliente_nome || 'Cliente'}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          {assinatura.cliente_nome}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-bold text-neutral-300">
-                          {assinatura.plano?.nome || 'Sem plano'}
-                        </div>
-                        <div className="text-xs text-neutral-500">
-                          {fmt(assinatura.plano?.preco || 0)} / {assinatura.plano?.ciclo_cobranca || 'mensal'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(assinatura.status_pagamento === 'inadimplente' ? 'Vencido' : assinatura.status_pagamento === 'em_dia' ? 'Pago' : 'Pendente')}`}>
-                          {statusAssinaturaLabel(assinatura.status_pagamento)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatusOperacional(assinatura.status_operacional)}`}>
-                          {statusAssinaturaLabel(assinatura.status_operacional)}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
-                        {formatarLimite(assinatura.uso?.criativos, assinatura.limites?.criativos)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
-                        {formatarLimite(assinatura.uso?.pontos, assinatura.limites?.pontos)}
-                      </td>
-                      <td className="px-6 py-4 text-sm text-red-300 whitespace-nowrap">
-                        {fmt(assinatura.financeiro?.total_vencido || 0)}
-                      </td>
-                    </tr>
-                  ))}
+                  {assinaturas.map((assinatura) => {
+                    const loadingId = `${assinatura.empresa_id || ''}:${assinatura.cliente_id || ''}`
+                    const asaasCriando = asaasLoadingId === loadingId
+
+                    return (
+                      <tr key={`${assinatura.empresa_id || assinatura.cliente_id}`} className="hover:bg-white/[0.02] transition-colors duration-300">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-white">
+                            {assinatura.empresa_nome || assinatura.cliente_nome || 'Cliente'}
+                          </div>
+                          <div className="text-xs text-neutral-500">
+                            {assinatura.cliente_nome}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-neutral-300">
+                            {assinatura.plano?.nome || 'Sem plano'}
+                          </div>
+                          <div className="text-xs text-neutral-500">
+                            {fmt(assinatura.plano?.preco || 0)} / {assinatura.plano?.ciclo_cobranca || 'mensal'}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(assinatura.status_pagamento === 'inadimplente' ? 'Vencido' : assinatura.status_pagamento === 'em_dia' ? 'Pago' : 'Pendente')}`}>
+                            {statusAssinaturaLabel(assinatura.status_pagamento)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatusOperacional(assinatura.status_operacional)}`}>
+                            {statusAssinaturaLabel(assinatura.status_operacional)}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
+                          {formatarLimite(assinatura.uso?.criativos, assinatura.limites?.criativos)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
+                          {formatarLimite(assinatura.uso?.pontos, assinatura.limites?.pontos)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-red-300 whitespace-nowrap">
+                          {fmt(assinatura.financeiro?.total_vencido || 0)}
+                        </td>
+                        {canCreate && (
+                          <td className="px-6 py-4 text-right whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => criarAssinaturaAsaas(assinatura)}
+                              disabled={asaasCriando || !asaasStatus?.enabled || !assinatura.plano?.preco}
+                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059] hover:bg-[#6be12f]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                              title="Criar assinatura recorrente no Asaas"
+                            >
+                              {asaasCriando ? (
+                                <div className="w-4 h-4 border-2 border-[#8cf059] border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                <Repeat size={14} />
+                              )}
+                              Recorrente
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>

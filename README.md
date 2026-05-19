@@ -45,6 +45,7 @@ npm run start
 - `ROUTEROS_BASE_URL`, `ROUTEROS_USERNAME`, `ROUTEROS_PASSWORD`: acesso RouterOS REST.
 - `NEXAWI_ROUTER_VPN_ADDRESS`, `NEXAWI_VPN_SERVER_ADDRESS`, `NEXAWI_VPN_ENDPOINT`: valores usados para gerar comandos de onboarding WireGuard.
 - `SMTP_*` e `ADMIN_ALERT_EMAIL`: envio de notificacoes e relatorios.
+- `ASAAS_ENV`, `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`: cobranca recorrente via Asaas.
 
 ## Acesso remoto MikroTik
 
@@ -90,6 +91,27 @@ Hotspot Server: hotspot1
 Interface: bridge
 Sub-rede: 192.168.88.0/24
 Gateway: 192.168.88.1/24
+```
+
+## Cobranca recorrente Asaas
+
+Documentacao da integracao:
+
+```txt
+docs/integracao-asaas.md
+docs/sql/2026-05-asaas-financeiro.sql
+```
+
+Webhook publico:
+
+```txt
+https://www.nexawi.com.br/api/webhooks/asaas
+```
+
+No painel:
+
+```txt
+/dashboard/financeiro
 ```
 
 ## Relatorio comercial por e-mail
