@@ -43,7 +43,41 @@ npm run start
 - `NEXAWI_CONTROL_SECRET`: segredo usado entre dashboard e Control API.
 - `NEXAWI_CRON_SECRET`: segredo usado por crons e rotas operacionais.
 - `ROUTEROS_BASE_URL`, `ROUTEROS_USERNAME`, `ROUTEROS_PASSWORD`: acesso RouterOS REST.
+- `NEXAWI_ROUTER_VPN_ADDRESS`, `NEXAWI_VPN_SERVER_ADDRESS`, `NEXAWI_VPN_ENDPOINT`: valores usados para gerar comandos de onboarding WireGuard.
 - `SMTP_*` e `ADMIN_ALERT_EMAIL`: envio de notificacoes e relatorios.
+
+## Acesso remoto MikroTik
+
+O MikroTik de producao deve ser acessado pela VPS via WireGuard, sem depender de cabo fisico depois da instalacao.
+
+Endereco validado:
+
+```txt
+VPS WireGuard: 10.70.0.1
+MikroTik WireGuard: 10.70.0.2
+ROUTEROS_BASE_URL=http://10.70.0.2
+```
+
+`10.70.0.2` nao e IP publico. E um IP privado do tunel WireGuard entre a VPS e o MikroTik. O IP publico usado como endpoint e o da VPS.
+
+Validacao pela VPS:
+
+```bash
+cd /srv/nexawi/control-api
+
+node -e "require('dotenv').config({path:'.env'}); const user=process.env.ROUTEROS_USERNAME; const pass=process.env.ROUTEROS_PASSWORD; const base=(process.env.ROUTEROS_BASE_URL||'http://10.70.0.2').replace(/\/$/,''); const basic=Buffer.from(user+':'+pass).toString('base64'); fetch(base+'/rest/system/resource',{headers:{Authorization:'Basic '+basic}}).then(async r=>console.log(r.status, await r.text())).catch(e=>console.error(e.message))"
+```
+
+Resultado esperado: `200` com JSON contendo `board-name`, `version` e `uptime`.
+
+No MikroTik real, o hotspot de producao deve usar:
+
+```txt
+Hotspot Server: hotspot1
+Interface: bridge
+Sub-rede: 192.168.88.0/24
+Gateway: 192.168.88.1/24
+```
 
 ## Relatorio comercial por e-mail
 
