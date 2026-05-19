@@ -226,6 +226,7 @@ export default function MikrotiksPage() {
   const [diagnosticsRouter, setDiagnosticsRouter] = useState(null)
   const [diagnosticsData, setDiagnosticsData] = useState(null)
   const [diagnosticsLoadingId, setDiagnosticsLoadingId] = useState(null)
+  const [diagnosticsStep, setDiagnosticsStep] = useState('vpn')
 
   const [form, setForm] = useState(DEFAULT_FORM)
   const [formDiagnostics, setFormDiagnostics] = useState(null)
@@ -520,6 +521,7 @@ export default function MikrotiksPage() {
     setDiagnosticsRouter(router)
     setDiagnosticsData(null)
     setDiagnosticsOpen(true)
+    setDiagnosticsStep('vpn')
     setDiagnosticsLoadingId(router.id)
 
     try {
@@ -562,6 +564,7 @@ export default function MikrotiksPage() {
     setDiagnosticsOpen(false)
     setDiagnosticsRouter(null)
     setDiagnosticsData(null)
+    setDiagnosticsStep('vpn')
   }
 
   async function copiarTexto(value) {
@@ -571,6 +574,215 @@ export default function MikrotiksPage() {
     } catch {
       toast.error('Não foi possível copiar.')
     }
+  }
+
+  function findDiagnosticCheck(diagnostics, id) {
+    return (diagnostics?.checks || []).find((check) => check.id === id) || null
+  }
+
+  function findOnboardingItem(diagnostics, id) {
+    return (diagnostics?.onboarding?.checklist || []).find((item) => item.id === id) || null
+  }
+
+  function buildWizardSteps(diagnostics) {
+    const routerReachable = findDiagnosticCheck(diagnostics, 'router_reachable')
+    const restWww = findDiagnosticCheck(diagnostics, 'rest_www_enabled')
+    const hotspotServer = findDiagnosticCheck(diagnostics, 'target_hotspot_server')
+    const hotspotSubnet = findDiagnosticCheck(diagnostics, 'hotspot_subnet')
+    const policyStatus = findDiagnosticCheck(diagnostics, 'policy_status')
+    const remoteAccess = findOnboardingItem(diagnostics, 'remote_access')
+    const hasWireGuard = (diagnostics?.services || []).some((service) =>
+      service.enabled && String(service.name || '').toLowerCase().includes('wireguard')
+    )
+
+    return [
+      {
+        id: 'vpn',
+        title: 'VPN',
+        subtitle: 'WireGuard',
+        ok: Boolean(hasWireGuard || remoteAccess?.done),
+        status: hasWireGuard || remoteAccess?.done ? 'ok' : 'warning',
+        message: hasWireGuard
+          ? 'WireGuard ativo no MikroTik.'
+          : remoteAccess?.detail || 'Configure WireGuard antes de instalar o roteador em campo.',
+        detail: 'Garante acesso remoto sem cabo, mesmo com o MikroTik instalado em outra cidade.',
+        commands: ['WireGuard no MikroTik como cliente da VPS'],
+      },
+      {
+        id: 'rest',
+        title: 'REST',
+        subtitle: 'Control API',
+        ok: Boolean(routerReachable?.ok && restWww?.ok),
+        status: routerReachable?.ok && restWww?.ok ? 'ok' : 'critical',
+        message: restWww?.message || routerReachable?.message || 'REST ainda nao validado.',
+        detail: 'Confirma que a VPS consegue enviar comandos RouterOS REST com seguranca.',
+        commands: ['Habilitar REST seguro por origem', 'Criar usuario da Control API'],
+      },
+      {
+        id: 'hotspot',
+        title: 'Hotspot',
+        subtitle: 'Servidor',
+        ok: Boolean(hotspotServer?.ok),
+        status: hotspotServer?.ok ? 'ok' : 'critical',
+        message: hotspotServer?.message || 'Hotspot server ainda nao validado.',
+        detail: 'Confirma que o hotspot server cadastrado no painel existe e esta ativo.',
+        commands: ['Validar hotspot server'],
+      },
+      {
+        id: 'subnet',
+        title: 'Sub-rede',
+        subtitle: 'Gateway',
+        ok: Boolean(hotspotSubnet?.ok),
+        status: hotspotSubnet?.ok ? 'ok' : 'critical',
+        message: hotspotSubnet?.message || 'Sub-rede ainda nao validada.',
+        detail: 'Confirma se a interface do hotspot tem IP dentro da sub-rede NexaWi.',
+        commands: ['Validar IP da interface do hotspot', 'Adicionar IP da sub-rede no hotspot'],
+      },
+      {
+        id: 'policy',
+        title: 'Politica',
+        subtitle: 'NexaWi',
+        ok: Boolean(policyStatus?.ok),
+        status: policyStatus?.ok ? 'ok' : 'warning',
+        message: policyStatus?.message || 'Politica ainda nao lida.',
+        detail: 'Confirma se as regras NexaWi podem ser lidas e auditadas no RouterOS.',
+        commands: ['Habilitar DNS para politica base'],
+      },
+      {
+        id: 'final',
+        title: 'Teste final',
+        subtitle: 'Operacao',
+        ok: Boolean(diagnostics?.ready),
+        status: diagnostics?.ready ? 'ok' : 'warning',
+        message: diagnostics?.ready
+          ? 'MikroTik pronto para operar.'
+          : 'Resolva as pendencias antes de liberar para campo.',
+        detail: 'Depois desta etapa, teste aplicar politica, bloquear e desbloquear um dominio real.',
+        commands: [],
+      },
+    ]
+  }
+
+  function statusClass(status, selected = false) {
+    if (status === 'ok') {
+      return selected
+        ? 'border-[#6be12f]/40 bg-[#6be12f]/15 text-[#8cf059]'
+        : 'border-[#6be12f]/15 bg-[#6be12f]/5 text-[#8cf059]'
+    }
+
+    if (status === 'critical') {
+      return selected
+        ? 'border-red-500/40 bg-red-500/15 text-red-200'
+        : 'border-red-500/20 bg-red-500/10 text-red-300'
+    }
+
+    return selected
+      ? 'border-yellow-500/40 bg-yellow-500/15 text-yellow-100'
+      : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-200'
+  }
+
+  function renderDiagnosticsWizard(diagnostics) {
+    const steps = buildWizardSteps(diagnostics)
+    const activeStep = steps.find((step) => step.id === diagnosticsStep) || steps[0]
+    const onboardingCommands = diagnostics?.onboarding?.commands || []
+    const activeCommands = onboardingCommands.filter((command) =>
+      (activeStep.commands || []).includes(command.title)
+    )
+
+    return (
+      <div className="rounded-[2rem] border border-white/[0.06] bg-[#050505] p-5">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5">
+          <div>
+            <p className="text-sm font-black text-white">
+              Wizard de onboarding MikroTik
+            </p>
+            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+              Siga as etapas na ordem para validar um roteador antes de colocar em campo.
+            </p>
+          </div>
+
+          <span className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border ${statusClass(diagnostics?.ready ? 'ok' : 'warning')}`}>
+            {diagnostics?.ready ? 'Pronto para operar' : 'Com pendencias'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 mb-5">
+          {steps.map((step, index) => {
+            const selected = activeStep.id === step.id
+
+            return (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setDiagnosticsStep(step.id)}
+                className={`text-left rounded-2xl border p-3 transition-all ${statusClass(step.status, selected)}`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
+                  {step.ok ? <Check size={14} /> : <AlertTriangle size={14} />}
+                </div>
+                <p className="text-sm font-black text-white mt-2">
+                  {step.title}
+                </p>
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">
+                  {step.subtitle}
+                </p>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className={`rounded-2xl border p-5 ${statusClass(activeStep.status, true)}`}>
+          <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div>
+              <p className="text-lg font-black text-white">
+                {activeStep.title}: {activeStep.ok ? 'validado' : 'precisa de atencao'}
+              </p>
+              <p className="text-sm font-bold mt-2">
+                {activeStep.message}
+              </p>
+              <p className="text-xs text-neutral-400 mt-2 leading-relaxed">
+                {activeStep.detail}
+              </p>
+            </div>
+          </div>
+
+          {activeCommands.length > 0 && (
+            <div className="mt-5 space-y-3">
+              {activeCommands.map((command) => (
+                <div key={command.title} className="rounded-xl border border-white/[0.06] bg-black/40 p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div>
+                      <p className="text-xs font-black text-white">
+                        {command.title}
+                      </p>
+                      <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
+                        {command.description}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => copiarTexto(command.value)}
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+                    >
+                      <Copy size={13} />
+                      Copiar
+                    </button>
+                  </div>
+
+                  <code className="block whitespace-pre-wrap break-all rounded-lg bg-black/60 px-3 py-2 text-[11px] leading-relaxed text-neutral-300">
+                    {command.value}
+                  </code>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 
   function renderOnboardingPanel(diagnostics) {
@@ -1355,6 +1567,8 @@ export default function MikrotiksPage() {
                 </div>
               ) : diagnosticsData ? (
                 <>
+                  {renderDiagnosticsWizard(diagnosticsData)}
+
                   <div className={`rounded-[2rem] border p-6 ${
                     diagnosticsData.ready
                       ? 'border-[#6be12f]/20 bg-[#6be12f]/10'
