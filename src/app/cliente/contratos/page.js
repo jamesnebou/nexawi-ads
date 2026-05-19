@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
-import { ArrowLeft, CheckCircle2, FileText, Loader2, Printer, RefreshCw, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Eye, FileText, Loader2, Printer, RefreshCw, ShieldCheck } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createClient()
@@ -69,7 +69,6 @@ export default function ClienteContratosPage() {
   const router = useRouter()
   const [contratos, setContratos] = useState([])
   const [loading, setLoading] = useState(true)
-  const [aceitandoId, setAceitandoId] = useState('')
 
   useEffect(() => {
     carregarContratos()
@@ -90,27 +89,6 @@ export default function ClienteContratosPage() {
       toast.error(error.message || 'Erro ao carregar contratos.')
     } finally {
       setLoading(false)
-    }
-  }
-
-  async function aceitarContrato(contrato) {
-    if (!window.confirm('Confirma que você leu e aceita este contrato?')) return
-
-    setAceitandoId(contrato.id)
-
-    try {
-      const data = await clienteApiFetch('/api/cliente/contratos', {
-        method: 'POST',
-        body: { id: contrato.id },
-      })
-
-      toast.success(data.message || 'Contrato aceito com sucesso.')
-      await carregarContratos()
-    } catch (error) {
-      console.error('Erro ao aceitar contrato:', error)
-      toast.error(error.message || 'Erro ao aceitar contrato.')
-    } finally {
-      setAceitandoId('')
     }
   }
 
@@ -139,7 +117,7 @@ export default function ClienteContratosPage() {
               </h1>
 
               <p className="text-gray-500 font-medium max-w-2xl">
-                Consulte contratos enviados pela NexaWi e registre o aceite digital quando estiver tudo certo.
+                Consulte contratos enviados pela NexaWi. Para aceitar, abra o contrato e leia o documento completo.
               </p>
             </div>
 
@@ -186,16 +164,21 @@ export default function ClienteContratosPage() {
                     </div>
 
                     <div className="grid gap-2">
+                      <Link href={`/cliente/contratos/${contrato.id}`} className="rounded-2xl bg-[#6be12f] px-4 py-3 text-xs font-black text-black hover:bg-[#8cf059] flex items-center justify-center gap-2">
+                        <Eye size={15} />
+                        Abrir contrato
+                      </Link>
+
                       <button onClick={() => window.print()} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] flex items-center justify-center gap-2">
                         <Printer size={15} />
-                        Imprimir página
+                        Imprimir lista
                       </button>
 
-                      {contrato.status !== 'assinado' && contrato.status !== 'cancelado' && (
-                        <button onClick={() => aceitarContrato(contrato)} disabled={aceitandoId === contrato.id} className="rounded-2xl bg-[#6be12f] px-4 py-3 text-xs font-black text-black hover:bg-[#8cf059] disabled:opacity-60 flex items-center justify-center gap-2">
+                      {contrato.status === 'assinado' && (
+                        <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-xs font-black text-emerald-300 flex items-center justify-center gap-2">
                           <CheckCircle2 size={15} />
-                          {aceitandoId === contrato.id ? 'Aceitando...' : 'Li e aceito'}
-                        </button>
+                          Aceito
+                        </div>
                       )}
                     </div>
                   </div>
