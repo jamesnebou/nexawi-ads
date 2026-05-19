@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
+import CommercialPdfReport from '@/components/cliente/CommercialPdfReport'
 import {
   Activity,
   AlertTriangle,
@@ -122,8 +123,8 @@ export default function ClientDashboardPage() {
   const [financeiro, setFinanceiro] = useState({})
   const [ads, setAds] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
-  const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [hotspotsVinculados, setHotspotsVinculados] = useState([])
+  const [commercialReport, setCommercialReport] = useState(null)
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -148,6 +149,14 @@ export default function ClientDashboardPage() {
 
         const data = await clienteApiFetch('/api/cliente/dashboard')
 
+        let reportData = null
+
+        try {
+          reportData = await clienteApiFetch('/api/cliente/relatorio-comercial?periodo=ultimos_30')
+        } catch (reportError) {
+          console.error('Erro ao carregar relatório comercial para PDF:', reportError)
+        }
+
         if (!isMounted) return
 
         setCliente(data.cliente || null)
@@ -156,8 +165,8 @@ export default function ClientDashboardPage() {
         setFinanceiro(data.financeiro || {})
         setAds(data.anuncios || [])
         setLeadsRecentes(data.leadsRecentes || [])
-        setPagamentosRecentes(data.pagamentosRecentes || [])
         setHotspotsVinculados(data.hotspotsVinculados || [])
+        setCommercialReport(reportData || null)
         setLoading(false)
       } catch (err) {
         console.error('Erro ao carregar painel do cliente:', err)
@@ -248,215 +257,212 @@ export default function ClientDashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none no-print" />
+      <div className="screen-dashboard">
+        <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none no-print" />
 
-      <nav className="sticky top-0 z-40 bg-[#050505]/75 backdrop-blur-2xl border-b border-white/[0.04] no-print">
-        <div className="max-w-7xl mx-auto px-5 lg:px-8">
-          <div className="flex items-center justify-between h-24">
-            <div className="flex items-center gap-3">
-              <img
-                src="/Nexa-logo.png"
-                alt="Nexa Logo"
-                className="h-16 object-contain"
-                onError={(event) => {
-                  event.currentTarget.style.display = 'none'
-                }}
-              />
-              <div className="hidden sm:block">
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Área do cliente</p>
-                <p className="text-sm font-bold text-white">{cliente?.nome_empresa || cliente?.nome || 'NexaWi ADS'}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.02] border border-white/[0.05]">
-                <div className="w-2 h-2 rounded-full bg-[#6be12f] animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
-                <span className="text-xs font-medium text-gray-400">{user?.email}</span>
+        <nav className="sticky top-0 z-40 bg-[#050505]/75 backdrop-blur-2xl border-b border-white/[0.04] no-print">
+          <div className="max-w-7xl mx-auto px-5 lg:px-8">
+            <div className="flex items-center justify-between h-24">
+              <div className="flex items-center gap-3">
+                <img
+                  src="/Nexa-logo.png"
+                  alt="Nexa Logo"
+                  className="h-16 object-contain"
+                  onError={(event) => {
+                    event.currentTarget.style.display = 'none'
+                  }}
+                />
+                <div className="hidden sm:block">
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest">Área do cliente</p>
+                  <p className="text-sm font-bold text-white">{cliente?.nome_empresa || cliente?.nome || 'NexaWi ADS'}</p>
+                </div>
               </div>
 
-              <button onClick={() => setIsPasswordModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all">
-                <KeyRound size={16} />
-                <span className="hidden sm:inline">Senha</span>
-              </button>
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-full bg-white/[0.02] border border-white/[0.05]">
+                  <div className="w-2 h-2 rounded-full bg-[#6be12f] animate-pulse shadow-[0_0_10px_rgba(34,197,94,0.5)]" />
+                  <span className="text-xs font-medium text-gray-400">{user?.email}</span>
+                </div>
 
-              <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all">
-                <LogOut size={16} />
-                <span className="hidden sm:inline">Sair</span>
-              </button>
+                <button onClick={() => setIsPasswordModalOpen(true)} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all">
+                  <KeyRound size={16} />
+                  <span className="hidden sm:inline">Senha</span>
+                </button>
+
+                <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium text-gray-500 hover:text-white hover:bg-white/[0.05] transition-all">
+                  <LogOut size={16} />
+                  <span className="hidden sm:inline">Sair</span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      </nav>
+        </nav>
 
-      <main id="cliente-print-area" className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10">
-        <section className="mb-10">
-          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-5 no-print">
-                <CheckCircle2 size={13} className="text-[#6be12f]" />
-                Painel de performance
-              </div>
-              <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight print-title">
-                Relatório NexaWi — {cliente?.nome_empresa || cliente?.nome || 'Cliente'}
-              </h1>
-              <p className="text-gray-500 font-medium">Acompanhe o desempenho das suas campanhas na rede NexaWi.</p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row gap-3 no-print">
-              <button onClick={gerarPDFCliente} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06]">
-                <Printer size={17} />
-                Gerar PDF
-              </button>
-
-              <Link href="/cliente/contratos" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm font-extrabold text-blue-300 transition-all hover:bg-blue-500/15">
-                <FileText size={17} />
-                Meus contratos
-              </Link>
-
-              <Link href="/cliente/leads" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15">
-                <Users size={17} />
-                Ver leads
-              </Link>
-
-              <button onClick={() => router.push('/cliente/suporte')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]">
-                <LifeBuoy size={17} />
-                Abrir suporte
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {error && (
-          <div className="p-5 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
-            <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {campanha && (
-          <section className={`rounded-[2rem] border p-6 sm:p-8 mb-8 ${campanhaStyle.box} print-card`}>
-            <div className="flex items-start gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-                <CampanhaIcon size={24} className={campanhaStyle.text} />
-              </div>
+        <main id="cliente-print-area" className="relative z-10 max-w-7xl mx-auto px-5 lg:px-8 py-10">
+          <section className="mb-10">
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
               <div>
-                <p className={`text-sm font-extrabold uppercase tracking-widest ${campanhaStyle.text}`}>{campanha.label || campanhaStyle.label}</p>
-                <h2 className="text-2xl font-extrabold text-white mt-2">{cliente?.nome_empresa || 'Sua campanha'}</h2>
-                <p className="text-sm text-neutral-400 mt-2 max-w-2xl">{campanha.message || 'Acompanhe aqui o desempenho da sua operação.'}</p>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-neutral-400 mb-5 no-print">
+                  <CheckCircle2 size={13} className="text-[#6be12f]" />
+                  Painel de performance
+                </div>
+                <h1 className="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight print-title">
+                  Olá, {cliente?.nome?.split(' ')?.[0] || 'cliente'}
+                </h1>
+                <p className="text-gray-500 font-medium">Acompanhe o desempenho das suas campanhas na rede NexaWi.</p>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-3 no-print">
+                <button onClick={gerarPDFCliente} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-extrabold text-white transition-all hover:bg-white/[0.06]">
+                  <Printer size={17} />
+                  Gerar PDF
+                </button>
+
+                <Link href="/cliente/contratos" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm font-extrabold text-blue-300 transition-all hover:bg-blue-500/15">
+                  <FileText size={17} />
+                  Meus contratos
+                </Link>
+
+                <Link href="/cliente/leads" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-4 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15">
+                  <Users size={17} />
+                  Ver leads
+                </Link>
+
+                <button onClick={() => router.push('/cliente/suporte')} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] shadow-[0_0_25px_rgba(107,225,47,0.18)]">
+                  <LifeBuoy size={17} />
+                  Abrir suporte
+                </button>
               </div>
             </div>
           </section>
-        )}
 
-        <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8 print-grid">
-          {cards.map((card) => {
-            const Icon = card.icon || Activity
-            return (
-              <div key={card.label} className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 print-card">
-                <div className={`w-12 h-12 rounded-2xl ${card.bg || 'bg-white/[0.06]'} flex items-center justify-center mb-6 no-print-icon`}>
-                  <Icon size={22} className={card.text || 'text-white'} />
-                </div>
-                <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">{card.label}</p>
-                <p className="text-3xl font-light text-white print-value">{typeof card.value === 'number' ? formatNumber(card.value) : card.value}</p>
-              </div>
-            )
-          })}
-        </section>
-
-        <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 print-grid-3">
-          <Panel title="Financeiro" icon={CreditCard}>
-            <InfoRow label="Total pago" value={formatMoney(financeiro.totalPago || 0)} />
-            <InfoRow label="Total pendente" value={formatMoney(financeiro.totalPendente || 0)} />
-            <InfoRow label="Pagamentos pendentes" value={formatNumber(financeiro.pagamentosPendentes || 0)} />
-            <InfoRow label="Próximo pagamento" value={formatDate(financeiro.proximoPagamento?.vencimento || financeiro.proximoPagamento?.data_vencimento)} />
-          </Panel>
-
-          <Panel title="Leads recentes" icon={Users}>
-            {leadsRecentes.length === 0 ? (
-              <EmptyText text="Nenhum lead recente." />
-            ) : leadsRecentes.slice(0, 5).map((lead) => (
-              <InfoRow key={lead.id || lead.email || lead.telefone} label={lead.nome || lead.email || 'Lead'} value={lead.telefone || lead.email || '—'} />
-            ))}
-          </Panel>
-
-          <Panel title="Hotspots" icon={Wifi}>
-            {hotspotsVinculados.length === 0 ? (
-              <EmptyText text="Nenhum hotspot vinculado." />
-            ) : hotspotsVinculados.slice(0, 5).map((hotspot) => (
-              <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || hotspot.status || '—'} />
-            ))}
-          </Panel>
-        </section>
-
-        <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8 print-card">
-          <div className="flex items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-xl font-extrabold text-white">Anúncios</h2>
-              <p className="text-sm text-neutral-500 mt-1">Prévia dos anúncios vinculados à sua conta.</p>
-            </div>
-          </div>
-
-          {ads.length === 0 ? (
-            <EmptyText text="Nenhum anúncio encontrado." />
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 print-ads-grid">
-              {ads.slice(0, 8).map((ad) => (
-                <AdPreviewCard key={ad.id || ad.titulo} ad={ad} />
-              ))}
+          {error && (
+            <div className="p-5 mb-8 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 text-sm flex items-start gap-3">
+              <AlertTriangle size={18} className="mt-0.5 flex-shrink-0" />
+              <span>{error}</span>
             </div>
           )}
-        </section>
-      </main>
 
-      {isPasswordModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 no-print">
-          <form onSubmit={handlePasswordChange} className="w-full max-w-md rounded-[2rem] border border-white/[0.08] bg-[#0a0a0a] p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-extrabold text-white">Alterar senha</h2>
-                <p className="text-sm text-neutral-500 mt-1">Defina uma nova senha de acesso.</p>
+          {campanha && (
+            <section className={`rounded-[2rem] border p-6 sm:p-8 mb-8 ${campanhaStyle.box} print-card`}>
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+                  <CampanhaIcon size={24} className={campanhaStyle.text} />
+                </div>
+                <div>
+                  <p className={`text-sm font-extrabold uppercase tracking-widest ${campanhaStyle.text}`}>{campanha.label || campanhaStyle.label}</p>
+                  <h2 className="text-2xl font-extrabold text-white mt-2">{cliente?.nome_empresa || 'Sua campanha'}</h2>
+                  <p className="text-sm text-neutral-400 mt-2 max-w-2xl">{campanha.message || 'Acompanhe aqui o desempenho da sua operação.'}</p>
+                </div>
               </div>
-              <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="p-2 rounded-full hover:bg-white/[0.06] text-neutral-500 hover:text-white">
-                <X size={18} />
-              </button>
+            </section>
+          )}
+
+          <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8 print-grid">
+            {cards.map((card) => {
+              const Icon = card.icon || Activity
+              return (
+                <div key={card.label} className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 print-card">
+                  <div className={`w-12 h-12 rounded-2xl ${card.bg || 'bg-white/[0.06]'} flex items-center justify-center mb-6 no-print-icon`}>
+                    <Icon size={22} className={card.text || 'text-white'} />
+                  </div>
+                  <p className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2">{card.label}</p>
+                  <p className="text-3xl font-light text-white print-value">{typeof card.value === 'number' ? formatNumber(card.value) : card.value}</p>
+                </div>
+              )
+            })}
+          </section>
+
+          <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 print-grid-3">
+            <Panel title="Financeiro" icon={CreditCard}>
+              <InfoRow label="Total pago" value={formatMoney(financeiro.totalPago || 0)} />
+              <InfoRow label="Total pendente" value={formatMoney(financeiro.totalPendente || 0)} />
+              <InfoRow label="Pagamentos pendentes" value={formatNumber(financeiro.pagamentosPendentes || 0)} />
+              <InfoRow label="Próximo pagamento" value={formatDate(financeiro.proximoPagamento?.vencimento || financeiro.proximoPagamento?.data_vencimento)} />
+            </Panel>
+
+            <Panel title="Leads recentes" icon={Users}>
+              {leadsRecentes.length === 0 ? (
+                <EmptyText text="Nenhum lead recente." />
+              ) : leadsRecentes.slice(0, 5).map((lead) => (
+                <InfoRow key={lead.id || lead.email || lead.telefone} label={lead.nome || lead.email || 'Lead'} value={lead.telefone || lead.email || '—'} />
+              ))}
+            </Panel>
+
+            <Panel title="Hotspots" icon={Wifi}>
+              {hotspotsVinculados.length === 0 ? (
+                <EmptyText text="Nenhum hotspot vinculado." />
+              ) : hotspotsVinculados.slice(0, 5).map((hotspot) => (
+                <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || hotspot.status || '—'} />
+              ))}
+            </Panel>
+          </section>
+
+          <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8 print-card">
+            <div className="flex items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Anúncios</h2>
+                <p className="text-sm text-neutral-500 mt-1">Prévia dos anúncios vinculados à sua conta.</p>
+              </div>
             </div>
 
-            <label className="block mb-4">
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 block">Nova senha</span>
-              <input type="password" value={pwdForm.new} onChange={(event) => setPwdForm((current) => ({ ...current, new: event.target.value }))} className="w-full bg-[#050505] border border-white/[0.06] rounded-2xl px-5 py-4 text-sm text-white outline-none" />
-            </label>
+            {ads.length === 0 ? (
+              <EmptyText text="Nenhum anúncio encontrado." />
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 print-ads-grid">
+                {ads.slice(0, 8).map((ad) => (
+                  <AdPreviewCard key={ad.id || ad.titulo} ad={ad} />
+                ))}
+              </div>
+            )}
+          </section>
+        </main>
 
-            <label className="block mb-4">
-              <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 block">Confirmar senha</span>
-              <input type="password" value={pwdForm.confirm} onChange={(event) => setPwdForm((current) => ({ ...current, confirm: event.target.value }))} className="w-full bg-[#050505] border border-white/[0.06] rounded-2xl px-5 py-4 text-sm text-white outline-none" />
-            </label>
+        {isPasswordModalOpen && (
+          <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xl flex items-center justify-center p-4 no-print">
+            <form onSubmit={handlePasswordChange} className="w-full max-w-md rounded-[2rem] border border-white/[0.08] bg-[#0a0a0a] p-6 shadow-2xl">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-xl font-extrabold text-white">Alterar senha</h2>
+                  <p className="text-sm text-neutral-500 mt-1">Defina uma nova senha de acesso.</p>
+                </div>
+                <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="p-2 rounded-full hover:bg-white/[0.06] text-neutral-500 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
 
-            {pwdStatus.error && <p className="text-sm text-red-300 mb-4">{pwdStatus.error}</p>}
-            {pwdStatus.success && <p className="text-sm text-[#8cf059] mb-4">{pwdStatus.success}</p>}
+              <label className="block mb-4">
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 block">Nova senha</span>
+                <input type="password" value={pwdForm.new} onChange={(event) => setPwdForm((current) => ({ ...current, new: event.target.value }))} className="w-full bg-[#050505] border border-white/[0.06] rounded-2xl px-5 py-4 text-sm text-white outline-none" />
+              </label>
 
-            <button type="submit" disabled={pwdStatus.loading} className="w-full rounded-2xl bg-[#6be12f] py-4 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-60 flex items-center justify-center gap-2">
-              {pwdStatus.loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
-              Salvar nova senha
-            </button>
-          </form>
-        </div>
-      )}
+              <label className="block mb-4">
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-widest mb-2 block">Confirmar senha</span>
+                <input type="password" value={pwdForm.confirm} onChange={(event) => setPwdForm((current) => ({ ...current, confirm: event.target.value }))} className="w-full bg-[#050505] border border-white/[0.06] rounded-2xl px-5 py-4 text-sm text-white outline-none" />
+              </label>
 
-      <style jsx global>{`
-        @media print {
-          .no-print, nav, .no-print-icon { display: none !important; }
-          html, body { background: #ffffff !important; color: #111111 !important; }
-          #cliente-print-area { max-width: none !important; padding: 0 !important; }
-          .print-title { color: #111111 !important; -webkit-text-fill-color: #111111 !important; background: none !important; font-size: 24px !important; }
-          .print-card { background: #ffffff !important; color: #111111 !important; border: 1px solid #dddddd !important; box-shadow: none !important; break-inside: avoid; }
-          .print-card * { color: #111111 !important; }
-          .print-value { color: #111111 !important; }
-          .print-grid { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
-          .print-grid-3 { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 12px !important; }
-          .print-ads-grid { display: grid !important; grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
-          @page { margin: 12mm; }
-        }
-      `}</style>
+              {pwdStatus.error && <p className="text-sm text-red-300 mb-4">{pwdStatus.error}</p>}
+              {pwdStatus.success && <p className="text-sm text-[#8cf059] mb-4">{pwdStatus.success}</p>}
+
+              <button type="submit" disabled={pwdStatus.loading} className="w-full rounded-2xl bg-[#6be12f] py-4 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-60 flex items-center justify-center gap-2">
+                {pwdStatus.loading ? <Loader2 size={17} className="animate-spin" /> : <Check size={17} />}
+                Salvar nova senha
+              </button>
+            </form>
+          </div>
+        )}
+      </div>
+
+      <CommercialPdfReport
+        cliente={cliente}
+        campanha={campanha}
+        resumo={resumo}
+        financeiro={financeiro}
+        ads={ads}
+        leadsRecentes={leadsRecentes}
+        hotspotsVinculados={hotspotsVinculados}
+        report={commercialReport}
+      />
     </div>
   )
 }
