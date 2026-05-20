@@ -111,7 +111,7 @@ export default function PontuacaoDanPage() {
           <div>
             <div className="mb-3 inline-flex items-center gap-3 rounded-full border border-orange-500/20 bg-orange-500/10 px-5 py-3 text-base font-black uppercase tracking-[0.22em] text-orange-300 shadow-[0_0_30px_rgba(249,115,22,0.08)]">
               <Flame size={22} />
-              Gincana Dan
+              DAN - Desenvolvimento e Aceleração de Negócios.
             </div>
             <h1 className="text-5xl font-black tracking-[-0.07em] text-white sm:text-7xl lg:text-8xl">
               Placar <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-900">ao vivo</span>
