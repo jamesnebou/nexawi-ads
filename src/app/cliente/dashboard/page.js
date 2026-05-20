@@ -113,6 +113,34 @@ function statusCampanhaStyle(status) {
   }
 }
 
+function statusPagamentoStyle(status) {
+  const normalized = String(status || '').toLowerCase()
+
+  if (normalized === 'pago' || normalized === 'received' || normalized === 'confirmed') {
+    return 'border-[#6be12f]/20 bg-[#6be12f]/10 text-[#8cf059]'
+  }
+
+  if (normalized === 'vencido' || normalized === 'overdue') {
+    return 'border-red-500/20 bg-red-500/10 text-red-300'
+  }
+
+  return 'border-yellow-500/20 bg-yellow-500/10 text-yellow-300'
+}
+
+function labelPagamento(status) {
+  const normalized = String(status || '').toLowerCase()
+
+  if (normalized === 'pago' || normalized === 'received' || normalized === 'confirmed') return 'Pago'
+  if (normalized === 'vencido' || normalized === 'overdue') return 'Vencido'
+  if (normalized === 'pendente' || normalized === 'pending') return 'Pendente'
+
+  return status || 'Aguardando'
+}
+
+function getPaymentLink(pagamento) {
+  return pagamento?.link_pagamento || pagamento?.gateway_invoice_url || pagamento?.gateway_bank_slip_url || ''
+}
+
 export default function ClientDashboardPage() {
   const router = useRouter()
 
@@ -121,8 +149,10 @@ export default function ClientDashboardPage() {
   const [campanha, setCampanha] = useState(null)
   const [resumo, setResumo] = useState({})
   const [financeiro, setFinanceiro] = useState({})
+  const [assinatura, setAssinatura] = useState({})
   const [ads, setAds] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
+  const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [hotspotsVinculados, setHotspotsVinculados] = useState([])
   const [commercialReport, setCommercialReport] = useState(null)
 
@@ -163,8 +193,10 @@ export default function ClientDashboardPage() {
         setCampanha(data.campanha || null)
         setResumo(data.resumo || {})
         setFinanceiro(data.financeiro || {})
+        setAssinatura(data.assinatura || {})
         setAds(data.anuncios || [])
         setLeadsRecentes(data.leadsRecentes || [])
+        setPagamentosRecentes(data.pagamentosRecentes || [])
         setHotspotsVinculados(data.hotspotsVinculados || [])
         setCommercialReport(reportData || null)
         setLoading(false)
@@ -254,6 +286,10 @@ export default function ClientDashboardPage() {
     { label: 'CTR geral', value: `${resumo.ctrGeral || 0}%`, icon: TrendingUp, text: 'text-cyan-400', bg: 'bg-cyan-500/20' },
     { label: 'Hotspots', value: resumo.hotspotsVinculados || hotspotsVinculados.length || 0, icon: Wifi, text: 'text-[#8cf059]', bg: 'bg-[#6be12f]/20' },
   ]
+
+  const planoAtual = assinatura?.plano
+  const proximoPagamento = financeiro.proximoPagamento || null
+  const proximoPagamentoLink = getPaymentLink(proximoPagamento)
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
@@ -375,10 +411,25 @@ export default function ClientDashboardPage() {
 
           <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 print-grid-3">
             <Panel title="Financeiro" icon={CreditCard}>
+              <InfoRow
+                label="Plano atual"
+                value={planoAtual ? `${planoAtual.nome} · ${formatMoney(planoAtual.preco)} / ${planoAtual.ciclo_cobranca || 'mensal'}` : 'Sem plano ativo'}
+              />
+              <InfoRow label="Status financeiro" value={labelPagamento(assinatura?.status_pagamento)} />
               <InfoRow label="Total pago" value={formatMoney(financeiro.totalPago || 0)} />
               <InfoRow label="Total pendente" value={formatMoney(financeiro.totalPendente || 0)} />
-              <InfoRow label="Pagamentos pendentes" value={formatNumber(financeiro.pagamentosPendentes || 0)} />
-              <InfoRow label="Próximo pagamento" value={formatDate(financeiro.proximoPagamento?.vencimento || financeiro.proximoPagamento?.data_vencimento)} />
+              <InfoRow label="Próximo pagamento" value={formatDate(proximoPagamento?.data_vencimento)} />
+              {proximoPagamentoLink ? (
+                <a
+                  href={proximoPagamentoLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] no-print"
+                >
+                  <ExternalLink size={16} />
+                  Abrir cobrança
+                </a>
+              ) : null}
             </Panel>
 
             <Panel title="Leads recentes" icon={Users}>
@@ -396,6 +447,68 @@ export default function ClientDashboardPage() {
                 <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || hotspot.status || '—'} />
               ))}
             </Panel>
+          </section>
+
+          <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8 mb-8 print-card">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl font-extrabold text-white">Cobranças</h2>
+                <p className="text-sm text-neutral-500 mt-1">Acompanhe vencimentos e acesse os links de pagamento enviados pela NexaWi.</p>
+              </div>
+              {financeiro.asaasAtivo ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-[#8cf059]">
+                  <CreditCard size={14} />
+                  Asaas ativo
+                </span>
+              ) : null}
+            </div>
+
+            {pagamentosRecentes.length === 0 ? (
+              <EmptyText text="Nenhuma cobrança encontrada." />
+            ) : (
+              <div className="grid gap-3">
+                {pagamentosRecentes.map((pagamento) => {
+                  const linkPagamento = getPaymentLink(pagamento)
+
+                  return (
+                    <div key={pagamento.id || `${pagamento.data_vencimento}-${pagamento.valor}`} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+                      <div className="grid gap-4 lg:grid-cols-[1.2fr_1fr_1fr_auto] lg:items-center">
+                        <div>
+                          <p className="text-[10px] font-extrabold text-neutral-600 uppercase tracking-widest">Vencimento</p>
+                          <p className="text-sm font-bold text-white mt-1">{formatDate(pagamento.data_vencimento)}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-extrabold text-neutral-600 uppercase tracking-widest">Valor</p>
+                          <p className="text-sm font-bold text-white mt-1">{formatMoney(pagamento.valor)}</p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] font-extrabold text-neutral-600 uppercase tracking-widest">Status</p>
+                          <span className={`mt-2 inline-flex rounded-full border px-3 py-1 text-[11px] font-extrabold uppercase tracking-widest ${statusPagamentoStyle(pagamento.status || pagamento.gateway_status)}`}>
+                            {labelPagamento(pagamento.status || pagamento.gateway_status)}
+                          </span>
+                        </div>
+
+                        {linkPagamento ? (
+                          <a
+                            href={linkPagamento}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15 no-print"
+                          >
+                            <ExternalLink size={16} />
+                            Abrir
+                          </a>
+                        ) : (
+                          <span className="text-xs font-bold text-neutral-600">Sem link online</span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </section>
 
           <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-6 sm:p-8 print-card">

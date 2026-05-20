@@ -66,6 +66,8 @@ function calcularStatusCampanha({ anunciosAtivos, totalAnuncios, cliente, assina
 }
 
 function normalizarPagamento(pagamento = {}) {
+  const linkPagamento = pagamento.gateway_invoice_url || pagamento.gateway_bank_slip_url || ''
+
   return {
     id: pagamento.id,
     valor: Number(pagamento.valor || 0),
@@ -73,6 +75,14 @@ function normalizarPagamento(pagamento = {}) {
     created_at: pagamento.created_at || '',
     data_pagamento: pagamento.data_pagamento || null,
     data_vencimento: pagamento.data_vencimento || null,
+    metodo_pagamento: pagamento.metodo_pagamento || '',
+    gateway_pagamento: pagamento.gateway_pagamento || '',
+    gateway_payment_id: pagamento.gateway_payment_id || '',
+    gateway_subscription_id: pagamento.gateway_subscription_id || '',
+    gateway_invoice_url: pagamento.gateway_invoice_url || '',
+    gateway_bank_slip_url: pagamento.gateway_bank_slip_url || '',
+    gateway_status: pagamento.gateway_status || '',
+    link_pagamento: linkPagamento,
   }
 }
 
@@ -97,6 +107,7 @@ function calcularFinanceiro(pagamentos = []) {
     totalPendente,
     pagamentosPendentes: pendentes.length,
     proximoPagamento: proximoPagamento ? normalizarPagamento(proximoPagamento) : null,
+    asaasAtivo: pagamentos.some((p) => p.gateway_pagamento === 'asaas'),
   }
 }
 
