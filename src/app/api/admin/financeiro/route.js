@@ -265,6 +265,10 @@ async function montarAssinaturas(clientes = []) {
         clienteId: cliente.id,
         empresaId: cliente.empresa_id || '',
       })
+      const pagamentoGateway = (contexto.pagamentos || []).find((pagamento) =>
+        pagamento.gateway_pagamento === 'asaas' &&
+        (pagamento.gateway_subscription_id || pagamento.gateway_payment_id)
+      )
 
       return {
         cliente_id: cliente.id,
@@ -287,6 +291,16 @@ async function montarAssinaturas(clientes = []) {
         limites: contexto.limites,
         uso: contexto.uso,
         financeiro: contexto.resumo_financeiro,
+        gateway: pagamentoGateway
+          ? {
+              provider: pagamentoGateway.gateway_pagamento,
+              payment_id: pagamentoGateway.gateway_payment_id || null,
+              subscription_id: pagamentoGateway.gateway_subscription_id || null,
+              invoice_url: pagamentoGateway.gateway_invoice_url || null,
+              bank_slip_url: pagamentoGateway.gateway_bank_slip_url || null,
+              status: pagamentoGateway.gateway_status || null,
+            }
+          : null,
       }
     })
   )

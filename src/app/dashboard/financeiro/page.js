@@ -41,6 +41,7 @@ import {
   Lock,
   CreditCard,
   Repeat,
+  ExternalLink,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -547,6 +548,10 @@ export default function Pagamentos() {
     return limite && limite > 0 ? `${uso || 0}/${limite}` : `${uso || 0}/∞`
   }
 
+  function linkCobranca(pagamento = {}) {
+    return pagamento.gateway_invoice_url || pagamento.gateway_bank_slip_url || ''
+  }
+
   const cards = [
     {
       label: 'Recebido no mês',
@@ -764,6 +769,7 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pontos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Gateway</th>
                     {canCreate && (
                       <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 text-right whitespace-nowrap">Asaas</th>
                     )}
@@ -812,22 +818,54 @@ export default function Pagamentos() {
                         <td className="px-6 py-4 text-sm text-red-300 whitespace-nowrap">
                           {fmt(assinatura.financeiro?.total_vencido || 0)}
                         </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {assinatura.gateway?.subscription_id ? (
+                            <div className="flex flex-col gap-1">
+                              <span className="inline-flex w-fit px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20">
+                                Asaas ativo
+                              </span>
+                              <span className="text-[11px] text-neutral-500">
+                                {assinatura.gateway.status || 'sincronizado'}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-neutral-600 font-bold">Manual</span>
+                          )}
+                        </td>
                         {canCreate && (
                           <td className="px-6 py-4 text-right whitespace-nowrap">
-                            <button
-                              type="button"
-                              onClick={() => criarAssinaturaAsaas(assinatura)}
-                              disabled={asaasCriando || !asaasStatus?.enabled || !assinatura.plano?.preco}
-                              className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059] hover:bg-[#6be12f]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                              title="Criar assinatura recorrente no Asaas"
-                            >
-                              {asaasCriando ? (
-                                <div className="w-4 h-4 border-2 border-[#8cf059] border-t-transparent rounded-full animate-spin" />
+                            {assinatura.gateway?.subscription_id ? (
+                              assinatura.gateway?.invoice_url ? (
+                                <a
+                                  href={assinatura.gateway.invoice_url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-black text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-all"
+                                >
+                                  <ExternalLink size={14} />
+                                  Abrir cobrança
+                                </a>
                               ) : (
-                                <Repeat size={14} />
-                              )}
-                              Recorrente
-                            </button>
+                                <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-xs font-black text-neutral-500">
+                                  Sincronizada
+                                </span>
+                              )
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => criarAssinaturaAsaas(assinatura)}
+                                disabled={asaasCriando || !asaasStatus?.enabled || !assinatura.plano?.preco}
+                                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059] hover:bg-[#6be12f]/20 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                                title="Criar assinatura recorrente no Asaas"
+                              >
+                                {asaasCriando ? (
+                                  <div className="w-4 h-4 border-2 border-[#8cf059] border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                  <Repeat size={14} />
+                                )}
+                                Recorrente
+                              </button>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -928,6 +966,7 @@ export default function Pagamentos() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.05] bg-white/[0.01]">
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Cobrança</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Cliente</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Plano</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Valor</th>
@@ -947,6 +986,24 @@ export default function Pagamentos() {
 
                     return (
                       <tr key={p.id} className="hover:bg-white/[0.02] transition-colors duration-300 group">
+                        <td className="px-6 py-5 text-sm text-neutral-400 font-medium whitespace-nowrap">
+                          {linkCobranca(p) ? (
+                            <a
+                              href={linkCobranca(p)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-xs font-black text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-all"
+                            >
+                              <ExternalLink size={14} />
+                              Abrir
+                            </a>
+                          ) : p.gateway_pagamento === 'asaas' ? (
+                            <span className="text-xs text-neutral-500 font-bold">Aguardando webhook</span>
+                          ) : (
+                            <span className="text-xs text-neutral-600 font-bold">Manual</span>
+                          )}
+                        </td>
+
                         <td className="px-6 py-5 whitespace-nowrap">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-center text-neutral-400 font-bold text-sm shadow-inner flex-shrink-0 group-hover:text-white group-hover:border-white/[0.1] transition-colors">

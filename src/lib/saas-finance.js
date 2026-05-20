@@ -75,7 +75,7 @@ async function carregarConta({ empresaId = '', clienteId = '' } = {}) {
 async function carregarPagamentos({ empresaId = '', clienteId = '' } = {}) {
   let query = supabaseAdmin
     .from('pagamentos')
-    .select('id, empresa_id, cliente_id, plano_id, valor, status, data_vencimento, data_pagamento, created_at')
+    .select('id, empresa_id, cliente_id, plano_id, valor, status, data_vencimento, data_pagamento, created_at, gateway_pagamento, gateway_payment_id, gateway_subscription_id, gateway_invoice_url, gateway_bank_slip_url, gateway_status')
     .order('data_vencimento', { ascending: true })
 
   query = aplicarEscopo(query, { empresaId, clienteId })
