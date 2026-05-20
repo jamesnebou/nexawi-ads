@@ -290,6 +290,14 @@ export default function ClientDashboardPage() {
   const planoAtual = assinatura?.plano
   const proximoPagamento = financeiro.proximoPagamento || null
   const proximoPagamentoLink = getPaymentLink(proximoPagamento)
+  const pagamentoParaRegularizar = [proximoPagamento, ...pagamentosRecentes].find((pagamento) => {
+    if (!pagamento || !getPaymentLink(pagamento)) return false
+    return !['pago', 'received', 'confirmed'].includes(String(pagamento.status || pagamento.gateway_status || '').toLowerCase())
+  })
+  const regularizacaoLink = getPaymentLink(pagamentoParaRegularizar) || proximoPagamentoLink
+  const temPendenciaFinanceira =
+    Number(financeiro.totalPendente || 0) > 0 ||
+    ['pendente', 'vencido', 'overdue', 'pending'].includes(String(assinatura?.status_pagamento || '').toLowerCase())
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
@@ -389,6 +397,17 @@ export default function ClientDashboardPage() {
                   <p className={`text-sm font-extrabold uppercase tracking-widest ${campanhaStyle.text}`}>{campanha.label || campanhaStyle.label}</p>
                   <h2 className="text-2xl font-extrabold text-white mt-2">{cliente?.nome_empresa || 'Sua campanha'}</h2>
                   <p className="text-sm text-neutral-400 mt-2 max-w-2xl">{campanha.message || 'Acompanhe aqui o desempenho da sua operação.'}</p>
+                  {regularizacaoLink && (campanha.status === 'financeiro_pendente' || temPendenciaFinanceira) ? (
+                    <a
+                      href={regularizacaoLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-5 inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] no-print"
+                    >
+                      <ExternalLink size={16} />
+                      Regularizar agora
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </section>
@@ -427,7 +446,7 @@ export default function ClientDashboardPage() {
                   className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] no-print"
                 >
                   <ExternalLink size={16} />
-                  Abrir cobrança
+                  Regularizar agora
                 </a>
               ) : null}
             </Panel>
@@ -460,6 +479,17 @@ export default function ClientDashboardPage() {
                   <CreditCard size={14} />
                   Asaas ativo
                 </span>
+              ) : null}
+              {regularizacaoLink && temPendenciaFinanceira ? (
+                <a
+                  href={regularizacaoLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-4 text-sm font-extrabold text-black transition-all hover:bg-[#8cf059] no-print"
+                >
+                  <ExternalLink size={16} />
+                  Pagar pendência
+                </a>
               ) : null}
             </div>
 
