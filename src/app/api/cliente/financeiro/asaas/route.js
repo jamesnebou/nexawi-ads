@@ -196,7 +196,7 @@ export async function POST(request) {
     }
 
     const customerId = await ensureAsaasCustomer(clienteCompleto)
-    const billingType = asaasBillingType(pagamento.metodo_pagamento || 'PIX')
+    const billingType = asaasBillingType('UNDEFINED')
     const asaasPayment = await createAsaasPayment({
       customer: customerId,
       billingType,
