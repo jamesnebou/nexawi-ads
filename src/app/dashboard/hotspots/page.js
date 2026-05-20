@@ -180,12 +180,63 @@ function StatusBadge({ children, className = '' }) {
   )
 }
 
+function formatarLimitePlano(uso = 0, limite = 0) {
+  return limite && limite > 0 ? `${uso}/${limite}` : `${uso}/∞`
+}
+
+function percentualLimitePlano(uso = 0, limite = 0) {
+  if (!limite || limite <= 0) return 0
+  return Math.min(100, Math.round((Number(uso || 0) / Number(limite || 1)) * 100))
+}
+
+function PlanoUsoBanner({ planoUso }) {
+  if (!planoUso) return null
+
+  const percentual = percentualLimitePlano(planoUso.uso, planoUso.limite)
+  const noLimite = Boolean(planoUso.limite) && planoUso.uso >= planoUso.limite
+  const pertoLimite = Boolean(planoUso.limite) && percentual >= 80 && !noLimite
+  const bloqueado = Boolean(planoUso.bloqueado)
+  const corBarra = bloqueado || noLimite ? 'bg-red-400' : pertoLimite ? 'bg-yellow-300' : 'bg-[#6be12f]'
+  const corBorda = bloqueado || noLimite ? 'border-red-500/20 bg-red-500/10' : pertoLimite ? 'border-yellow-500/20 bg-yellow-500/10' : 'border-[#6be12f]/20 bg-[#6be12f]/10'
+
+  return (
+    <section className={`relative z-10 mb-8 rounded-3xl border p-5 ${corBorda}`}>
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+        <div className="flex items-start gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
+            {bloqueado || noLimite ? <AlertTriangle size={21} className="text-red-300" /> : <Wifi size={21} className="text-[#8cf059]" />}
+          </div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Uso do plano</p>
+            <h2 className="text-lg font-black text-white mt-1">Pontos Wi-Fi: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
+            <p className="text-sm text-neutral-400 mt-1">
+              {planoUso.plano?.nome ? `Plano ${planoUso.plano.nome}. ` : ''}
+              {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ? 'Limite atingido para este recurso.' : pertoLimite ? 'Uso próximo do limite contratado.' : 'Dentro do limite contratado.'}
+            </p>
+          </div>
+        </div>
+        {planoUso.limite > 0 ? (
+          <div className="w-full lg:w-72">
+            <div className="h-3 rounded-full bg-black/40 overflow-hidden border border-white/[0.06]">
+              <div className={`h-full ${corBarra}`} style={{ width: `${percentual}%` }} />
+            </div>
+            <p className="mt-2 text-right text-xs font-bold text-neutral-500">{percentual}% utilizado</p>
+          </div>
+        ) : (
+          <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-extrabold uppercase tracking-widest text-neutral-300">Ilimitado</span>
+        )}
+      </div>
+    </section>
+  )
+}
+
 export default function HotspotsPro() {
   const router = useRouter()
 
   const [hotspots, setHotspots] = useState([])
   const [routers, setRouters] = useState([])
   const [totals, setTotals] = useState(null)
+  const [planoUso, setPlanoUso] = useState(null)
   const [permissions, setPermissions] = useState(permissoesIniciais)
 
   const [carregando, setCarregando] = useState(true)
@@ -253,6 +304,7 @@ export default function HotspotsPro() {
       setHotspots(data.hotspots || [])
       setRouters(data.routers || [])
       setTotals(data.totals || null)
+      setPlanoUso(data.planoUso || null)
 
       setPermissions({
         ...permissoesIniciais,
@@ -528,6 +580,8 @@ export default function HotspotsPro() {
             )}
           </div>
         </header>
+
+        <PlanoUsoBanner planoUso={planoUso} />
 
         <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <StatCard

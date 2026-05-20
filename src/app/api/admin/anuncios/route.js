@@ -252,6 +252,35 @@ async function validarHotspotsNoEscopo(hotspotIds, empresaId, auth) {
   return encontrados
 }
 
+async function montarPlanoUso(auth, recurso = 'criativos') {
+  if (!auth.activeEmpresaId && !auth.allowedEmpresaIds?.length) return null
+
+  try {
+    const context = await getSaasFinanceContext({
+      empresaId: auth.activeEmpresaId || auth.allowedEmpresaIds?.[0] || '',
+    })
+
+    return {
+      recurso,
+      plano: context.plano
+        ? {
+            id: context.plano.id,
+            nome: context.plano.nome,
+          }
+        : null,
+      uso: Number(context.uso?.[recurso] || 0),
+      limite: Number(context.limites?.[recurso] || 0),
+      status_pagamento: context.status_pagamento,
+      status_operacional: context.status_operacional,
+      bloqueado: Boolean(context.bloqueado),
+      motivo_bloqueio: context.motivo_bloqueio || '',
+    }
+  } catch (error) {
+    console.error('Erro ao montar uso do plano em anúncios:', error)
+    return null
+  }
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'anuncios',
@@ -411,11 +440,23 @@ export async function GET(request) {
       }
     }))
 
+    const planoUso = await montarPlanoUso(auth, 'criativos')
+
     return NextResponse.json({
       ok: true,
       clientes: clientes || [],
       hotspots,
       anuncios,
+      planoUso: planoUso || {
+        recurso: 'criativos',
+        plano: null,
+        uso: anuncios.length,
+        limite: 0,
+        status_pagamento: '',
+        status_operacional: '',
+        bloqueado: false,
+        motivo_bloqueio: '',
+      },
       empresaScope: auth.empresaScope,
       permissions: auth.permissions?.anuncios || {},
     })
