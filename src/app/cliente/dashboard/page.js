@@ -61,6 +61,37 @@ async function clienteApiFetch(path) {
   return data
 }
 
+async function clienteApiPost(path, payload = {}) {
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+  if (sessionError || !sessionData?.session?.access_token) {
+    const error = new Error('Sessão do cliente não encontrada.')
+    error.status = 401
+    throw error
+  }
+
+  const response = await fetch(path, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${sessionData.session.access_token}`,
+    },
+    body: JSON.stringify(payload),
+    cache: 'no-store',
+  })
+
+  const text = await response.text()
+  const data = text ? JSON.parse(text) : null
+
+  if (!response.ok) {
+    const error = new Error(data?.error || 'Erro ao processar solicitação.')
+    error.status = response.status
+    throw error
+  }
+
+  return data
+}
+
 function formatMoney(value) {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -158,6 +189,7 @@ export default function ClientDashboardPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [billingAction, setBillingAction] = useState({ id: '', error: '' })
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false)
   const [pwdForm, setPwdForm] = useState({ new: '', confirm: '' })
@@ -260,6 +292,47 @@ export default function ClientDashboardPage() {
 
   function gerarPDFCliente() {
     window.print()
+  }
+
+  async function gerarLinkPagamento(pagamento) {
+    if (!pagamento?.id || billingAction.id) return
+
+    setBillingAction({ id: pagamento.id, error: '' })
+
+    try {
+      const data = await clienteApiPost('/api/cliente/financeiro/asaas', {
+        pagamento_id: pagamento.id,
+      })
+
+      const atualizado = data.pagamento
+
+      if (atualizado?.id) {
+        setPagamentosRecentes((current) =>
+          current.map((item) => (item.id === atualizado.id ? { ...item, ...atualizado } : item))
+        )
+
+        setFinanceiro((current) => ({
+          ...current,
+          proximoPagamento: current.proximoPagamento?.id === atualizado.id
+            ? { ...current.proximoPagamento, ...atualizado }
+            : current.proximoPagamento,
+          asaasAtivo: true,
+        }))
+      }
+
+      const link = data.link || getPaymentLink(atualizado)
+      if (link) {
+        window.open(link, '_blank', 'noopener,noreferrer')
+      }
+
+      setBillingAction({ id: '', error: '' })
+    } catch (err) {
+      console.error('Erro ao gerar link de pagamento:', err)
+      setBillingAction({
+        id: '',
+        error: err.message || 'Não foi possível gerar o link de pagamento.',
+      })
+    }
   }
 
   if (loading) {
@@ -497,8 +570,16 @@ export default function ClientDashboardPage() {
               <EmptyText text="Nenhuma cobrança encontrada." />
             ) : (
               <div className="grid gap-3">
+                {billingAction.error ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm font-bold text-red-300">
+                    {billingAction.error}
+                  </div>
+                ) : null}
+
                 {pagamentosRecentes.map((pagamento) => {
                   const linkPagamento = getPaymentLink(pagamento)
+                  const isPaid = ['pago', 'received', 'confirmed'].includes(String(pagamento.status || pagamento.gateway_status || '').toLowerCase())
+                  const isGeneratingLink = billingAction.id === pagamento.id
 
                   return (
                     <div key={pagamento.id || `${pagamento.data_vencimento}-${pagamento.valor}`} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
@@ -531,7 +612,15 @@ export default function ClientDashboardPage() {
                             Abrir
                           </a>
                         ) : (
-                          <span className="text-xs font-bold text-neutral-600">Sem link online</span>
+                          <button
+                            type="button"
+                            onClick={() => gerarLinkPagamento(pagamento)}
+                            disabled={isPaid || isGeneratingLink}
+                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm font-extrabold text-yellow-300 transition-all hover:bg-yellow-500/15 disabled:cursor-not-allowed disabled:opacity-50 no-print"
+                          >
+                            {isGeneratingLink ? <Loader2 size={16} className="animate-spin" /> : <ExternalLink size={16} />}
+                            {isGeneratingLink ? 'Gerando...' : isPaid ? 'Pago' : 'Gerar link'}
+                          </button>
                         )}
                       </div>
                     </div>
