@@ -129,6 +129,7 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const pagamentoId = String(body.pagamento_id || '').trim()
+    const forceRegenerate = Boolean(body.force_regenerate)
 
     if (!pagamentoId) {
       return NextResponse.json(
@@ -177,7 +178,7 @@ export async function POST(request) {
     }
 
     const existingLink = paymentLink(pagamento)
-    if (existingLink) {
+    if (existingLink && !forceRegenerate) {
       return NextResponse.json({
         ok: true,
         pagamento: normalizeLocalPayment(pagamento),

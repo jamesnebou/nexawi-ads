@@ -294,7 +294,7 @@ export default function ClientDashboardPage() {
     window.print()
   }
 
-  async function gerarLinkPagamento(pagamento) {
+  async function gerarLinkPagamento(pagamento, { forceRegenerate = false } = {}) {
     if (!pagamento?.id || billingAction.id) return
 
     setBillingAction({ id: pagamento.id, error: '' })
@@ -302,6 +302,7 @@ export default function ClientDashboardPage() {
     try {
       const data = await clienteApiPost('/api/cliente/financeiro/asaas', {
         pagamento_id: pagamento.id,
+        force_regenerate: forceRegenerate,
       })
 
       const atualizado = data.pagamento
@@ -602,15 +603,29 @@ export default function ClientDashboardPage() {
                         </div>
 
                         {linkPagamento ? (
-                          <a
-                            href={linkPagamento}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15 no-print"
-                          >
-                            <ExternalLink size={16} />
-                            Abrir
-                          </a>
+                          <div className="flex flex-col sm:flex-row gap-2 no-print">
+                            <a
+                              href={linkPagamento}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-sm font-extrabold text-[#8cf059] transition-all hover:bg-[#6be12f]/15"
+                            >
+                              <ExternalLink size={16} />
+                              Abrir
+                            </a>
+
+                            {!isPaid ? (
+                              <button
+                                type="button"
+                                onClick={() => gerarLinkPagamento(pagamento, { forceRegenerate: true })}
+                                disabled={isGeneratingLink}
+                                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-sm font-extrabold text-yellow-300 transition-all hover:bg-yellow-500/15 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {isGeneratingLink ? <Loader2 size={16} className="animate-spin" /> : <CreditCard size={16} />}
+                                {isGeneratingLink ? 'Gerando...' : 'Novo link'}
+                              </button>
+                            ) : null}
+                          </div>
                         ) : (
                           <button
                             type="button"
