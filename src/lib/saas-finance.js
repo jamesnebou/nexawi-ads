@@ -44,7 +44,7 @@ async function carregarConta({ empresaId = '', clienteId = '' } = {}) {
   if (clienteId) {
     const { data, error } = await supabaseAdmin
       .from('clientes')
-      .select('id, empresa_id, nome, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, max_pontos, intervalo_relatorio)')
+      .select('id, empresa_id, nome, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, intervalo_relatorio)')
       .eq('id', clienteId)
       .maybeSingle()
 
@@ -56,7 +56,7 @@ async function carregarConta({ empresaId = '', clienteId = '' } = {}) {
   if (empresaId) {
     const { data, error } = await supabaseAdmin
       .from('empresas')
-      .select('id, cliente_id, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, max_pontos, intervalo_relatorio)')
+      .select('id, cliente_id, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, intervalo_relatorio)')
       .eq('id', empresaId)
       .maybeSingle()
 
@@ -66,7 +66,7 @@ async function carregarConta({ empresaId = '', clienteId = '' } = {}) {
     if (!cliente && empresa?.cliente_id) {
       const { data: clienteData, error: clienteError } = await supabaseAdmin
         .from('clientes')
-        .select('id, empresa_id, nome, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, max_pontos, intervalo_relatorio)')
+        .select('id, empresa_id, nome, nome_empresa, email, status, plano_id, planos(id, nome, preco, ciclo_cobranca, max_criativos, intervalo_relatorio)')
         .eq('id', empresa.cliente_id)
         .maybeSingle()
 
@@ -93,23 +93,15 @@ async function carregarPagamentos({ empresaId = '', clienteId = '' } = {}) {
 }
 
 async function contarUso({ empresaId = '', clienteId = '' } = {}) {
-  const [anunciosResult, hotspotsResult] = await Promise.all([
-    aplicarEscopo(
-      supabaseAdmin.from('anuncios').select('id', { count: 'exact', head: true }),
-      { empresaId, clienteId }
-    ),
-    aplicarEscopo(
-      supabaseAdmin.from('hotspots').select('id', { count: 'exact', head: true }),
-      { empresaId, clienteId }
-    ),
-  ])
+  const anunciosResult = await aplicarEscopo(
+    supabaseAdmin.from('anuncios').select('id', { count: 'exact', head: true }),
+    { empresaId, clienteId }
+  )
 
   if (anunciosResult.error) throw anunciosResult.error
-  if (hotspotsResult.error) throw hotspotsResult.error
 
   return {
     criativos: anunciosResult.count || 0,
-    pontos: hotspotsResult.count || 0,
   }
 }
 
@@ -153,7 +145,6 @@ export async function getSaasFinanceContext({ empresaId = '', clienteId = '' } =
 
   const limites = {
     criativos: normalizarLimite(plano?.max_criativos),
-    pontos: normalizarLimite(plano?.max_pontos),
   }
 
   return {
@@ -200,7 +191,6 @@ export function assertSaasPlanLimit(context, recurso, incremento = 1) {
 
   const labels = {
     criativos: 'criativos/anuncios',
-    pontos: 'pontos Wi-Fi/hotspots',
   }
 
   const error = new Error(`Limite do plano atingido para ${labels[recurso] || recurso}. Uso atual: ${usoAtual}. Limite: ${limite}.`)

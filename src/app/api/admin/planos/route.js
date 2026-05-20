@@ -43,13 +43,11 @@ function permissaoNegada(modulo, acao) {
 function sanitizarPlanoPayload(plano = {}) {
   const preco = Number(String(plano.preco || '').replace(',', '.'))
   const maxCriativos = Number(plano.max_criativos || 0)
-  const maxPontos = Number(plano.max_pontos || 0)
 
   return {
     nome: limparTexto(plano.nome),
     preco: Number.isFinite(preco) ? preco : 0,
     max_criativos: Number.isFinite(maxCriativos) ? Math.max(0, Math.floor(maxCriativos)) : 0,
-    max_pontos: Number.isFinite(maxPontos) ? Math.max(0, Math.floor(maxPontos)) : 0,
     intervalo_relatorio: INTERVALOS_VALIDOS.includes(plano.intervalo_relatorio)
       ? plano.intervalo_relatorio
       : 'mensal',
@@ -212,7 +210,6 @@ export async function POST(request) {
           ciclo_cobranca: planoAntes?.ciclo_cobranca || '',
           intervalo_relatorio: planoAntes?.intervalo_relatorio || '',
           max_criativos: planoAntes?.max_criativos || 0,
-          max_pontos: planoAntes?.max_pontos || 0,
         },
       })
 
@@ -276,8 +273,6 @@ export async function POST(request) {
           intervalo_relatorio_atual: data.intervalo_relatorio,
           max_criativos_anterior: planoAntes?.max_criativos || 0,
           max_criativos_atual: data.max_criativos,
-          max_pontos_anterior: planoAntes?.max_pontos || 0,
-          max_pontos_atual: data.max_pontos,
         },
       })
 
@@ -315,7 +310,6 @@ export async function POST(request) {
           ciclo_cobranca: data.ciclo_cobranca,
           intervalo_relatorio: data.intervalo_relatorio,
           max_criativos: data.max_criativos,
-          max_pontos: data.max_pontos,
         },
       })
 

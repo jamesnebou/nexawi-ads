@@ -26,7 +26,6 @@ import {
   X,
   Check,
   Star,
-  Users,
   RefreshCw,
   UserCheck,
   Lock,
@@ -106,7 +105,6 @@ export default function Planos() {
     nome: '',
     preco: '',
     max_criativos: '',
-    max_pontos: '',
     intervalo_relatorio: 'mensal',
     ciclo_cobranca: 'mensal',
   })
@@ -162,7 +160,6 @@ export default function Planos() {
         nome: plano.nome || '',
         preco: plano.preco || '',
         max_criativos: plano.max_criativos || '',
-        max_pontos: plano.max_pontos || '',
         intervalo_relatorio: plano.intervalo_relatorio || 'mensal',
         ciclo_cobranca: plano.ciclo_cobranca || cicloSelecionado,
       })
@@ -172,7 +169,6 @@ export default function Planos() {
         nome: '',
         preco: '',
         max_criativos: '',
-        max_pontos: '',
         intervalo_relatorio: 'mensal',
         ciclo_cobranca: cicloSelecionado,
       })
@@ -209,7 +205,6 @@ export default function Planos() {
         ...form,
         preco: form.preco,
         max_criativos: form.max_criativos || 0,
-        max_pontos: form.max_pontos || 0,
         ciclo_cobranca: form.ciclo_cobranca || cicloSelecionado,
       }
 
@@ -465,17 +460,6 @@ export default function Planos() {
 
                   <div className="flex items-center justify-between group/item">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
-                      <Users size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
-                      <span className="text-sm font-medium">Máx. pontos</span>
-                    </div>
-
-                    <span className="text-sm font-bold text-white">
-                      {plano.max_pontos >= 999 ? 'Ilimitado' : plano.max_pontos}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between group/item">
-                    <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
                       <RefreshCw size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
                       <span className="text-sm font-medium">Relatório</span>
                     </div>
@@ -595,7 +579,7 @@ export default function Planos() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6">
+              <div>
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
                     Máx. Criativos
@@ -610,19 +594,6 @@ export default function Planos() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    Máx. Pontos
-                  </label>
-
-                  <input
-                    type="number"
-                    placeholder="Ex: 999"
-                    value={form.max_pontos}
-                    onChange={(e) => setForm({ ...form, max_pontos: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
-                  />
-                </div>
               </div>
 
               <div>
