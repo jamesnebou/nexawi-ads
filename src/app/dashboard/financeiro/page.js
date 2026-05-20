@@ -767,6 +767,7 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Plano</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pagamento</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Operação</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vigência</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Gateway</th>
@@ -808,6 +809,14 @@ export default function Pagamentos() {
                           <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatusOperacional(assinatura.status_operacional)}`}>
                             {statusAssinaturaLabel(assinatura.status_operacional)}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
+                          <div className="font-bold text-white">
+                            {formatarData(assinatura.financeiro?.vencimento_bloqueio || assinatura.financeiro?.proximo_vencimento)}
+                          </div>
+                          <div className="text-[11px] text-neutral-500">
+                            {assinatura.status_pagamento === 'inadimplente' ? 'Vigência vencida' : 'Válido até o vencimento'}
+                          </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
                           {formatarLimite(assinatura.uso?.criativos, assinatura.limites?.criativos)}

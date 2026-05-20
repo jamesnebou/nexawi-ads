@@ -365,6 +365,8 @@ export default function ClientDashboardPage() {
 
   const planoAtual = assinatura?.plano
   const proximoPagamento = financeiro.proximoPagamento || null
+  const vigencia = assinatura?.vigencia || {}
+  const validoAte = vigencia.valido_ate || vigencia.proximo_vencimento || proximoPagamento?.data_vencimento || null
   const proximoPagamentoLink = getPaymentLink(proximoPagamento)
   const pagamentoParaRegularizar = [proximoPagamento, ...pagamentosRecentes].find((pagamento) => {
     if (!pagamento || !getPaymentLink(pagamento)) return false
@@ -511,9 +513,10 @@ export default function ClientDashboardPage() {
                 value={planoAtual ? `${planoAtual.nome} · ${formatMoney(planoAtual.preco)} / ${planoAtual.ciclo_cobranca || 'mensal'}` : 'Sem plano ativo'}
               />
               <InfoRow label="Status financeiro" value={labelPagamento(assinatura?.status_pagamento)} />
+              <InfoRow label="Válido até" value={formatDate(validoAte)} />
               <InfoRow label="Total pago" value={formatMoney(financeiro.totalPago || 0)} />
               <InfoRow label="Total pendente" value={formatMoney(financeiro.totalPendente || 0)} />
-              <InfoRow label="Próximo pagamento" value={formatDate(proximoPagamento?.data_vencimento)} />
+              <InfoRow label="Próxima cobrança" value={formatDate(proximoPagamento?.data_vencimento)} />
               {proximoPagamentoLink ? (
                 <a
                   href={proximoPagamentoLink}

@@ -315,6 +315,12 @@ export async function GET(request) {
         motivo_bloqueio: assinaturaContext.motivo_bloqueio,
         limites: assinaturaContext.limites,
         uso: assinaturaContext.uso,
+        vigencia: {
+          valido_ate: assinaturaContext.resumo_financeiro?.vencimento_bloqueio || null,
+          proximo_vencimento: assinaturaContext.resumo_financeiro?.proximo_vencimento || null,
+          total_vencido: assinaturaContext.resumo_financeiro?.total_vencido || 0,
+          pagamentos_vencidos: assinaturaContext.resumo_financeiro?.pagamentos_vencidos || 0,
+        },
         plano: assinaturaContext.plano
           ? {
               id: assinaturaContext.plano.id,
