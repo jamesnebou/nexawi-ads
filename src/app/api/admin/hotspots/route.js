@@ -543,7 +543,7 @@ export async function POST(request) {
 
       let hotspotAntesQuery = supabaseAdmin
         .from('hotspots')
-        .select('id, empresa_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
+        .select('id, empresa_id, cliente_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
         .eq('id', id)
 
       hotspotAntesQuery = auth.applyEmpresaScope(hotspotAntesQuery)
@@ -608,7 +608,7 @@ export async function POST(request) {
 
       let hotspotAntesQuery = supabaseAdmin
         .from('hotspots')
-        .select('id, empresa_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
+        .select('id, empresa_id, cliente_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
         .eq('id', id)
 
       hotspotAntesQuery = auth.applyEmpresaScope(hotspotAntesQuery)
@@ -627,6 +627,15 @@ export async function POST(request) {
       const payload = sanitizarHotspotPayload(body.hotspot || {}, { forUpdate: true })
       const empresaId = resolveEmpresaIdForWrite(auth, body.hotspot?.empresa_id || hotspotAntes.empresa_id)
       payload.empresa_id = empresaId
+
+      if (payload.status === 'Ativo') {
+        const saasContext = await getSaasFinanceContext({
+          empresaId,
+          clienteId: hotspotAntes.cliente_id,
+        })
+
+        assertSaasAccountActive(saasContext)
+      }
 
       if (payload.router_id) {
         await ensureRouterInScope({ auth, routerId: payload.router_id })

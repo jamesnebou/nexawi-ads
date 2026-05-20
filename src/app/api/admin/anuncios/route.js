@@ -467,6 +467,15 @@ export async function POST(request) {
         )
       }
 
+      if (ativo) {
+        const saasContext = await getSaasFinanceContext({
+          empresaId: anuncioAntes.empresa_id,
+          clienteId: anuncioAntes.cliente_id,
+        })
+
+        assertSaasAccountActive(saasContext)
+      }
+
       const { data, error } = await supabaseAdmin
         .from('anuncios')
         .update({ ativo })
@@ -630,6 +639,15 @@ export async function POST(request) {
           { ok: false, error: 'Anúncio não encontrado ou fora do escopo da empresa.' },
           { status: 404 }
         )
+      }
+
+      if (payload.ativo) {
+        const saasContext = await getSaasFinanceContext({
+          empresaId,
+          clienteId: payload.cliente_id,
+        })
+
+        assertSaasAccountActive(saasContext)
       }
 
       hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(anuncioId)
