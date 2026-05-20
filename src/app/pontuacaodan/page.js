@@ -221,6 +221,7 @@ export default function PontuacaoDanPage() {
         <FinalReveal
           team={revealedTeam}
           revealIndex={revealIndex}
+          totalTeams={finalRanking.length}
           winnerIsShowing={winnerIsShowing}
           onNext={nextReveal}
           onClose={() => setFinalMode(false)}
@@ -236,6 +237,40 @@ export default function PontuacaoDanPage() {
           0%, 100% { box-shadow: 0 0 55px rgba(249, 115, 22, .18), inset 0 0 45px rgba(249, 115, 22, .035); }
           50% { box-shadow: 0 0 140px rgba(249, 115, 22, .36), inset 0 0 80px rgba(249, 115, 22, .075); }
         }
+        @keyframes championPulse {
+          0%, 100% { transform: scale(1); box-shadow: 0 0 120px rgba(249, 115, 22, .28); }
+          50% { transform: scale(1.018); box-shadow: 0 0 240px rgba(249, 115, 22, .55); }
+        }
+        @keyframes crownBurst {
+          0% { transform: scale(.35) rotate(-18deg); opacity: 0; filter: blur(8px); }
+          55% { transform: scale(1.22) rotate(8deg); opacity: 1; filter: blur(0); }
+          100% { transform: scale(1) rotate(0); opacity: 1; filter: blur(0); }
+        }
+        @keyframes ringExpand {
+          0% { transform: translate(-50%, -50%) scale(.25); opacity: .72; }
+          100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+        }
+        @keyframes spotlightSweep {
+          0% { transform: rotate(-26deg) translateX(-25%); opacity: .05; }
+          50% { opacity: .22; }
+          100% { transform: rotate(26deg) translateX(25%); opacity: .05; }
+        }
+        @keyframes mysteryPulse {
+          0%, 100% { transform: scale(1); filter: blur(0); opacity: .82; }
+          50% { transform: scale(1.08); filter: blur(1px); opacity: 1; }
+        }
+        @keyframes mysteryScan {
+          0% { transform: translateX(-120%); }
+          100% { transform: translateX(120%); }
+        }
+        @keyframes mysteryFloat {
+          0%, 100% { transform: translateY(0) rotate(-2deg); opacity: .58; }
+          50% { transform: translateY(-18px) rotate(2deg); opacity: 1; }
+        }
+        @keyframes revealPop {
+          0% { transform: scale(.82) translateY(24px); opacity: 0; filter: blur(14px); }
+          100% { transform: scale(1) translateY(0); opacity: 1; filter: blur(0); }
+        }
         @keyframes shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
@@ -245,12 +280,21 @@ export default function PontuacaoDanPage() {
           10% { opacity: 1; }
           100% { transform: translateY(115vh) rotate(720deg); opacity: 0; }
         }
+        @keyframes championSpark {
+          0% { transform: translateY(0) scale(.6) rotate(0deg); opacity: 0; }
+          15% { opacity: 1; }
+          100% { transform: translateY(-95vh) scale(1.2) rotate(540deg); opacity: 0; }
+        }
         @keyframes barGlow {
           0%, 100% { filter: brightness(1); }
           50% { filter: brightness(1.35); }
         }
         .animate-float-up { animation: floatUp .45s ease-out both; }
         .animate-pulse-glow { animation: pulseGlow 2.4s ease-in-out infinite; }
+        .animate-champion-pulse { animation: championPulse 1.8s ease-in-out infinite; }
+        .animate-crown-burst { animation: crownBurst .85s cubic-bezier(.2,1.4,.35,1) both; }
+        .animate-mystery-pulse { animation: mysteryPulse 1.45s ease-in-out infinite; }
+        .animate-reveal-pop { animation: revealPop .65s cubic-bezier(.2,1.3,.25,1) both; }
         .animate-bar-glow { animation: barGlow 1.8s ease-in-out infinite; }
         .text-shimmer {
           background: linear-gradient(90deg, #fff, #fb923c, #fff, #9a3412);
@@ -371,37 +415,124 @@ function SmallButton({ children, onClick }) {
   )
 }
 
-function FinalReveal({ team, revealIndex, winnerIsShowing, onNext, onClose }) {
+function FinalReveal({ team, revealIndex, totalTeams, winnerIsShowing, onNext, onClose }) {
+  const [secondNameRevealed, setSecondNameRevealed] = useState(false)
+  const isSecondPlace = revealIndex === totalTeams - 2
+  const shouldHideSecondName = isSecondPlace && !secondNameRevealed
+
+  useEffect(() => {
+    setSecondNameRevealed(false)
+  }, [revealIndex])
+
+  if (shouldHideSecondName) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/95 px-5 backdrop-blur-2xl">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.22),transparent_38%)]" />
+        <div className="absolute left-1/2 top-1/2 h-[720px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-500/15" style={{ animation: 'ringExpand 2.4s ease-out infinite' }} />
+        <div className="absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-500/20" style={{ animation: 'ringExpand 2.4s ease-out .55s infinite' }} />
+        <div className="absolute inset-y-[-30%] left-1/2 w-[260px] origin-center bg-orange-500/10 blur-2xl" style={{ animation: 'spotlightSweep 2.8s ease-in-out infinite' }} />
+
+        {Array.from({ length: 18 }).map((_, index) => (
+          <span
+            key={index}
+            className="absolute text-6xl font-black text-orange-500/20"
+            style={{
+              left: `${8 + ((index * 17) % 84)}%`,
+              top: `${8 + ((index * 23) % 78)}%`,
+              animation: `mysteryFloat ${2.8 + (index % 5) * .35}s ease-in-out ${(index % 6) * .18}s infinite`,
+            }}
+          >
+            ?
+          </span>
+        ))}
+
+        <div className="relative z-10 w-full max-w-6xl overflow-hidden rounded-[3.5rem] border border-orange-500/25 bg-[#080808] p-10 text-center shadow-[0_0_130px_rgba(249,115,22,0.2)]">
+          <div className="absolute inset-0 opacity-30" style={{ background: 'linear-gradient(90deg, transparent, rgba(249,115,22,.24), transparent)', animation: 'mysteryScan 1.55s linear infinite' }} />
+
+          <div className="relative z-10 mx-auto mb-9 flex h-32 w-32 animate-mystery-pulse items-center justify-center rounded-[2.4rem] border border-orange-500/30 bg-orange-500/10 text-8xl font-black text-orange-300 shadow-[0_0_70px_rgba(249,115,22,0.28)]">
+            ?
+          </div>
+
+          <p className="relative z-10 mb-6 text-3xl font-black uppercase tracking-[0.35em] text-orange-300">
+            Atenção...
+          </p>
+
+          <h2 className="relative z-10 mb-7 text-7xl font-black tracking-[-0.08em] text-white sm:text-8xl 2xl:text-9xl">
+            Quem ficou em <span className="text-orange-400">2º lugar?</span>
+          </h2>
+
+          <p className="relative z-10 mx-auto mb-10 max-w-4xl text-3xl font-black uppercase tracking-[0.18em] text-neutral-500">
+            O vice-campeão será revelado agora
+          </p>
+
+          <div className="relative z-10 flex justify-center gap-4">
+            <button onClick={() => setSecondNameRevealed(true)} className="rounded-2xl bg-orange-500 px-12 py-6 text-2xl font-black text-black transition hover:bg-orange-400">
+              Revelar 2º colocado
+            </button>
+            <button onClick={onClose} className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-10 py-6 text-2xl font-black text-white transition hover:bg-white/[0.06]">
+              Fechar
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/92 px-5 backdrop-blur-2xl">
-      {Array.from({ length: 56 }).map((_, index) => (
+    <div className={`fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-5 backdrop-blur-2xl ${winnerIsShowing ? 'bg-black/96' : 'bg-black/92'}`}>
+      {winnerIsShowing && (
+        <>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.35),transparent_38%)]" />
+          <div className="absolute left-1/2 top-1/2 h-[820px] w-[820px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-400/25" style={{ animation: 'ringExpand 1.8s ease-out infinite' }} />
+          <div className="absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-300/25" style={{ animation: 'ringExpand 1.8s ease-out .35s infinite' }} />
+          <div className="absolute left-1/2 top-1/2 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-orange-200/25" style={{ animation: 'ringExpand 1.8s ease-out .7s infinite' }} />
+          <div className="absolute inset-y-[-30%] left-1/2 w-[320px] origin-center bg-orange-400/12 blur-2xl" style={{ animation: 'spotlightSweep 2.15s ease-in-out infinite' }} />
+          <div className="absolute inset-y-[-30%] left-1/2 w-[320px] origin-center bg-orange-800/12 blur-2xl" style={{ animation: 'spotlightSweep 2.15s ease-in-out .95s infinite reverse' }} />
+        </>
+      )}
+
+      {Array.from({ length: winnerIsShowing ? 96 : 56 }).map((_, index) => (
         <span
           key={index}
-          className="absolute h-5 w-2 rounded-full bg-orange-500/80"
+          className={`absolute rounded-full ${winnerIsShowing ? 'h-7 w-3 bg-orange-400' : 'h-5 w-2 bg-orange-500/80'}`}
           style={{
             left: `${(index * 19) % 100}%`,
-            animation: `confettiFall ${3.2 + (index % 7) * 0.25}s linear ${(index % 9) * 0.18}s infinite`,
+            animation: `${winnerIsShowing ? 'championSpark' : 'confettiFall'} ${2.3 + (index % 7) * 0.22}s linear ${(index % 9) * 0.11}s infinite`,
           }}
         />
       ))}
 
-      <div className="relative z-10 w-full max-w-6xl rounded-[3.5rem] border border-orange-500/30 bg-[#080808] p-8 text-center shadow-[0_0_130px_rgba(249,115,22,0.22)] sm:p-12">
-        <div className="mx-auto mb-8 flex h-32 w-32 items-center justify-center rounded-[2.4rem] bg-orange-500 text-black shadow-[0_0_70px_rgba(249,115,22,0.42)]">
-          {winnerIsShowing ? <Crown size={64} /> : <Award size={64} />}
+      <div className={`relative z-10 w-full text-center ${winnerIsShowing ? 'max-w-7xl animate-champion-pulse rounded-[4rem] border-2 border-orange-400/40 bg-gradient-to-br from-orange-500/18 via-[#080808] to-black p-10 shadow-[0_0_180px_rgba(249,115,22,0.34)] sm:p-14' : 'max-w-6xl rounded-[3.5rem] border border-orange-500/30 bg-[#080808] p-8 shadow-[0_0_130px_rgba(249,115,22,0.22)] sm:p-12'}`}>
+        <div className={`mx-auto mb-8 flex items-center justify-center bg-orange-500 text-black shadow-[0_0_80px_rgba(249,115,22,0.48)] ${winnerIsShowing ? 'animate-crown-burst h-40 w-40 rounded-[2.8rem]' : 'h-32 w-32 rounded-[2.4rem]'}`}>
+          {winnerIsShowing ? <Crown size={86} /> : <Award size={64} />}
         </div>
 
-        <p className="mb-5 text-2xl font-black uppercase tracking-[0.35em] text-orange-300">
-          {winnerIsShowing ? 'Grande campeão' : getRevealPosition(revealIndex)}
+        <p className={`mb-5 font-black uppercase text-orange-300 ${winnerIsShowing ? 'text-4xl tracking-[0.38em]' : 'text-2xl tracking-[0.35em]'}`}>
+          {winnerIsShowing ? 'É CAMPEÃO!' : getRevealPosition(revealIndex)}
         </p>
 
-        <h2 className="text-shimmer mb-7 text-7xl font-black tracking-[-0.08em] sm:text-8xl 2xl:text-9xl">
+        {winnerIsShowing && (
+          <p className="mb-5 text-3xl font-black uppercase tracking-[0.24em] text-white/70">
+            A equipe vencedora da gincana é
+          </p>
+        )}
+
+        <h2 className={`text-shimmer mb-7 font-black tracking-[-0.08em] ${winnerIsShowing ? 'text-8xl sm:text-9xl 2xl:text-[11rem]' : 'text-7xl sm:text-8xl 2xl:text-9xl'} animate-reveal-pop`}>
           {team.name}
         </h2>
 
-        <div className="mx-auto mb-9 max-w-xl rounded-[2.4rem] border border-white/[0.08] bg-white/[0.035] p-7">
+        <div className={`mx-auto mb-9 rounded-[2.4rem] border border-white/[0.08] bg-white/[0.035] p-7 ${winnerIsShowing ? 'max-w-2xl' : 'max-w-xl'}`}>
           <p className="text-xl font-black uppercase tracking-[0.22em] text-neutral-500">Pontuação final</p>
-          <p className="mt-2 text-8xl font-black tracking-[-0.08em] text-white">{formatNumber(team.score)}</p>
+          <p className={`mt-2 font-black tracking-[-0.08em] text-white ${winnerIsShowing ? 'text-9xl' : 'text-8xl'}`}>{formatNumber(team.score)}</p>
         </div>
+
+        {winnerIsShowing && (
+          <div className="mx-auto mb-9 max-w-4xl rounded-[2rem] border border-orange-500/25 bg-orange-500/10 px-8 py-5">
+            <p className="text-3xl font-black uppercase tracking-[0.18em] text-orange-200">
+              Agora é hora de comemorar!
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-col justify-center gap-4 sm:flex-row">
           <button onClick={onNext} className="rounded-2xl bg-orange-500 px-10 py-5 text-xl font-black text-black transition hover:bg-orange-400">
