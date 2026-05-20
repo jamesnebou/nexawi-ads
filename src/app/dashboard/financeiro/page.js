@@ -768,7 +768,6 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pagamento</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Operação</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pontos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Gateway</th>
                     {canCreate && (
@@ -812,9 +811,6 @@ export default function Pagamentos() {
                         </td>
                         <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
                           {formatarLimite(assinatura.uso?.criativos, assinatura.limites?.criativos)}
-                        </td>
-                        <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
-                          {formatarLimite(assinatura.uso?.pontos, assinatura.limites?.pontos)}
                         </td>
                         <td className="px-6 py-4 text-sm text-red-300 whitespace-nowrap">
                           {fmt(assinatura.financeiro?.total_vencido || 0)}

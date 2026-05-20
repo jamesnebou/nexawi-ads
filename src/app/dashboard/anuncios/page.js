@@ -66,7 +66,7 @@ function PlanoUsoBanner({ planoUso, label, icon: Icon }) {
             {bloqueado || noLimite ? <AlertTriangle size={21} className="text-red-300" /> : <Icon size={21} className="text-[#8cf059]" />}
           </div>
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Uso do plano</p>
+            <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Limite do cliente</p>
             <h2 className="text-lg font-black text-white mt-1">{label}: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
             <p className="text-sm text-neutral-400 mt-1">
               {planoUso.plano?.nome ? `Plano ${planoUso.plano.nome}. ` : ''}

@@ -252,12 +252,15 @@ async function validarHotspotsNoEscopo(hotspotIds, empresaId, auth) {
   return encontrados
 }
 
-async function montarPlanoUso(auth, recurso = 'criativos') {
-  if (!auth.activeEmpresaId && !auth.allowedEmpresaIds?.length) return null
+async function montarPlanoUso(auth, recurso = 'criativos', clienteId = '') {
+  if (!clienteId) return null
 
   try {
+    const cliente = await validarClienteNoEscopo(clienteId, auth.activeEmpresaId, auth)
+
     const context = await getSaasFinanceContext({
-      empresaId: auth.activeEmpresaId || auth.allowedEmpresaIds?.[0] || '',
+      empresaId: cliente.empresa_id || auth.activeEmpresaId || auth.allowedEmpresaIds?.[0] || '',
+      clienteId,
     })
 
     return {
@@ -356,6 +359,7 @@ export async function GET(request) {
           clientes: clientes || [],
           hotspots,
           anuncios: [],
+          planoUso: filterClientId ? await montarPlanoUso(auth, 'criativos', filterClientId) : null,
           empresaScope: auth.empresaScope,
           permissions: auth.permissions?.anuncios || {},
         })
@@ -440,23 +444,14 @@ export async function GET(request) {
       }
     }))
 
-    const planoUso = await montarPlanoUso(auth, 'criativos')
+    const planoUso = filterClientId ? await montarPlanoUso(auth, 'criativos', filterClientId) : null
 
     return NextResponse.json({
       ok: true,
       clientes: clientes || [],
       hotspots,
       anuncios,
-      planoUso: planoUso || {
-        recurso: 'criativos',
-        plano: null,
-        uso: anuncios.length,
-        limite: 0,
-        status_pagamento: '',
-        status_operacional: '',
-        bloqueado: false,
-        motivo_bloqueio: '',
-      },
+      planoUso,
       empresaScope: auth.empresaScope,
       permissions: auth.permissions?.anuncios || {},
     })

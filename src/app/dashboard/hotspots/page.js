@@ -236,7 +236,6 @@ export default function HotspotsPro() {
   const [hotspots, setHotspots] = useState([])
   const [routers, setRouters] = useState([])
   const [totals, setTotals] = useState(null)
-  const [planoUso, setPlanoUso] = useState(null)
   const [permissions, setPermissions] = useState(permissoesIniciais)
 
   const [carregando, setCarregando] = useState(true)
@@ -304,7 +303,6 @@ export default function HotspotsPro() {
       setHotspots(data.hotspots || [])
       setRouters(data.routers || [])
       setTotals(data.totals || null)
-      setPlanoUso(data.planoUso || null)
 
       setPermissions({
         ...permissoesIniciais,
@@ -580,8 +578,6 @@ export default function HotspotsPro() {
             )}
           </div>
         </header>
-
-        <PlanoUsoBanner planoUso={planoUso} />
 
         <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <StatCard
