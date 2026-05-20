@@ -37,7 +37,7 @@ const SUBSCRIPTION_EVENTS = new Set([
 ])
 
 export function getAsaasConfig() {
-  const apiKey = process.env.ASAAS_API_KEY || ''
+  const apiKey = String(process.env.ASAAS_API_KEY || '').replace(/^\\\$/, '$')
   const environment = String(process.env.ASAAS_ENV || 'sandbox').toLowerCase()
   const baseUrl = (
     process.env.ASAAS_BASE_URL ||

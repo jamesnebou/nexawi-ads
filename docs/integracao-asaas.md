@@ -17,7 +17,42 @@ ASAAS_ENV=sandbox
 ASAAS_API_KEY=
 ASAAS_WEBHOOK_TOKEN=
 ASAAS_BASE_URL=
+ASAAS_FINE_PERCENT=3
+ASAAS_INTEREST_PERCENT=2
 ```
+
+Em arquivos `.env` lidos pelo Next.js, a chave do Asaas precisa escapar o `$`
+inicial:
+
+```env
+ASAAS_API_KEY=\$aact_hmlg_...
+```
+
+No painel da Vercel, cole a chave sem a barra:
+
+```txt
+$aact_hmlg_...
+```
+
+## Juros e multa por atraso
+
+O contrato padrao NexaWi usa:
+
+```txt
+Multa por atraso: 3%
+Juros: 2% ao mes
+```
+
+Esses valores sao enviados ao Asaas na criacao de cobrancas e assinaturas.
+Para alterar sem mudar codigo, ajuste:
+
+```env
+ASAAS_FINE_PERCENT=3
+ASAAS_INTEREST_PERCENT=2
+```
+
+As cobrancas ja criadas antes dessa configuracao devem ser ajustadas no painel do
+Asaas ou recriadas, porque a regra e gravada no momento em que a cobranca nasce.
 
 Valores:
 

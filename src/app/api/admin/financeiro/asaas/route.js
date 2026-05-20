@@ -15,6 +15,9 @@ import {
 
 export const runtime = 'nodejs'
 
+const DEFAULT_FINE_PERCENT = 3
+const DEFAULT_INTEREST_PERCENT = 2
+
 function onlyDigits(value = '') {
   return String(value || '').replace(/\D/g, '')
 }
@@ -43,6 +46,23 @@ function externalCustomerReference(clienteId) {
 
 function externalPaymentReference(pagamentoId) {
   return `nexawi:pagamento:${pagamentoId}`
+}
+
+function percentFromEnv(name, fallback) {
+  const value = Number(String(process.env[name] || '').replace(',', '.'))
+  return Number.isFinite(value) && value >= 0 ? value : fallback
+}
+
+function asaasLateFeeConfig() {
+  return {
+    interest: {
+      value: percentFromEnv('ASAAS_INTEREST_PERCENT', DEFAULT_INTEREST_PERCENT),
+    },
+    fine: {
+      value: percentFromEnv('ASAAS_FINE_PERCENT', DEFAULT_FINE_PERCENT),
+      type: 'PERCENTAGE',
+    },
+  }
 }
 
 async function getCliente(clienteId) {
@@ -195,6 +215,7 @@ export async function GET(request) {
     environment: config.environment,
     baseUrl: config.baseUrl,
     webhookConfigured: Boolean(config.webhookToken),
+    lateFees: asaasLateFeeConfig(),
   })
 }
 
@@ -252,6 +273,7 @@ export async function POST(request) {
     }
 
     const asaasCustomerId = await ensureAsaasCustomer(cliente)
+    const lateFees = asaasLateFeeConfig()
     const localPayment = await createLocalPayment({
       cliente,
       plano,
@@ -272,6 +294,7 @@ export async function POST(request) {
         cycle: asaasCycleFromPlano(plano?.ciclo_cobranca || cliente.planos?.ciclo_cobranca || 'mensal'),
         description: `NexaWi Ads - ${plano?.nome || cliente.planos?.nome || 'Plano SaaS'}`,
         externalReference: externalPaymentReference(localPayment.id),
+        ...lateFees,
       })
 
       const updated = await updateLocalSubscriptionPlaceholder(localPayment.id, subscription)
@@ -308,6 +331,7 @@ export async function POST(request) {
       dueDate: dataVencimento,
       description: `NexaWi Ads - ${plano?.nome || cliente.planos?.nome || 'Cobranca'}`,
       externalReference: externalPaymentReference(localPayment.id),
+      ...lateFees,
     })
 
     const updated = await updateLocalPaymentFromAsaas(localPayment.id, payment)
