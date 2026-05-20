@@ -10,6 +10,12 @@ function isVencido(pagamento = {}) {
   return pagamento.data_vencimento < hojeISO()
 }
 
+function isEmPrazo(pagamento = {}) {
+  if (!pagamento.data_vencimento) return false
+  if (['Pago', 'Cancelado', 'Isento', 'Estornado'].includes(pagamento.status)) return false
+  return pagamento.data_vencimento >= hojeISO()
+}
+
 function normalizarLimite(value) {
   const numero = Number(value || 0)
   return Number.isFinite(numero) && numero > 0 ? Math.floor(numero) : 0
@@ -121,13 +127,14 @@ export async function getSaasFinanceContext({ empresaId = '', clienteId = '' } =
 
   const plano = conta.empresa?.planos || conta.cliente?.planos || null
   const vencidos = pagamentos.filter(isVencido)
+  const emPrazo = pagamentos.filter(isEmPrazo)
   const pendentes = pagamentos.filter((p) => p.status === 'Pendente')
   const pagos = pagamentos.filter((p) => p.status === 'Pago')
   const statusConta = conta.empresa?.status || conta.cliente?.status || ''
 
   let statusPagamento = 'sem_cobranca'
   if (vencidos.length > 0) statusPagamento = 'inadimplente'
-  else if (pendentes.length > 0) statusPagamento = 'pendente'
+  else if (emPrazo.length > 0) statusPagamento = 'em_prazo'
   else if (pagos.length > 0) statusPagamento = 'em_dia'
 
   let statusOperacional = 'ativo'
@@ -141,7 +148,7 @@ export async function getSaasFinanceContext({ empresaId = '', clienteId = '' } =
     motivoBloqueio = 'Conta pausada ou inativa.'
   } else if (statusConta === 'Inadimplente' || statusPagamento === 'inadimplente') {
     statusOperacional = 'bloqueado'
-    motivoBloqueio = 'Existe pagamento vencido em aberto.'
+    motivoBloqueio = 'A vigencia financeira venceu e existe pagamento em aberto.'
   }
 
   const limites = {
@@ -159,15 +166,19 @@ export async function getSaasFinanceContext({ empresaId = '', clienteId = '' } =
     motivo_bloqueio: motivoBloqueio,
     inadimplente: statusPagamento === 'inadimplente',
     bloqueado: statusOperacional === 'bloqueado',
+    em_prazo: statusPagamento === 'em_prazo',
     limites,
     uso,
     resumo_financeiro: {
       total_pago: pagos.reduce((acc, p) => acc + Number(p.valor || 0), 0),
       total_pendente: pendentes.reduce((acc, p) => acc + Number(p.valor || 0), 0),
       total_vencido: vencidos.reduce((acc, p) => acc + Number(p.valor || 0), 0),
+      total_em_prazo: emPrazo.reduce((acc, p) => acc + Number(p.valor || 0), 0),
       pagamentos_pendentes: pendentes.length,
       pagamentos_vencidos: vencidos.length,
-      proximo_vencimento: pendentes[0]?.data_vencimento || null,
+      pagamentos_em_prazo: emPrazo.length,
+      proximo_vencimento: emPrazo[0]?.data_vencimento || null,
+      vencimento_bloqueio: emPrazo[0]?.data_vencimento || null,
     },
   }
 }

@@ -527,6 +527,7 @@ export default function Pagamentos() {
   function statusAssinaturaLabel(status) {
     const labels = {
       em_dia: 'Em dia',
+      em_prazo: 'Em prazo',
       pendente: 'Pendente',
       inadimplente: 'Inadimplente',
       sem_cobranca: 'Sem cobrança',
@@ -800,7 +801,7 @@ export default function Pagamentos() {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(assinatura.status_pagamento === 'inadimplente' ? 'Vencido' : assinatura.status_pagamento === 'em_dia' ? 'Pago' : 'Pendente')}`}>
+                          <span className={`inline-flex px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest ${corStatus(assinatura.status_pagamento === 'inadimplente' ? 'Vencido' : ['em_dia', 'em_prazo'].includes(assinatura.status_pagamento) ? 'Pago' : 'Pendente')}`}>
                             {statusAssinaturaLabel(assinatura.status_pagamento)}
                           </span>
                         </td>

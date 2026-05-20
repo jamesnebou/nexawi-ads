@@ -163,6 +163,8 @@ function labelPagamento(status) {
 
   if (normalized === 'pago' || normalized === 'received' || normalized === 'confirmed') return 'Pago'
   if (normalized === 'vencido' || normalized === 'overdue') return 'Vencido'
+  if (normalized === 'em_prazo') return 'Em prazo'
+  if (normalized === 'em_dia') return 'Em dia'
   if (normalized === 'pendente' || normalized === 'pending') return 'Pendente'
 
   return status || 'Aguardando'
@@ -371,7 +373,7 @@ export default function ClientDashboardPage() {
   const regularizacaoLink = getPaymentLink(pagamentoParaRegularizar) || proximoPagamentoLink
   const temPendenciaFinanceira =
     Number(financeiro.totalPendente || 0) > 0 ||
-    ['pendente', 'vencido', 'overdue', 'pending'].includes(String(assinatura?.status_pagamento || '').toLowerCase())
+    ['inadimplente', 'vencido', 'overdue'].includes(String(assinatura?.status_pagamento || '').toLowerCase())
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
