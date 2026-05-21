@@ -18,7 +18,8 @@ async function getPage(slug) {
 }
 
 export async function generateMetadata({ params }) {
-  const page = await getPage(params.slug)
+  const { slug } = await params
+  const page = await getPage(slug)
 
   if (!page) {
     return {
@@ -35,7 +36,8 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function PublicLpPage({ params }) {
-  const page = await getPage(params.slug)
+  const { slug } = await params
+  const page = await getPage(slug)
 
   if (!page) notFound()
 
