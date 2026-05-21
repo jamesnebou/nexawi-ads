@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
+import { LP_GENERATOR_TEMPLATES } from '@/lib/lp-generator-defaults'
 import {
+  BadgeCheck,
   Copy,
   ExternalLink,
   FileText,
@@ -75,6 +77,7 @@ export default function LpGeneratorDashboard() {
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState(LP_GENERATOR_TEMPLATES[0]?.id || '')
 
   const loadPages = useCallback(async (nextBusca = busca) => {
     setLoading(true)
@@ -105,7 +108,7 @@ export default function LpGeneratorDashboard() {
         method: 'POST',
         body: {
           action: 'create',
-          name: 'Nova LP de alta conversao',
+          template: selectedTemplate,
         },
       })
 
@@ -179,6 +182,43 @@ export default function LpGeneratorDashboard() {
             </button>
           </div>
         </header>
+
+        <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
+          <div className="mb-4 flex items-center gap-3">
+            <BadgeCheck size={19} className="text-[#8cf059]" />
+            <div>
+              <h2 className="text-lg font-black">Templates prontos</h2>
+              <p className="text-xs text-neutral-500">Escolha o ponto de partida antes de criar uma nova LP.</p>
+            </div>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {LP_GENERATOR_TEMPLATES.map((template) => {
+              const selected = selectedTemplate === template.id
+
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => setSelectedTemplate(template.id)}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    selected
+                      ? 'border-[#6be12f]/40 bg-[#6be12f]/10'
+                      : 'border-white/[0.06] bg-black/30 hover:border-white/[0.14] hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-white">{template.name}</p>
+                      <p className="mt-2 text-xs leading-relaxed text-neutral-500">{template.description}</p>
+                    </div>
+                    <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${selected ? 'bg-[#6be12f]' : 'bg-white/15'}`} />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </section>
 
         <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
           <form

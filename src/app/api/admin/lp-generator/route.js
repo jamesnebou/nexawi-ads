@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAdminAction } from '@/lib/admin-audit-log'
-import { getLpConfig, slugifyLp } from '@/lib/lp-generator-defaults'
+import { getLpConfig, getLpTemplate, getLpTemplateConfig, slugifyLp } from '@/lib/lp-generator-defaults'
 
 export const runtime = 'nodejs'
 
@@ -115,7 +115,8 @@ export async function POST(request) {
     const action = cleanText(body.action || 'create')
 
     if (action === 'create') {
-      const name = cleanText(body.name || 'Nova landing page')
+      const template = getLpTemplate(cleanText(body.template))
+      const name = cleanText(body.name || template?.defaultName || 'Nova landing page')
       const slug = slugifyLp(body.slug || name)
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
@@ -127,7 +128,17 @@ export async function POST(request) {
           name,
           slug,
           status: 'draft',
-          config: getLpConfig({ identidade: { marca: name }, seo: { title: name } }),
+          config: getLpConfig({
+            ...getLpTemplateConfig(template?.id),
+            identidade: {
+              ...(getLpTemplateConfig(template?.id).identidade || {}),
+              marca: name,
+            },
+            seo: {
+              ...(getLpTemplateConfig(template?.id).seo || {}),
+              title: name,
+            },
+          }),
           created_by: auth.user?.id || null,
           updated_by: auth.user?.id || null,
         }])
@@ -142,6 +153,7 @@ export async function POST(request) {
         action: 'create',
         page: data,
         description: 'Criou landing page no gerador',
+        metadata: { template: template?.id || 'default' },
       })
 
       return NextResponse.json({ ok: true, page: data })
