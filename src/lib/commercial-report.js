@@ -169,6 +169,71 @@ function ordenarPorViews(a, b) {
   return Number(b.visualizacoes || 0) - Number(a.visualizacoes || 0)
 }
 
+function criarSerieHoraria() {
+  return Array.from({ length: 24 }, (_, hour) => ({
+    hora: `${String(hour).padStart(2, '0')}:00`,
+    sessoes: 0,
+  }))
+}
+
+function getHourKey(value) {
+  if (!value) return null
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return null
+
+  return `${String(date.getHours()).padStart(2, '0')}:00`
+}
+
+function resumirOnlinePorHora(rows = []) {
+  const porHora = new Map(criarSerieHoraria().map((item) => [item.hora, item.sessoes]))
+
+  rows.forEach((row) => {
+    const key = getHourKey(row.authorized_at || row.created_at)
+
+    if (!key) return
+
+    porHora.set(key, (porHora.get(key) || 0) + 1)
+  })
+
+  return Array.from(porHora.entries()).map(([hora, sessoes]) => ({ hora, sessoes }))
+}
+
+async function buscarOnlinePorHora({ periodo, hotspotId, auth }) {
+  const range = getPeriodoRange(periodo)
+  const colunasDeData = ['authorized_at', 'created_at']
+  let ultimoErro = null
+
+  for (const colunaData of colunasDeData) {
+    let query = supabaseAdmin
+      .from('auth_sessions')
+      .select(`id, empresa_id, hotspot_id, authorized_at, created_at, ${colunaData}`)
+
+    query = aplicarEscopo(query, auth)
+
+    if (hotspotId) {
+      query = query.eq('hotspot_id', hotspotId)
+    }
+
+    if (range.inicio) {
+      query = query.gte(colunaData, range.inicio)
+    }
+
+    if (range.fim) {
+      query = query.lt(colunaData, range.fim)
+    }
+
+    const { data, error } = await query
+
+    if (!error) return resumirOnlinePorHora(data || [])
+
+    ultimoErro = error
+  }
+
+  throw ultimoErro
+}
+
 export async function buildCommercialReport({
   periodo = 'ultimos_30',
   clienteId = '',
@@ -192,6 +257,9 @@ export async function buildCommercialReport({
 
   const anuncios = anunciosData || []
   const anuncioIds = anuncios.map((ad) => ad.id).filter(Boolean)
+  const onlinePorHora = await buscarOnlinePorHora({ periodo, hotspotId, auth })
+  const totalSessoesAutorizadas = onlinePorHora.reduce((total, item) => total + Number(item.sessoes || 0), 0)
+  const picoOnlineHora = onlinePorHora.reduce((pico, item) => Math.max(pico, Number(item.sessoes || 0)), 0)
 
   if (!anuncioIds.length) {
     return {
@@ -207,7 +275,10 @@ export async function buildCommercialReport({
         anunciosAtivos: 0,
         totalAnuncios: 0,
         hotspotsComCampanha: 0,
+        sessoesAutorizadas: totalSessoesAutorizadas,
+        picoOnlineHora,
       },
+      onlinePorHora,
       rankings: {
         anuncios: [],
         hotspots: [],
@@ -429,7 +500,10 @@ export async function buildCommercialReport({
       anunciosAtivos: anuncios.filter((ad) => ad.ativo === true).length,
       totalAnuncios: anuncios.length,
       hotspotsComCampanha: rankingHotspots.length,
+      sessoesAutorizadas: totalSessoesAutorizadas,
+      picoOnlineHora,
     },
+    onlinePorHora,
     rankings: {
       anuncios: rankingAnuncios,
       hotspots: rankingHotspots,

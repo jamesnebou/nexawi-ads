@@ -124,6 +124,7 @@ export default function RelatorioComercialAdmin() {
   const qualidade = report?.qualidadeDados || {}
   const rankingAnuncios = rankings.anuncios || []
   const rankingHotspots = rankings.hotspots || []
+  const onlinePorHora = report?.onlinePorHora || []
   const canExport = Boolean(permissions.export)
   const temFiltrosAtivos = periodo !== 'ultimos_30' || Boolean(clienteId) || Boolean(hotspotId)
   const clienteSelecionado = clientes.find((cliente) => cliente.id === clienteId)
@@ -526,6 +527,8 @@ export default function RelatorioComercialAdmin() {
                 type="hotspot"
               />
             </div>
+
+            <OnlineHourPanel items={onlinePorHora} resumo={resumo} />
 
             <QualityBox qualidade={qualidade} generatedAt={report.generatedAt} />
           </div>
@@ -1228,6 +1231,61 @@ function RankingRow({ item, index, type }) {
         <MiniMetric icon={Users} label="Leads" value={item.leads} />
         <MiniMetric icon={Activity} label="Únicos" value={item.usuarios_unicos} />
       </div>
+    </div>
+  )
+}
+
+function OnlineHourPanel({ items = [], resumo = {} }) {
+  const horasComDados = items.filter((item) => Number(item.sessoes || 0) > 0)
+  const max = Math.max(...items.map((item) => Number(item.sessoes || 0)), 1)
+
+  return (
+    <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8">
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4 mb-7">
+        <div>
+          <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+            <Activity size={21} className="text-[#6be12f]" />
+            Online por hora
+          </h2>
+          <p className="text-sm text-neutral-500 mt-1">
+            Sessões autorizadas no portal durante o período selecionado.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-3">
+          <Badge label="Sessões" value={resumo.sessoesAutorizadas || 0} />
+          <Badge label="Pico/hora" value={resumo.picoOnlineHora || 0} />
+        </div>
+      </div>
+
+      {horasComDados.length === 0 ? (
+        <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-10 text-center">
+          <Activity size={28} className="text-neutral-600 mx-auto mb-4" />
+          <h3 className="text-lg font-bold text-white mb-2">Sem sessões no período</h3>
+          <p className="text-sm text-neutral-500">
+            Quando usuários forem liberados pelo portal, a distribuição por hora aparecerá aqui.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+          {items.map((item) => {
+            const sessoes = Number(item.sessoes || 0)
+            const width = `${Math.max(4, Math.round((sessoes / max) * 100))}%`
+
+            return (
+              <div key={item.hora} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <span className="text-xs font-black text-white">{item.hora}</span>
+                  <span className="text-xs font-bold text-[#8cf059]">{formatNumber(sessoes)}</span>
+                </div>
+                <div className="h-2 rounded-full bg-black/40 overflow-hidden border border-white/[0.04]">
+                  <div className="h-full rounded-full bg-[#6be12f]" style={{ width }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

@@ -745,7 +745,7 @@ export default function Pagamentos() {
                 Assinaturas SaaS
               </h2>
               <p className="text-xs text-neutral-500 mt-1">
-                Status de pagamento, bloqueio operacional e limites por plano.
+                Status de pagamento, vigência financeira e criativos contratados por plano.
               </p>
             </div>
 

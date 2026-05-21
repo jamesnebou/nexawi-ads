@@ -17,6 +17,15 @@ export function buildCommercialReportCsv(report) {
     ['Resumo', 'CTR geral (%)', resumo.ctrGeral || 0],
     ['Resumo', 'Usuarios unicos', resumo.usuariosUnicos || 0],
     ['Resumo', 'Hotspots com campanha', resumo.hotspotsComCampanha || 0],
+    ['Resumo', 'Sessoes autorizadas', resumo.sessoesAutorizadas || 0],
+    ['Resumo', 'Pico online por hora', resumo.picoOnlineHora || 0],
+    [],
+    ['Online por hora', 'Hora', 'Sessoes autorizadas'],
+    ...(report.onlinePorHora || []).map((item) => [
+      'Online por hora',
+      item.hora || '',
+      item.sessoes || 0,
+    ]),
     [],
     ['Tipo', 'Nome', 'Cliente/Cidade', 'Visualizacoes', 'Cliques', 'Leads', 'Usuarios unicos', 'CTR (%)'],
     ...(rankings.anuncios || []).map((item) => [
@@ -89,6 +98,14 @@ function buildHtml({ report, periodo }) {
             <div style="font-size:11px; color:#888; text-transform:uppercase;">CTR geral</div>
             <div style="font-size:24px; color:#ffffff; font-weight:bold;">${resumo.ctrGeral || 0}%</div>
           </div>
+          <div style="background:#050505; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="font-size:11px; color:#888; text-transform:uppercase;">Sessoes autorizadas</div>
+            <div style="font-size:24px; color:#ffffff; font-weight:bold;">${resumo.sessoesAutorizadas || 0}</div>
+          </div>
+          <div style="background:#050505; border:1px solid rgba(255,255,255,0.08); border-radius:16px; padding:16px;">
+            <div style="font-size:11px; color:#888; text-transform:uppercase;">Pico online/hora</div>
+            <div style="font-size:24px; color:#ffffff; font-weight:bold;">${resumo.picoOnlineHora || 0}</div>
+          </div>
         </div>
         <p style="margin-top:28px; color:#666; font-size:12px;">E-mail automatico do painel NexaWi ADS.</p>
       </div>
@@ -120,6 +137,8 @@ export async function sendCommercialReportEmail({
     `Cliques CTA: ${report.resumo?.totalCliques || 0}`,
     `Leads: ${report.resumo?.totalLeads || 0}`,
     `CTR geral: ${report.resumo?.ctrGeral || 0}%`,
+    `Sessoes autorizadas: ${report.resumo?.sessoesAutorizadas || 0}`,
+    `Pico online/hora: ${report.resumo?.picoOnlineHora || 0}`,
     '',
     'CSV completo em anexo.',
   ].join('\n')
