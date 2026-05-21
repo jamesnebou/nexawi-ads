@@ -19,6 +19,24 @@ function getDateStart(daysAgo = 0) {
   return date.toISOString()
 }
 
+async function countRows(table, { pageId, pageSlug, from } = {}) {
+  let query = supabaseAdmin
+    .from(table)
+    .select('id', { count: 'exact', head: true })
+
+  if (pageId && isValidUuid(pageId)) {
+    query = query.eq('page_id', pageId)
+  } else if (pageSlug) {
+    query = query.eq('page_slug', pageSlug)
+  }
+
+  if (from) query = query.gte('created_at', from)
+
+  const { count, error } = await query
+  if (error) throw error
+  return count || 0
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request, { module: 'leads', action: 'view' })
 
@@ -65,6 +83,7 @@ export async function GET(request) {
     const monthStart = new Date()
     monthStart.setDate(1)
     monthStart.setHours(0, 0, 0, 0)
+    const monthStartIso = monthStart.toISOString()
 
     const leads = (leadsData || []).map((lead) => {
       const page = pagesById.get(lead.page_id) || pagesBySlug.get(lead.page_slug) || null
@@ -75,15 +94,37 @@ export async function GET(request) {
       }
     })
 
+    const [
+      totalViews,
+      todayViews,
+      monthViews,
+      totalLeads,
+      todayLeads,
+      monthLeads,
+    ] = await Promise.all([
+      countRows('lp_generator_views', { pageId, pageSlug }),
+      countRows('lp_generator_views', { pageId, pageSlug, from: todayStart }),
+      countRows('lp_generator_views', { pageId, pageSlug, from: monthStartIso }),
+      countRows('lp_generator_leads', { pageId, pageSlug }),
+      countRows('lp_generator_leads', { pageId, pageSlug, from: todayStart }),
+      countRows('lp_generator_leads', { pageId, pageSlug, from: monthStartIso }),
+    ])
+
+    const conversionRate = totalViews > 0 ? (totalLeads / totalViews) * 100 : 0
+
     return NextResponse.json({
       ok: true,
       leads,
       pages: pagesData || [],
       total: count || leads.length,
       resumo: {
-        total: count || leads.length,
-        hoje: leads.filter((lead) => lead.created_at >= todayStart).length,
-        mes: leads.filter((lead) => new Date(lead.created_at) >= monthStart).length,
+        total: totalLeads,
+        hoje: todayLeads,
+        mes: monthLeads,
+        visitas: totalViews,
+        visitasHoje: todayViews,
+        visitasMes: monthViews,
+        conversao: Number(conversionRate.toFixed(2)),
       },
       permissions: auth.permissions?.leads || {},
     })

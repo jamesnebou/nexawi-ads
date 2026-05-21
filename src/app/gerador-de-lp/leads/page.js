@@ -10,6 +10,7 @@ import {
   FileText,
   Loader2,
   Search,
+  TrendingUp,
   UserPlus,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
@@ -70,10 +71,25 @@ function Kpi({ label, value, detail }) {
   )
 }
 
+function formatPercent(value) {
+  return `${Number(value || 0).toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}%`
+}
+
 export default function LpGeneratorLeadsPage() {
   const [leads, setLeads] = useState([])
   const [pages, setPages] = useState([])
-  const [resumo, setResumo] = useState({ total: 0, hoje: 0, mes: 0 })
+  const [resumo, setResumo] = useState({
+    total: 0,
+    hoje: 0,
+    mes: 0,
+    visitas: 0,
+    visitasHoje: 0,
+    visitasMes: 0,
+    conversao: 0,
+  })
   const [busca, setBusca] = useState('')
   const [pageId, setPageId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -95,7 +111,15 @@ export default function LpGeneratorLeadsPage() {
       const data = await adminApiFetch(`/api/admin/lp-generator/leads?${params.toString()}`)
       setLeads(data.leads || [])
       setPages(data.pages || [])
-      setResumo(data.resumo || { total: 0, hoje: 0, mes: 0 })
+      setResumo(data.resumo || {
+        total: 0,
+        hoje: 0,
+        mes: 0,
+        visitas: 0,
+        visitasHoje: 0,
+        visitasMes: 0,
+        conversao: 0,
+      })
       setPermissions(data.permissions || {})
     } catch (error) {
       console.error(error)
@@ -184,10 +208,30 @@ export default function LpGeneratorLeadsPage() {
           </button>
         </header>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+          <Kpi label="Visitas" value={resumo.visitas || 0} detail="visualizacoes totais" />
+          <Kpi label="Visitas hoje" value={resumo.visitasHoje || 0} detail="visualizacoes no dia" />
+          <Kpi label="Visitas mes" value={resumo.visitasMes || 0} detail="visualizacoes no mes" />
           <Kpi label="Total" value={resumo.total || 0} detail="leads encontrados" />
           <Kpi label="Hoje" value={resumo.hoje || 0} detail="capturados no dia" />
-          <Kpi label="Mes" value={resumo.mes || 0} detail="capturados no mes" />
+          <Kpi label="Conversao" value={formatPercent(resumo.conversao)} detail="leads / visitas" />
+        </section>
+
+        <section className="rounded-[1.5rem] border border-[#6be12f]/20 bg-[#6be12f]/10 p-5">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-3">
+              <TrendingUp className="mt-1 text-[#8cf059]" size={22} />
+              <div>
+                <h2 className="font-black text-white">Funil da LP</h2>
+                <p className="mt-1 text-sm text-neutral-300">
+                  {resumo.visitas || 0} visita(s) geraram {resumo.total || 0} lead(s).
+                </p>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-sm font-black text-[#8cf059]">
+              Conversao: {formatPercent(resumo.conversao)}
+            </div>
+          </div>
         </section>
 
         <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">

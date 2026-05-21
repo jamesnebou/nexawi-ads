@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   ArrowRight,
   BadgeCheck,
@@ -99,6 +99,21 @@ function VisualPanel({ config }) {
 export default function GeneratedLandingPage({ page, config, previewMode = false }) {
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', mensagem: '' })
   const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    if (previewMode || !page?.slug) return
+
+    const controller = new AbortController()
+
+    fetch('/api/lp-generator/view', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pageSlug: page.slug }),
+      signal: controller.signal,
+    }).catch(() => {})
+
+    return () => controller.abort()
+  }, [page?.slug, previewMode])
 
   async function sendLead(event) {
     event.preventDefault()
