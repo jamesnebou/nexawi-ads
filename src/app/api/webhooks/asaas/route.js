@@ -7,6 +7,7 @@ import {
   isAsaasSubscriptionEvent,
   normalizeAsaasStatus,
 } from '@/lib/asaas'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -130,7 +131,57 @@ async function syncPayment(payment = {}) {
 
   if (error) throw error
 
-  return { synced: true, pagamentoId: local.id, status }
+  return {
+    synced: true,
+    pagamentoId: local.id,
+    clienteId: local.cliente_id || null,
+    empresaId: local.empresa_id || null,
+    previousStatus: local.status || null,
+    status,
+    statusChanged: local.status !== status,
+    dueDate: update.data_vencimento || local.data_vencimento || null,
+    paidAt: update.data_pagamento || local.data_pagamento || null,
+    value: update.valor || local.valor || null,
+  }
+}
+
+async function auditAsaasPaymentEvent(request, event, result = {}, payment = {}) {
+  const action = result.synced
+    ? result.statusChanged
+      ? 'asaas_payment_status_changed'
+      : 'asaas_payment_synced'
+    : 'asaas_payment_unmatched'
+
+  await logAdminAction({
+    request,
+    adminUser: {
+      id: null,
+      email: 'asaas-webhook@nexawi.system',
+    },
+    action,
+    entity: 'pagamentos',
+    entityId: result.pagamentoId || '',
+    description: result.synced
+      ? `Webhook Asaas ${event}: pagamento ${result.pagamentoId} sincronizado como ${result.status}.`
+      : `Webhook Asaas ${event}: pagamento local nao encontrado.`,
+    metadata: {
+      provider: 'asaas',
+      event,
+      synced: Boolean(result.synced),
+      reason: result.reason || '',
+      pagamento_id: result.pagamentoId || null,
+      cliente_id: result.clienteId || null,
+      empresa_id: result.empresaId || null,
+      previous_status: result.previousStatus || null,
+      status: result.status || null,
+      status_changed: Boolean(result.statusChanged),
+      due_date: result.dueDate || null,
+      paid_at: result.paidAt || null,
+      value: result.value || null,
+      asaas_payment_id: payment.id || null,
+      asaas_subscription_id: payment.subscription || null,
+    },
+  })
 }
 
 export async function POST(request) {
@@ -150,7 +201,9 @@ export async function POST(request) {
     const event = String(body.event || '').toUpperCase()
 
     if (isAsaasPaymentEvent(event)) {
-      const result = await syncPayment(body.payment || {})
+      const payment = body.payment || {}
+      const result = await syncPayment(payment)
+      await auditAsaasPaymentEvent(request, event, result, payment)
       return NextResponse.json({ ok: true, event, ...result })
     }
 
