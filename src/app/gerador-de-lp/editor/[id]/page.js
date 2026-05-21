@@ -7,6 +7,7 @@ import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admi
 import { getLpConfig, slugifyLp } from '@/lib/lp-generator-defaults'
 import {
   ArrowLeft,
+  Upload,
   Eye,
   Image as ImageIcon,
   Loader2,
@@ -97,6 +98,87 @@ function Field({ label, value, onChange, placeholder = '', textarea = false, typ
         />
       )}
     </label>
+  )
+}
+
+function ImageUploadField({ label, value, onChange, field, slug }) {
+  const [uploading, setUploading] = useState(false)
+
+  async function handleFile(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+
+    try {
+      const uploadInfo = await adminApiFetch('/api/admin/lp-generator/upload-url', {
+        method: 'POST',
+        body: {
+          filename: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+          slug,
+          field,
+        },
+      })
+
+      const { error: uploadError } = await supabase.storage
+        .from('landing-assets')
+        .uploadToSignedUrl(uploadInfo.path, uploadInfo.token, file, {
+          contentType: file.type,
+        })
+
+      if (uploadError) throw uploadError
+
+      onChange(uploadInfo.publicUrl)
+      toast.success('Imagem enviada.')
+    } catch (error) {
+      toast.error(error.message || 'Erro ao enviar imagem.')
+    } finally {
+      event.target.value = ''
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-black/30 p-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+        {value ? (
+          <img src={value} alt="" className="h-24 w-32 rounded-xl border border-white/[0.08] object-cover" />
+        ) : (
+          <div className="flex h-24 w-32 items-center justify-center rounded-xl border border-dashed border-white/[0.14] bg-black/40 text-neutral-600">
+            <ImageIcon size={24} />
+          </div>
+        )}
+
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-black uppercase tracking-widest text-neutral-500">{label}</p>
+          <input
+            value={value || ''}
+            onChange={(event) => onChange(event.target.value)}
+            placeholder="URL da imagem"
+            className="mt-2 w-full rounded-xl border border-white/[0.06] bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-[#6be12f]/40"
+          />
+          <div className="mt-3 flex flex-wrap gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15">
+              {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+              {uploading ? 'Enviando...' : 'Enviar imagem'}
+              <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
+            </label>
+
+            {value && (
+              <button
+                type="button"
+                onClick={() => onChange('')}
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-black text-white"
+              >
+                Remover
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -244,7 +326,7 @@ export default function LpEditorPage() {
           <Field label="Nome interno" value={name} onChange={setName} />
           <Field label="Slug publico" value={slug} onChange={(value) => setSlug(slugifyLp(value))} />
           <Field label="Marca exibida" value={config.identidade.marca} onChange={(value) => updateNested(setConfig, 'identidade', 'marca', value)} />
-          <Field label="Logo URL" value={config.identidade.logoUrl} onChange={(value) => updateNested(setConfig, 'identidade', 'logoUrl', value)} />
+          <ImageUploadField label="Logo" field="logo" slug={slug || name} value={config.identidade.logoUrl} onChange={(value) => updateNested(setConfig, 'identidade', 'logoUrl', value)} />
           <div className="grid gap-4 sm:grid-cols-4">
             <Field type="color" label="Primaria" value={config.identidade.corPrimaria} onChange={(value) => updateNested(setConfig, 'identidade', 'corPrimaria', value)} />
             <Field type="color" label="Secundaria" value={config.identidade.corSecundaria} onChange={(value) => updateNested(setConfig, 'identidade', 'corSecundaria', value)} />
@@ -264,8 +346,8 @@ export default function LpEditorPage() {
           <Field label="Subtitulo" value={config.hero.subtitulo} onChange={(value) => updateNested(setConfig, 'hero', 'subtitulo', value)} textarea />
           <Field label="Texto do CTA" value={config.hero.ctaTexto} onChange={(value) => updateNested(setConfig, 'hero', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.hero.ctaUrl} onChange={(value) => updateNested(setConfig, 'hero', 'ctaUrl', value)} />
-          <Field label="Imagem URL" value={config.hero.imagemUrl} onChange={(value) => updateNested(setConfig, 'hero', 'imagemUrl', value)} />
-          <Field label="Background URL" value={config.hero.backgroundUrl} onChange={(value) => updateNested(setConfig, 'hero', 'backgroundUrl', value)} />
+          <ImageUploadField label="Imagem principal" field="hero" slug={slug || name} value={config.hero.imagemUrl} onChange={(value) => updateNested(setConfig, 'hero', 'imagemUrl', value)} />
+          <ImageUploadField label="Background" field="background" slug={slug || name} value={config.hero.backgroundUrl} onChange={(value) => updateNested(setConfig, 'hero', 'backgroundUrl', value)} />
         </div>
       )
     }
