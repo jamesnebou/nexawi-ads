@@ -36,17 +36,17 @@ echo ""
 
 echo ""
 echo "== Reconcile =="
-"$APP_DIR/scripts/reconcile.sh"
+bash "$APP_DIR/scripts/reconcile.sh"
 echo ""
 
 echo ""
 echo "== Reconcile financeiro =="
-"$APP_DIR/scripts/financeiro-reconcile.sh"
+bash "$APP_DIR/scripts/financeiro-reconcile.sh"
 echo ""
 
 echo ""
 echo "== Relatorio comercial mensal cron =="
-"$APP_DIR/scripts/monthly-commercial-report.sh" --dry-run
+bash "$APP_DIR/scripts/monthly-commercial-report.sh" --dry-run
 echo ""
 
 echo ""

@@ -66,6 +66,7 @@ npm run build
 
 echo "==> Ajustando permissoes"
 chown -R "${PM2_USER}:${PM2_USER}" "$APP_DIR"
+chmod +x "$APP_DIR"/scripts/*.sh
 
 echo "==> Reiniciando PM2"
 su - "$PM2_USER" -c "pm2 restart ${PM2_APP} --update-env"

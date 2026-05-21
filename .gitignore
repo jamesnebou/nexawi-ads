@@ -47,3 +47,4 @@ src_backup_antes_hotspot_real/
 src/lib/*.backup*
 *.backup*
 *.bak
+.last_deploy_before
