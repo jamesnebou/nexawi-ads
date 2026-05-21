@@ -193,6 +193,32 @@ Sugestao de cron a cada 5 minutos:
 */5 * * * * /srv/nexawi/control-api/scripts/reconcile.sh >> /var/log/nexawi-reconcile.log 2>&1
 ```
 
+## Reconcile financeiro
+
+Rota operacional para marcar cobranças pendentes vencidas como `Vencido`, registrar auditoria e gerar alerta crítico de inadimplência:
+
+```txt
+GET /api/cron/financeiro/reconcile
+```
+
+Autenticação:
+
+```txt
+x-cron-secret: <NEXAWI_CRON_SECRET>
+```
+
+Exemplo local:
+
+```bash
+curl -H "x-cron-secret: $NEXAWI_CRON_SECRET" "http://localhost:3000/api/cron/financeiro/reconcile"
+```
+
+Sugestao de cron diario as 08:00:
+
+```cron
+0 8 * * * /srv/nexawi/control-api/scripts/financeiro-reconcile.sh >> /var/log/nexawi-financeiro-reconcile.log 2>&1
+```
+
 ## Backup Supabase
 
 O backup usa `pg_dump` e exige `SUPABASE_DB_URL` configurado apenas no `.env` da VPS.
