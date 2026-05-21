@@ -33,10 +33,14 @@ export async function POST(request) {
 
     if (pageError) throw pageError
 
+    if (!page) {
+      return NextResponse.json({ ok: false, error: 'LP nao encontrada ou indisponivel' }, { status: 404 })
+    }
+
     const { error } = await supabaseAdmin
       .from('lp_generator_leads')
       .insert([{
-        page_id: page?.id || null,
+        page_id: page.id,
         page_slug: pageSlug,
         nome,
         email: email || null,

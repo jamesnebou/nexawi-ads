@@ -14,6 +14,7 @@ import {
   Plus,
   Search,
   Trash2,
+  UserPlus,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -159,14 +160,24 @@ export default function LpGeneratorDashboard() {
             </div>
           </div>
 
-          <button
-            onClick={createPage}
-            disabled={saving}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-6 py-4 text-sm font-black text-black shadow-[0_0_28px_rgba(107,225,47,0.22)] transition hover:brightness-110 disabled:opacity-60"
-          >
-            {saving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-            Nova LP
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href="/gerador-de-lp/leads"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-6 py-4 text-sm font-black text-white transition hover:bg-white/[0.08]"
+            >
+              <UserPlus size={18} />
+              Leads
+            </Link>
+
+            <button
+              onClick={createPage}
+              disabled={saving}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-6 py-4 text-sm font-black text-black shadow-[0_0_28px_rgba(107,225,47,0.22)] transition hover:brightness-110 disabled:opacity-60"
+            >
+              {saving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
+              Nova LP
+            </button>
+          </div>
         </header>
 
         <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
