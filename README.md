@@ -61,6 +61,7 @@ Checklist de producao SaaS:
 
 ```txt
 docs/operacao-producao.md
+/dashboard/operacao
 ```
 
 Checklist operacional para abrir uma nova cidade:

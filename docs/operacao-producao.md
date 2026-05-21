@@ -142,6 +142,12 @@ O rollback pede confirmacao e cria tag local de seguranca antes de mover o codig
 
 ## 8. Auditoria rapida
 
+No painel:
+
+```txt
+/dashboard/operacao
+```
+
 Na VPS:
 
 ```bash

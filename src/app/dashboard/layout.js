@@ -112,6 +112,12 @@ const rotasProtegidas = [
     label: 'Auditoria',
   },
   {
+    path: '/dashboard/operacao',
+    module: 'auditoria',
+    action: 'view',
+    label: 'Operacao',
+  },
+  {
     path: '/dashboard/equipe',
     module: 'usuarios_admin',
     action: 'view',

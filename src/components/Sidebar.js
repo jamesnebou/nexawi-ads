@@ -25,6 +25,7 @@ import {
   Crown,
   LifeBuoy,
   Bell,
+  ServerCog,
   Network,
   Router as RouterIcon,
   Building2,
@@ -153,6 +154,12 @@ const menu = [
     label: 'Auditoria',
     path: '/dashboard/auditoria',
     icon: ClipboardList,
+    module: 'auditoria',
+  },
+  {
+    label: 'Operacao',
+    path: '/dashboard/operacao',
+    icon: ServerCog,
     module: 'auditoria',
   },
   {
