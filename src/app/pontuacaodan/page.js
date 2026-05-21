@@ -219,6 +219,7 @@ export default function PontuacaoDanPage() {
 
       {finalMode && revealedTeam && (
         <FinalReveal
+          key={revealIndex}
           team={revealedTeam}
           revealIndex={revealIndex}
           totalTeams={finalRanking.length}
@@ -419,10 +420,6 @@ function FinalReveal({ team, revealIndex, totalTeams, winnerIsShowing, onNext, o
   const [secondNameRevealed, setSecondNameRevealed] = useState(false)
   const isSecondPlace = revealIndex === totalTeams - 2
   const shouldHideSecondName = isSecondPlace && !secondNameRevealed
-
-  useEffect(() => {
-    setSecondNameRevealed(false)
-  }, [revealIndex])
 
   if (shouldHideSecondName) {
     return (
