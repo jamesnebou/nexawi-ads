@@ -5,15 +5,18 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import { getLpConfig, slugifyLp } from '@/lib/lp-generator-defaults'
+import GeneratedLandingPage from '@/components/lp-generator/GeneratedLandingPage'
 import {
   ArrowLeft,
   Upload,
   Eye,
   Image as ImageIcon,
   Loader2,
+  Monitor,
   Palette,
   Save,
   Settings2,
+  Smartphone,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -259,8 +262,14 @@ export default function LpEditorPage() {
   const [slug, setSlug] = useState('')
   const [status, setStatus] = useState('draft')
   const [config, setConfig] = useState(getLpConfig())
+  const [previewDevice, setPreviewDevice] = useState('desktop')
 
   const publicUrl = useMemo(() => `/lp/${slug || 'slug-da-lp'}`, [slug])
+  const previewPage = useMemo(() => ({
+    id: page?.id || id,
+    name: name || page?.name || 'Preview da LP',
+    slug: slug || page?.slug || 'preview',
+  }), [id, name, page, slug])
 
   const loadPage = useCallback(async () => {
     if (!hasValidId) {
@@ -526,6 +535,50 @@ export default function LpEditorPage() {
               </div>
 
               {renderTab()}
+            </section>
+
+            <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5 lg:col-start-2">
+              <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-black">Preview ao vivo</h2>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Mostra o layout com as alteracoes atuais. Salve para publicar.
+                  </p>
+                </div>
+
+                <div className="inline-flex rounded-2xl border border-white/[0.08] bg-black/35 p-1">
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('desktop')}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+                      previewDevice === 'desktop' ? 'bg-[#6be12f] text-black' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <Monitor size={15} />
+                    Desktop
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewDevice('mobile')}
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+                      previewDevice === 'mobile' ? 'bg-[#6be12f] text-black' : 'text-neutral-400 hover:text-white'
+                    }`}
+                  >
+                    <Smartphone size={15} />
+                    Mobile
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-[1.25rem] border border-white/[0.08] bg-black/60 p-3">
+                <div
+                  className={`mx-auto h-[760px] overflow-auto rounded-2xl border border-white/[0.08] bg-black shadow-2xl shadow-black/50 ${
+                    previewDevice === 'mobile' ? 'w-full max-w-[390px]' : 'w-full'
+                  }`}
+                >
+                  <GeneratedLandingPage page={previewPage} config={getLpConfig(config)} previewMode />
+                </div>
+              </div>
             </section>
           </div>
         )}

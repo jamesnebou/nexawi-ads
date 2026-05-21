@@ -96,12 +96,18 @@ function VisualPanel({ config }) {
   )
 }
 
-export default function GeneratedLandingPage({ page, config }) {
+export default function GeneratedLandingPage({ page, config, previewMode = false }) {
   const [form, setForm] = useState({ nome: '', email: '', telefone: '', mensagem: '' })
   const [sending, setSending] = useState(false)
 
   async function sendLead(event) {
     event.preventDefault()
+
+    if (previewMode) {
+      toast('Formulario desativado no preview.')
+      return
+    }
+
     setSending(true)
 
     try {
@@ -136,7 +142,7 @@ export default function GeneratedLandingPage({ page, config }) {
 
   return (
     <main style={sectionStyle(config)} className="min-h-screen overflow-hidden bg-[var(--page-bg)] text-[var(--page-text)]">
-      <Toaster position="top-right" />
+      {!previewMode && <Toaster position="top-right" />}
 
       {config.hero.ativo && (
         <section
