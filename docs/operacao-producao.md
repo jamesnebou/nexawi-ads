@@ -155,3 +155,20 @@ bash /srv/nexawi/control-api/scripts/audit.sh
 ```
 
 Esse comando resume Git, PM2, health da aplicacao, status RouterOS, reconcile de sessao, reconcile financeiro e relatorio mensal em modo seguro.
+
+## 9. Teste ponta a ponta
+
+Execute este fluxo antes de considerar uma nova cidade ou cliente como validado:
+
+1. Abrir a landing page, selecionar um plano e enviar o formulario de interesse.
+2. Confirmar que o lead entrou no CRM com plano escolhido e valor potencial.
+3. Converter o lead em cliente/anunciante.
+4. Criar assinatura/cobranca pelo financeiro e confirmar a cobranca no Asaas.
+5. Confirmar que o link de pagamento aparece na area do cliente.
+6. Pagar uma cobranca teste e validar status `Pago` no painel.
+7. Criar anuncio ativo vinculado ao cliente e ao hotspot correto.
+8. Abrir o portal no celular, preencher dados obrigatorios e aceitar LGPD.
+9. Confirmar anuncio obrigatorio, timer, CTA e liberacao depois da regra cumprida.
+10. Confirmar lead, impressao, clique e CTR no relatorio comercial.
+11. Enviar relatorio por e-mail e validar anexos PDF/CSV.
+12. Com o MikroTik online, testar bloqueio/desbloqueio em `/dashboard/rede`.

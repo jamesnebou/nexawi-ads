@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  ClipboardCheck,
   RefreshCw,
   ServerCog,
   ShieldCheck,
@@ -16,6 +17,44 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const fluxoPontaAPonta = [
+  {
+    title: 'Landing e CRM',
+    items: [
+      'Abrir a landing page e selecionar um plano real.',
+      'Enviar o formulario de interesse pela pagina /anunciar.',
+      'Confirmar que o lead caiu no CRM com plano e valor potencial.',
+    ],
+  },
+  {
+    title: 'Cliente e financeiro',
+    items: [
+      'Converter o lead em cliente/anunciante.',
+      'Criar plano ou assinatura recorrente pelo financeiro.',
+      'Confirmar cobranca no Asaas e link de pagamento na area do cliente.',
+      'Pagar uma cobranca teste e validar status Pago no painel.',
+    ],
+  },
+  {
+    title: 'Campanha e portal',
+    items: [
+      'Criar anuncio ativo vinculado ao cliente.',
+      'Vincular campanha ao hotspot/local correto.',
+      'Acessar o portal no celular e preencher nome, e-mail, telefone, CPF e LGPD.',
+      'Confirmar anuncio obrigatorio, timer, CTA e liberacao apos regra cumprida.',
+    ],
+  },
+  {
+    title: 'Metricas e operacao',
+    items: [
+      'Confirmar impressao, clique e lead no relatorio comercial.',
+      'Enviar relatorio por e-mail e validar anexos PDF/CSV.',
+      'Rodar auditoria da VPS e confirmar crons sem erro critico.',
+      'Testar bloqueio/desbloqueio no MikroTik quando o roteador estiver online.',
+    ],
+  },
+]
 
 async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -235,6 +274,52 @@ function ScriptGroup({ scripts }) {
   )
 }
 
+function EndToEndChecklist() {
+  return (
+    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
+      <div className="flex items-center gap-3">
+        <ClipboardCheck size={20} className="text-[#8cf059]" />
+        <div>
+          <h3 className="text-base font-black text-white">
+            Teste ponta a ponta
+          </h3>
+          <p className="mt-1 text-xs text-neutral-500">
+            Roteiro final para validar o SaaS como se fosse uma venda real.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
+        {fluxoPontaAPonta.map((group, groupIndex) => (
+          <div key={group.title} className="rounded-2xl border border-white/[0.06] bg-black/35 p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 text-xs font-black text-[#8cf059]">
+                {groupIndex + 1}
+              </span>
+              <h4 className="text-sm font-black text-white">
+                {group.title}
+              </h4>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              {group.items.map((item, itemIndex) => (
+                <div key={item} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-lg bg-white/[0.04] text-[10px] font-black text-neutral-400">
+                    {itemIndex + 1}
+                  </span>
+                  <p className="text-xs leading-relaxed text-neutral-300">
+                    {item}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function OperacaoPage() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -346,6 +431,8 @@ export default function OperacaoPage() {
           </section>
 
           <ScriptGroup scripts={data?.scripts || []} />
+
+          <EndToEndChecklist />
         </>
       )}
     </div>
