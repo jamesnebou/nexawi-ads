@@ -141,6 +141,23 @@ function CheckRow({ item }) {
 function EnvGroup({ group }) {
   const config = statusConfig(group.status)
 
+  function envLabel(item) {
+    const labels = {
+      configured: 'configurada',
+      fallback: item.fallbackLabel || 'fallback',
+      default: item.fallbackLabel || 'padrao',
+      missing: 'pendente',
+    }
+
+    return labels[item.mode] || (item.effective ? 'ok' : 'pendente')
+  }
+
+  function envClass(item) {
+    if (item.mode === 'configured') return 'text-[#8cf059]'
+    if (['fallback', 'default'].includes(item.mode)) return 'text-cyan-300'
+    return 'text-yellow-300'
+  }
+
   return (
     <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
       <div className="flex items-start justify-between gap-4">
@@ -164,8 +181,8 @@ function EnvGroup({ group }) {
             <span className="truncate text-xs font-bold text-neutral-300">
               {item.key}
             </span>
-            <span className={`text-[10px] font-black uppercase tracking-widest ${item.configured ? 'text-[#8cf059]' : 'text-yellow-300'}`}>
-              {item.configured ? 'configurada' : 'pendente'}
+            <span className={`text-[10px] font-black uppercase tracking-widest ${envClass(item)}`}>
+              {envLabel(item)}
             </span>
           </div>
         ))}

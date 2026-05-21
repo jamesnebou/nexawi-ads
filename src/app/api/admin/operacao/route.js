@@ -26,7 +26,21 @@ const ENV_GROUPS = [
   {
     id: 'asaas',
     title: 'Asaas',
-    keys: ['ASAAS_ENV', 'ASAAS_API_KEY', 'ASAAS_WEBHOOK_TOKEN', 'ASAAS_FINE_PERCENT', 'ASAAS_INTEREST_PERCENT'],
+    keys: [
+      'ASAAS_ENV',
+      'ASAAS_API_KEY',
+      'ASAAS_WEBHOOK_TOKEN',
+      {
+        key: 'ASAAS_FINE_PERCENT',
+        fallback: '3',
+        fallbackLabel: 'padrao 3%',
+      },
+      {
+        key: 'ASAAS_INTEREST_PERCENT',
+        fallback: '2',
+        fallbackLabel: 'padrao 2%',
+      },
+    ],
   },
   {
     id: 'control',
@@ -34,7 +48,11 @@ const ENV_GROUPS = [
     keys: [
       'CONTROL_API_MODE',
       'CONTROL_API_BASE_URL',
-      'NEXAWI_CONTROL_SECRET',
+      {
+        key: 'NEXAWI_CONTROL_SECRET',
+        fallbackKey: 'NEXAWI_CRON_SECRET',
+        fallbackLabel: 'fallback NEXAWI_CRON_SECRET',
+      },
       'ROUTEROS_BASE_URL',
       'ROUTEROS_USERNAME',
       'ROUTEROS_PASSWORD',
@@ -80,8 +98,39 @@ function envConfigured(key) {
   return Boolean(String(process.env[key] || '').trim())
 }
 
-function statusFromMissing(missing) {
-  return missing.length === 0 ? 'ok' : 'warning'
+function normalizeEnvRule(rule) {
+  return typeof rule === 'string' ? { key: rule } : rule
+}
+
+function resolveEnvRule(rule) {
+  const envRule = normalizeEnvRule(rule)
+  const configured = envConfigured(envRule.key)
+  const fallbackConfigured = envRule.fallbackKey ? envConfigured(envRule.fallbackKey) : false
+  const hasDefault = Object.prototype.hasOwnProperty.call(envRule, 'fallback')
+  const effective = configured || fallbackConfigured || hasDefault
+
+  let mode = 'missing'
+
+  if (configured) {
+    mode = 'configured'
+  } else if (fallbackConfigured) {
+    mode = 'fallback'
+  } else if (hasDefault) {
+    mode = 'default'
+  }
+
+  return {
+    key: envRule.key,
+    configured,
+    effective,
+    mode,
+    fallbackKey: envRule.fallbackKey || '',
+    fallbackLabel: envRule.fallbackLabel || '',
+  }
+}
+
+function statusFromKeys(keys) {
+  return keys.every((item) => item.effective) ? 'ok' : 'warning'
 }
 
 function scriptExists(file) {
@@ -130,17 +179,16 @@ export async function GET(request) {
   }
 
   const envGroups = ENV_GROUPS.map((group) => {
-    const keys = group.keys.map((key) => ({
-      key,
-      configured: envConfigured(key),
-    }))
-    const missing = keys.filter((item) => !item.configured).map((item) => item.key)
+    const keys = group.keys.map(resolveEnvRule)
+    const missing = keys.filter((item) => !item.effective).map((item) => item.key)
+    const defaults = keys.filter((item) => ['default', 'fallback'].includes(item.mode))
 
     return {
       ...group,
-      status: statusFromMissing(missing),
+      status: statusFromKeys(keys),
       keys,
       missing,
+      defaults,
     }
   })
 
@@ -166,6 +214,8 @@ export async function GET(request) {
       status: group.status,
       detail: group.missing.length
         ? `Variaveis pendentes: ${group.missing.join(', ')}`
+        : group.defaults.length
+          ? `Configurado com padroes/fallbacks: ${group.defaults.map((item) => `${item.key} (${item.fallbackLabel || item.mode})`).join(', ')}`
         : 'Variaveis obrigatorias presentes neste ambiente.',
     })),
     ...scripts.map((script) => ({
