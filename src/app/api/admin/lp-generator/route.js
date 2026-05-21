@@ -22,6 +22,40 @@ function isValidUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
+async function resolveClienteId({ clienteId, empresaId, auth }) {
+  const cleanClienteId = cleanText(clienteId)
+
+  if (cleanClienteId) {
+    if (!isValidUuid(cleanClienteId)) throw new Error('ID do cliente invalido')
+
+    let query = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id')
+      .eq('id', cleanClienteId)
+
+    query = auth.applyEmpresaScope(query)
+
+    const { data, error } = await query.maybeSingle()
+    if (error) throw error
+    if (!data) throw new Error('Cliente fora do escopo ou nao encontrado')
+
+    return data.id
+  }
+
+  if (!empresaId) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('clientes')
+    .select('id')
+    .eq('empresa_id', empresaId)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data?.id || null
+}
+
 async function getPage(id) {
   if (!isValidUuid(id)) return null
 
@@ -33,6 +67,13 @@ async function getPage(id) {
 
   if (error) throw error
   return data || null
+}
+
+function canAccessPage(page, auth) {
+  if (!page) return false
+  if (auth.isMaster) return true
+  if (!auth.activeEmpresaId) return false
+  return page.empresa_id === auth.activeEmpresaId
 }
 
 async function logAction({ request, auth, action, page, description, metadata = {} }) {
@@ -67,6 +108,7 @@ export async function GET(request) {
 
       const page = await getPage(id)
       if (!page) return errorJson('Landing page nao encontrada', 404)
+      if (!canAccessPage(page, auth)) return errorJson('Sem permissao para acessar esta landing page', 403)
 
       return NextResponse.json({
         ok: true,
@@ -79,9 +121,11 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('lp_generator_pages')
-      .select('id, name, slug, status, created_at, updated_at')
+      .select('id, name, slug, status, cliente_id, empresa_id, created_at, updated_at')
       .neq('status', 'archived')
       .order('updated_at', { ascending: false })
+
+    query = auth.applyEmpresaScope(query)
 
     if (busca) {
       const safeBusca = busca.replace(/[%,()]/g, ' ').replace(/\s+/g, ' ').trim()
@@ -118,6 +162,8 @@ export async function POST(request) {
       const template = getLpTemplate(cleanText(body.template))
       const name = cleanText(body.name || template?.defaultName || 'Nova landing page')
       const slug = slugifyLp(body.slug || name)
+      const empresaId = auth.activeEmpresaId || null
+      const clienteId = await resolveClienteId({ clienteId: body.cliente_id, empresaId, auth })
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
       if (!slug) return errorJson('Slug da landing page e obrigatorio')
@@ -127,6 +173,8 @@ export async function POST(request) {
         .insert([{
           name,
           slug,
+          cliente_id: clienteId,
+          empresa_id: empresaId,
           status: 'draft',
           config: getLpConfig({
             ...getLpTemplateConfig(template?.id),
@@ -166,11 +214,16 @@ export async function POST(request) {
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)
+      if (!canAccessPage(before, auth)) return errorJson('Sem permissao para editar esta landing page', 403)
 
       const name = cleanText(body.name || before.name)
       const slug = slugifyLp(body.slug || before.slug || name)
       const status = ['draft', 'published'].includes(body.status) ? body.status : before.status
       const config = getLpConfig(body.config || before.config || {})
+      const empresaId = before.empresa_id || auth.activeEmpresaId || null
+      const clienteId = body.cliente_id !== undefined
+        ? await resolveClienteId({ clienteId: body.cliente_id, empresaId, auth })
+        : before.cliente_id || null
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
       if (!slug) return errorJson('Slug da landing page e obrigatorio')
@@ -180,6 +233,8 @@ export async function POST(request) {
         .update({
           name,
           slug,
+          cliente_id: clienteId,
+          empresa_id: empresaId,
           status,
           config,
           updated_by: auth.user?.id || null,
@@ -213,6 +268,7 @@ export async function POST(request) {
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)
+      if (!canAccessPage(before, auth)) return errorJson('Sem permissao para alterar esta landing page', 403)
 
       const status = before.status === 'published' ? 'draft' : 'published'
 
@@ -244,6 +300,7 @@ export async function POST(request) {
 
       const source = await getPage(id)
       if (!source) return errorJson('Landing page nao encontrada', 404)
+      if (!canAccessPage(source, auth)) return errorJson('Sem permissao para duplicar esta landing page', 403)
 
       const name = `${source.name} - copia`
       const slug = `${source.slug}-${Date.now().toString(36)}`
@@ -253,6 +310,8 @@ export async function POST(request) {
         .insert([{
           name,
           slug,
+          cliente_id: source.cliente_id || null,
+          empresa_id: source.empresa_id || auth.activeEmpresaId || null,
           status: 'draft',
           config: getLpConfig(source.config || {}),
           created_by: auth.user?.id || null,
@@ -282,6 +341,7 @@ export async function POST(request) {
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)
+      if (!canAccessPage(before, auth)) return errorJson('Sem permissao para arquivar esta landing page', 403)
 
       const { data, error } = await supabaseAdmin
         .from('lp_generator_pages')

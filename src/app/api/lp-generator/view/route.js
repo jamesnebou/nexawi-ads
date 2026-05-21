@@ -18,7 +18,7 @@ export async function POST(request) {
 
     const { data: page, error: pageError } = await supabaseAdmin
       .from('lp_generator_pages')
-      .select('id, slug, status')
+      .select('id, slug, status, cliente_id, empresa_id')
       .eq('slug', pageSlug)
       .eq('status', 'published')
       .maybeSingle()
@@ -32,6 +32,8 @@ export async function POST(request) {
       .from('lp_generator_views')
       .insert([{
         page_id: page.id,
+        cliente_id: page.cliente_id || null,
+        empresa_id: page.empresa_id || null,
         page_slug: page.slug,
         metadata: {
           user_agent: request.headers.get('user-agent') || '',

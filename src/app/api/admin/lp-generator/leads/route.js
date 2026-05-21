@@ -19,10 +19,12 @@ function getDateStart(daysAgo = 0) {
   return date.toISOString()
 }
 
-async function countRows(table, { pageId, pageSlug, from } = {}) {
+async function countRows(table, { pageId, pageSlug, from, auth } = {}) {
   let query = supabaseAdmin
     .from(table)
     .select('id', { count: 'exact', head: true })
+
+  query = auth?.applyEmpresaScope ? auth.applyEmpresaScope(query) : query
 
   if (pageId && isValidUuid(pageId)) {
     query = query.eq('page_id', pageId)
@@ -49,11 +51,15 @@ export async function GET(request) {
     const pageSlug = cleanText(searchParams.get('pageSlug'))
     const limit = Math.min(Number(searchParams.get('limit') || 200), 500)
 
-    const { data: pagesData, error: pagesError } = await supabaseAdmin
+    let pagesQuery = supabaseAdmin
       .from('lp_generator_pages')
-      .select('id, name, slug, status')
+      .select('id, name, slug, status, cliente_id, empresa_id')
       .neq('status', 'archived')
       .order('name', { ascending: true })
+
+    pagesQuery = auth.applyEmpresaScope(pagesQuery)
+
+    const { data: pagesData, error: pagesError } = await pagesQuery
 
     if (pagesError) throw pagesError
 
@@ -62,6 +68,8 @@ export async function GET(request) {
       .select('*', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit)
+
+    query = auth.applyEmpresaScope(query)
 
     if (pageId && isValidUuid(pageId)) {
       query = query.eq('page_id', pageId)
@@ -102,12 +110,12 @@ export async function GET(request) {
       todayLeads,
       monthLeads,
     ] = await Promise.all([
-      countRows('lp_generator_views', { pageId, pageSlug }),
-      countRows('lp_generator_views', { pageId, pageSlug, from: todayStart }),
-      countRows('lp_generator_views', { pageId, pageSlug, from: monthStartIso }),
-      countRows('lp_generator_leads', { pageId, pageSlug }),
-      countRows('lp_generator_leads', { pageId, pageSlug, from: todayStart }),
-      countRows('lp_generator_leads', { pageId, pageSlug, from: monthStartIso }),
+      countRows('lp_generator_views', { pageId, pageSlug, auth }),
+      countRows('lp_generator_views', { pageId, pageSlug, from: todayStart, auth }),
+      countRows('lp_generator_views', { pageId, pageSlug, from: monthStartIso, auth }),
+      countRows('lp_generator_leads', { pageId, pageSlug, auth }),
+      countRows('lp_generator_leads', { pageId, pageSlug, from: todayStart, auth }),
+      countRows('lp_generator_leads', { pageId, pageSlug, from: monthStartIso, auth }),
     ])
 
     const conversionRate = totalViews > 0 ? (totalLeads / totalViews) * 100 : 0
