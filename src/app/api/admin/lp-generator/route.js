@@ -18,7 +18,13 @@ function errorJson(error, status = 400) {
   return NextResponse.json({ ok: false, error }, { status })
 }
 
+function isValidUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 async function getPage(id) {
+  if (!isValidUuid(id)) return null
+
   const { data, error } = await supabaseAdmin
     .from('lp_generator_pages')
     .select('*')
@@ -57,6 +63,8 @@ export async function GET(request) {
     const busca = cleanText(searchParams.get('busca'))
 
     if (id) {
+      if (!isValidUuid(id)) return errorJson('ID da landing page invalido', 400)
+
       const page = await getPage(id)
       if (!page) return errorJson('Landing page nao encontrada', 404)
 
@@ -142,6 +150,7 @@ export async function POST(request) {
     if (action === 'update') {
       const id = cleanText(body.id)
       if (!id) return errorJson('ID da landing page e obrigatorio')
+      if (!isValidUuid(id)) return errorJson('ID da landing page invalido')
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)
@@ -188,6 +197,7 @@ export async function POST(request) {
     if (action === 'toggle') {
       const id = cleanText(body.id)
       if (!id) return errorJson('ID da landing page e obrigatorio')
+      if (!isValidUuid(id)) return errorJson('ID da landing page invalido')
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)
@@ -218,6 +228,7 @@ export async function POST(request) {
     if (action === 'duplicate') {
       const id = cleanText(body.id)
       if (!id) return errorJson('ID da landing page e obrigatorio')
+      if (!isValidUuid(id)) return errorJson('ID da landing page invalido')
 
       const source = await getPage(id)
       if (!source) return errorJson('Landing page nao encontrada', 404)
@@ -255,6 +266,7 @@ export async function POST(request) {
     if (action === 'archive') {
       const id = cleanText(body.id)
       if (!id) return errorJson('ID da landing page e obrigatorio')
+      if (!isValidUuid(id)) return errorJson('ID da landing page invalido')
 
       const before = await getPage(id)
       if (!before) return errorJson('Landing page nao encontrada', 404)

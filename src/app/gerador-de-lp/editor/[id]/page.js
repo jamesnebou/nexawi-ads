@@ -29,6 +29,10 @@ const tabs = [
   { id: 'seo', label: 'SEO' },
 ]
 
+function isValidUuid(value) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '')
+}
+
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
@@ -163,7 +167,8 @@ function ListEditor({ items = [], labels, onChange }) {
 
 export default function LpEditorPage() {
   const params = useParams()
-  const id = params?.id
+  const id = Array.isArray(params?.id) ? params.id[0] : params?.id
+  const hasValidId = isValidUuid(id)
   const [activeTab, setActiveTab] = useState('identidade')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -176,6 +181,11 @@ export default function LpEditorPage() {
   const publicUrl = useMemo(() => `/lp/${slug || 'slug-da-lp'}`, [slug])
 
   const loadPage = useCallback(async () => {
+    if (!hasValidId) {
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -190,13 +200,18 @@ export default function LpEditorPage() {
     } finally {
       setLoading(false)
     }
-  }, [id])
+  }, [hasValidId, id])
 
   useEffect(() => {
     loadPage()
   }, [loadPage])
 
   async function savePage() {
+    if (!hasValidId) {
+      toast.error('Abra o editor pelo botao Editar de uma LP existente.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -362,7 +377,20 @@ export default function LpEditorPage() {
           </div>
         </header>
 
-        {loading ? (
+        {!hasValidId ? (
+          <div className="rounded-[1.5rem] border border-yellow-500/20 bg-yellow-500/10 p-10 text-center">
+            <p className="text-lg font-black text-yellow-200">ID da LP invalido.</p>
+            <p className="mt-2 text-sm text-yellow-100/75">
+              Volte para o painel do gerador e abra uma landing page pelo botao Editar.
+            </p>
+            <Link
+              href="/gerador-de-lp/dashboard"
+              className="mt-6 inline-flex rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black"
+            >
+              Voltar para LPs
+            </Link>
+          </div>
+        ) : loading ? (
           <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-10 text-center">
             <Loader2 className="mx-auto animate-spin text-[#8cf059]" size={28} />
             <p className="mt-4 text-sm font-bold text-neutral-400">Carregando editor...</p>
