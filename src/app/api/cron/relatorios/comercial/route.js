@@ -31,7 +31,7 @@ async function handleSend(request, body = {}) {
   }
 
   try {
-    const { emailResult, filename, report } = await sendCommercialReportEmail({
+    const { emailResult, filename, pdfFilename, report } = await sendCommercialReportEmail({
       periodo,
       to,
     })
@@ -48,6 +48,7 @@ async function handleSend(request, body = {}) {
       periodo,
       to,
       filename,
+      pdfFilename,
       messageId: emailResult.messageId || null,
       resumo: report.resumo || {},
     })

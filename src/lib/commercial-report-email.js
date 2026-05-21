@@ -1,4 +1,5 @@
 import { buildCommercialReport } from '@/lib/commercial-report'
+import { buildCommercialReportPdfAttachment } from '@/lib/commercial-report-pdf'
 import { sendEmail } from '@/lib/email-service'
 
 function csvCell(value) {
@@ -129,6 +130,11 @@ export async function sendCommercialReportEmail({
 
   const csv = buildCommercialReportCsv(report)
   const filename = buildCommercialReportFileName({ periodo, clienteId, hotspotId })
+  const pdfAttachment = buildCommercialReportPdfAttachment({
+    report,
+    periodo,
+    filename: filename.replace(/\.csv$/i, '.pdf'),
+  })
   const subject = `[NexaWi ADS] Relatorio comercial - ${periodo}`
   const text = [
     'Relatorio comercial NexaWi ADS',
@@ -149,6 +155,7 @@ export async function sendCommercialReportEmail({
     text,
     html: buildHtml({ report, periodo }),
     attachments: [
+      pdfAttachment,
       {
         filename,
         content: csv,
@@ -160,6 +167,7 @@ export async function sendCommercialReportEmail({
   return {
     emailResult,
     filename,
+    pdfFilename: pdfAttachment.filename,
     report,
   }
 }

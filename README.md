@@ -141,7 +141,7 @@ Payload:
 
 ## Cron mensal
 
-Rota para envio automatico do relatorio comercial mensal:
+Rota para envio automatico do relatorio comercial mensal. O e-mail envia resumo em HTML e anexa PDF executivo + CSV completo:
 
 ```txt
 GET /api/cron/relatorios/comercial
