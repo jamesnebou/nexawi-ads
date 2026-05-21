@@ -40,6 +40,11 @@ echo "== Reconcile =="
 echo ""
 
 echo ""
+echo "== Reconcile financeiro =="
+"$APP_DIR/scripts/financeiro-reconcile.sh"
+echo ""
+
+echo ""
 echo "== Relatorio comercial mensal cron =="
 "$APP_DIR/scripts/monthly-commercial-report.sh" --dry-run
 echo ""

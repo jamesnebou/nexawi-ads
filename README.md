@@ -57,6 +57,12 @@ Manual completo para novos roteadores:
 docs/manual-mikrotik-nexawi.md
 ```
 
+Checklist de producao SaaS:
+
+```txt
+docs/operacao-producao.md
+```
+
 Checklist operacional para abrir uma nova cidade:
 
 ```txt
@@ -195,13 +201,13 @@ Sugestao de cron a cada 5 minutos:
 
 ## Reconcile financeiro
 
-Rota operacional para marcar cobranças pendentes vencidas como `Vencido`, registrar auditoria e gerar alerta crítico de inadimplência:
+Rota operacional para marcar cobrancas pendentes vencidas como `Vencido`, registrar auditoria e gerar alerta critico de inadimplencia:
 
 ```txt
 GET /api/cron/financeiro/reconcile
 ```
 
-Autenticação:
+Autenticacao:
 
 ```txt
 x-cron-secret: <NEXAWI_CRON_SECRET>
