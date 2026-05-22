@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireCliente } from '@/lib/cliente-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getLpConfig, slugifyLp } from '@/lib/lp-generator-defaults'
 
 export const runtime = 'nodejs'
 
@@ -43,6 +44,22 @@ async function countRows(table, { pageId, clienteId, empresaId, from } = {}) {
   return count || 0
 }
 
+async function buscarPaginaDoCliente(pageId, { clienteId, empresaId }) {
+  if (!pageId || !isValidUuid(pageId)) return null
+
+  let query = supabaseAdmin
+    .from('lp_generator_pages')
+    .select('*')
+    .eq('id', pageId)
+    .neq('status', 'archived')
+
+  query = aplicarEscopoCliente(query, { clienteId, empresaId })
+
+  const { data, error } = await query.maybeSingle()
+  if (error) throw error
+  return data || null
+}
+
 export async function GET(request) {
   const auth = await requireCliente(request)
 
@@ -51,8 +68,28 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const pageId = cleanText(searchParams.get('pageId'))
+    const editorId = cleanText(searchParams.get('id'))
     const { cliente, empresaId } = auth
     const clienteId = cliente.id
+
+    if (editorId) {
+      if (!isValidUuid(editorId)) {
+        return NextResponse.json({ ok: false, error: 'ID da LP invalido' }, { status: 400 })
+      }
+
+      const page = await buscarPaginaDoCliente(editorId, { clienteId, empresaId })
+      if (!page) {
+        return NextResponse.json({ ok: false, error: 'LP nao encontrada para este cliente' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        ok: true,
+        page: {
+          ...page,
+          config: getLpConfig(page.config || {}),
+        },
+      })
+    }
 
     let pagesQuery = supabaseAdmin
       .from('lp_generator_pages')
@@ -139,6 +176,73 @@ export async function GET(request) {
   } catch (error) {
     return NextResponse.json(
       { ok: false, error: error.message || 'Erro ao carregar landing pages do cliente' },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request) {
+  const auth = await requireCliente(request)
+
+  if (auth.errorResponse) return auth.errorResponse
+
+  try {
+    const body = await request.json()
+    const action = cleanText(body.action || 'update')
+    const pageId = cleanText(body.id)
+    const { cliente, empresaId, user } = auth
+
+    if (action !== 'update') {
+      return NextResponse.json({ ok: false, error: 'Acao invalida' }, { status: 400 })
+    }
+
+    if (!isValidUuid(pageId)) {
+      return NextResponse.json({ ok: false, error: 'ID da LP invalido' }, { status: 400 })
+    }
+
+    const page = await buscarPaginaDoCliente(pageId, { clienteId: cliente.id, empresaId })
+
+    if (!page) {
+      return NextResponse.json({ ok: false, error: 'LP nao encontrada para este cliente' }, { status: 404 })
+    }
+
+    const name = cleanText(body.name || page.name)
+    const slug = slugifyLp(body.slug || page.slug || name)
+    const status = ['draft', 'published'].includes(body.status) ? body.status : page.status
+
+    if (!name) {
+      return NextResponse.json({ ok: false, error: 'Nome da LP e obrigatorio' }, { status: 400 })
+    }
+
+    if (!slug) {
+      return NextResponse.json({ ok: false, error: 'Slug da LP e obrigatorio' }, { status: 400 })
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('lp_generator_pages')
+      .update({
+        name,
+        slug,
+        status,
+        config: getLpConfig(body.config || page.config || {}),
+        updated_by: user?.id || null,
+      })
+      .eq('id', page.id)
+      .select('*')
+      .single()
+
+    if (error) throw error
+
+    return NextResponse.json({
+      ok: true,
+      page: {
+        ...data,
+        config: getLpConfig(data.config || {}),
+      },
+    })
+  } catch (error) {
+    return NextResponse.json(
+      { ok: false, error: error.message || 'Erro ao salvar LP do cliente' },
       { status: 500 }
     )
   }

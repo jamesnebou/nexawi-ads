@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
 import {
@@ -12,6 +13,7 @@ import {
   FileText,
   Globe2,
   Mail,
+  Pencil,
   Phone,
   RefreshCw,
   TrendingUp,
@@ -308,6 +310,28 @@ export default function ClienteLpsPage() {
                         }`}>
                           {page.status === 'published' ? 'publicada' : 'rascunho'}
                         </span>
+                      </div>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <Link
+                          href={`/cliente/lps/editor/${page.id}`}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-black text-white transition hover:bg-white/[0.08]"
+                        >
+                          <Pencil size={14} />
+                          Editar LP
+                        </Link>
+
+                        {page.slug ? (
+                          <a
+                            href={`/lp/${page.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2.5 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15"
+                          >
+                            <ExternalLink size={14} />
+                            Abrir
+                          </a>
+                        ) : null}
                       </div>
                     </article>
                   ))}
