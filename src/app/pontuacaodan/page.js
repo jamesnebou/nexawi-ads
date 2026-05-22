@@ -28,6 +28,10 @@ function getRevealPosition(index) {
   return `${5 - index}º colocado`
 }
 
+function getProgress(score, maxScore) {
+  return Math.max(0, Math.min(100, Math.round((Number(score || 0) / Math.max(Number(maxScore || 1), 1)) * 100)))
+}
+
 export default function PontuacaoDanPage() {
   const [teams, setTeams] = useState(initialTeams)
   const [customPoints, setCustomPoints] = useState(10)
@@ -73,7 +77,7 @@ export default function PontuacaoDanPage() {
   function updateScore(teamId, delta) {
     setTeams((current) => current.map((team) => {
       if (team.id !== teamId) return team
-      return { ...team, score: Math.max(0, Number(team.score || 0) + Number(delta || 0)) }
+      return { ...team, score: Number(team.score || 0) + Number(delta || 0) }
     }))
   }
 
@@ -320,7 +324,7 @@ function BigStat({ label, value }) {
 }
 
 function LeaderCard({ team, maxScore, showControls, customPoints, onUpdate }) {
-  const progress = Math.min(100, Math.round((Number(team?.score || 0) / maxScore) * 100))
+  const progress = getProgress(team?.score, maxScore)
 
   return (
     <section className="animate-pulse-glow relative overflow-hidden rounded-[3rem] border border-orange-500/35 bg-gradient-to-br from-orange-500/[0.18] via-[#121212] to-black p-8 shadow-2xl shadow-orange-950/20">
@@ -360,7 +364,7 @@ function LeaderCard({ team, maxScore, showControls, customPoints, onUpdate }) {
 }
 
 function TeamCard({ team, position, maxScore, showControls, customPoints, onUpdate }) {
-  const progress = Math.min(100, Math.round((Number(team.score || 0) / maxScore) * 100))
+  const progress = getProgress(team.score, maxScore)
 
   return (
     <section className="animate-float-up rounded-[2.4rem] border border-white/[0.07] bg-[#0b0b0b]/85 p-6 shadow-xl shadow-black/30 backdrop-blur-xl transition-all duration-500">
