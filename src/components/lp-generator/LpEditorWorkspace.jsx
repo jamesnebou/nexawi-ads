@@ -287,6 +287,8 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
   const [loadError, setLoadError] = useState('')
   const [saving, setSaving] = useState(false)
   const [page, setPage] = useState(null)
+  const [clientes, setClientes] = useState([])
+  const [clienteId, setClienteId] = useState('')
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [status, setStatus] = useState('draft')
@@ -312,10 +314,13 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
     try {
       const data = await editorApiFetch(scope, `${context.apiPath}?id=${id}`)
       setPage(data.page)
+      setClientes(data.clientes || [])
       setName(data.page.name || '')
       setSlug(data.page.slug || '')
+      setClienteId(data.page.cliente_id || '')
       setStatus(data.page.status || 'draft')
       setConfig(getLpConfig(data.page.config || {}))
+
     } catch (error) {
       setLoadError(error.message || 'Erro ao carregar LP.')
       toast.error(error.message || 'Erro ao carregar LP.')
@@ -344,6 +349,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           id,
           name,
           slug,
+          ...(scope === 'admin' ? { cliente_id: clienteId || null } : {}),
           status,
           config,
         },
@@ -351,6 +357,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
 
       setPage(data.page)
       setSlug(data.page.slug || slug)
+      setClienteId(data.page.cliente_id || clienteId)
       toast.success('LP salva.')
     } catch (error) {
       toast.error(error.message || 'Erro ao salvar LP.')
@@ -365,6 +372,25 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Field label="Nome interno" value={name} onChange={setName} />
           <Field label="Slug publico" value={slug} onChange={(value) => setSlug(slugifyLp(value))} />
+          {scope === 'admin' ? (
+            <label className="block">
+              <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-neutral-500">
+                Cliente vinculado
+              </span>
+              <select
+                value={clienteId}
+                onChange={(event) => setClienteId(event.target.value)}
+                className="w-full rounded-2xl border border-white/[0.06] bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-[#6be12f]/40"
+              >
+                <option value="">Sem cliente definido</option>
+                {clientes.map((cliente) => (
+                  <option key={cliente.id} value={cliente.id}>
+                    {cliente.nome_empresa || cliente.nome || cliente.email}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
           <Field label="Marca exibida" value={config.identidade.marca} onChange={(value) => updateNested(setConfig, 'identidade', 'marca', value)} />
           <ImageUploadField label="Logo" field="logo" slug={slug || name} scope={scope} pageId={id} value={config.identidade.logoUrl} onChange={(value) => updateNested(setConfig, 'identidade', 'logoUrl', value)} />
           <div className="grid gap-4 sm:grid-cols-4">

@@ -74,10 +74,12 @@ function formatDate(value) {
 export default function LpGeneratorDashboard() {
   const router = useRouter()
   const [pages, setPages] = useState([])
+  const [clientes, setClientes] = useState([])
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(LP_GENERATOR_TEMPLATES[0]?.id || '')
+  const [selectedClienteId, setSelectedClienteId] = useState('')
 
   const loadPages = useCallback(async (nextBusca = busca) => {
     setLoading(true)
@@ -88,6 +90,7 @@ export default function LpGeneratorDashboard() {
 
       const data = await adminApiFetch(`/api/admin/lp-generator?${params.toString()}`)
       setPages(data.pages || [])
+      setClientes(data.clientes || [])
     } catch (error) {
       console.error(error)
       toast.error(error.message || 'Erro ao carregar landing pages.')
@@ -109,6 +112,7 @@ export default function LpGeneratorDashboard() {
         body: {
           action: 'create',
           template: selectedTemplate,
+          cliente_id: selectedClienteId || null,
         },
       })
 
@@ -218,6 +222,27 @@ export default function LpGeneratorDashboard() {
               )
             })}
           </div>
+
+          <label className="mt-5 block rounded-2xl border border-white/[0.06] bg-black/30 p-4">
+            <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-neutral-500">
+              Cliente da nova LP
+            </span>
+            <select
+              value={selectedClienteId}
+              onChange={(event) => setSelectedClienteId(event.target.value)}
+              className="w-full rounded-2xl border border-white/[0.06] bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-[#6be12f]/40"
+            >
+              <option value="">Sem cliente definido</option>
+              {clientes.map((cliente) => (
+                <option key={cliente.id} value={cliente.id}>
+                  {cliente.nome_empresa || cliente.nome || cliente.email}
+                </option>
+              ))}
+            </select>
+            <p className="mt-2 text-xs text-neutral-500">
+              O cliente vinculado vera esta LP, os leads e as metricas na area dele.
+            </p>
+          </label>
         </section>
 
         <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
@@ -267,6 +292,9 @@ export default function LpGeneratorDashboard() {
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-neutral-500">/lp/{page.slug}</p>
+                    <p className="mt-1 text-xs text-neutral-500">
+                      Cliente: {clientes.find((cliente) => cliente.id === page.cliente_id)?.nome_empresa || 'Nao vinculado'}
+                    </p>
                     <p className="mt-1 text-xs text-neutral-600">Atualizada em {formatDate(page.updated_at)}</p>
                   </div>
 

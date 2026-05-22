@@ -22,7 +22,7 @@ function isValidUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
 }
 
-async function resolveClienteId({ clienteId, empresaId, auth }) {
+async function resolveOwner({ clienteId, empresaId, auth }) {
   const cleanClienteId = cleanText(clienteId)
 
   if (cleanClienteId) {
@@ -39,21 +39,16 @@ async function resolveClienteId({ clienteId, empresaId, auth }) {
     if (error) throw error
     if (!data) throw new Error('Cliente fora do escopo ou nao encontrado')
 
-    return data.id
+    return {
+      clienteId: data.id,
+      empresaId: data.empresa_id || empresaId || null,
+    }
   }
 
-  if (!empresaId) return null
-
-  const { data, error } = await supabaseAdmin
-    .from('clientes')
-    .select('id')
-    .eq('empresa_id', empresaId)
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  if (error) throw error
-  return data?.id || null
+  return {
+    clienteId: null,
+    empresaId: empresaId || null,
+  }
 }
 
 async function getPage(id) {
@@ -67,6 +62,20 @@ async function getPage(id) {
 
   if (error) throw error
   return data || null
+}
+
+async function getOwnerClients(auth) {
+  let query = supabaseAdmin
+    .from('clientes')
+    .select('id, nome, nome_empresa, email, empresa_id, status')
+    .neq('status', 'Cancelado')
+    .order('nome_empresa', { ascending: true })
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }
 
 function canAccessPage(page, auth) {
@@ -112,6 +121,7 @@ export async function GET(request) {
 
       return NextResponse.json({
         ok: true,
+        clientes: await getOwnerClients(auth),
         page: {
           ...page,
           config: getLpConfig(page.config || {}),
@@ -138,6 +148,7 @@ export async function GET(request) {
     return NextResponse.json({
       ok: true,
       pages: data || [],
+      clientes: await getOwnerClients(auth),
       permissions: auth.permissions?.configuracoes || {},
     })
   } catch (error) {
@@ -162,8 +173,11 @@ export async function POST(request) {
       const template = getLpTemplate(cleanText(body.template))
       const name = cleanText(body.name || template?.defaultName || 'Nova landing page')
       const slug = slugifyLp(body.slug || name)
-      const empresaId = auth.activeEmpresaId || null
-      const clienteId = await resolveClienteId({ clienteId: body.cliente_id, empresaId, auth })
+      const owner = await resolveOwner({
+        clienteId: body.cliente_id,
+        empresaId: auth.activeEmpresaId || null,
+        auth,
+      })
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
       if (!slug) return errorJson('Slug da landing page e obrigatorio')
@@ -173,8 +187,8 @@ export async function POST(request) {
         .insert([{
           name,
           slug,
-          cliente_id: clienteId,
-          empresa_id: empresaId,
+          cliente_id: owner.clienteId,
+          empresa_id: owner.empresaId,
           status: 'draft',
           config: getLpConfig({
             ...getLpTemplateConfig(template?.id),
@@ -220,10 +234,16 @@ export async function POST(request) {
       const slug = slugifyLp(body.slug || before.slug || name)
       const status = ['draft', 'published'].includes(body.status) ? body.status : before.status
       const config = getLpConfig(body.config || before.config || {})
-      const empresaId = before.empresa_id || auth.activeEmpresaId || null
-      const clienteId = body.cliente_id !== undefined
-        ? await resolveClienteId({ clienteId: body.cliente_id, empresaId, auth })
-        : before.cliente_id || null
+      const owner = body.cliente_id !== undefined
+        ? await resolveOwner({
+            clienteId: body.cliente_id,
+            empresaId: before.empresa_id || auth.activeEmpresaId || null,
+            auth,
+          })
+        : {
+            clienteId: before.cliente_id || null,
+            empresaId: before.empresa_id || auth.activeEmpresaId || null,
+          }
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
       if (!slug) return errorJson('Slug da landing page e obrigatorio')
@@ -233,8 +253,8 @@ export async function POST(request) {
         .update({
           name,
           slug,
-          cliente_id: clienteId,
-          empresa_id: empresaId,
+          cliente_id: owner.clienteId,
+          empresa_id: owner.empresaId,
           status,
           config,
           updated_by: auth.user?.id || null,
