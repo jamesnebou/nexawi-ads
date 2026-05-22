@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLpConfig } from '@/lib/lp-generator-defaults'
 import GeneratedLandingPage from '@/components/lp-generator/GeneratedLandingPage'
+import LpTrackingScripts from '@/components/lp-generator/LpTrackingScripts'
 
 export const dynamic = 'force-dynamic'
 
@@ -40,11 +41,15 @@ export default async function PublicLpPage({ params }) {
   const page = await getPage(slug)
 
   if (!page) notFound()
+  const config = getLpConfig(page.config || {})
 
   return (
-    <GeneratedLandingPage
-      page={page}
-      config={getLpConfig(page.config || {})}
-    />
+    <>
+      <LpTrackingScripts config={config} />
+      <GeneratedLandingPage
+        page={page}
+        config={config}
+      />
+    </>
   )
 }

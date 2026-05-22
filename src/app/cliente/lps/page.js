@@ -88,6 +88,18 @@ function csvCell(value) {
   return `"${text.replace(/"/g, '""')}"`
 }
 
+function camposExtrasDoLead(lead) {
+  return Array.isArray(lead?.metadata?.custom_fields)
+    ? lead.metadata.custom_fields.filter((field) => String(field?.valor || '').trim())
+    : []
+}
+
+function resumoCamposExtras(lead) {
+  return camposExtrasDoLead(lead)
+    .map((field) => `${field.rotulo}: ${field.valor}`)
+    .join(' | ')
+}
+
 export default function ClienteLpsPage() {
   const router = useRouter()
   const [pages, setPages] = useState([])
@@ -137,12 +149,13 @@ export default function ClienteLpsPage() {
     }
 
     const linhas = [
-      ['Nome', 'Telefone', 'E-mail', 'Mensagem', 'LP', 'Data'],
+      ['Nome', 'Telefone', 'E-mail', 'Mensagem', 'Campos extras', 'LP', 'Data'],
       ...leads.map((lead) => [
         lead.nome || '',
         lead.telefone || '',
         lead.email || '',
         lead.mensagem || '',
+        resumoCamposExtras(lead),
         lead.page_name || lead.page_slug || '',
         formatDateTime(lead.created_at),
       ]),
@@ -399,9 +412,20 @@ function LeadCard({ lead }) {
           <ContactPill icon={Mail} label="E-mail" value={lead.email || '-'} />
         </div>
 
-        <p className="line-clamp-3 text-sm leading-relaxed text-neutral-500">
-          {lead.mensagem || 'Sem mensagem adicional.'}
-        </p>
+        <div>
+          <p className="line-clamp-3 text-sm leading-relaxed text-neutral-500">
+            {lead.mensagem || 'Sem mensagem adicional.'}
+          </p>
+          {camposExtrasDoLead(lead).length > 0 ? (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {camposExtrasDoLead(lead).map((field) => (
+                <span key={`${lead.id}-${field.id}`} className="rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-bold text-neutral-300">
+                  <strong className="text-white">{field.rotulo}:</strong> {field.valor}
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </div>
     </article>
   )

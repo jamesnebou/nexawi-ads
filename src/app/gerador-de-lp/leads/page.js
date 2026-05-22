@@ -61,6 +61,18 @@ function csvCell(value) {
   return `"${text}"`
 }
 
+function customFieldsFromLead(lead) {
+  return Array.isArray(lead?.metadata?.custom_fields)
+    ? lead.metadata.custom_fields.filter((field) => String(field?.valor || '').trim())
+    : []
+}
+
+function customFieldsSummary(lead) {
+  return customFieldsFromLead(lead)
+    .map((field) => `${field.rotulo}: ${field.valor}`)
+    .join(' | ')
+}
+
 function Kpi({ label, value, detail }) {
   return (
     <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
@@ -145,7 +157,7 @@ export default function LpGeneratorLeadsPage() {
     }
 
     const rows = [
-      ['Data', 'LP', 'Slug', 'Nome', 'Telefone', 'Email', 'Mensagem'],
+      ['Data', 'LP', 'Slug', 'Nome', 'Telefone', 'Email', 'Mensagem', 'Campos extras'],
       ...leads.map((lead) => [
         formatDate(lead.created_at),
         lead.page_name,
@@ -154,6 +166,7 @@ export default function LpGeneratorLeadsPage() {
         lead.telefone,
         lead.email,
         lead.mensagem,
+        customFieldsSummary(lead),
       ]),
     ]
 
@@ -306,6 +319,15 @@ export default function LpGeneratorLeadsPage() {
                     {lead.mensagem && (
                       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-500">{lead.mensagem}</p>
                     )}
+                    {customFieldsFromLead(lead).length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {customFieldsFromLead(lead).map((field) => (
+                          <span key={`${lead.id}-${field.id}`} className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-bold text-neutral-300">
+                            <strong className="text-white">{field.rotulo}:</strong> {field.valor}
+                          </span>
+                        ))}
+                      </div>
+                    ) : null}
                     <p className="mt-2 text-xs text-neutral-600">{formatDate(lead.created_at)}</p>
                   </div>
 
