@@ -11,6 +11,8 @@ import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna']
+
 function sanitizeSlug(value = '') {
   return String(value || '').trim()
 }
@@ -25,11 +27,18 @@ function publicHotspot(hotspot = {}) {
 }
 
 function publicAnuncio(anuncio = {}) {
+  const tipoDestino = TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)
+    ? anuncio.tipo_destino
+    : 'externo'
+
   return {
     id: anuncio.id,
     titulo: anuncio.titulo,
     descricao: anuncio.descricao,
     url_destino: anuncio.url_destino,
+    tipo_destino: tipoDestino,
+    lp_slug: anuncio.lp_slug || '',
+    tempo_liberacao_lp: Number(anuncio.tempo_liberacao_lp || 10),
     duracao_segundos: anuncio.duracao_segundos,
     ativo: anuncio.ativo,
     media_url: anuncio.media_url,
@@ -130,6 +139,9 @@ export async function POST(request) {
           titulo,
           descricao,
           url_destino,
+          tipo_destino,
+          lp_slug,
+          tempo_liberacao_lp,
           duracao_segundos,
           ativo,
           media_url,
