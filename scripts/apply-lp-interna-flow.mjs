@@ -18,6 +18,21 @@ function replaceOnce(content, search, replacement, label) {
   return content.replace(search, replacement)
 }
 
+function replaceRegex(content, regex, replacement, label) {
+  const next = content.replace(regex, replacement)
+  if (next === content) {
+    throw new Error(`Trecho nao encontrado para patch: ${label}`)
+  }
+  return next
+}
+
+function insertAfterUrlDestinoSelects(content) {
+  return content.replace(
+    /(\n\s*)url_destino,\n(?!\s*tipo_destino,)/g,
+    '$1url_destino,\n$1tipo_destino,\n$1lp_slug,\n$1tempo_liberacao_lp,\n'
+  )
+}
+
 function patchAdminAnunciosRoute() {
   const file = 'src/app/api/admin/anuncios/route.js'
   let content = read(file)
@@ -34,8 +49,8 @@ function patchAdminAnunciosRoute() {
   if (!content.includes('tipo_destino: TIPOS_DESTINO_VALIDOS.includes')) {
     content = replaceOnce(
       content,
-      "    url_destino: limparTexto(anuncio.url_destino),\n    duracao_segundos: Number.isFinite(duracao) ? duracao : 15,",
-      "    url_destino: limparTexto(anuncio.url_destino),\n    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)\n      ? anuncio.tipo_destino\n      : 'externo',\n    lp_slug: limparTexto(anuncio.lp_slug),\n    tempo_liberacao_lp: Number.isFinite(Number(anuncio.tempo_liberacao_lp))\n      ? Math.min(60, Math.max(3, Number(anuncio.tempo_liberacao_lp)))\n      : 10,\n    duracao_segundos: Number.isFinite(duracao) ? duracao : 15,",
+      "    url_destino: limparTexto(anuncio.url_destino),",
+      "    url_destino: limparTexto(anuncio.url_destino),\n    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)\n      ? anuncio.tipo_destino\n      : 'externo',\n    lp_slug: limparTexto(anuncio.lp_slug),\n    tempo_liberacao_lp: Number.isFinite(Number(anuncio.tempo_liberacao_lp))\n      ? Math.min(60, Math.max(3, Number(anuncio.tempo_liberacao_lp)))\n      : 10,",
       'admin: sanitizar payload destino'
     )
   }
@@ -49,17 +64,7 @@ function patchAdminAnunciosRoute() {
     )
   }
 
-  const selectBasicOld = "      url_destino,\n      duracao_segundos,"
-  const selectBasicNew = "      url_destino,\n      tipo_destino,\n      lp_slug,\n      tempo_liberacao_lp,\n      duracao_segundos,"
-  if (!content.includes('      tipo_destino,\n      lp_slug,\n      tempo_liberacao_lp,')) {
-    content = replaceOnce(content, selectBasicOld, selectBasicNew, 'admin: buscarAnuncioBasico select destino')
-  }
-
-  const getSelectOld = "        url_destino,\n        duracao_segundos,"
-  const getSelectNew = "        url_destino,\n        tipo_destino,\n        lp_slug,\n        tempo_liberacao_lp,\n        duracao_segundos,"
-  if ((content.match(/tipo_destino,/g) || []).length < 3) {
-    content = replaceOnce(content, getSelectOld, getSelectNew, 'admin: GET select destino')
-  }
+  content = insertAfterUrlDestinoSelects(content)
 
   if (!content.includes('tipo_destino_atual')) {
     content = replaceOnce(
@@ -77,22 +82,20 @@ function patchDashboardAnunciosPage() {
   const file = 'src/app/dashboard/anuncios/page.js'
   let content = read(file)
 
-  const baseFormOld = "    url_destino: '',\n    duracao_segundos: 15,"
-  const baseFormNew = "    url_destino: '',\n    tipo_destino: 'externo',\n    lp_slug: '',\n    tempo_liberacao_lp: 10,\n    duracao_segundos: 15,"
   if (!content.includes("tipo_destino: 'externo'")) {
-    content = replaceOnce(content, baseFormOld, baseFormNew, 'dashboard: form inicial destino')
+    content = content.replace(
+      /(\n\s*)url_destino: '',\n(?!\s*tipo_destino:)/g,
+      "$1url_destino: '',\n$1tipo_destino: 'externo',\n$1lp_slug: '',\n$1tempo_liberacao_lp: 10,\n"
+    )
   }
 
-  const editFormOld = "        url_destino: anuncio.url_destino || '',\n        duracao_segundos: anuncio.duracao_segundos || 15,"
-  const editFormNew = "        url_destino: anuncio.url_destino || '',\n        tipo_destino: anuncio.tipo_destino || 'externo',\n        lp_slug: anuncio.lp_slug || '',\n        tempo_liberacao_lp: anuncio.tempo_liberacao_lp || 10,\n        duracao_segundos: anuncio.duracao_segundos || 15,"
   if (!content.includes("tipo_destino: anuncio.tipo_destino")) {
-    content = replaceOnce(content, editFormOld, editFormNew, 'dashboard: form editar destino')
-  }
-
-  const newFormOld = "        url_destino: '',\n        duracao_segundos: 15,"
-  const newFormNew = "        url_destino: '',\n        tipo_destino: 'externo',\n        lp_slug: '',\n        tempo_liberacao_lp: 10,\n        duracao_segundos: 15,"
-  if ((content.match(/tipo_destino: 'externo'/g) || []).length < 2) {
-    content = replaceOnce(content, newFormOld, newFormNew, 'dashboard: form novo destino')
+    content = replaceOnce(
+      content,
+      "        url_destino: anuncio.url_destino || '',",
+      "        url_destino: anuncio.url_destino || '',\n        tipo_destino: anuncio.tipo_destino || 'externo',\n        lp_slug: anuncio.lp_slug || '',\n        tempo_liberacao_lp: anuncio.tempo_liberacao_lp || 10,",
+      'dashboard: form editar destino'
+    )
   }
 
   if (!content.includes("form.tipo_destino === 'externo'")) {
@@ -105,11 +108,60 @@ function patchDashboardAnunciosPage() {
   }
 
   if (!content.includes('Tipo de Destino do CTA')) {
-    const oldBlock = `              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">\n                <div>\n                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">\n                    Link de Destino (CTA)\n                  </label>\n                  <input\n                    type="url"\n                    placeholder="https://seusite.com.br"\n                    value={form.url_destino}\n                    onChange={(e) => setForm({ ...form, url_destino: e.target.value })}\n                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"\n                  />\n                </div>\n\n                <div className="flex items-center mt-7">`
+    const oldBlockRegex = /              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">\n                <div>\n                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">\n                    Link de Destino \(CTA\)\n                  <\/label>\n                  <input\n                    type="url"\n                    placeholder="https:\/\/seusite\.com\.br"\n                    value=\{form\.url_destino\}\n                    onChange=\{\(e\) => setForm\(\{ \.\.\.form, url_destino: e\.target\.value \}\)\}\n                    className="w-full bg-\[#050505\] border border-white\/\[0\.05\] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-\[#6be12f\]\/30 focus:ring-1 focus:ring-\[#6be12f\]\/30 transition-all shadow-inner"\n                  \/>\n                <\/div>\n\n                <div className="flex items-center mt-7">/
 
-    const newBlock = `              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">\n                <div>\n                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">\n                    Tipo de Destino do CTA\n                  </label>\n                  <select\n                    value={form.tipo_destino}\n                    onChange={(e) => setForm({\n                      ...form,\n                      tipo_destino: e.target.value,\n                    })}\n                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"\n                  >\n                    <option value="externo" className="bg-[#050505]">Link externo: libera internet e abre fora</option>\n                    <option value="lp_interna" className="bg-[#050505]">LP interna NexaWi: abre LP e libera após 10s</option>\n                  </select>\n                </div>\n\n                {form.tipo_destino === 'externo' ? (\n                  <div>\n                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">\n                      Link Externo (CTA)\n                    </label>\n                    <input\n                      type="url"\n                      placeholder="https://seusite.com.br"\n                      value={form.url_destino}\n                      onChange={(e) => setForm({ ...form, url_destino: e.target.value })}\n                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"\n                    />\n                  </div>\n                ) : (\n                  <div>\n                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">\n                      Slug da LP interna\n                    </label>\n                    <input\n                      type="text"\n                      placeholder="Ex: lp-evento"\n                      value={form.lp_slug}\n                      onChange={(e) => setForm({ ...form, lp_slug: e.target.value })}\n                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"\n                    />\n                    <p className="mt-2 text-[11px] leading-relaxed text-gray-600">\n                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi só será liberado depois de 10 segundos na LP.\n                    </p>\n                  </div>\n                )}\n\n                <div className="flex items-center mt-7">`
+    const newBlock = `              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
+                    Tipo de Destino do CTA
+                  </label>
+                  <select
+                    value={form.tipo_destino}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tipo_destino: e.target.value,
+                    })}
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"
+                  >
+                    <option value="externo" className="bg-[#050505]">Link externo: libera internet e abre fora</option>
+                    <option value="lp_interna" className="bg-[#050505]">LP interna NexaWi: abre LP e libera após 10s</option>
+                  </select>
+                </div>
 
-    content = replaceOnce(content, oldBlock, newBlock, 'dashboard: bloco destino CTA')
+                {form.tipo_destino === 'externo' ? (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
+                      Link Externo (CTA)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://seusite.com.br"
+                      value={form.url_destino}
+                      onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
+                      Slug da LP interna
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: lp-evento"
+                      value={form.lp_slug}
+                      onChange={(e) => setForm({ ...form, lp_slug: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
+                    />
+                    <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
+                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi só será liberado depois de 10 segundos na LP.
+                    </p>
+                  </div>
+                )}
+
+                <div className="flex items-center mt-7">`
+
+    content = replaceRegex(content, oldBlockRegex, newBlock, 'dashboard: bloco destino CTA')
   }
 
   write(file, content)
@@ -123,7 +175,7 @@ function patchPortalPage() {
     content = replaceOnce(
       content,
       "function normalizarUrlDestino(url = '') {",
-      "function montarUrlLpInterna(anuncio = {}, contexto = {}) {\n  const lpSlug = clean(anuncio.lp_slug || '')\n\n  if (!lpSlug) return ''\n\n  const params = new URLSearchParams({\n    pendingAuth: '1',\n    hotspotSlug: contexto.hotspotSlug || '',\n    leadId: contexto.leadId || '',\n    clientMac: contexto.clientMac || '',\n    clientIp: contexto.clientIp || '',\n    anuncioId: anuncio.id || '',\n  })\n\n  return `/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`\n}\n\nfunction normalizarUrlDestino(url = '') {",
+      "function montarUrlLpInterna(anuncio = {}, contexto = {}) {\n  const lpSlug = String(anuncio.lp_slug || '').trim()\n\n  if (!lpSlug) return ''\n\n  const params = new URLSearchParams({\n    pendingAuth: '1',\n    hotspotSlug: contexto.hotspotSlug || '',\n    leadId: contexto.leadId || '',\n    clientMac: contexto.clientMac || '',\n    clientIp: contexto.clientIp || '',\n    anuncioId: anuncio.id || '',\n  })\n\n  return `/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`\n}\n\nfunction normalizarUrlDestino(url = '') {",
       'portal: helper LP interna'
     )
   }
