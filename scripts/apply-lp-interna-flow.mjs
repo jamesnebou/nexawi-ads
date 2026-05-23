@@ -66,6 +66,15 @@ function patchAdminAnunciosRoute() {
 
   content = insertAfterUrlDestinoSelects(content)
 
+  if (!content.includes('Desvincula leads antes de excluir o anúncio')) {
+    content = replaceOnce(
+      content,
+      "      const { error } = await supabaseAdmin\n        .from('anuncios')\n        .delete()\n        .eq('id', id)\n\n      if (error) throw error",
+      "      // Desvincula leads antes de excluir o anúncio.\n      // Assim os cadastros continuam salvos, mas o anúncio pode ser removido.\n      let leadsUpdateQuery = supabaseAdmin\n        .from('leads')\n        .update({ anuncio_id: null })\n        .eq('anuncio_id', id)\n\n      leadsUpdateQuery = auth.applyEmpresaScope(leadsUpdateQuery)\n\n      const { error: leadsUpdateError } = await leadsUpdateQuery\n\n      if (leadsUpdateError) throw leadsUpdateError\n\n      const { error } = await supabaseAdmin\n        .from('anuncios')\n        .delete()\n        .eq('id', id)\n\n      if (error) throw error",
+      'admin: desvincular leads antes de delete'
+    )
+  }
+
   if (!content.includes('tipo_destino_atual')) {
     content = replaceOnce(
       content,
