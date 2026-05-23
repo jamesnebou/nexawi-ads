@@ -150,6 +150,12 @@ export default function Anuncios() {
     media_url: '',
     tipo_media: 'imagem',
     url_destino: '',
+
+    tipo_destino: 'externo',
+
+    lp_slug: '',
+
+    tempo_liberacao_lp: 10,
     duracao_segundos: 15,
     ativo: true,
     estado: '',
@@ -255,6 +261,9 @@ export default function Anuncios() {
         media_url: anuncio.media_url || '',
         tipo_media: anuncio.tipo_media || 'imagem',
         url_destino: anuncio.url_destino || '',
+        tipo_destino: anuncio.tipo_destino || 'externo',
+        lp_slug: anuncio.lp_slug || '',
+        tempo_liberacao_lp: anuncio.tempo_liberacao_lp || 10,
         duracao_segundos: anuncio.duracao_segundos || 15,
         ativo: anuncio.ativo ?? true,
         estado: anuncio.estado || '',
@@ -274,6 +283,12 @@ export default function Anuncios() {
         media_url: '',
         tipo_media: 'imagem',
         url_destino: '',
+
+        tipo_destino: 'externo',
+
+        lp_slug: '',
+
+        tempo_liberacao_lp: 10,
         duracao_segundos: 15,
         ativo: true,
         estado: '',
@@ -352,6 +367,16 @@ export default function Anuncios() {
 
     if (!form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0) {
       alert('Por favor, preencha todos os campos obrigatórios: Título, Cliente e selecione pelo menos um Hotspot.')
+      return
+    }
+
+    if (form.tipo_destino === 'externo' && !form.url_destino.trim()) {
+      alert('Informe o link externo do CTA.')
+      return
+    }
+
+    if (form.tipo_destino === 'lp_interna' && !form.lp_slug.trim()) {
+      alert('Informe o slug da LP interna. Exemplo: lp-evento')
       return
     }
 
@@ -908,16 +933,51 @@ export default function Anuncios() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
-                    Link de Destino (CTA)
+                    Tipo de Destino do CTA
                   </label>
-                  <input
-                    type="url"
-                    placeholder="https://seusite.com.br"
-                    value={form.url_destino}
-                    onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
-                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
-                  />
+                  <select
+                    value={form.tipo_destino}
+                    onChange={(e) => setForm({
+                      ...form,
+                      tipo_destino: e.target.value,
+                    })}
+                    className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"
+                  >
+                    <option value="externo" className="bg-[#050505]">Link externo: libera internet e abre fora</option>
+                    <option value="lp_interna" className="bg-[#050505]">LP interna NexaWi: abre LP e libera após 10s</option>
+                  </select>
                 </div>
+
+                {form.tipo_destino === 'externo' ? (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
+                      Link Externo (CTA)
+                    </label>
+                    <input
+                      type="url"
+                      placeholder="https://seusite.com.br"
+                      value={form.url_destino}
+                      onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
+                      Slug da LP interna
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: lp-evento"
+                      value={form.lp_slug}
+                      onChange={(e) => setForm({ ...form, lp_slug: e.target.value })}
+                      className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
+                    />
+                    <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
+                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi só será liberado depois de 10 segundos na LP.
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex items-center mt-7">
                   <label className="flex items-center gap-4 cursor-pointer p-4 w-full bg-[#050505] rounded-2xl border border-white/[0.05] hover:border-white/[0.1] transition-colors shadow-inner">

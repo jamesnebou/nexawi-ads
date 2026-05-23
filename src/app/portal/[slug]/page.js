@@ -39,6 +39,23 @@ function normalizeMac(value = '') {
 }
 
 
+function montarUrlLpInterna(anuncio = {}, contexto = {}) {
+  const lpSlug = String(anuncio.lp_slug || '').trim()
+
+  if (!lpSlug) return ''
+
+  const params = new URLSearchParams({
+    pendingAuth: '1',
+    hotspotSlug: contexto.hotspotSlug || '',
+    leadId: contexto.leadId || '',
+    clientMac: contexto.clientMac || '',
+    clientIp: contexto.clientIp || '',
+    anuncioId: anuncio.id || '',
+  })
+
+  return `/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`
+}
+
 function normalizarUrlDestino(url = '') {
   const valor = String(url || '').trim()
 
@@ -676,7 +693,15 @@ leadIdRef.current = data.leadId
         null
 
       if (clicou && anuncioAtual) {
-        const urlNormalizada = normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
+        const tipoDestino = anuncioAtual?.tipo_destino || 'externo'
+        const urlNormalizada = tipoDestino === 'lp_interna'
+          ? montarUrlLpInterna(anuncioAtual, {
+              hotspotSlug: hotspot?.slug || slug,
+              leadId: resolvedLeadId || '',
+              clientMac: getClientMac(),
+              clientIp: getClientIp(),
+            })
+          : normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
         setUrlCliente(urlNormalizada)
         setLinkCopiado(false)
@@ -684,6 +709,13 @@ leadIdRef.current = data.leadId
         registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
           console.error('Erro ao registrar interesse no CTA:', error)
         })
+
+        if (tipoDestino === 'lp_interna') {
+          // Destino interno NexaWi: ainda nao libera no portal.
+          // A LP abre dentro do dominio liberado no Walled Garden e libera o Wi-Fi apos 10s.
+          window.location.href = urlNormalizada
+          return
+        }
 
         // No Android, liberar imediatamente fecha o captive portal.
         // Por isso primeiro mostramos a tela de copiar/abrir oferta e só liberamos após 5s.
@@ -1122,7 +1154,7 @@ async function handleCopiarLinkCliente() {
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
 
               <div className="flex flex-col gap-4">
-                {anuncioAtual.url_destino && (
+                {(anuncioAtual.url_destino || anuncioAtual.tipo_destino === 'lp_interna') && (
                   <button
                     type="button"
                     disabled={!internetLiberadaNaCta}

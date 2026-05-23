@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Building2,
@@ -30,6 +30,7 @@ const emptyEmpresa = {
   estado: '',
   endereco: '',
   status: 'ativo',
+  plano_id: '',
 }
 
 const emptyUsuario = {
@@ -92,9 +93,16 @@ function roleLabel(role) {
   return roleOptions.find((item) => item.value === role)?.label || role || 'Viewer'
 }
 
+function planoLabel(plano) {
+  if (!plano) return 'Sem plano definido'
+  const max = Number(plano.max_criativos || 0)
+  return `${plano.nome}${max ? ` · ${max} criativo${max > 1 ? 's' : ''}` : ''}`
+}
+
 export default function EmpresasPage() {
   const [empresas, setEmpresas] = useState([])
   const [permissions, setPermissions] = useState({})
+  const [planos, setPlanos] = useState([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [busca, setBusca] = useState('')
@@ -102,6 +110,7 @@ export default function EmpresasPage() {
   const [editingId, setEditingId] = useState('')
   const [empresaForm, setEmpresaForm] = useState(emptyEmpresa)
   const [usuarioForm, setUsuarioForm] = useState(emptyUsuario)
+  const editorRef = useRef(null)
 
   const canCreate = permissions.create !== false
   const canUpdate = permissions.update !== false
@@ -122,6 +131,13 @@ export default function EmpresasPage() {
     carregar()
   }, [status])
 
+  useEffect(() => {
+    if (!editingId || !editorRef.current) return
+    window.setTimeout(() => {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }, [editingId])
+
   async function carregar() {
     setLoading(true)
 
@@ -133,6 +149,7 @@ export default function EmpresasPage() {
       const data = await adminApiFetch(`/api/admin/empresas?${params.toString()}`)
       setEmpresas(data.empresas || [])
       setPermissions(data.permissions || {})
+      setPlanos(data.options?.planos || [])
     } catch (error) {
       console.error('Erro ao carregar empresas:', error)
       toast.error(error.message || 'Erro ao carregar empresas.')
@@ -158,6 +175,7 @@ export default function EmpresasPage() {
       estado: empresa.estado || '',
       endereco: empresa.endereco || '',
       status: empresa.status || 'ativo',
+      plano_id: empresa.plano_id || '',
     })
   }
 
@@ -312,14 +330,17 @@ export default function EmpresasPage() {
         </section>
 
         {editingId && (
-          <EmpresaForm
+          <div ref={editorRef}>
+            <EmpresaForm
             form={empresaForm}
             setForm={setEmpresaForm}
             onSubmit={salvarEmpresa}
             onClose={fecharEditor}
             saving={saving}
             title={editingId === 'nova' ? 'Nova empresa' : 'Editar empresa'}
+            planos={planos}
           />
+          </div>
         )}
 
         {canManageUsers && empresas.length > 0 && (
@@ -366,7 +387,7 @@ export default function EmpresasPage() {
   )
 }
 
-function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving }) {
+function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving, planos = [] }) {
   return (
     <section className="rounded-[2rem] border border-[#6be12f]/15 bg-[#6be12f]/5 p-5 sm:p-6 mb-8">
       <div className="flex items-center justify-between gap-4 mb-5">
@@ -384,6 +405,7 @@ function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving }) {
         <FieldInput label="Responsável" value={form.nome_responsavel} onChange={(value) => setForm((current) => ({ ...current, nome_responsavel: value }))} />
         <FieldInput label="E-mail" type="email" value={form.email} onChange={(value) => setForm((current) => ({ ...current, email: value }))} />
         <FieldInput label="Telefone" value={form.telefone} onChange={(value) => setForm((current) => ({ ...current, telefone: value }))} />
+        <FieldSelect label="Plano" value={form.plano_id} onChange={(value) => setForm((current) => ({ ...current, plano_id: value }))} options={[{ value: '', label: 'Sem plano definido' }, ...planos.map((plano) => ({ value: plano.id, label: planoLabel(plano) }))]} />
         <FieldInput label="CPF/CNPJ" value={form.cpf_cnpj} onChange={(value) => setForm((current) => ({ ...current, cpf_cnpj: value }))} />
         <FieldInput label="Cidade" value={form.cidade} onChange={(value) => setForm((current) => ({ ...current, cidade: value }))} />
         <FieldInput label="Estado" value={form.estado} onChange={(value) => setForm((current) => ({ ...current, estado: value }))} />
@@ -414,6 +436,9 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
           <p className="text-sm text-neutral-500 mt-1">{empresa.nome_responsavel || 'Responsável não informado'}</p>
           <p className="text-xs text-neutral-600 mt-2">{empresa.email || 'Sem e-mail'} · {empresa.telefone || 'Sem telefone'}</p>
           <p className="text-xs text-neutral-600 mt-1">{empresa.cidade || 'Cidade não informada'} {empresa.estado ? `/${empresa.estado}` : ''}</p>
+          <p className="mt-3 inline-flex rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] font-bold text-neutral-300">
+            {planoLabel(empresa.planos)}
+          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
@@ -443,7 +468,7 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
           </a>
 
           {canUpdate && (
-            <button onClick={onEdit} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] flex items-center justify-center gap-2">
+            <button type="button" onClick={onEdit} className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] flex items-center justify-center gap-2">
               <Edit3 size={15} />
               Editar
             </button>

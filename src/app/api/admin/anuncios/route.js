@@ -21,6 +21,7 @@ import {
 export const runtime = 'nodejs'
 
 const TIPOS_MIDIA_VALIDOS = ['imagem', 'video']
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna']
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -82,6 +83,13 @@ function sanitizarAnuncioPayload(anuncio = {}, empresaId = null) {
       ? anuncio.tipo_media
       : 'imagem',
     url_destino: limparTexto(anuncio.url_destino),
+    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)
+      ? anuncio.tipo_destino
+      : 'externo',
+    lp_slug: limparTexto(anuncio.lp_slug),
+    tempo_liberacao_lp: Number.isFinite(Number(anuncio.tempo_liberacao_lp))
+      ? Math.min(60, Math.max(3, Number(anuncio.tempo_liberacao_lp)))
+      : 10,
     duracao_segundos: Number.isFinite(duracao) ? duracao : 15,
     ativo: Boolean(anuncio.ativo),
     cliente_id: anuncio.cliente_id ? String(anuncio.cliente_id) : null,
@@ -93,6 +101,12 @@ function sanitizarAnuncioPayload(anuncio = {}, empresaId = null) {
 function validarAnuncio(payload, hotspotIds = []) {
   if (!payload.titulo) return 'Título da campanha é obrigatório'
   if (!payload.cliente_id) return 'Cliente responsável é obrigatório'
+  if (payload.tipo_destino === 'externo' && !payload.url_destino) {
+    return 'Link externo é obrigatório para campanhas com destino externo'
+  }
+  if (payload.tipo_destino === 'lp_interna' && !payload.lp_slug) {
+    return 'Selecione uma LP interna para este anúncio'
+  }
 
   if (!Array.isArray(hotspotIds) || hotspotIds.length === 0) {
     return 'Selecione pelo menos um hotspot'
@@ -144,6 +158,12 @@ async function buscarAnuncioBasico(anuncioId, auth) {
       media_url,
       tipo_media,
       url_destino,
+
+      tipo_destino,
+
+      lp_slug,
+
+      tempo_liberacao_lp,
       duracao_segundos,
       ativo,
       cliente_id,
@@ -376,6 +396,12 @@ export async function GET(request) {
         media_url,
         tipo_media,
         url_destino,
+
+        tipo_destino,
+
+        lp_slug,
+
+        tempo_liberacao_lp,
         duracao_segundos,
         ativo,
         created_at,
@@ -598,6 +624,19 @@ export async function POST(request) {
       const { error: clicksDeleteError } = await clicksDeleteQuery
       if (clicksDeleteError) throw clicksDeleteError
 
+      // Desvincula leads antes de excluir o anúncio.
+      // Assim os cadastros continuam salvos, mas o anúncio pode ser removido.
+      let leadsUpdateQuery = supabaseAdmin
+        .from('leads')
+        .update({ anuncio_id: null })
+        .eq('anuncio_id', id)
+
+      leadsUpdateQuery = auth.applyEmpresaScope(leadsUpdateQuery)
+
+      const { error: leadsUpdateError } = await leadsUpdateQuery
+
+      if (leadsUpdateError) throw leadsUpdateError
+
       const { error } = await supabaseAdmin
         .from('anuncios')
         .delete()
@@ -763,6 +802,10 @@ export async function POST(request) {
         cliente_id_atual: anuncioAtual?.cliente_id || payload.cliente_id,
         tipo_media_anterior: anuncioAntes?.tipo_media || null,
         tipo_media_atual: anuncioAtual?.tipo_media || payload.tipo_media,
+        tipo_destino_anterior: anuncioAntes?.tipo_destino || 'externo',
+        tipo_destino_atual: anuncioAtual?.tipo_destino || payload.tipo_destino,
+        lp_slug_anterior: anuncioAntes?.lp_slug || null,
+        lp_slug_atual: anuncioAtual?.lp_slug || payload.lp_slug || null,
         ativo_anterior: anuncioAntes?.ativo ?? null,
         ativo_atual: anuncioAtual?.ativo ?? payload.ativo,
         duracao_anterior: anuncioAntes?.duracao_segundos || null,
