@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLpConfig } from '@/lib/lp-generator-defaults'
 import GeneratedLandingPage from '@/components/lp-generator/GeneratedLandingPage'
 import LpTrackingScripts from '@/components/lp-generator/LpTrackingScripts'
+import LpHotspotUnlockGate from '@/components/lp-generator/LpHotspotUnlockGate'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,6 +47,7 @@ export default async function PublicLpPage({ params }) {
   return (
     <>
       <LpTrackingScripts config={config} />
+      <LpHotspotUnlockGate />
       <GeneratedLandingPage
         page={page}
         config={config}
