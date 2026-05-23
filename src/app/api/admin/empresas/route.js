@@ -28,6 +28,16 @@ function limparUuid(value = '') {
     : ''
 }
 
+async function carregarPlanos() {
+  const { data, error } = await supabaseAdmin
+    .from('planos')
+    .select('id, nome, preco, max_criativos, ciclo_cobranca')
+    .order('preco', { ascending: true })
+
+  if (error) throw error
+  return data || []
+}
+
 async function carregarUsuariosEmpresa(empresaIds = []) {
   if (!empresaIds.length) return {}
 
@@ -126,7 +136,7 @@ export async function GET(request) {
         metadata,
         created_at,
         updated_at,
-        planos(nome, preco)
+        planos(id, nome, preco, max_criativos, ciclo_cobranca)
       `)
       .order('created_at', { ascending: false })
 
@@ -145,7 +155,11 @@ export async function GET(request) {
       query = query.or(`nome_empresa.ilike.%${busca}%,nome_responsavel.ilike.%${busca}%,email.ilike.%${busca}%,telefone.ilike.%${busca}%,cidade.ilike.%${busca}%`)
     }
 
-    const { data, error } = await query
+    const [{ data, error }, planos] = await Promise.all([
+      query,
+      carregarPlanos(),
+    ])
+
     if (error) throw error
 
     const empresaIds = (data || []).map((empresa) => empresa.id)
@@ -165,6 +179,7 @@ export async function GET(request) {
       options: {
         status: STATUS_EMPRESA,
         roles: ROLES_EMPRESA,
+        planos,
       },
       empresaScope: auth.empresaScope,
       permissions: auth.permissions?.empresas || {},
@@ -357,6 +372,7 @@ export async function PATCH(request) {
     }
 
     const payload = {
+      plano_id: limparUuid(body.plano_id) || null,
       nome_empresa: limparTexto(body.nome_empresa),
       nome_responsavel: limparTexto(body.nome_responsavel) || null,
       email: limparTexto(body.email).toLowerCase() || null,
