@@ -4,11 +4,11 @@ import path from 'node:path'
 const root = process.cwd()
 
 function read(relativePath) {
-  return fs.readFileSync(path.join(root, relativePath), 'utf8')
+  return fs.readFileSync(path.join(root, relativePath), 'utf8').replace(/\r\n/g, '\n')
 }
 
 function write(relativePath, content) {
-  fs.writeFileSync(path.join(root, relativePath), content)
+  fs.writeFileSync(path.join(root, relativePath), content.replace(/\r\n/g, '\n'))
 }
 
 function replaceOnce(content, search, replacement, label) {
@@ -56,9 +56,9 @@ function patchAdminAnunciosRoute() {
   }
 
   if (!content.includes("if (payload.tipo_destino === 'lp_interna' && !payload.lp_slug)")) {
-    content = replaceOnce(
+    content = replaceRegex(
       content,
-      "  if (!payload.cliente_id) return 'Cliente responsável é obrigatório'\n\n  if (!Array.isArray(hotspotIds) || hotspotIds.length === 0) {",
+      /  if \(!payload\.cliente_id\) return 'Cliente responsável é obrigatório'\n\n  if \(!Array\.isArray\(hotspotIds\) \|\| hotspotIds\.length === 0\) \{/,
       "  if (!payload.cliente_id) return 'Cliente responsável é obrigatório'\n  if (payload.tipo_destino === 'externo' && !payload.url_destino) {\n    return 'Link externo é obrigatório para campanhas com destino externo'\n  }\n  if (payload.tipo_destino === 'lp_interna' && !payload.lp_slug) {\n    return 'Selecione uma LP interna para este anúncio'\n  }\n\n  if (!Array.isArray(hotspotIds) || hotspotIds.length === 0) {",
       'admin: validar destino'
     )
