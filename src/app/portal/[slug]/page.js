@@ -39,21 +39,66 @@ function normalizeMac(value = '') {
 }
 
 
+function extrairLpSlug(value = '') {
+  const raw = String(value || '').trim()
+
+  if (!raw) return ''
+
+  try {
+    const url = raw.startsWith('http://') || raw.startsWith('https://')
+      ? new URL(raw)
+      : new URL(raw, 'https://www.nexawi.com.br')
+
+    const partes = url.pathname.split('/').filter(Boolean)
+    const lpIndex = partes.indexOf('lp')
+
+    if (lpIndex >= 0 && partes[lpIndex + 1]) {
+      return decodeURIComponent(partes[lpIndex + 1])
+    }
+  } catch {}
+
+  return raw
+    .replace(/^https?:\/\/[^/]+/i, '')
+    .replace(/^\/?lp\//i, '')
+    .replace(/^\//, '')
+    .split('?')[0]
+    .trim()
+}
+
+function salvarAutorizacaoPendenteLp(payload = {}) {
+  if (typeof window === 'undefined') return
+
+  try {
+    window.sessionStorage.setItem('nexawi_pending_auth', JSON.stringify({
+      ...payload,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    }))
+  } catch {}
+}
+
 function montarUrlLpInterna(anuncio = {}, contexto = {}) {
-  const lpSlug = String(anuncio.lp_slug || '').trim()
+  const lpSlug = extrairLpSlug(anuncio.lp_slug || '')
 
   if (!lpSlug) return ''
 
-  const params = new URLSearchParams({
+  const payload = {
     pendingAuth: '1',
     hotspotSlug: contexto.hotspotSlug || '',
     leadId: contexto.leadId || '',
     clientMac: contexto.clientMac || '',
     clientIp: contexto.clientIp || '',
     anuncioId: anuncio.id || '',
-  })
+    delaySeconds: String(anuncio.tempo_liberacao_lp || 30),
+    lpSlug,
+  }
 
-  return `/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`
+  salvarAutorizacaoPendenteLp(payload)
+
+  const params = new URLSearchParams(payload)
+  const base = typeof window !== 'undefined' ? window.location.origin : ''
+
+  return `${base}/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`
 }
 
 function normalizarUrlDestino(url = '') {
@@ -683,6 +728,39 @@ leadIdRef.current = data.leadId
     }
   }
 
+  async function copiarLinkSilencioso(texto = '') {
+    if (!texto) return false
+
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(texto)
+        setLinkCopiado(true)
+        return true
+      }
+    } catch {}
+
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = texto
+      textarea.setAttribute('readonly', '')
+      textarea.style.position = 'fixed'
+      textarea.style.left = '-9999px'
+      textarea.style.top = '-9999px'
+      document.body.appendChild(textarea)
+      textarea.focus()
+      textarea.select()
+      const copied = document.execCommand('copy')
+      document.body.removeChild(textarea)
+
+      if (copied) {
+        setLinkCopiado(true)
+        return true
+      }
+    } catch {}
+
+    return false
+  }
+
   async function handleCtaClick(clicou, destinoExterno = '') {
     try {
       const resolvedIp = getClientIp()
@@ -706,30 +784,47 @@ leadIdRef.current = data.leadId
         setUrlCliente(urlNormalizada)
         setLinkCopiado(false)
 
-        registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
-          console.error('Erro ao registrar interesse no CTA:', error)
-        })
-
         if (tipoDestino === 'lp_interna') {
-          // Destino interno NexaWi: ainda nao libera no portal.
-          // A LP abre dentro do dominio liberado no Walled Garden e libera o Wi-Fi apos 10s.
+          registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
+            console.error('Erro ao registrar interesse no CTA interno:', error)
+          })
+
           window.location.href = urlNormalizada
           return
         }
 
-        // No Android, liberar imediatamente fecha o captive portal.
-        // Por isso primeiro mostramos a tela de copiar/abrir oferta e só liberamos após 5s.
-        setEtapa(ETAPAS.ABRIR_CLIENTE)
-        liberarInternetAposDelay(resolvedLeadId, 5000)
+        // FLUXO EXTERNO PROFISSIONAL:
+        // Não mostra mais a tela intermediária de 3 botões.
+        // O clique em "Quero aproveitar" já copia, registra, libera e tenta abrir.
+        await copiarLinkSilencioso(urlNormalizada)
+
+        registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
+          console.error('Erro ao registrar clique externo:', error)
+        })
+
+        setLoadingTexto('Liberando internet e abrindo oferta...')
+        setEtapa(ETAPAS.LOADING)
+
+        try {
+          await autorizarSessaoEmBackground(resolvedLeadId)
+        } catch (error) {
+          console.error('Erro ao liberar internet antes do link externo:', error)
+        }
+
+        window.setTimeout(() => {
+          window.location.href = urlNormalizada
+        }, 250)
+
         return
       }
 
       await autorizarSessaoEmBackground(resolvedLeadId)
-      setEtapa(ETAPAS.CONECTADO || 'conectado')
+      setEtapa(ETAPAS.ACESSO)
     } catch (error) {
       falhar('Erro na CTA', error)
     }
   }
+
 
 async function handleCopiarLinkCliente() {
   try {
@@ -1182,93 +1277,73 @@ async function handleCopiarLinkCliente() {
 
 
       {etapa === ETAPAS.ABRIR_CLIENTE && (
-  <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
-    <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-      <div className="flex justify-center mb-8 group cursor-pointer">
-        <div className="relative">
-          <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-          <img
-            src="/Nexa-logo.png"
-            alt="Nexa Logo"
-            className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
-            onError={(e) => { e.target.style.display = 'none' }}
-          />
+        <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
+          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+            <div className="flex justify-center mb-8 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+                <img
+                  src="/Nexa-logo.png"
+                  alt="Nexa Logo"
+                  className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
+                  onError={(e) => { e.target.style.display = 'none' }}
+                />
+              </div>
+            </div>
+
+            <div className="relative w-20 h-20 mx-auto mb-8">
+              <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
+              <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
+                <ArrowRight size={34} className="text-black" />
+              </div>
+            </div>
+
+            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
+              Oferta liberada!
+            </h1>
+
+            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+              Sua internet já foi conectada. Toque no botão abaixo para copiar o link e abrir a página do anunciante.
+            </p>
+
+            {urlCliente ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (!urlCliente) return
+
+                  try {
+                    navigator.clipboard?.writeText(urlCliente)
+                      .then(() => setLinkCopiado(true))
+                      .catch(() => {})
+                  } catch {}
+
+                  if (anuncioAtual) {
+                    registrarClique(anuncioAtual.id, getClientIp(), 'open', urlCliente)
+                  }
+
+                  window.location.href = urlCliente
+                }}
+                className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              >
+                Copiar link / abrir página <ArrowRight size={18} />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => setEtapa(ETAPAS.ACESSO)}
+              className="w-full mt-4 py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
+            >
+              Continuar usando o Wi-Fi
+            </button>
+
+            <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
+              Se a página não abrir automaticamente, o link já foi enviado para a área de transferência do celular.
+            </p>
+          </div>
         </div>
-      </div>
-
-      <div className="relative w-20 h-20 mx-auto mb-8">
-        <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
-        <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
-          <ArrowRight size={34} className="text-black" />
-        </div>
-      </div>
-
-      <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
-        Oferta liberada!
-      </h1>
-
-      <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-        Sua internet já foi conectada. Agora toque no botão abaixo para abrir a página do anunciante.
-      </p>
-
-      {urlCliente ? (
-  <div className="flex flex-col gap-4">
-    <button
-      type="button"
-      onClick={handleCopiarLinkCliente}
-      disabled={copiandoLink}
-      className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-    >
-      {copiandoLink ? (
-        <>
-          <Loader2 size={18} className="animate-spin" />
-          Copiando...
-        </>
-      ) : linkCopiado ? (
-        <>
-          <CheckCircle2 size={18} />
-          Link copiado!
-        </>
-      ) : (
-        <>
-          Copiar link da oferta <ArrowRight size={18} />
-        </>
       )}
-    </button>
-
-    <a
-      href={urlCliente}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={() => {
-        if (anuncioAtual) {
-          registrarClique(anuncioAtual.id, getClientIp(), 'open', urlCliente)
-        }
-      }}
-      className="w-full py-4 rounded-2xl font-medium text-sm text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all duration-300 border border-white/[0.05] flex items-center justify-center gap-2"
-    >
-      Tentar abrir página do cliente <ArrowRight size={16} />
-    </a>
-  </div>
-) : null}
-
-      <button
-        type="button"
-        onClick={() => setEtapa(ETAPAS.ACESSO)}
-        className="w-full mt-4 py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
-      >
-        Continuar usando o Wi-Fi
-      </button>
-
-      <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
-  Alguns celulares fecham automaticamente esta tela após liberar o Wi-Fi.
-  Se a página não abrir, copie o link e cole no navegador do seu celular.
-</p>
-    </div>
-  </div>
-)}
-
-
 
 
 

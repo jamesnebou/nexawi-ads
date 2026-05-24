@@ -15,6 +15,26 @@ function getParam(params, key) {
   return clean(params.get(key) || '')
 }
 
+function getStoredPendingAuth() {
+  if (typeof window === 'undefined') return null
+
+  try {
+    const raw = window.sessionStorage.getItem('nexawi_pending_auth')
+    if (!raw) return null
+
+    const data = JSON.parse(raw)
+
+    if (!data?.expiresAt || Date.now() > Number(data.expiresAt)) {
+      window.sessionStorage.removeItem('nexawi_pending_auth')
+      return null
+    }
+
+    return data
+  } catch {
+    return null
+  }
+}
+
 function parseDelaySeconds(value = '') {
   const parsed = Number(value || 30)
   if (!Number.isFinite(parsed)) return 30
@@ -25,25 +45,26 @@ export default function LpHotspotUnlockGate() {
   const [visible, setVisible] = useState(false)
   const [secondsLeft, setSecondsLeft] = useState(30)
   const [status, setStatus] = useState('waiting')
-  const [message, setMessage] = useState('Internet em liberação...')
+  const [message, setMessage] = useState('Sua internet será liberada em instantes.')
   const startedRef = useRef(false)
 
   const payload = useMemo(() => {
     if (typeof window === 'undefined') return null
 
     const params = new URLSearchParams(window.location.search)
-    const pendingAuth = getParam(params, 'pendingAuth') === '1'
+    const stored = getStoredPendingAuth()
+    const pendingAuth = getParam(params, 'pendingAuth') === '1' || stored?.pendingAuth === '1'
 
     if (!pendingAuth) return null
 
     return {
       pendingAuth,
-      hotspotSlug: getParam(params, 'hotspotSlug'),
-      leadId: getParam(params, 'leadId'),
-      clientMac: normalizeMac(getParam(params, 'clientMac') || getParam(params, 'mac')),
-      clientIp: getParam(params, 'clientIp') || getParam(params, 'ip'),
-      anuncioId: getParam(params, 'anuncioId'),
-      delaySeconds: parseDelaySeconds(getParam(params, 'delaySeconds')),
+      hotspotSlug: getParam(params, 'hotspotSlug') || stored?.hotspotSlug || '',
+      leadId: getParam(params, 'leadId') || stored?.leadId || '',
+      clientMac: normalizeMac(getParam(params, 'clientMac') || getParam(params, 'mac') || stored?.clientMac || ''),
+      clientIp: getParam(params, 'clientIp') || getParam(params, 'ip') || stored?.clientIp || '',
+      anuncioId: getParam(params, 'anuncioId') || stored?.anuncioId || '',
+      delaySeconds: parseDelaySeconds(getParam(params, 'delaySeconds') || stored?.delaySeconds || 30),
     }
   }, [])
 
@@ -59,12 +80,15 @@ export default function LpHotspotUnlockGate() {
 
     const timer = window.setTimeout(async () => {
       try {
+        // No captive portal, o IP pode não estar disponível antes da liberação geral.
+        // A autorização real no MikroTik usa principalmente hotspotSlug + leadId + MAC.
+        // O backend ainda tenta descobrir o host/IP local diretamente no RouterOS pelo MAC.
         if (!payload.hotspotSlug || !payload.leadId || !payload.clientMac) {
           throw new Error('Dados da sessão incompletos para liberar o Wi-Fi.')
         }
 
         setStatus('authorizing')
-        setMessage('Liberando internet...')
+        setMessage('Liberando sua internet...')
 
         const response = await controlApiFetch('/api/control/session/authorize', {
           method: 'POST',
@@ -82,16 +106,20 @@ export default function LpHotspotUnlockGate() {
           throw new Error(data?.error || 'Não foi possível liberar a internet agora.')
         }
 
+        try {
+          window.sessionStorage.removeItem('nexawi_pending_auth')
+        } catch {}
+
         setStatus('done')
-        setMessage('Internet liberada.')
+        setMessage('Internet liberada. Continue nesta página ou navegue normalmente.')
 
         window.setTimeout(() => {
           setVisible(false)
-        }, 3500)
+        }, 4500)
       } catch (error) {
         console.error('Erro ao liberar Wi-Fi pela LP:', error)
         setStatus('error')
-        setMessage('Não foi possível liberar. Reconecte no Wi-Fi.')
+        setMessage(error?.message || 'Não foi possível liberar sua internet. Tente reconectar no Wi-Fi.')
       } finally {
         window.clearInterval(interval)
       }
@@ -115,7 +143,9 @@ export default function LpHotspotUnlockGate() {
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
             <p className="truncate text-[11px] font-bold leading-tight text-white">
-              {message}
+              {status === 'waiting'
+                ? 'Internet em liberação...'
+                : message}
             </p>
 
             {status === 'waiting' ? (
