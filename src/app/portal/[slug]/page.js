@@ -456,19 +456,19 @@ export default function Portal() {
     return data
   }
 
-  function sortearAnuncioSemRepetir() {
-    if (anuncios.length === 0) return null
+  async function buscarProximoAnuncioObrigatorio(explicitLeadId = null) {
+    const hotspotId = hotspot?.id || hotspotIdRef.current || ''
+    const mac = getClientMac()
 
-    let disponiveis = anuncios.filter((ad) => !anunciosExibidos.includes(ad.id))
+    if (!hotspotId || !mac) return null
 
-    if (disponiveis.length === 0) {
-      disponiveis = [...anuncios]
-      setAnunciosExibidos([])
-    }
+    const data = await portalApiFetch('/api/portal/next-ad', {
+      hotspotId,
+      macAddress: mac,
+      leadId: explicitLeadId || leadIdRef.current || leadId || leadRapido?.id || '',
+    })
 
-    const sorteado = disponiveis[Math.floor(Math.random() * disponiveis.length)]
-    setAnunciosExibidos((prev) => [...prev, sorteado.id])
-    return sorteado
+    return data.anuncio || null
   }
 
   async function registrarVisualizacao(anuncioId, ip) {
@@ -606,7 +606,6 @@ export default function Portal() {
     setSalvando(true)
 
     try {
-      const anuncioSorteado = sortearAnuncioSemRepetir()
       const telefoneLimpo = String(form.telefone).replace(/\D/g, '')
       const cpfLimpo = String(form.cpf).replace(/\D/g, '')
       const resolvedMac = getClientMac()
@@ -622,13 +621,15 @@ const data = await portalApiFetch('/api/portal/lead', {
   telefone: telefoneLimpo,
   cpf: cpfLimpo,
   aceiteLgpd: form.aceite_lgpd,
-  anuncioId: anuncioSorteado ? anuncioSorteado.id : null,
+  anuncioId: null,
   macAddress: resolvedMac || null,
   ipAddress: resolvedIp || null,
 })
 
       setLeadId(data.leadId)
 leadIdRef.current = data.leadId
+
+      const anuncioSorteado = await buscarProximoAnuncioObrigatorio(data.leadId)
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
@@ -696,7 +697,7 @@ leadIdRef.current = data.leadId
       setLeadId(validacao.leadId)
       leadIdRef.current = validacao.leadId
 
-      const anuncioSorteado = sortearAnuncioSemRepetir()
+      const anuncioSorteado = await buscarProximoAnuncioObrigatorio(validacao.leadId)
       const resolvedIp = getClientIp()
 
       if (anuncioSorteado) {
