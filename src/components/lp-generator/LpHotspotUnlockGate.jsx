@@ -53,7 +53,10 @@ export default function LpHotspotUnlockGate() {
 
     const timer = window.setTimeout(async () => {
       try {
-        if (!payload.hotspotSlug || !payload.leadId || !payload.clientMac || !payload.clientIp) {
+        // No captive portal, o IP pode não estar disponível antes da liberação geral.
+        // A autorização real no MikroTik usa principalmente hotspotSlug + leadId + MAC.
+        // O backend ainda tenta descobrir o host/IP local diretamente no RouterOS pelo MAC.
+        if (!payload.hotspotSlug || !payload.leadId || !payload.clientMac) {
           throw new Error('Dados da sessão incompletos para liberar o Wi-Fi.')
         }
 
@@ -66,7 +69,7 @@ export default function LpHotspotUnlockGate() {
             hotspotSlug: payload.hotspotSlug,
             leadId: payload.leadId,
             clientMac: payload.clientMac,
-            clientIp: payload.clientIp,
+            clientIp: payload.clientIp || '',
           }),
         })
 
