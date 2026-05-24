@@ -16,9 +16,15 @@ function getParam(params, key) {
   return clean(params.get(key) || '')
 }
 
+function parseDelaySeconds(value = '') {
+  const parsed = Number(value || 30)
+  if (!Number.isFinite(parsed)) return 30
+  return Math.min(120, Math.max(5, Math.floor(parsed)))
+}
+
 export default function LpHotspotUnlockGate() {
   const [visible, setVisible] = useState(false)
-  const [secondsLeft, setSecondsLeft] = useState(10)
+  const [secondsLeft, setSecondsLeft] = useState(30)
   const [status, setStatus] = useState('waiting')
   const [message, setMessage] = useState('Sua internet será liberada em instantes.')
   const startedRef = useRef(false)
@@ -38,6 +44,7 @@ export default function LpHotspotUnlockGate() {
       clientMac: normalizeMac(getParam(params, 'clientMac') || getParam(params, 'mac')),
       clientIp: getParam(params, 'clientIp') || getParam(params, 'ip'),
       anuncioId: getParam(params, 'anuncioId'),
+      delaySeconds: parseDelaySeconds(getParam(params, 'delaySeconds')),
     }
   }, [])
 
@@ -45,7 +52,7 @@ export default function LpHotspotUnlockGate() {
     if (!payload?.pendingAuth || startedRef.current) return
     startedRef.current = true
     setVisible(true)
-    setSecondsLeft(10)
+    setSecondsLeft(payload.delaySeconds)
 
     const interval = window.setInterval(() => {
       setSecondsLeft((current) => Math.max(0, current - 1))
@@ -92,7 +99,7 @@ export default function LpHotspotUnlockGate() {
       } finally {
         window.clearInterval(interval)
       }
-    }, 10000)
+    }, payload.delaySeconds * 1000)
 
     return () => {
       window.clearInterval(interval)
@@ -101,6 +108,10 @@ export default function LpHotspotUnlockGate() {
   }, [payload])
 
   if (!visible) return null
+
+  const progressPercent = payload?.delaySeconds
+    ? Math.max(0, Math.min(100, ((payload.delaySeconds - secondsLeft) / payload.delaySeconds) * 100))
+    : 0
 
   return (
     <div className="fixed bottom-4 left-4 right-4 z-[9999] mx-auto max-w-md rounded-3xl border border-white/10 bg-[#050505]/95 p-4 text-white shadow-[0_20px_80px_rgba(0,0,0,.45)] backdrop-blur-2xl">
@@ -132,7 +143,7 @@ export default function LpHotspotUnlockGate() {
               <div className="h-2 overflow-hidden rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-[#6be12f] transition-all duration-1000"
-                  style={{ width: `${Math.max(0, Math.min(100, ((10 - secondsLeft) / 10) * 100))}%` }}
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
             </div>
