@@ -242,6 +242,9 @@ export default function Portal() {
   const [urlCliente, setUrlCliente] = useState('')
   const [linkCopiado, setLinkCopiado] = useState(false)
   const [copiandoLink, setCopiandoLink] = useState(false)
+  const [videoAdStarted, setVideoAdStarted] = useState(false)
+  const [videoAdLoading, setVideoAdLoading] = useState(false)
+  const [videoAdError, setVideoAdError] = useState('')
 
   
   const [form, setForm] = useState({
@@ -259,6 +262,8 @@ export default function Portal() {
   const sessaoAutorizadaRef = useRef(false)
   const autorizacaoPromiseRef = useRef(null)
   const liberacaoCtaTimerRef = useRef(null)
+  const videoAdRef = useRef(null)
+  const videoAdBufferingRef = useRef(false)
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -278,6 +283,44 @@ export default function Portal() {
 
   function getClientIp(customIp = '') {
     return String(customIp || ipAddress || (isLocalhost ? DEV_CLIENT_IP : '')).trim()
+  }
+
+  function isVideoAd(ad = anuncioAtual) {
+    return Boolean(ad?.media_url && ad?.tipo_media === 'video')
+  }
+
+  function setVideoBuffering(value) {
+    videoAdBufferingRef.current = Boolean(value)
+    setVideoAdLoading(Boolean(value))
+  }
+
+  async function tentarIniciarVideoAutomatico() {
+    const video = videoAdRef.current
+
+    if (!video || !isVideoAd()) return
+
+    setVideoAdError('')
+    setVideoBuffering(true)
+
+    try {
+      video.muted = false
+      video.defaultMuted = false
+      video.volume = 1
+
+      const playPromise = video.play()
+
+      if (playPromise && typeof playPromise.then === 'function') {
+        await playPromise
+      }
+
+      setVideoAdStarted(true)
+      setVideoBuffering(false)
+    } catch (error) {
+      console.warn('Autoplay com áudio bloqueado ou falhou:', error)
+      setVideoBuffering(false)
+      setVideoAdStarted(false)
+      setVideoAdError('O vídeo ainda não iniciou. O tempo está pausado.')
+    }
   }
 
   function falhar(etiqueta, erro = '') {
@@ -590,6 +633,10 @@ leadIdRef.current = data.leadId
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setInternetLiberadaNaCta(false)
+        setVideoAdStarted(false)
+        setVideoAdLoading(false)
+        setVideoAdError('')
+        videoAdBufferingRef.current = false
         setEtapa(ETAPAS.ANUNCIO)
         registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
@@ -655,6 +702,10 @@ leadIdRef.current = data.leadId
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setInternetLiberadaNaCta(false)
+        setVideoAdStarted(false)
+        setVideoAdLoading(false)
+        setVideoAdError('')
+        videoAdBufferingRef.current = false
         setEtapa(ETAPAS.ANUNCIO)
 
         // Registro de visualização agora deve passar pela API segura.
@@ -938,18 +989,25 @@ async function handleCopiarLinkCliente() {
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
-      // Android fecha automaticamente o captive portal quando detecta internet.
-      // Por isso não liberamos a sessão durante o anúncio.
-      // A liberação acontece somente após o clique no CTA ou ao recusar.
-      setContador(anuncioAtual.duracao_segundos || 15)
+      const duracao = anuncioAtual.duracao_segundos || 15
+      setContador(duracao)
+
+      if (isVideoAd(anuncioAtual) && !videoAdStarted) {
+        return
+      }
 
       intervaloAnuncioRef.current = setInterval(() => {
         setContador((prev) => {
+          if (isVideoAd(anuncioAtual) && videoAdBufferingRef.current) {
+            return prev
+          }
+
           if (prev <= 1) {
             clearInterval(intervaloAnuncioRef.current)
             concluirAnuncioComAutorizacao(leadIdRef.current || leadRapido?.id || null)
             return 0
           }
+
           return prev - 1
         })
       }, 1000)
@@ -958,7 +1016,17 @@ async function handleCopiarLinkCliente() {
     return () => {
       if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
     }
-  }, [etapa, anuncioAtual, leadRapido])
+  }, [etapa, anuncioAtual, leadRapido, videoAdStarted])
+
+  useEffect(() => {
+    if (etapa !== ETAPAS.ANUNCIO || !isVideoAd(anuncioAtual)) return
+
+    const timer = window.setTimeout(() => {
+      tentarIniciarVideoAutomatico()
+    }, 250)
+
+    return () => window.clearTimeout(timer)
+  }, [etapa, anuncioAtual?.id])
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -1200,7 +1268,47 @@ async function handleCopiarLinkCliente() {
 
           <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
             {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-              <video src={anuncioAtual.media_url} className="w-full h-full object-cover" autoPlay muted playsInline loop />
+              <div className="relative w-full h-full">
+                <video
+                  ref={videoAdRef}
+                  src={anuncioAtual.media_url}
+                  className="w-full h-full object-cover"
+                  autoPlay
+                  playsInline
+                  preload="auto"
+                  onLoadedMetadata={tentarIniciarVideoAutomatico}
+                  onCanPlay={tentarIniciarVideoAutomatico}
+                  onPlay={() => {
+                    setVideoAdStarted(true)
+                    setVideoBuffering(false)
+                  }}
+                  onPlaying={() => {
+                    setVideoAdStarted(true)
+                    setVideoBuffering(false)
+                  }}
+                  onWaiting={() => setVideoBuffering(true)}
+                  onStalled={() => setVideoBuffering(true)}
+                  onSeeking={() => setVideoBuffering(true)}
+                  onSeeked={() => setVideoBuffering(false)}
+                  onError={() => {
+                    setVideoBuffering(false)
+                    setVideoAdStarted(false)
+                    setVideoAdError('Não foi possível carregar este vídeo.')
+                  }}
+                />
+
+                {!videoAdStarted && (
+                  <div className="absolute inset-x-4 bottom-24 z-20 rounded-2xl border border-white/10 bg-black/75 px-4 py-3 text-center text-xs font-bold text-white backdrop-blur-xl">
+                    {videoAdError || 'Carregando vídeo com áudio... tempo pausado.'}
+                  </div>
+                )}
+
+                {videoAdStarted && videoAdLoading && (
+                  <div className="absolute inset-x-4 bottom-24 z-20 rounded-2xl border border-white/10 bg-black/75 px-4 py-3 text-center text-xs font-bold text-white backdrop-blur-xl">
+                    Vídeo carregando... tempo pausado.
+                  </div>
+                )}
+              </div>
             ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
               <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
             ) : (
