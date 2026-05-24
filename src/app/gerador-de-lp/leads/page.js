@@ -83,6 +83,35 @@ function Kpi({ label, value, detail }) {
   )
 }
 
+function SourceBreakdown({ title, items = [] }) {
+  const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0)
+
+  return (
+    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">
+      <h3 className="text-sm font-black text-white">{title}</h3>
+      <div className="mt-4 grid gap-3">
+        {items.length === 0 ? (
+          <p className="text-sm text-neutral-500">Sem origem registrada ainda.</p>
+        ) : items.slice(0, 5).map((item) => {
+          const percent = total > 0 ? Math.round((Number(item.total || 0) / total) * 100) : 0
+
+          return (
+            <div key={item.source}>
+              <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold">
+                <span className="capitalize text-neutral-300">{item.source}</span>
+                <span className="text-neutral-500">{item.total} - {percent}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-full rounded-full bg-[#6be12f]" style={{ width: `${percent}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function formatPercent(value) {
   return `${Number(value || 0).toLocaleString('pt-BR', {
     minimumFractionDigits: 2,
@@ -245,6 +274,11 @@ export default function LpGeneratorLeadsPage() {
               Conversao: {formatPercent(resumo.conversao)}
             </div>
           </div>
+        </section>
+
+        <section className="grid gap-4 lg:grid-cols-2">
+          <SourceBreakdown title="Origem das visitas" items={resumo.origemVisitas || []} />
+          <SourceBreakdown title="Origem dos leads" items={resumo.origemLeads || []} />
         </section>
 
         <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5">

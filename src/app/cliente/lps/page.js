@@ -72,6 +72,35 @@ function formatPercent(value) {
   })}%`
 }
 
+function SourceBreakdown({ title, items = [] }) {
+  const total = items.reduce((sum, item) => sum + Number(item.total || 0), 0)
+
+  return (
+    <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
+      <h2 className="text-lg font-black text-white">{title}</h2>
+      <div className="mt-4 grid gap-3">
+        {items.length === 0 ? (
+          <p className="text-sm text-neutral-500">Sem origem registrada ainda.</p>
+        ) : items.slice(0, 5).map((item) => {
+          const percent = total > 0 ? Math.round((Number(item.total || 0) / total) * 100) : 0
+
+          return (
+            <div key={item.source}>
+              <div className="mb-1 flex items-center justify-between gap-3 text-xs font-bold">
+                <span className="capitalize text-neutral-300">{item.source}</span>
+                <span className="text-neutral-500">{item.total} - {percent}%</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                <div className="h-full rounded-full bg-[#6be12f]" style={{ width: `${percent}%` }} />
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function formatDateTime(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString('pt-BR', {
@@ -292,6 +321,11 @@ export default function ClienteLpsPage() {
                 </a>
               ) : null}
             </div>
+          </section>
+
+          <section className="mb-8 grid gap-5 lg:grid-cols-2">
+            <SourceBreakdown title="Origem das visitas" items={resumo.origemVisitas || []} />
+            <SourceBreakdown title="Origem dos leads" items={resumo.origemLeads || []} />
           </section>
 
           <section className="grid gap-8 xl:grid-cols-[0.9fr_1.4fr]">

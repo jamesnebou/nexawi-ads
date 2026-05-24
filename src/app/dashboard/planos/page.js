@@ -105,6 +105,9 @@ export default function Planos() {
     nome: '',
     preco: '',
     max_criativos: '',
+    max_lps: '',
+    max_leads_mes: '',
+    templates_premium: true,
     intervalo_relatorio: 'mensal',
     ciclo_cobranca: 'mensal',
   })
@@ -160,6 +163,9 @@ export default function Planos() {
         nome: plano.nome || '',
         preco: plano.preco || '',
         max_criativos: plano.max_criativos || '',
+        max_lps: plano.max_lps || '',
+        max_leads_mes: plano.max_leads_mes || '',
+        templates_premium: plano.templates_premium !== false,
         intervalo_relatorio: plano.intervalo_relatorio || 'mensal',
         ciclo_cobranca: plano.ciclo_cobranca || cicloSelecionado,
       })
@@ -169,6 +175,9 @@ export default function Planos() {
         nome: '',
         preco: '',
         max_criativos: '',
+        max_lps: '',
+        max_leads_mes: '',
+        templates_premium: true,
         intervalo_relatorio: 'mensal',
         ciclo_cobranca: cicloSelecionado,
       })
@@ -205,6 +214,9 @@ export default function Planos() {
         ...form,
         preco: form.preco,
         max_criativos: form.max_criativos || 0,
+        max_lps: form.max_lps || 0,
+        max_leads_mes: form.max_leads_mes || 0,
+        templates_premium: form.templates_premium,
         ciclo_cobranca: form.ciclo_cobranca || cicloSelecionado,
       }
 
@@ -469,6 +481,28 @@ export default function Planos() {
                     </span>
                   </div>
 
+                  <div className="flex items-center justify-between group/item">
+                    <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
+                      <Package size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
+                      <span className="text-sm font-medium">LPs publicadas</span>
+                    </div>
+
+                    <span className="text-sm font-bold text-white">
+                      {plano.max_lps && plano.max_lps > 0 ? plano.max_lps : 'Ilimitado'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between group/item">
+                    <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
+                      <UserCheck size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
+                      <span className="text-sm font-medium">Leads/mes</span>
+                    </div>
+
+                    <span className="text-sm font-bold text-white">
+                      {plano.max_leads_mes && plano.max_leads_mes > 0 ? plano.max_leads_mes : 'Ilimitado'}
+                    </span>
+                  </div>
+
                   <div className="flex items-center justify-between group/item pt-2 border-t border-white/[0.02]">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
                       <UserCheck size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
@@ -595,6 +629,51 @@ export default function Planos() {
                 </div>
 
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  LPs publicadas
+                </label>
+
+                <input
+                  type="number"
+                  placeholder="0 = ilimitado"
+                  value={form.max_lps}
+                  onChange={(e) => setForm({ ...form, max_lps: e.target.value })}
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                  Leads por mes
+                </label>
+
+                <input
+                  type="number"
+                  placeholder="0 = ilimitado"
+                  value={form.max_leads_mes}
+                  onChange={(e) => setForm({ ...form, max_leads_mes: e.target.value })}
+                  className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setForm({ ...form, templates_premium: !form.templates_premium })}
+                className={`rounded-2xl border p-5 text-left transition-all ${
+                  form.templates_premium
+                    ? 'border-[#6be12f]/25 bg-[#6be12f]/10'
+                    : 'border-white/[0.05] bg-[#050505]'
+                }`}
+              >
+                <span className="block text-xs font-bold uppercase tracking-widest text-neutral-500">
+                  Templates premium
+                </span>
+                <span className="mt-2 block text-sm font-bold text-white">
+                  {form.templates_premium ? 'Liberado neste plano' : 'Bloqueado neste plano'}
+                </span>
+              </button>
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">

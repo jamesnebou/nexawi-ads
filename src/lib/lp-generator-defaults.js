@@ -329,6 +329,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     description: 'Pagina criada no gerador de LP da NexaWi.',
   },
   integracoes: {
+    customDomain: '',
     metaPixelId: '',
     ga4MeasurementId: '',
     googleTagManagerId: '',

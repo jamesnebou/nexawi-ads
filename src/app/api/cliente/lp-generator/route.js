@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireCliente } from '@/lib/cliente-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getLpConfig, slugifyLp } from '@/lib/lp-generator-defaults'
+import { summarizeSourceBreakdown } from '@/lib/lp-generator-analytics'
 
 export const runtime = 'nodejs'
 
@@ -11,6 +12,10 @@ function cleanText(value = '') {
 
 function isValidUuid(value) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value || '')
+}
+
+function isSlugConflict(error) {
+  return error?.code === '23505' && String(error?.message || '').includes('lp_generator_pages_slug_key')
 }
 
 function getDateStart(daysAgo = 0) {
@@ -44,6 +49,21 @@ async function countRows(table, { pageId, clienteId, empresaId, from } = {}) {
   return count || 0
 }
 
+async function fetchAnalyticsRows(table, { pageId, clienteId, empresaId, limit = 1000 } = {}) {
+  let query = supabaseAdmin
+    .from(table)
+    .select('id, metadata, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  query = aplicarEscopoCliente(query, { clienteId, empresaId })
+  if (pageId && isValidUuid(pageId)) query = query.eq('page_id', pageId)
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
+}
+
 async function buscarPaginaDoCliente(pageId, { clienteId, empresaId }) {
   if (!pageId || !isValidUuid(pageId)) return null
 
@@ -58,6 +78,49 @@ async function buscarPaginaDoCliente(pageId, { clienteId, empresaId }) {
   const { data, error } = await query.maybeSingle()
   if (error) throw error
   return data || null
+}
+
+async function getLpPlanLimits({ clienteId, empresaId }) {
+  let query = supabaseAdmin
+    .from('clientes')
+    .select('id, empresa_id, plano_id, planos(*)')
+    .neq('status', 'Cancelado')
+    .limit(1)
+
+  if (clienteId) query = query.eq('id', clienteId)
+  else if (empresaId) query = query.eq('empresa_id', empresaId)
+
+  const { data, error } = await query.maybeSingle()
+  if (error || !data?.planos) return { maxLps: 0, maxLeadsMes: 0, templatesPremium: true }
+
+  return {
+    maxLps: Number(data.planos.max_lps || 0),
+    maxLeadsMes: Number(data.planos.max_leads_mes || 0),
+    templatesPremium: data.planos.templates_premium !== false,
+  }
+}
+
+async function assertCanPublish({ clienteId, empresaId, pageId }) {
+  const limits = await getLpPlanLimits({ clienteId, empresaId })
+
+  if (!limits.maxLps || limits.maxLps <= 0) return limits
+
+  let query = supabaseAdmin
+    .from('lp_generator_pages')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'published')
+
+  query = aplicarEscopoCliente(query, { clienteId, empresaId })
+  if (pageId) query = query.neq('id', pageId)
+
+  const { count, error } = await query
+  if (error) throw error
+
+  if ((count || 0) >= limits.maxLps) {
+    throw new Error(`Limite do plano atingido: sua conta pode manter ${limits.maxLps} LP(s) publicada(s).`)
+  }
+
+  return limits
 }
 
 export async function GET(request) {
@@ -143,6 +206,8 @@ export async function GET(request) {
       totalLeads,
       todayLeads,
       monthLeads,
+      viewAnalyticsRows,
+      leadAnalyticsRows,
     ] = await Promise.all([
       countRows('lp_generator_views', { pageId: selectedPageId, clienteId, empresaId }),
       countRows('lp_generator_views', { pageId: selectedPageId, clienteId, empresaId, from: todayStart }),
@@ -150,6 +215,8 @@ export async function GET(request) {
       countRows('lp_generator_leads', { pageId: selectedPageId, clienteId, empresaId }),
       countRows('lp_generator_leads', { pageId: selectedPageId, clienteId, empresaId, from: todayStart }),
       countRows('lp_generator_leads', { pageId: selectedPageId, clienteId, empresaId, from: monthStartIso }),
+      fetchAnalyticsRows('lp_generator_views', { pageId: selectedPageId, clienteId, empresaId }),
+      fetchAnalyticsRows('lp_generator_leads', { pageId: selectedPageId, clienteId, empresaId }),
     ])
 
     return NextResponse.json({
@@ -167,6 +234,8 @@ export async function GET(request) {
         leadsHoje: todayLeads,
         leadsMes: monthLeads,
         conversao: totalViews > 0 ? Number(((totalLeads / totalViews) * 100).toFixed(2)) : 0,
+        origemVisitas: summarizeSourceBreakdown(viewAnalyticsRows),
+        origemLeads: summarizeSourceBreakdown(leadAnalyticsRows),
       },
       multiempresa: {
         empresa_id: empresaId || cliente.empresa_id || null,
@@ -218,6 +287,14 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Slug da LP e obrigatorio' }, { status: 400 })
     }
 
+    if (status === 'published') {
+      await assertCanPublish({
+        clienteId: cliente.id,
+        empresaId,
+        pageId: page.id,
+      })
+    }
+
     const { data, error } = await supabaseAdmin
       .from('lp_generator_pages')
       .update({
@@ -231,6 +308,9 @@ export async function POST(request) {
       .select('*')
       .single()
 
+    if (isSlugConflict(error)) {
+      return NextResponse.json({ ok: false, error: 'Este slug ja esta em uso por outra LP.' }, { status: 409 })
+    }
     if (error) throw error
 
     return NextResponse.json({

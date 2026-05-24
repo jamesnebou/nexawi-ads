@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -14,6 +14,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   UserPlus,
@@ -57,7 +58,17 @@ function statusBadge(status) {
     return 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20'
   }
 
+  if (status === 'archived') {
+    return 'bg-red-500/10 text-red-300 border-red-500/20'
+  }
+
   return 'bg-yellow-500/10 text-yellow-300 border-yellow-500/20'
+}
+
+function statusLabel(status) {
+  if (status === 'published') return 'publicada'
+  if (status === 'archived') return 'arquivada'
+  return 'rascunho'
 }
 
 function formatDate(value) {
@@ -75,21 +86,25 @@ export default function LpGeneratorDashboard() {
   const router = useRouter()
   const [pages, setPages] = useState([])
   const [clientes, setClientes] = useState([])
+  const [statusSummary, setStatusSummary] = useState(null)
   const [busca, setBusca] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedTemplate, setSelectedTemplate] = useState(LP_GENERATOR_TEMPLATES[0]?.id || '')
   const [selectedClienteId, setSelectedClienteId] = useState('')
+  const [statusFilter, setStatusFilter] = useState('active')
 
-  const loadPages = useCallback(async (nextBusca = busca) => {
+  const loadPages = useCallback(async (nextBusca = busca, nextStatus = statusFilter) => {
     setLoading(true)
 
     try {
       const params = new URLSearchParams()
       if (nextBusca.trim()) params.set('busca', nextBusca.trim())
+      if (nextStatus && nextStatus !== 'active') params.set('status', nextStatus)
 
       const data = await adminApiFetch(`/api/admin/lp-generator?${params.toString()}`)
       setPages(data.pages || [])
+      setStatusSummary(data.statusSummary || null)
       setClientes(data.clientes || [])
     } catch (error) {
       console.error(error)
@@ -97,11 +112,18 @@ export default function LpGeneratorDashboard() {
     } finally {
       setLoading(false)
     }
-  }, [busca])
+  }, [busca, statusFilter])
 
   useEffect(() => {
     loadPages()
   }, [loadPages])
+
+  const statusStats = useMemo(() => statusSummary || ({
+    total: pages.filter((page) => page.status !== 'archived').length,
+    published: pages.filter((page) => page.status === 'published').length,
+    draft: pages.filter((page) => page.status === 'draft').length,
+    archived: pages.filter((page) => page.status === 'archived').length,
+  }), [pages, statusSummary])
 
   async function createPage() {
     setSaving(true)
@@ -267,6 +289,36 @@ export default function LpGeneratorDashboard() {
               Buscar
             </button>
           </form>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { id: 'active', label: 'Ativas', value: statusStats.total },
+              { id: 'published', label: 'Publicadas', value: statusStats.published },
+              { id: 'draft', label: 'Rascunhos', value: statusStats.draft },
+              { id: 'archived', label: 'Arquivadas', value: statusStats.archived },
+            ].map((item) => {
+              const active = statusFilter === item.id
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setStatusFilter(item.id)
+                    loadPages(busca, item.id)
+                  }}
+                  className={`rounded-2xl border p-4 text-left transition ${
+                    active
+                      ? 'border-[#6be12f]/40 bg-[#6be12f]/10'
+                      : 'border-white/[0.06] bg-black/30 hover:border-white/[0.14] hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <p className="text-[10px] font-black uppercase tracking-widest text-neutral-500">{item.label}</p>
+                  <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
+                </button>
+              )
+            })}
+          </div>
         </section>
 
         <section className="grid gap-4">
@@ -288,7 +340,7 @@ export default function LpGeneratorDashboard() {
                     <div className="flex flex-wrap items-center gap-3">
                       <h2 className="truncate text-xl font-black">{page.name}</h2>
                       <span className={`rounded-xl border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${statusBadge(page.status)}`}>
-                        {page.status === 'published' ? 'publicada' : 'rascunho'}
+                        {statusLabel(page.status)}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-neutral-500">/lp/{page.slug}</p>
@@ -306,38 +358,51 @@ export default function LpGeneratorDashboard() {
                       <Pencil size={15} />
                       Editar
                     </Link>
-                    <Link
-                      href={`/lp/${page.slug}`}
-                      target="_blank"
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs font-black text-white transition hover:bg-white/[0.08]"
-                    >
-                      <ExternalLink size={15} />
-                      Abrir
-                    </Link>
-                    <button
-                      onClick={() => runAction('toggle', page.id)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15 disabled:opacity-60"
-                    >
-                      <Globe2 size={15} />
-                      {page.status === 'published' ? 'Despublicar' : 'Publicar'}
-                    </button>
-                    <button
-                      onClick={() => runAction('duplicate', page.id)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs font-black text-white transition hover:bg-white/[0.08] disabled:opacity-60"
-                    >
-                      <Copy size={15} />
-                      Duplicar
-                    </button>
-                    <button
-                      onClick={() => runAction('archive', page.id)}
-                      disabled={saving}
-                      className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-black text-red-300 transition hover:bg-red-500/15 disabled:opacity-60"
-                    >
-                      <Trash2 size={15} />
-                      Arquivar
-                    </button>
+                    {page.status !== 'archived' ? (
+                      <>
+                        <Link
+                          href={`/lp/${page.slug}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs font-black text-white transition hover:bg-white/[0.08]"
+                        >
+                          <ExternalLink size={15} />
+                          Abrir
+                        </Link>
+                        <button
+                          onClick={() => runAction('toggle', page.id)}
+                          disabled={saving}
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15 disabled:opacity-60"
+                        >
+                          <Globe2 size={15} />
+                          {page.status === 'published' ? 'Despublicar' : 'Publicar'}
+                        </button>
+                        <button
+                          onClick={() => runAction('duplicate', page.id)}
+                          disabled={saving}
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-3 text-xs font-black text-white transition hover:bg-white/[0.08] disabled:opacity-60"
+                        >
+                          <Copy size={15} />
+                          Duplicar
+                        </button>
+                        <button
+                          onClick={() => runAction('archive', page.id)}
+                          disabled={saving}
+                          className="inline-flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-black text-red-300 transition hover:bg-red-500/15 disabled:opacity-60"
+                        >
+                          <Trash2 size={15} />
+                          Arquivar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        onClick={() => runAction('restore', page.id)}
+                        disabled={saving}
+                        className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15 disabled:opacity-60"
+                      >
+                        <RotateCcw size={15} />
+                        Restaurar
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>

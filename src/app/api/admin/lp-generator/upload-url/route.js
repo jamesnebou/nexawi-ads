@@ -26,6 +26,41 @@ function validateFile({ filename, contentType, sizeBytes }) {
   return ''
 }
 
+function isMissingAssetsTable(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42P01' || error?.code === 'PGRST205' || message.includes('lp_generator_assets')
+}
+
+async function resolveAssetOwner({ pageId, auth }) {
+  if (!pageId) {
+    return { pageId: null, clienteId: null, empresaId: auth.activeEmpresaId || null }
+  }
+
+  let query = supabaseAdmin
+    .from('lp_generator_pages')
+    .select('id, cliente_id, empresa_id')
+    .eq('id', pageId)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query.maybeSingle()
+  if (error) throw error
+
+  return {
+    pageId: data?.id || null,
+    clienteId: data?.cliente_id || null,
+    empresaId: data?.empresa_id || auth.activeEmpresaId || null,
+  }
+}
+
+async function recordAsset(asset) {
+  const { error } = await supabaseAdmin
+    .from('lp_generator_assets')
+    .insert([asset])
+
+  if (error && !isMissingAssetsTable(error)) throw error
+}
+
 export async function POST(request) {
   const auth = await requireAdmin(request)
 
@@ -39,6 +74,7 @@ export async function POST(request) {
     const filename = String(body.filename || 'imagem.png').trim()
     const contentType = String(body.contentType || '').trim()
     const sizeBytes = Number(body.sizeBytes || 0)
+    const pageId = String(body.pageId || body.id || '').trim() || null
     const lpSlug = slugifyLp(body.slug || body.lpSlug || 'lp')
     const field = slugifyLp(body.field || 'imagem')
 
@@ -61,6 +97,21 @@ export async function POST(request) {
       .storage
       .from(BUCKET)
       .getPublicUrl(path)
+
+    const owner = await resolveAssetOwner({ pageId, auth })
+    await recordAsset({
+      page_id: owner.pageId,
+      cliente_id: owner.clienteId,
+      empresa_id: owner.empresaId,
+      bucket: BUCKET,
+      path,
+      public_url: publicUrlData.publicUrl,
+      filename,
+      content_type: contentType,
+      size_bytes: sizeBytes || null,
+      field,
+      created_by: auth.user?.id || null,
+    })
 
     return NextResponse.json({
       ok: true,

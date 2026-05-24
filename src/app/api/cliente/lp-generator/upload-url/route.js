@@ -43,6 +43,19 @@ function aplicarEscopoCliente(query, { clienteId, empresaId }) {
   return query.eq('cliente_id', clienteId)
 }
 
+function isMissingAssetsTable(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42P01' || error?.code === 'PGRST205' || message.includes('lp_generator_assets')
+}
+
+async function recordAsset(asset) {
+  const { error } = await supabaseAdmin
+    .from('lp_generator_assets')
+    .insert([asset])
+
+  if (error && !isMissingAssetsTable(error)) throw error
+}
+
 export async function POST(request) {
   const auth = await requireCliente(request)
 
@@ -98,6 +111,20 @@ export async function POST(request) {
       .storage
       .from(BUCKET)
       .getPublicUrl(path)
+
+    await recordAsset({
+      page_id: page.id,
+      cliente_id: auth.cliente.id || null,
+      empresa_id: auth.empresaId || auth.cliente.empresa_id || null,
+      bucket: BUCKET,
+      path,
+      public_url: publicUrlData.publicUrl,
+      filename,
+      content_type: contentType,
+      size_bytes: sizeBytes || null,
+      field,
+      created_by: auth.user?.id || null,
+    })
 
     return NextResponse.json({
       ok: true,

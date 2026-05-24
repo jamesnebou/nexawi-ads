@@ -17,12 +17,14 @@ import {
   ArrowLeft,
   ArrowDown,
   ArrowUp,
+  Copy,
   Upload,
   Eye,
   Image as ImageIcon,
   Loader2,
   Monitor,
   Palette,
+  RefreshCw,
   Save,
   Settings2,
   Smartphone,
@@ -36,6 +38,7 @@ const tabs = [
   { id: 'identidade', label: 'Identidade' },
   { id: 'cabecalho', label: 'Cabecalho' },
   { id: 'hero', label: 'Hero' },
+  { id: 'midia', label: 'Midia' },
   { id: 'logos', label: 'Logos' },
   { id: 'beneficios', label: 'Beneficios' },
   { id: 'prova', label: 'Prova social' },
@@ -62,6 +65,7 @@ function getEditorContext(scope = 'admin') {
     return {
       apiPath: '/api/cliente/lp-generator',
       uploadPath: '/api/cliente/lp-generator/upload-url',
+      assetsPath: '/api/cliente/lp-generator/assets',
       backHref: '/cliente/lps',
       backLabel: 'Voltar para minhas LPs',
       sessionLabel: 'cliente',
@@ -72,6 +76,7 @@ function getEditorContext(scope = 'admin') {
   return {
     apiPath: '/api/admin/lp-generator',
     uploadPath: '/api/admin/lp-generator/upload-url',
+    assetsPath: '/api/admin/lp-generator/assets',
     backHref: '/gerador-de-lp/dashboard',
     backLabel: 'Voltar para LPs',
     sessionLabel: 'administrativa',
@@ -147,7 +152,7 @@ function Field({ label, value, onChange, placeholder = '', textarea = false, typ
   )
 }
 
-function ImageUploadField({ label, value, onChange, field, slug, scope, pageId }) {
+function ImageUploadField({ label, value, onChange, field, slug, scope, pageId, onUploaded }) {
   const [uploading, setUploading] = useState(false)
 
   async function handleFile(event) {
@@ -179,6 +184,7 @@ function ImageUploadField({ label, value, onChange, field, slug, scope, pageId }
       if (uploadError) throw uploadError
 
       onChange(uploadInfo.publicUrl)
+      onUploaded?.()
       toast.success('Imagem enviada.')
     } catch (error) {
       toast.error(error.message || 'Erro ao enviar imagem.')
@@ -747,6 +753,9 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
   const [status, setStatus] = useState('draft')
   const [config, setConfig] = useState(getLpConfig())
   const [previewDevice, setPreviewDevice] = useState('desktop')
+  const [assets, setAssets] = useState([])
+  const [assetsLoading, setAssetsLoading] = useState(false)
+  const [assetsWarning, setAssetsWarning] = useState('')
 
   const publicUrl = useMemo(() => `/lp/${slug || 'slug-da-lp'}`, [slug])
   const previewPage = useMemo(() => ({
@@ -754,6 +763,25 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
     name: name || page?.name || 'Preview da LP',
     slug: slug || page?.slug || 'preview',
   }), [id, name, page, slug])
+
+  const loadAssets = useCallback(async () => {
+    if (!hasValidId) return
+
+    setAssetsLoading(true)
+    setAssetsWarning('')
+
+    try {
+      const params = new URLSearchParams({ pageId: id })
+      const data = await editorApiFetch(scope, `${context.assetsPath}?${params.toString()}`)
+      setAssets(data.assets || [])
+      setAssetsWarning(data.warning || '')
+    } catch (error) {
+      setAssets([])
+      setAssetsWarning(error.message || 'Nao foi possivel carregar a biblioteca.')
+    } finally {
+      setAssetsLoading(false)
+    }
+  }, [context.assetsPath, hasValidId, id, scope])
 
   const loadPage = useCallback(async () => {
     if (!hasValidId) {
@@ -773,6 +801,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       setClienteId(data.page.cliente_id || '')
       setStatus(data.page.status || 'draft')
       setConfig(getLpConfig(data.page.config || {}))
+      loadAssets()
 
     } catch (error) {
       setLoadError(error.message || 'Erro ao carregar LP.')
@@ -780,7 +809,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
     } finally {
       setLoading(false)
     }
-  }, [context.apiPath, hasValidId, id, scope])
+  }, [context.apiPath, hasValidId, id, loadAssets, scope])
 
   useEffect(() => {
     loadPage()
@@ -816,6 +845,15 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       toast.error(error.message || 'Erro ao salvar LP.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function copyAssetUrl(url) {
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('URL da imagem copiada.')
+    } catch {
+      toast.error('Nao foi possivel copiar a URL.')
     }
   }
 
@@ -913,6 +951,81 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <Field label="Texto do botao" value={config.cabecalho.contatoTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoTexto', value)} />
             <Field label="URL do botao" value={config.cabecalho.contatoUrl} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoUrl', value)} placeholder="#formulario" />
           </div>
+        </div>
+      )
+    }
+
+    if (activeTab === 'midia') {
+      return (
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm font-black text-white">Biblioteca de imagens da LP</p>
+                <p className="mt-1 text-xs leading-relaxed text-neutral-400">
+                  Toda imagem enviada pelo editor fica registrada aqui para reutilizar em outras secoes.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={loadAssets}
+                disabled={assetsLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-black text-white disabled:opacity-60"
+              >
+                {assetsLoading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
+                Atualizar
+              </button>
+            </div>
+            {assetsWarning ? (
+              <p className="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-200">
+                {assetsWarning}
+              </p>
+            ) : null}
+          </div>
+
+          {assetsLoading ? (
+            <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-10 text-center">
+              <Loader2 className="mx-auto animate-spin text-[#8cf059]" size={24} />
+              <p className="mt-3 text-sm font-bold text-neutral-400">Carregando biblioteca...</p>
+            </div>
+          ) : assets.length === 0 ? (
+            <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-10 text-center">
+              <ImageIcon size={34} className="mx-auto text-neutral-700" />
+              <p className="mt-3 text-sm font-black text-white">Nenhuma imagem enviada ainda.</p>
+              <p className="mt-1 text-xs text-neutral-500">Envie imagens nos campos do editor e clique em Atualizar.</p>
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {assets.map((asset) => (
+                <article key={asset.id || asset.public_url} className="overflow-hidden rounded-2xl border border-white/[0.06] bg-black/35">
+                  <img src={asset.public_url} alt="" className="h-40 w-full object-cover" />
+                  <div className="grid gap-3 p-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-white">{asset.filename || 'Imagem'}</p>
+                      <p className="mt-1 truncate text-xs text-neutral-500">{asset.field || asset.path}</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => copyAssetUrl(asset.public_url)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-black text-white"
+                      >
+                        <Copy size={14} />
+                        Copiar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => updateNested(setConfig, 'hero', 'imagemUrl', asset.public_url)}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-2 text-xs font-black text-[#8cf059]"
+                      >
+                        Usar no hero
+                      </button>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </div>
       )
     }
@@ -1185,6 +1298,30 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       <div className="grid gap-4">
         <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4 text-sm leading-relaxed text-neutral-300">
           Informe somente os identificadores das plataformas. O gerador carrega as tags permitidas na LP publicada e registra o envio do formulario como lead.
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+          <p className="text-sm font-black text-white">Dominio personalizado</p>
+          <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+            Informe o dominio que sera apontado para esta LP. A ativacao completa ainda depende de DNS e dominio configurado na Vercel.
+          </p>
+          <div className="mt-4">
+            <Field
+              label="Dominio ou subdominio"
+              value={config.integracoes.customDomain}
+              onChange={(value) => updateNested(
+                setConfig,
+                'integracoes',
+                'customDomain',
+                value
+                  .toLowerCase()
+                  .replace(/^https?:\/\//, '')
+                  .replace(/\/.*/, '')
+                  .replace(/:\d+$/, '')
+                  .replace(/^www\./, '')
+              )}
+              placeholder="lp.cliente.com.br"
+            />
+          </div>
         </div>
         <Field
           label="Meta Pixel ID"

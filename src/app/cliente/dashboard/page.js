@@ -184,6 +184,7 @@ export default function ClientDashboardPage() {
   const [resumo, setResumo] = useState({})
   const [financeiro, setFinanceiro] = useState({})
   const [assinatura, setAssinatura] = useState({})
+  const [lpResumo, setLpResumo] = useState({})
   const [ads, setAds] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
@@ -229,6 +230,7 @@ export default function ClientDashboardPage() {
         setResumo(data.resumo || {})
         setFinanceiro(data.financeiro || {})
         setAssinatura(data.assinatura || {})
+        setLpResumo(data.lpResumo || {})
         setAds(data.anuncios || [])
         setLeadsRecentes(data.leadsRecentes || [])
         setPagamentosRecentes(data.pagamentosRecentes || [])
@@ -512,7 +514,7 @@ export default function ClientDashboardPage() {
             })}
           </section>
 
-          <section className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8 print-grid-3">
+          <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-6 mb-8 print-grid-3">
             <Panel title="Financeiro" icon={CreditCard}>
               <InfoRow
                 label="Plano atual"
@@ -550,6 +552,20 @@ export default function ClientDashboardPage() {
               ) : hotspotsVinculados.slice(0, 5).map((hotspot) => (
                 <InfoRow key={hotspot.id || hotspot.nome} label={hotspot.nome || 'Hotspot'} value={hotspot.cidade || hotspot.localizacao || hotspot.status || '—'} />
               ))}
+            </Panel>
+
+            <Panel title="Landing pages" icon={Globe2}>
+              <InfoRow label="LPs publicadas" value={formatNumber(lpResumo.publicadas || 0)} />
+              <InfoRow label="Visitas" value={formatNumber(lpResumo.visitas || 0)} />
+              <InfoRow label="Leads capturados" value={formatNumber(lpResumo.leads || 0)} />
+              <InfoRow label="Conversao" value={`${lpResumo.conversao || 0}%`} />
+              <Link
+                href="/cliente/lps"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 px-5 py-4 text-sm font-extrabold text-cyan-300 transition-all hover:bg-cyan-500/15 no-print"
+              >
+                <Globe2 size={16} />
+                Abrir minhas LPs
+              </Link>
             </Panel>
           </section>
 

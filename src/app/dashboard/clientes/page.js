@@ -21,6 +21,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Search,
@@ -667,15 +668,25 @@ async function copiarAcessoCliente() {
             )}
           </div>
 
-          {canCreate && (
-            <button
-              onClick={() => abrirModal()}
-              className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+          <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center">
+            <Link
+              href="/gerador-de-lp/dashboard"
+              className="w-full sm:w-auto bg-white/[0.03] hover:bg-white/[0.06] text-white font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 border border-white/[0.08] hover:border-[#6be12f]/30 hover:text-[#8cf059]"
             >
-              <Plus size={18} strokeWidth={2.5} />
-              Novo Cliente
-            </button>
-          )}
+              <FileText size={18} strokeWidth={2.5} />
+              Gerador de Páginas
+            </Link>
+
+            {canCreate && (
+              <button
+                onClick={() => abrirModal()}
+                className="w-full sm:w-auto bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                Novo Cliente
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-8">

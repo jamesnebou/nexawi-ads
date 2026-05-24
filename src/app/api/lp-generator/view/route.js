@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { buildLpAnalyticsMetadata } from '@/lib/lp-generator-analytics'
 
 export const runtime = 'nodejs'
 
@@ -35,10 +36,7 @@ export async function POST(request) {
         cliente_id: page.cliente_id || null,
         empresa_id: page.empresa_id || null,
         page_slug: page.slug,
-        metadata: {
-          user_agent: request.headers.get('user-agent') || '',
-          referer: request.headers.get('referer') || '',
-        },
+        metadata: buildLpAnalyticsMetadata({ request, body }),
       }])
 
     if (error) throw error

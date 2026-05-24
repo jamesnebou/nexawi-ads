@@ -25,6 +25,11 @@ function calcularCtr(cliques, visualizacoes) {
   return Number(((cliques / visualizacoes) * 100).toFixed(2))
 }
 
+function isMissingLpGeneratorTable(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42P01' || message.includes('lp_generator_')
+}
+
 function calcularStatusCampanha({ anunciosAtivos, totalAnuncios, cliente, assinatura }) {
   if (cliente.status === 'Inadimplente' || assinatura?.bloqueado) {
     return {
@@ -199,6 +204,66 @@ async function buscarLeadsRecentes({ anuncioIds = [], empresaId = '' }) {
   }
 }
 
+async function buscarResumoLps({ clienteId, empresaId }) {
+  try {
+    let pagesQuery = supabaseAdmin
+      .from('lp_generator_pages')
+      .select('id, status')
+
+    pagesQuery = aplicarEscopoClienteEmpresa(pagesQuery, { clienteId, empresaId })
+
+    let viewsQuery = supabaseAdmin
+      .from('lp_generator_views')
+      .select('id', { count: 'exact', head: true })
+
+    viewsQuery = aplicarEscopoClienteEmpresa(viewsQuery, { clienteId, empresaId })
+
+    let leadsQuery = supabaseAdmin
+      .from('lp_generator_leads')
+      .select('id', { count: 'exact', head: true })
+
+    leadsQuery = aplicarEscopoClienteEmpresa(leadsQuery, { clienteId, empresaId })
+
+    const [
+      { data: pagesData, error: pagesError },
+      { count: viewsCount, error: viewsError },
+      { count: leadsCount, error: leadsError },
+    ] = await Promise.all([pagesQuery, viewsQuery, leadsQuery])
+
+    if (pagesError) throw pagesError
+    if (viewsError) throw viewsError
+    if (leadsError) throw leadsError
+
+    const pages = pagesData || []
+    const totalViews = viewsCount || 0
+    const totalLeads = leadsCount || 0
+
+    return {
+      totalLps: pages.length,
+      publicadas: pages.filter((page) => page.status === 'published').length,
+      rascunhos: pages.filter((page) => page.status === 'draft').length,
+      arquivadas: pages.filter((page) => page.status === 'archived').length,
+      visitas: totalViews,
+      leads: totalLeads,
+      conversao: calcularCtr(totalLeads, totalViews),
+    }
+  } catch (error) {
+    if (isMissingLpGeneratorTable(error)) {
+      return {
+        totalLps: 0,
+        publicadas: 0,
+        rascunhos: 0,
+        arquivadas: 0,
+        visitas: 0,
+        leads: 0,
+        conversao: 0,
+      }
+    }
+
+    throw error
+  }
+}
+
 export async function GET(request) {
   const auth = await requireCliente(request)
 
@@ -261,9 +326,10 @@ export async function GET(request) {
 
     const anuncioIds = anuncios.map((ad) => ad.id).filter(Boolean)
 
-    const [leadsResult, hotspotsVinculados] = await Promise.all([
+    const [leadsResult, hotspotsVinculados, lpResumo] = await Promise.all([
       buscarLeadsRecentes({ anuncioIds, empresaId }),
       buscarHotspotsVinculados({ anuncioIds, empresaId }),
+      buscarResumoLps({ clienteId, empresaId }),
     ])
 
     const anunciosAtivos = anuncios.filter((ad) => ad.ativo === true).length
@@ -341,6 +407,7 @@ export async function GET(request) {
         ctrGeral: calcularCtr(totalCliques, totalVisualizacoes),
         hotspotsVinculados: hotspotsVinculados.length,
       },
+      lpResumo,
       financeiro,
       anuncios,
       leadsRecentes: leadsResult.leadsRecentes,

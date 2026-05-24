@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { summarizeSourceBreakdown } from '@/lib/lp-generator-analytics'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +38,26 @@ async function countRows(table, { pageId, pageSlug, from, auth } = {}) {
   const { count, error } = await query
   if (error) throw error
   return count || 0
+}
+
+async function fetchAnalyticsRows(table, { pageId, pageSlug, auth, limit = 1000 } = {}) {
+  let query = supabaseAdmin
+    .from(table)
+    .select('id, metadata, created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  query = auth?.applyEmpresaScope ? auth.applyEmpresaScope(query) : query
+
+  if (pageId && isValidUuid(pageId)) {
+    query = query.eq('page_id', pageId)
+  } else if (pageSlug) {
+    query = query.eq('page_slug', pageSlug)
+  }
+
+  const { data, error } = await query
+  if (error) throw error
+  return data || []
 }
 
 export async function GET(request) {
@@ -109,6 +130,8 @@ export async function GET(request) {
       totalLeads,
       todayLeads,
       monthLeads,
+      viewAnalyticsRows,
+      leadAnalyticsRows,
     ] = await Promise.all([
       countRows('lp_generator_views', { pageId, pageSlug, auth }),
       countRows('lp_generator_views', { pageId, pageSlug, from: todayStart, auth }),
@@ -116,6 +139,8 @@ export async function GET(request) {
       countRows('lp_generator_leads', { pageId, pageSlug, auth }),
       countRows('lp_generator_leads', { pageId, pageSlug, from: todayStart, auth }),
       countRows('lp_generator_leads', { pageId, pageSlug, from: monthStartIso, auth }),
+      fetchAnalyticsRows('lp_generator_views', { pageId, pageSlug, auth }),
+      fetchAnalyticsRows('lp_generator_leads', { pageId, pageSlug, auth }),
     ])
 
     const conversionRate = totalViews > 0 ? (totalLeads / totalViews) * 100 : 0
@@ -133,6 +158,8 @@ export async function GET(request) {
         visitasHoje: todayViews,
         visitasMes: monthViews,
         conversao: Number(conversionRate.toFixed(2)),
+        origemVisitas: summarizeSourceBreakdown(viewAnalyticsRows),
+        origemLeads: summarizeSourceBreakdown(leadAnalyticsRows),
       },
       permissions: auth.permissions?.leads || {},
     })

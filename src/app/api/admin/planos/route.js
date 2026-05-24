@@ -43,11 +43,16 @@ function permissaoNegada(modulo, acao) {
 function sanitizarPlanoPayload(plano = {}) {
   const preco = Number(String(plano.preco || '').replace(',', '.'))
   const maxCriativos = Number(plano.max_criativos || 0)
+  const maxLps = Number(plano.max_lps || 0)
+  const maxLeadsMes = Number(plano.max_leads_mes || 0)
 
   return {
     nome: limparTexto(plano.nome),
     preco: Number.isFinite(preco) ? preco : 0,
     max_criativos: Number.isFinite(maxCriativos) ? Math.max(0, Math.floor(maxCriativos)) : 0,
+    max_lps: Number.isFinite(maxLps) ? Math.max(0, Math.floor(maxLps)) : 0,
+    max_leads_mes: Number.isFinite(maxLeadsMes) ? Math.max(0, Math.floor(maxLeadsMes)) : 0,
+    templates_premium: plano.templates_premium !== false,
     intervalo_relatorio: INTERVALOS_VALIDOS.includes(plano.intervalo_relatorio)
       ? plano.intervalo_relatorio
       : 'mensal',
@@ -62,6 +67,19 @@ function validarPlano(payload) {
   if (payload.nome.length < 2) return 'Nome do plano precisa ter pelo menos 2 caracteres'
   if (!payload.preco || payload.preco <= 0) return 'Preço precisa ser maior que zero'
   return ''
+}
+
+function isMissingPlanLimitColumn(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42703' || message.includes('max_lps') || message.includes('max_leads_mes') || message.includes('templates_premium')
+}
+
+function legacyPlanoPayload(payload) {
+  const legacy = { ...payload }
+  delete legacy.max_lps
+  delete legacy.max_leads_mes
+  delete legacy.templates_premium
+  return legacy
 }
 
 async function buscarPlanoBasico(id) {
@@ -245,12 +263,24 @@ export async function POST(request) {
 
       const planoAntes = await buscarPlanoBasico(id)
 
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('planos')
         .update(payload)
         .eq('id', id)
         .select('*')
         .single()
+
+      if (isMissingPlanLimitColumn(error)) {
+        const retry = await supabaseAdmin
+          .from('planos')
+          .update(legacyPlanoPayload(payload))
+          .eq('id', id)
+          .select('*')
+          .single()
+
+        data = retry.data
+        error = retry.error
+      }
 
       if (error) throw error
 
@@ -273,6 +303,9 @@ export async function POST(request) {
           intervalo_relatorio_atual: data.intervalo_relatorio,
           max_criativos_anterior: planoAntes?.max_criativos || 0,
           max_criativos_atual: data.max_criativos,
+          max_lps_atual: data.max_lps || payload.max_lps || 0,
+          max_leads_mes_atual: data.max_leads_mes || payload.max_leads_mes || 0,
+          templates_premium_atual: data.templates_premium ?? payload.templates_premium,
         },
       })
 
@@ -288,11 +321,22 @@ export async function POST(request) {
         return permissaoNegada('planos', 'create')
       }
 
-      const { data, error } = await supabaseAdmin
+      let { data, error } = await supabaseAdmin
         .from('planos')
         .insert([payload])
         .select('*')
         .single()
+
+      if (isMissingPlanLimitColumn(error)) {
+        const retry = await supabaseAdmin
+          .from('planos')
+          .insert([legacyPlanoPayload(payload)])
+          .select('*')
+          .single()
+
+        data = retry.data
+        error = retry.error
+      }
 
       if (error) throw error
 
@@ -310,6 +354,9 @@ export async function POST(request) {
           ciclo_cobranca: data.ciclo_cobranca,
           intervalo_relatorio: data.intervalo_relatorio,
           max_criativos: data.max_criativos,
+          max_lps: data.max_lps || payload.max_lps || 0,
+          max_leads_mes: data.max_leads_mes || payload.max_leads_mes || 0,
+          templates_premium: data.templates_premium ?? payload.templates_premium,
         },
       })
 

@@ -240,11 +240,23 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
     if (previewMode || !page?.slug) return
 
     const controller = new AbortController()
+    const params = new URLSearchParams(window.location.search)
 
     fetch('/api/lp-generator/view', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pageSlug: page.slug }),
+      body: JSON.stringify({
+        pageSlug: page.slug,
+        pageUrl: window.location.href,
+        referer: document.referrer,
+        utm: {
+          source: params.get('utm_source') || '',
+          medium: params.get('utm_medium') || '',
+          campaign: params.get('utm_campaign') || '',
+          content: params.get('utm_content') || '',
+          term: params.get('utm_term') || '',
+        },
+      }),
       signal: controller.signal,
     }).catch(() => {})
 
@@ -293,11 +305,21 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
     setSending(true)
 
     try {
+      const params = new URLSearchParams(window.location.search)
       const response = await fetch('/api/lp-generator/lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           pageSlug: page.slug,
+          pageUrl: window.location.href,
+          referer: document.referrer,
+          utm: {
+            source: params.get('utm_source') || '',
+            medium: params.get('utm_medium') || '',
+            campaign: params.get('utm_campaign') || '',
+            content: params.get('utm_content') || '',
+            term: params.get('utm_term') || '',
+          },
           ...form,
         }),
       })
