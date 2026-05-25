@@ -232,6 +232,9 @@ export default function MikrotiksPage() {
   const [formDiagnostics, setFormDiagnostics] = useState(null)
   const [formDiagnosticsLoading, setFormDiagnosticsLoading] = useState(false)
 
+  const [trafficByRouter, setTrafficByRouter] = useState({})
+  const [trafficLoadingId, setTrafficLoadingId] = useState(null)
+
   const canCreate = Boolean(permissions.create)
   const canUpdate = Boolean(permissions.update)
   const canDelete = Boolean(permissions.delete)
@@ -510,6 +513,34 @@ export default function MikrotiksPage() {
       toast.error(error.message || 'Erro ao salvar MikroTik.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function monitorarTrafegoRouter(router, interfaceName = '') {
+    if (!router?.id) return
+
+    setTrafficLoadingId(router.id)
+
+    try {
+      const data = await adminApiFetch('/api/admin/mikrotiks/traffic', {
+        method: 'POST',
+        body: {
+          routerId: router.id,
+          interfaceName,
+        },
+      })
+
+      setTrafficByRouter((current) => ({
+        ...current,
+        [router.id]: data.monitor,
+      }))
+
+      toast.success('Tráfego atualizado.')
+    } catch (error) {
+      console.error('Erro ao monitorar tráfego:', error)
+      toast.error(error.message || 'Erro ao monitorar tráfego.')
+    } finally {
+      setTrafficLoadingId(null)
     }
   }
 
@@ -1135,7 +1166,67 @@ export default function MikrotiksPage() {
                       </div>
                     </div>
 
+                    {trafficByRouter[routerItem.id] && (
+                      <div className="rounded-2xl border border-[#6be12f]/15 bg-[#071006] p-4">
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-widest font-black text-[#8cf059]">
+                              Monitoramento ao vivo
+                            </p>
+                            <p className="text-[11px] text-neutral-500 mt-1">
+                              Interface: {trafficByRouter[routerItem.id]?.interface?.name || 'auto'}
+                            </p>
+                          </div>
+
+                          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+                            Online
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="rounded-xl border border-white/[0.05] bg-black/30 p-3">
+                            <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
+                              Download
+                            </p>
+                            <p className="text-xl font-black text-white mt-1">
+                              {trafficByRouter[routerItem.id]?.traffic?.download || '0 Mbps'}
+                            </p>
+                            <p className="text-[10px] text-neutral-600 mt-1">
+                              rx-bits/s
+                            </p>
+                          </div>
+
+                          <div className="rounded-xl border border-white/[0.05] bg-black/30 p-3">
+                            <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
+                              Upload
+                            </p>
+                            <p className="text-xl font-black text-white mt-1">
+                              {trafficByRouter[routerItem.id]?.traffic?.upload || '0 Mbps'}
+                            </p>
+                            <p className="text-[10px] text-neutral-600 mt-1">
+                              tx-bits/s
+                            </p>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-neutral-600 mt-3">
+                          Última leitura: {trafficByRouter[routerItem.id]?.checkedAt
+                            ? new Date(trafficByRouter[routerItem.id].checkedAt).toLocaleTimeString('pt-BR')
+                            : '-'}
+                        </p>
+                      </div>
+                    )}
+
                     <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={() => monitorarTrafegoRouter(routerItem)}
+                        disabled={trafficLoadingId === routerItem.id}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50"
+                      >
+                        {trafficLoadingId === routerItem.id ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+                        Monitorar tráfego
+                      </button>
+
                       <button
                         onClick={() => testarRouter(routerItem)}
                         disabled={diagnosing}
