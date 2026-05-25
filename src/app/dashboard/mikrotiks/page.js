@@ -234,6 +234,9 @@ export default function MikrotiksPage() {
 
   const [trafficByRouter, setTrafficByRouter] = useState({})
   const [trafficLoadingId, setTrafficLoadingId] = useState(null)
+  const [speedTestByRouter, setSpeedTestByRouter] = useState({})
+  const [speedTestErrorByRouter, setSpeedTestErrorByRouter] = useState({})
+  const [speedTestLoadingId, setSpeedTestLoadingId] = useState(null)
 
   const canCreate = Boolean(permissions.create)
   const canUpdate = Boolean(permissions.update)
@@ -541,6 +544,44 @@ export default function MikrotiksPage() {
       toast.error(error.message || 'Erro ao monitorar tráfego.')
     } finally {
       setTrafficLoadingId(null)
+    }
+  }
+
+  async function testarVelocidadeInternet(router) {
+    if (!router?.id) return
+
+    setSpeedTestLoadingId(router.id)
+
+    try {
+      const data = await adminApiFetch('/api/admin/mikrotiks/traffic', {
+        method: 'POST',
+        body: {
+          routerId: router.id,
+          mode: 'internet-test',
+          bytes: 50000000,
+          pingHost: '1.1.1.1',
+        },
+      })
+
+      setSpeedTestByRouter((current) => ({
+        ...current,
+        [router.id]: data.monitor,
+      }))
+      setSpeedTestErrorByRouter((current) => ({
+        ...current,
+        [router.id]: '',
+      }))
+
+      toast.success('Teste de internet concluido.')
+    } catch (error) {
+      console.error('Erro ao testar velocidade da internet:', error)
+      setSpeedTestErrorByRouter((current) => ({
+        ...current,
+        [router.id]: error.message || 'Erro ao testar velocidade da internet.',
+      }))
+      toast.error(error.message || 'Erro ao testar velocidade da internet.')
+    } finally {
+      setSpeedTestLoadingId(null)
     }
   }
 
@@ -1217,6 +1258,83 @@ export default function MikrotiksPage() {
                       </div>
                     )}
 
+                    <div className="rounded-2xl border border-sky-400/15 bg-sky-950/10 p-4">
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-widest font-black text-sky-300">
+                            Teste rapido da internet
+                          </p>
+                          <p className="text-[11px] text-neutral-500 mt-1">
+                            O MikroTik baixa um arquivo externo e o painel estima a banda de download que chega nele.
+                          </p>
+                        </div>
+
+                        <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-300">
+                          Operadora
+                        </span>
+                      </div>
+
+                      {speedTestByRouter[routerItem.id] ? (
+                        <>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="rounded-xl border border-white/[0.05] bg-black/30 p-3">
+                              <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
+                                Download medio
+                              </p>
+                              <p className="text-xl font-black text-white mt-1">
+                                {speedTestByRouter[routerItem.id]?.internetTest?.download || '0 Mbps'}
+                              </p>
+                              <p className="text-[10px] text-neutral-600 mt-1">
+                                pico {speedTestByRouter[routerItem.id]?.internetTest?.peakDownload || '-'}
+                              </p>
+                            </div>
+
+                            <div className="rounded-xl border border-white/[0.05] bg-black/30 p-3">
+                              <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
+                                Upload observado
+                              </p>
+                              <p className="text-xl font-black text-white mt-1">
+                                {speedTestByRouter[routerItem.id]?.internetTest?.upload || '0 Mbps'}
+                              </p>
+                              <p className="text-[10px] text-neutral-600 mt-1">
+                                pico {speedTestByRouter[routerItem.id]?.internetTest?.peakUpload || '-'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <p className="text-[10px] text-neutral-600 mt-3">
+                            Ping: {speedTestByRouter[routerItem.id]?.internetTest?.ping?.average || '-'} | perda {speedTestByRouter[routerItem.id]?.internetTest?.ping?.lossPercent ?? '-'}% | Duracao: {speedTestByRouter[routerItem.id]?.internetTest?.durationSeconds || '-'}s
+                          </p>
+
+                          <p className="text-[10px] text-neutral-600 mt-2">
+                            Amostras: {speedTestByRouter[routerItem.id]?.internetTest?.samplesCount || 0} | Ultima leitura: {speedTestByRouter[routerItem.id]?.checkedAt
+                              ? new Date(speedTestByRouter[routerItem.id].checkedAt).toLocaleTimeString('pt-BR')
+                              : '-'}
+                          </p>
+
+                          <p className="text-[10px] text-neutral-600 mt-2">
+                            Medido na interface {speedTestByRouter[routerItem.id]?.interface?.name || 'auto'} durante download controlado.
+                          </p>
+                        </>
+                      ) : speedTestErrorByRouter[routerItem.id] ? (
+                        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
+                          <p className="text-xs font-black text-red-300">
+                            Teste nao concluido
+                          </p>
+                          <p className="text-[11px] text-red-200/80 mt-1 break-words">
+                            {speedTestErrorByRouter[routerItem.id]}
+                          </p>
+                          <p className="text-[10px] text-neutral-500 mt-2">
+                            Para medicao de cobranca, o MikroTik precisa conseguir baixar o arquivo de teste pela WAN e responder amostras de monitoramento. Se falhar, valide DNS, gateway, rota e acesso HTTP/HTTPS no roteador.
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="rounded-xl border border-white/[0.05] bg-black/30 p-3 text-xs text-neutral-500">
+                          Clique no botao Teste de internet para estimar a velocidade que chega ao MikroTik. O botao de trafego mostra apenas o uso atual.
+                        </p>
+                      )}
+                    </div>
+
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={() => monitorarTrafegoRouter(routerItem)}
@@ -1224,7 +1342,16 @@ export default function MikrotiksPage() {
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50"
                       >
                         {trafficLoadingId === routerItem.id ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
-                        Monitorar tráfego
+                        Trafego agora
+                      </button>
+
+                      <button
+                        onClick={() => testarVelocidadeInternet(routerItem)}
+                        disabled={speedTestLoadingId === routerItem.id}
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-400/10 px-5 py-3 text-sm font-black text-sky-200 hover:bg-sky-400/15 disabled:opacity-50"
+                      >
+                        {speedTestLoadingId === routerItem.id ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+                        Teste de internet
                       </button>
 
                       <button

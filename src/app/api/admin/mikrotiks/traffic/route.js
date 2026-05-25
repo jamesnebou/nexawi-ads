@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { monitorRouterTraffic, runRouterInternetTest } from '@/lib/routeros-traffic'
 
 export const runtime = 'nodejs'
 
@@ -28,16 +29,22 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
   if (!baseUrl) throw new Error('CONTROL_API_BASE_URL não configurado')
   if (!secret) throw new Error('NEXAWI_CONTROL_SECRET não configurado')
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-control-secret': secret,
-      'x-cron-secret': secret,
-    },
-    cache: 'no-store',
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let response
+
+  try {
+    response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-control-secret': secret,
+        'x-cron-secret': secret,
+      },
+      cache: 'no-store',
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch (error) {
+    throw new Error(`Control API indisponivel em ${baseUrl}. ${error.message || 'fetch failed'}`)
+  }
 
   const text = await response.text()
   let data = null
@@ -55,6 +62,61 @@ async function callControlApi(path, { method = 'POST', body } = {}) {
   return data
 }
 
+function isInternetTestMode(mode = '') {
+  return mode === 'speed-test' || mode === 'internet-test'
+}
+
+function isLocalRequest(request) {
+  const host = request.headers.get('host') || ''
+  return /^localhost(:|$)/i.test(host) || /^127\.0\.0\.1(:|$)/.test(host)
+}
+
+function getRouterHost(baseUrl = '') {
+  try {
+    return new URL(/^https?:\/\//i.test(baseUrl) ? baseUrl : `http://${baseUrl}`).hostname
+  } catch {
+    return ''
+  }
+}
+
+function isPrivateOrVpnHost(host = '') {
+  return (
+    /^10\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(host) ||
+    /^192\.168\./.test(host) ||
+    /^127\./.test(host) ||
+    /^localhost$/i.test(host)
+  )
+}
+
+function assertValidInternetTestResult(result) {
+  const internetTest = result?.internetTest || {}
+  const peak = Number(internetTest.peakDownloadBitsPerSecond || 0)
+  const average = Number(internetTest.downloadBitsPerSecond || 0)
+  const samples = Number(internetTest.samplesCount || 0)
+
+  if (peak > 0 && average > 0 && samples > 0) return
+
+  throw new Error('Control API retornou teste de internet sem medicao valida')
+}
+
+async function runDirectRouterTest({ mode, routerConfig, interfaceName, body }) {
+  if (isInternetTestMode(mode)) {
+    return runRouterInternetTest({
+      routerConfig,
+      interfaceName,
+      bytes: body.bytes,
+      downloadUrl: body.downloadUrl,
+      pingHost: body.pingHost || '1.1.1.1',
+    })
+  }
+
+  return monitorRouterTraffic({
+    routerConfig,
+    interfaceName,
+  })
+}
+
 export async function POST(request) {
   const auth = await requireAdmin(request, {
     module: 'hotspots',
@@ -67,6 +129,7 @@ export async function POST(request) {
     const body = await request.json().catch(() => ({}))
     const routerId = clean(body.routerId || body.id)
     const interfaceName = clean(body.interfaceName || body.interface)
+    const mode = clean(body.mode || body.type || 'traffic')
 
     if (!routerId) {
       return NextResponse.json(
@@ -84,16 +147,61 @@ export async function POST(request) {
       hotspotServer: router.hotspot_server || 'hotspot1',
     }
 
-    const result = await callControlApi('/api/control/router/traffic', {
-      method: 'POST',
-      body: {
+    const controlPayload = {
+      routerConfig,
+      interfaceName,
+      mode,
+      bytes: body.bytes,
+      downloadUrl: body.downloadUrl,
+      pingHost: body.pingHost,
+    }
+
+    let result
+    let source = 'control-api'
+    let controlApiError = ''
+    const routerHost = getRouterHost(routerConfig.baseUrl)
+    const shouldPreferDirect = Boolean(body.preferDirect) && !isPrivateOrVpnHost(routerHost)
+
+    try {
+      if (shouldPreferDirect) {
+        source = 'direct-routeros'
+        result = await runDirectRouterTest({
+          mode,
+          routerConfig,
+          interfaceName,
+          body,
+        })
+      } else {
+        result = await callControlApi('/api/control/router/traffic', {
+          method: 'POST',
+          body: controlPayload,
+        })
+
+        if (isInternetTestMode(mode)) {
+          assertValidInternetTestResult(result)
+        }
+      }
+    } catch (error) {
+      controlApiError = error.message || 'Control API indisponivel'
+      source = 'direct-routeros'
+      if (isLocalRequest(request) && isPrivateOrVpnHost(routerHost)) {
+        throw new Error(
+          `${controlApiError}. Este MikroTik usa IP privado/VPN (${routerHost}); no localhost o teste precisa passar pela Control API da VPS ou o Windows precisa estar na mesma VPN.`
+        )
+      }
+
+      result = await runDirectRouterTest({
+        mode,
         routerConfig,
         interfaceName,
-      },
-    })
+        body,
+      })
+    }
 
     return NextResponse.json({
       ok: true,
+      source,
+      controlApiError,
       router: {
         id: router.id,
         nome: router.nome,
