@@ -66,11 +66,6 @@ function isInternetTestMode(mode = '') {
   return mode === 'speed-test' || mode === 'internet-test'
 }
 
-function isLocalRequest(request) {
-  const host = request.headers.get('host') || ''
-  return /^localhost(:|$)/i.test(host) || /^127\.0\.0\.1(:|$)/.test(host)
-}
-
 function getRouterHost(baseUrl = '') {
   try {
     return new URL(/^https?:\/\//i.test(baseUrl) ? baseUrl : `http://${baseUrl}`).hostname
@@ -183,13 +178,13 @@ export async function POST(request) {
       }
     } catch (error) {
       controlApiError = error.message || 'Control API indisponivel'
-      source = 'direct-routeros'
-      if (isLocalRequest(request) && isPrivateOrVpnHost(routerHost)) {
+      if (isPrivateOrVpnHost(routerHost)) {
         throw new Error(
-          `${controlApiError}. Este MikroTik usa IP privado/VPN (${routerHost}); no localhost o teste precisa passar pela Control API da VPS ou o Windows precisa estar na mesma VPN.`
+          `${controlApiError}. Este MikroTik usa IP privado/VPN (${routerHost}); o painel precisa passar pela Control API da VPS para acessar o roteador.`
         )
       }
 
+      source = 'direct-routeros'
       result = await runDirectRouterTest({
         mode,
         routerConfig,
