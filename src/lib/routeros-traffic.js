@@ -83,6 +83,12 @@ function formatMs(value = 0) {
   return `${ms.toFixed(0)} ms`
 }
 
+function getSpeedTestBytes(value = 0) {
+  const bytes = Number(value || 0)
+  if (!Number.isFinite(bytes) || bytes <= 0) return 1000000000
+  return Math.max(10000000, Math.min(bytes, 2000000000))
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
@@ -188,14 +194,31 @@ export async function monitorRouterTraffic({ routerConfig, interfaceName = '' })
   }
 }
 
-function buildSpeedTestUrls(downloadUrl = '', bytes = 50000000) {
+function applySpeedTestBytes(url = '', bytes = 1000000000) {
+  const cleanUrl = String(url || '').trim()
+  if (!cleanUrl) return ''
+
+  try {
+    const parsedUrl = new URL(cleanUrl)
+    if (parsedUrl.searchParams.has('bytes')) {
+      parsedUrl.searchParams.set('bytes', String(bytes))
+      return parsedUrl.toString()
+    }
+  } catch {
+    return cleanUrl
+  }
+
+  return cleanUrl
+}
+
+function buildSpeedTestUrls(downloadUrl = '', bytes = 1000000000) {
+  const size = getSpeedTestBytes(bytes)
   const configuredUrl =
     String(downloadUrl || '').trim() ||
     String(process.env.NEXAWI_SPEEDTEST_DOWNLOAD_URL || '').trim()
 
-  if (configuredUrl) return [configuredUrl]
+  if (configuredUrl) return [applySpeedTestBytes(configuredUrl, size)]
 
-  const size = Math.max(10000000, Number(bytes || 50000000))
   const publicAppUrl = String(
     process.env.NEXT_PUBLIC_APP_URL ||
     process.env.NEXT_PUBLIC_SITE_URL ||
@@ -210,8 +233,8 @@ function buildSpeedTestUrls(downloadUrl = '', bytes = 50000000) {
 
   return [
     `${appUrl}/api/speedtest/download?bytes=${size}`,
-    `http://speedtest.tele2.net/${size >= 50000000 ? '50MB' : '10MB'}.zip`,
-    `http://ipv4.download.thinkbroadband.com/${size >= 50000000 ? '50MB' : '10MB'}.zip`,
+    `http://speedtest.tele2.net/${size >= 1000000000 ? '1GB' : '100MB'}.zip`,
+    `http://ipv4.download.thinkbroadband.com/${size >= 1000000000 ? '1GB' : '100MB'}.zip`,
     `https://speed.cloudflare.com/__down?bytes=${size}`,
   ]
 }
@@ -320,7 +343,7 @@ export async function runRouterInternetTest({
   routerConfig,
   interfaceName = '',
   downloadUrl = '',
-  bytes = 50000000,
+  bytes = 1000000000,
   pingHost = '1.1.1.1',
 }) {
   const testUrls = buildSpeedTestUrls(downloadUrl, bytes)

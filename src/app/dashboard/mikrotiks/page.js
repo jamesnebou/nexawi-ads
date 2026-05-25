@@ -558,7 +558,7 @@ export default function MikrotiksPage() {
         body: {
           routerId: router.id,
           mode: 'internet-test',
-          bytes: 50000000,
+          bytes: 1000000000,
           pingHost: '1.1.1.1',
         },
       })
@@ -1265,7 +1265,7 @@ export default function MikrotiksPage() {
                             Teste rapido da internet
                           </p>
                           <p className="text-[11px] text-neutral-500 mt-1">
-                            O MikroTik baixa um arquivo externo e o painel estima a banda de download que chega nele.
+                            O MikroTik baixa um arquivo grande e o painel estima a banda de download que chega nele.
                           </p>
                         </div>
 

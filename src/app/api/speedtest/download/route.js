@@ -1,10 +1,14 @@
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+const DEFAULT_BYTES = 1000000000
+const MIN_BYTES = 1000000
+const MAX_BYTES = 2000000000
+
 function clampBytes(value) {
   const bytes = Number(value || 0)
-  if (!Number.isFinite(bytes) || bytes <= 0) return 50000000
-  return Math.max(1000000, Math.min(bytes, 250000000))
+  if (!Number.isFinite(bytes) || bytes <= 0) return DEFAULT_BYTES
+  return Math.max(MIN_BYTES, Math.min(bytes, MAX_BYTES))
 }
 
 export async function GET(request) {
