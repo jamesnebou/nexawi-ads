@@ -1285,6 +1285,15 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Field label="Texto" value={config.cta.texto} onChange={(value) => updateNested(setConfig, 'cta', 'texto', value)} textarea />
           <Field label="Texto do CTA" value={config.cta.ctaTexto} onChange={(value) => updateNested(setConfig, 'cta', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.cta.ctaUrl} onChange={(value) => updateNested(setConfig, 'cta', 'ctaUrl', value)} />
+          <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
+            <p className="text-sm font-black text-white">Botao fixo no mobile</p>
+            <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+              Texto do botao que fica preso no rodape do celular. Se ficar vazio, usa o texto do botao do formulario.
+            </p>
+            <div className="mt-3">
+              <Field label="Texto do botao mobile" value={config.cta.mobileTexto || ''} onChange={(value) => updateNested(setConfig, 'cta', 'mobileTexto', value)} placeholder="Enviar meus dados" />
+            </div>
+          </div>
           <ImageUploadField label="Background da secao" field="cta-background" slug={slug || name} scope={scope} pageId={id} value={config.cta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'cta', 'backgroundUrl', value)} />
         </div>
       )

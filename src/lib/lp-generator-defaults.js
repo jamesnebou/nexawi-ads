@@ -266,6 +266,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     texto: 'Repita a chamada principal depois que prova, oferta e objecoes ja foram trabalhadas.',
     ctaTexto: 'Quero falar agora',
     ctaUrl: '#formulario',
+    mobileTexto: '',
   },
   faq: {
     ativo: true,

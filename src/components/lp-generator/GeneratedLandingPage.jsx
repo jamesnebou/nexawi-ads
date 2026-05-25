@@ -391,6 +391,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
   const visualStyle = config.estilo?.preset || 'editorial-premium'
   const templateLayout = config.layout?.templateLayout || 'conversion-flow'
   const layoutContent = getTemplateLayoutContent(templateLayout)
+  const mobileCtaText = String(config.cta?.mobileTexto || '').trim() || config.formulario.botao
   const heroVariant = config.hero.variante || 'split-media'
   const heroCoverUrl = config.hero.backgroundUrl || (heroVariant === 'cover-story' ? config.hero.imagemUrl : '')
   const heroGridClassName = {
@@ -1481,7 +1482,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
             href="#formulario"
             className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-black text-black"
           >
-            {config.formulario.botao}
+            {mobileCtaText}
             <ArrowRight size={17} />
           </a>
         </div>
