@@ -83,6 +83,92 @@ function formatMs(value = 0) {
   return `${ms.toFixed(0)} ms`
 }
 
+function parseByteSize(value = '') {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+
+  const raw = String(value || '').trim()
+  if (!raw) return 0
+
+  const match = raw.match(/^([\d.,]+)\s*([kmgt]?i?b|bytes?|b)?$/i)
+  if (!match) return toNumber(raw)
+
+  const amount = Number(match[1].replace(',', '.'))
+  if (!Number.isFinite(amount)) return 0
+
+  const unit = String(match[2] || 'b').toLowerCase()
+  const multipliers = {
+    b: 1,
+    byte: 1,
+    bytes: 1,
+    kb: 1000,
+    kib: 1024,
+    mb: 1000 * 1000,
+    mib: 1024 * 1024,
+    gb: 1000 * 1000 * 1000,
+    gib: 1024 * 1024 * 1024,
+    tb: 1000 * 1000 * 1000 * 1000,
+    tib: 1024 * 1024 * 1024 * 1024,
+  }
+
+  return amount * (multipliers[unit] || 1)
+}
+
+function parseDurationMs(value = '') {
+  if (typeof value === 'number') return Number.isFinite(value) ? value * 1000 : 0
+
+  const raw = String(value || '').trim()
+  if (!raw) return 0
+
+  const unitMatch = raw.match(/^([\d.,]+)\s*(ms|s|m|h)?$/i)
+  if (unitMatch) {
+    const amount = Number(unitMatch[1].replace(',', '.'))
+    if (!Number.isFinite(amount)) return 0
+
+    const unit = String(unitMatch[2] || 's').toLowerCase()
+    if (unit === 'ms') return amount
+    if (unit === 'm') return amount * 60 * 1000
+    if (unit === 'h') return amount * 60 * 60 * 1000
+    return amount * 1000
+  }
+
+  const parts = raw.split(':').map((part) => Number(part))
+  if (parts.length === 3 && parts.every(Number.isFinite)) {
+    const [hours, minutes, seconds] = parts
+    return ((hours * 60 * 60) + (minutes * 60) + seconds) * 1000
+  }
+
+  return 0
+}
+
+function getFetchResultRow(fetchResult) {
+  if (Array.isArray(fetchResult)) return fetchResult[0] || {}
+  if (fetchResult && typeof fetchResult === 'object') return fetchResult
+  return {}
+}
+
+function extractFetchMetrics(fetchResult, fallbackBytes = 0, fallbackDurationMs = 0) {
+  const row = getFetchResultRow(fetchResult)
+  const downloadedBytes = parseByteSize(
+    row.downloaded ||
+    row['downloaded-size'] ||
+    row.downloadedSize ||
+    row.size ||
+    fallbackBytes
+  )
+  const durationMs = parseDurationMs(row.duration || row.time || row.elapsed) || fallbackDurationMs
+  const bitsPerSecond = downloadedBytes > 0 && durationMs > 0
+    ? (downloadedBytes * 8 * 1000) / durationMs
+    : 0
+
+  return {
+    downloadedBytes,
+    durationMs,
+    bitsPerSecond,
+    download: formatMbps(bitsPerSecond),
+    raw: fetchResult,
+  }
+}
+
 function getSpeedTestBytes(value = 0) {
   const bytes = Number(value || 0)
   if (!Number.isFinite(bytes) || bytes <= 0) return 1000000000
@@ -277,7 +363,7 @@ function summarizeSamples(samples = []) {
   }
 }
 
-async function runFetchWithTrafficSampling({ routerConfig, interfaceName, url }) {
+async function runFetchWithTrafficSampling({ routerConfig, interfaceName, url, bytes = 0 }) {
   const samples = []
   const startedAt = Date.now()
   let fetchResult = null
@@ -331,10 +417,24 @@ async function runFetchWithTrafficSampling({ routerConfig, interfaceName, url })
 
   const durationMs = Math.max(1, Date.now() - startedAt)
   const summary = summarizeSamples(samples)
+  const fetchMetrics = extractFetchMetrics(fetchResult, bytes, durationMs)
+  const measuredDownloadBitsPerSecond = Math.max(
+    summary.averageRxBitsPerSecond,
+    fetchMetrics.bitsPerSecond
+  )
+  const peakDownloadBitsPerSecond = Math.max(
+    summary.peakRxBitsPerSecond,
+    fetchMetrics.bitsPerSecond
+  )
 
   return {
     fetchResult,
     durationMs,
+    fetchMetrics,
+    measuredDownloadBitsPerSecond,
+    peakDownloadBitsPerSecond,
+    measuredDownload: formatMbps(measuredDownloadBitsPerSecond),
+    peakMeasuredDownload: formatMbps(peakDownloadBitsPerSecond),
     ...summary,
   }
 }
@@ -347,6 +447,7 @@ export async function runRouterInternetTest({
   pingHost = '1.1.1.1',
 }) {
   const testUrls = buildSpeedTestUrls(downloadUrl, bytes)
+  const requestedBytes = getSpeedTestBytes(bytes)
 
   let ping = null
 
@@ -383,12 +484,14 @@ export async function runRouterInternetTest({
         routerConfig,
         interfaceName: targetInterface.name,
         url: testUrl,
+        bytes: requestedBytes,
       })
 
       successfulAttempt = {
-        ok: attemptResult.peakRxBitsPerSecond > 0,
+        ok: attemptResult.peakDownloadBitsPerSecond > 0,
         url: testUrl,
         fetchResult: attemptResult.fetchResult,
+        fetchMetrics: attemptResult.fetchMetrics,
         interface: {
           id: targetInterface['.id'] || '',
           name: targetInterface.name,
@@ -399,12 +502,12 @@ export async function runRouterInternetTest({
         durationMs: attemptResult.durationMs,
         samplesCount: attemptResult.samplesCount,
         samples: attemptResult.samples,
-        downloadBitsPerSecond: attemptResult.averageRxBitsPerSecond,
-        peakDownloadBitsPerSecond: attemptResult.peakRxBitsPerSecond,
+        downloadBitsPerSecond: attemptResult.measuredDownloadBitsPerSecond,
+        peakDownloadBitsPerSecond: attemptResult.peakDownloadBitsPerSecond,
         uploadBitsPerSecond: attemptResult.averageTxBitsPerSecond,
         peakUploadBitsPerSecond: attemptResult.peakTxBitsPerSecond,
-        download: attemptResult.averageDownload,
-        peakDownload: attemptResult.peakDownload,
+        download: attemptResult.measuredDownload,
+        peakDownload: attemptResult.peakMeasuredDownload,
         upload: attemptResult.averageUpload,
         peakUpload: attemptResult.peakUpload,
       }
@@ -443,6 +546,8 @@ export async function runRouterInternetTest({
       upload: successfulAttempt.upload,
       peakUpload: successfulAttempt.peakUpload,
       downloadUrl: successfulAttempt.url,
+      downloadedBytes: successfulAttempt.fetchMetrics?.downloadedBytes || 0,
+      measurementSource: successfulAttempt.samplesCount > 1 ? 'monitor-traffic' : 'tool-fetch',
       durationMs: successfulAttempt.durationMs,
       durationSeconds: Number((successfulAttempt.durationMs / 1000).toFixed(2)),
       samplesCount: successfulAttempt.samplesCount,
@@ -450,7 +555,7 @@ export async function runRouterInternetTest({
       pingHost,
       ping,
       attempts,
-      note: 'Medicao feita por amostras de monitor-traffic durante download controlado. Use roteador sem outros trafegos concorrentes para cobrar fornecedor.',
+      note: 'Medicao calculada pelo volume baixado no /tool/fetch e validada por monitoramento de interface quando o RouterOS permite amostras simultaneas. Use roteador sem outros trafegos concorrentes para cobrar fornecedor.',
     },
     checkedAt: new Date().toISOString(),
   }
