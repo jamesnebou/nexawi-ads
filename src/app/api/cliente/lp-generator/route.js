@@ -18,6 +18,11 @@ function isSlugConflict(error) {
   return error?.code === '23505' && String(error?.message || '').includes('lp_generator_pages_slug_key')
 }
 
+function isMissingPlanLimitColumn(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42703' || message.includes('max_lps') || message.includes('max_leads_mes') || message.includes('templates_premium')
+}
+
 function getDateStart(daysAgo = 0) {
   const date = new Date()
   date.setHours(0, 0, 0, 0)
@@ -90,7 +95,23 @@ async function getLpPlanLimits({ clienteId, empresaId }) {
   if (clienteId) query = query.eq('id', clienteId)
   else if (empresaId) query = query.eq('empresa_id', empresaId)
 
-  const { data, error } = await query.maybeSingle()
+  let { data, error } = await query.maybeSingle()
+
+  if (isMissingPlanLimitColumn(error)) {
+    let fallbackQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id, plano_id, planos(id)')
+      .neq('status', 'Cancelado')
+      .limit(1)
+
+    if (clienteId) fallbackQuery = fallbackQuery.eq('id', clienteId)
+    else if (empresaId) fallbackQuery = fallbackQuery.eq('empresa_id', empresaId)
+
+    const retry = await fallbackQuery.maybeSingle()
+    data = retry.data
+    error = retry.error
+  }
+
   if (error || !data?.planos) return { maxLps: 0, maxLeadsMes: 0, templatesPremium: true }
 
   return {

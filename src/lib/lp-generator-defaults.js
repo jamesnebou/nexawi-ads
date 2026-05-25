@@ -228,6 +228,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
         descricao: 'Para validar a oferta com clareza.',
         preco: 'R$ 297',
         periodo: '/mes',
+        imagemUrl: '',
         ctaTexto: 'Quero este plano',
         ctaUrl: '#formulario',
         destaque: false,
@@ -238,6 +239,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
         descricao: 'Para operar com mais velocidade.',
         preco: 'R$ 597',
         periodo: '/mes',
+        imagemUrl: '',
         ctaTexto: 'Escolher crescimento',
         ctaUrl: '#formulario',
         destaque: true,
@@ -248,6 +250,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
         descricao: 'Para campanhas mais completas.',
         preco: 'Sob consulta',
         periodo: '',
+        imagemUrl: '',
         ctaTexto: 'Falar com especialista',
         ctaUrl: '#formulario',
         destaque: false,
@@ -335,6 +338,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     googleTagManagerId: '',
   },
   layout: {
+    templateLayout: 'conversion-flow',
     sectionOrder: LP_GENERATOR_ORDERABLE_SECTIONS.map((section) => section.id),
   },
 }
@@ -344,6 +348,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'servico-local',
     name: 'Servico local',
     description: 'Para prestadores, lojas, assistencias, oficinas e negocios de bairro.',
+    premium: false,
     defaultName: 'LP Servico Local',
     config: {
       identidade: {
@@ -353,6 +358,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'editorial-premium',
+      },
+      layout: {
+        templateLayout: 'local-service',
+        sectionOrder: ['beneficios', 'prova', 'oferta', 'garantia', 'cta', 'faq', 'formulario', 'logos', 'galeria', 'urgencia', 'precos'],
       },
       hero: {
         variante: 'split-media',
@@ -400,6 +409,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'clinica-estetica',
     name: 'Clinica e estetica',
     description: 'Para estetica, saude, odontologia, harmonizacao, terapeutas e studios.',
+    premium: false,
     defaultName: 'LP Clinica e Estetica',
     config: {
       identidade: {
@@ -409,6 +419,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'clinica-clean-premium',
+      },
+      layout: {
+        templateLayout: 'clinic-editorial',
+        sectionOrder: ['galeria', 'beneficios', 'prova', 'garantia', 'oferta', 'cta', 'faq', 'formulario', 'logos', 'urgencia', 'precos'],
       },
       hero: {
         variante: 'split-media',
@@ -463,6 +477,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'curso-mentoria',
     name: 'Curso ou mentoria',
     description: 'Para experts, treinamentos, consultorias, grupos pagos e infoprodutos.',
+    premium: true,
     defaultName: 'LP Curso ou Mentoria',
     config: {
       identidade: {
@@ -472,6 +487,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'tech-neon',
+      },
+      layout: {
+        templateLayout: 'expert-launch',
+        sectionOrder: ['beneficios', 'prova', 'urgencia', 'precos', 'oferta', 'cta', 'faq', 'formulario', 'logos', 'galeria', 'garantia'],
       },
       hero: {
         variante: 'center-stage',
@@ -527,6 +546,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'imobiliaria',
     name: 'Imobiliaria',
     description: 'Para corretores, loteamentos, apartamentos, casas e captacao de visitas.',
+    premium: true,
     defaultName: 'LP Imobiliaria',
     config: {
       identidade: {
@@ -536,6 +556,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'imobiliario-impactante',
+      },
+      layout: {
+        templateLayout: 'real-estate-showcase',
+        sectionOrder: ['galeria', 'beneficios', 'oferta', 'urgencia', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'precos'],
       },
       hero: {
         variante: 'media-left',
@@ -591,6 +615,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'evento',
     name: 'Evento',
     description: 'Para shows, workshops, palestras, congressos, eventos locais e inscricoes.',
+    premium: true,
     defaultName: 'LP Evento',
     config: {
       identidade: {
@@ -600,6 +625,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'evento-agressivo',
+      },
+      layout: {
+        templateLayout: 'event-ticket',
+        sectionOrder: ['urgencia', 'beneficios', 'galeria', 'precos', 'prova', 'oferta', 'cta', 'faq', 'formulario', 'logos', 'garantia'],
       },
       hero: {
         variante: 'cover-story',
@@ -655,6 +684,7 @@ export const LP_GENERATOR_TEMPLATES = [
     id: 'saas',
     name: 'SaaS ou startup',
     description: 'Para softwares, apps, plataformas, listas de espera e demonstracoes.',
+    premium: true,
     defaultName: 'LP SaaS',
     config: {
       identidade: {
@@ -664,6 +694,10 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       estilo: {
         preset: 'tech-neon',
+      },
+      layout: {
+        templateLayout: 'product-demo',
+        sectionOrder: ['logos', 'beneficios', 'oferta', 'garantia', 'precos', 'prova', 'cta', 'faq', 'formulario', 'galeria', 'urgencia'],
       },
       hero: {
         variante: 'split-media',
@@ -719,10 +753,342 @@ export const LP_GENERATOR_TEMPLATES = [
       },
     },
   },
+  {
+    id: 'loja-roupas',
+    name: 'Loja de roupas',
+    description: 'Para boutique, moda feminina, masculina, infantil, drops e colecoes vendidas pelo WhatsApp.',
+    premium: false,
+    defaultName: 'Site Loja de Roupas',
+    config: {
+      identidade: {
+        corPrimaria: '#ff4fb8',
+        corSecundaria: '#facc15',
+        corFundo: '#080508',
+      },
+      estilo: {
+        preset: 'luxo-discreto',
+      },
+      layout: {
+        templateLayout: 'fashion-store',
+        sectionOrder: ['galeria', 'precos', 'beneficios', 'oferta', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'urgencia'],
+      },
+      cabecalho: {
+        precosTexto: 'Produtos',
+        contatoTexto: 'Comprar no WhatsApp',
+        contatoUrl: '#precos',
+      },
+      hero: {
+        variante: 'split-media',
+        eyebrow: 'Colecao disponivel',
+        titulo: 'Looks escolhidos para voce comprar pelo WhatsApp',
+        subtitulo: 'Mostre pecas, precos, tamanhos e disponibilidade com uma vitrine moderna que leva o cliente direto para o pedido.',
+        ctaTexto: 'Ver produtos',
+        ctaUrl: '#precos',
+      },
+      galeria: {
+        ativo: true,
+        eyebrow: 'Vitrine visual',
+        titulo: 'Mostre a colecao como desejo, nao como lista',
+        texto: 'Use fotos de looks, detalhes, combinacoes e novidades para o cliente escolher antes de chamar no WhatsApp.',
+        itens: [
+          { titulo: 'Look destaque', texto: 'Foto principal da colecao ou combinacao mais vendavel.', imagemUrl: '' },
+          { titulo: 'Detalhe da peca', texto: 'Mostre tecido, caimento, cor ou acabamento.', imagemUrl: '' },
+          { titulo: 'Novidade da semana', texto: 'Use para lancamento, reposicao ou promocao.', imagemUrl: '' },
+        ],
+      },
+      beneficios: {
+        titulo: 'Tudo para comprar sem precisar ir ate a loja',
+        itens: [
+          { titulo: 'Preco claro', texto: 'Cada produto pode ter foto, valor e chamada para pedido.' },
+          { titulo: 'Compra assistida', texto: 'O cliente chama no WhatsApp para confirmar tamanho, cor e entrega.' },
+          { titulo: 'Vitrine atualizada', texto: 'Troque produtos, imagens e ofertas direto pelo editor.' },
+        ],
+      },
+      precos: {
+        ativo: true,
+        eyebrow: 'Produtos em destaque',
+        titulo: 'Escolha sua peca e chame no WhatsApp',
+        texto: 'Edite os cards abaixo com foto, nome, preco, tamanho, cor e chamada para fechar o pedido.',
+        planos: [
+          {
+            nome: 'Vestido canelado',
+            descricao: 'Peca versatil para look casual ou noite.',
+            preco: 'R$ 129,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Comprar pelo WhatsApp',
+            ctaUrl: '#formulario',
+            destaque: true,
+            entregaveis: ['Tamanhos P, M e G', 'Cores disponiveis no WhatsApp', 'Retirada ou entrega local'],
+          },
+          {
+            nome: 'Conjunto alfaiataria',
+            descricao: 'Visual pronto com acabamento premium.',
+            preco: 'R$ 219,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Consultar tamanho',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Tecido estruturado', 'Ideal para trabalho ou evento', 'Atendimento pelo WhatsApp'],
+          },
+          {
+            nome: 'Blusa essencial',
+            descricao: 'Produto de giro para compra rapida.',
+            preco: 'R$ 69,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Quero essa peca',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Varias cores', 'Combina com looks basicos', 'Pedido direto no WhatsApp'],
+          },
+        ],
+      },
+      oferta: {
+        titulo: 'Monte seu pedido com atendimento direto',
+        texto: 'Use esta area para explicar entrega, retirada, troca, formas de pagamento e como a pessoa finaliza pelo WhatsApp.',
+        preco: 'Pedido pelo WhatsApp',
+        ctaTexto: 'Falar com a loja',
+      },
+      formulario: {
+        titulo: 'Peca seu produto pelo WhatsApp',
+        texto: 'Informe a peca desejada, tamanho e cor. A loja retorna para confirmar disponibilidade e pagamento.',
+        botao: 'Enviar pedido',
+        camposExtras: [
+          { id: 'produto', rotulo: 'Produto desejado', placeholder: 'Ex: vestido canelado tamanho M', tipo: 'text', obrigatorio: true },
+        ],
+      },
+      seo: {
+        title: 'Loja de roupas com compra pelo WhatsApp',
+        description: 'Site vitrine para loja de roupas vender produtos pelo WhatsApp.',
+      },
+    },
+  },
+  {
+    id: 'loja-calcados',
+    name: 'Loja de calcados',
+    description: 'Para tenis, sandalias, sapatos, chinelos e modelos vendidos por reserva no WhatsApp.',
+    premium: false,
+    defaultName: 'Site Loja de Calcados',
+    config: {
+      identidade: {
+        corPrimaria: '#f97316',
+        corSecundaria: '#38bdf8',
+        corFundo: '#060606',
+      },
+      estilo: {
+        preset: 'imobiliario-impactante',
+      },
+      layout: {
+        templateLayout: 'shoe-store',
+        sectionOrder: ['precos', 'galeria', 'beneficios', 'oferta', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'urgencia'],
+      },
+      cabecalho: {
+        precosTexto: 'Modelos',
+        contatoTexto: 'Reservar modelo',
+        contatoUrl: '#precos',
+      },
+      hero: {
+        variante: 'media-left',
+        eyebrow: 'Modelos disponiveis',
+        titulo: 'Escolha seu calcado e reserve pelo WhatsApp',
+        subtitulo: 'Uma vitrine direta para mostrar modelos, precos, numeracao e levar o cliente para a conversa de compra.',
+        ctaTexto: 'Ver modelos',
+        ctaUrl: '#precos',
+      },
+      beneficios: {
+        titulo: 'Menos duvida, mais reserva pelo WhatsApp',
+        itens: [
+          { titulo: 'Modelo em destaque', texto: 'Cada card mostra foto, preco e chamada de reserva.' },
+          { titulo: 'Numeracao consultiva', texto: 'O cliente chama para confirmar tamanho antes de comprar.' },
+          { titulo: 'Venda assistida', texto: 'A equipe pode orientar cor, estoque, entrega e pagamento.' },
+        ],
+      },
+      galeria: {
+        ativo: true,
+        eyebrow: 'Detalhes',
+        titulo: 'Mostre o calcado em angulos que vendem',
+        texto: 'Use fotos da lateral, sola, detalhe, cor e composicao para aumentar confianca antes da reserva.',
+      },
+      precos: {
+        ativo: true,
+        eyebrow: 'Modelos em destaque',
+        titulo: 'Reserve o modelo ideal no seu numero',
+        texto: 'Edite os cards com foto, nome, preco, numeracao, cores e chamada para reserva.',
+        planos: [
+          {
+            nome: 'Tenis urbano',
+            descricao: 'Conforto para rotina e visual casual.',
+            preco: 'R$ 189,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Consultar numeracao',
+            ctaUrl: '#formulario',
+            destaque: true,
+            entregaveis: ['Numeros 37 ao 43', 'Cores disponiveis no WhatsApp', 'Reserva rapida'],
+          },
+          {
+            nome: 'Sandalia premium',
+            descricao: 'Modelo leve para saida, trabalho ou passeio.',
+            preco: 'R$ 119,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Reservar no WhatsApp',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Confortavel', 'Consulta de tamanho', 'Entrega local'],
+          },
+          {
+            nome: 'Sapato social',
+            descricao: 'Acabamento elegante para ocasioes especiais.',
+            preco: 'R$ 249,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Ver disponibilidade',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Modelo masculino', 'Cores sob consulta', 'Atendimento assistido'],
+          },
+        ],
+      },
+      formulario: {
+        titulo: 'Reserve seu calcado',
+        texto: 'Informe modelo, numero e cor desejada. A loja confirma disponibilidade pelo WhatsApp.',
+        botao: 'Enviar reserva',
+        camposExtras: [
+          { id: 'modelo', rotulo: 'Modelo e numero desejado', placeholder: 'Ex: tenis urbano numero 40', tipo: 'text', obrigatorio: true },
+        ],
+      },
+      oferta: {
+        titulo: 'Compra assistida para acertar no tamanho',
+        texto: 'Explique troca, retirada, entrega, formas de pagamento e disponibilidade de numeracao.',
+        preco: 'Reserva pelo WhatsApp',
+        ctaTexto: 'Chamar vendedor',
+      },
+      seo: {
+        title: 'Loja de calcados com reserva pelo WhatsApp',
+        description: 'Site vitrine para loja de calcados vender modelos pelo WhatsApp.',
+      },
+    },
+  },
+  {
+    id: 'farmacia',
+    name: 'Farmacia',
+    description: 'Para farmacias e drogarias com ofertas, itens de cuidado, entrega local e pedido pelo WhatsApp.',
+    premium: false,
+    defaultName: 'Site Farmacia',
+    config: {
+      identidade: {
+        corPrimaria: '#22c55e',
+        corSecundaria: '#38bdf8',
+        corFundo: '#06110b',
+      },
+      estilo: {
+        preset: 'clinica-clean-premium',
+      },
+      layout: {
+        templateLayout: 'pharmacy-store',
+        sectionOrder: ['precos', 'beneficios', 'oferta', 'garantia', 'prova', 'cta', 'faq', 'formulario', 'logos', 'galeria', 'urgencia'],
+      },
+      cabecalho: {
+        precosTexto: 'Ofertas',
+        contatoTexto: 'Pedir no WhatsApp',
+        contatoUrl: '#precos',
+      },
+      hero: {
+        variante: 'split-media',
+        eyebrow: 'Farmacia perto de voce',
+        titulo: 'Peca seus produtos de farmacia pelo WhatsApp',
+        subtitulo: 'Mostre ofertas, itens essenciais, cuidado pessoal e entrega local com atendimento rapido pelo WhatsApp.',
+        ctaTexto: 'Ver ofertas',
+        ctaUrl: '#precos',
+      },
+      beneficios: {
+        titulo: 'Confianca e praticidade para pedidos rapidos',
+        itens: [
+          { titulo: 'Ofertas visiveis', texto: 'Produtos com foto, preco e descricao objetiva.' },
+          { titulo: 'Entrega local', texto: 'Explique bairro, prazo, taxa ou retirada na loja.' },
+          { titulo: 'Atendimento humano', texto: 'O cliente confirma produto e disponibilidade pelo WhatsApp.' },
+        ],
+      },
+      garantia: {
+        ativo: true,
+        eyebrow: 'Cuidado',
+        titulo: 'Pedido confirmado com atendimento responsavel',
+        texto: 'Use esta secao para orientar sobre disponibilidade, substituicoes, entrega e contato com a equipe.',
+        selo: 'Atendimento local pelo WhatsApp',
+      },
+      precos: {
+        ativo: true,
+        eyebrow: 'Ofertas e produtos',
+        titulo: 'Escolha o produto e confirme pelo WhatsApp',
+        texto: 'Edite os cards com foto, nome, preco, indicacao basica e chamada para pedido.',
+        planos: [
+          {
+            nome: 'Kit cuidado diario',
+            descricao: 'Itens de cuidado pessoal para rotina.',
+            preco: 'R$ 39,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Pedir no WhatsApp',
+            ctaUrl: '#formulario',
+            destaque: true,
+            entregaveis: ['Produto sujeito a disponibilidade', 'Entrega local', 'Confirmacao pelo WhatsApp'],
+          },
+          {
+            nome: 'Vitaminas selecionadas',
+            descricao: 'Consulte marcas e disponibilidade.',
+            preco: 'A partir de R$ 29,90',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Consultar produto',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Marcas sob consulta', 'Orientacao de compra', 'Retirada ou entrega'],
+          },
+          {
+            nome: 'Higiene e beleza',
+            descricao: 'Produtos essenciais com atendimento local.',
+            preco: 'Ofertas do dia',
+            periodo: '',
+            imagemUrl: '',
+            ctaTexto: 'Ver disponibilidade',
+            ctaUrl: '#formulario',
+            destaque: false,
+            entregaveis: ['Ofertas atualizaveis', 'Pedido assistido', 'Pagamento combinado no contato'],
+          },
+        ],
+      },
+      oferta: {
+        titulo: 'Atendimento rapido para confirmar seu pedido',
+        texto: 'Explique horario de funcionamento, area de entrega, retirada, pagamento e como o cliente deve enviar o pedido.',
+        preco: 'Pedido pelo WhatsApp',
+        ctaTexto: 'Chamar farmacia',
+      },
+      formulario: {
+        titulo: 'Envie seu pedido',
+        texto: 'Informe produto, quantidade e bairro. A farmacia retorna para confirmar disponibilidade e entrega.',
+        botao: 'Enviar pedido',
+        camposExtras: [
+          { id: 'pedido', rotulo: 'Produto e quantidade', placeholder: 'Ex: vitamina C 1 unidade', tipo: 'text', obrigatorio: true },
+          { id: 'bairro', rotulo: 'Bairro para entrega', placeholder: 'Ex: Centro', tipo: 'text', obrigatorio: false },
+        ],
+      },
+      seo: {
+        title: 'Farmacia com pedido pelo WhatsApp',
+        description: 'Site vitrine para farmacia receber pedidos e consultar produtos pelo WhatsApp.',
+      },
+    },
+  },
 ]
 
 export function getLpTemplate(templateId = '') {
   return LP_GENERATOR_TEMPLATES.find((template) => template.id === templateId) || null
+}
+
+export function isLpTemplatePremium(templateId = '') {
+  return Boolean(getLpTemplate(templateId)?.premium)
 }
 
 export function getLpTemplateConfig(templateId = '') {

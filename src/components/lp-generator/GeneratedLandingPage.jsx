@@ -89,13 +89,13 @@ function trackLead(page) {
 function VisualPanel({ config }) {
   if (config.hero.imagemUrl) {
     return (
-      <div className="relative flex min-h-[360px] items-center justify-center isolate">
+      <div className="relative isolate flex min-h-[260px] items-center justify-center sm:min-h-[360px]">
         <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[78%] w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--primary)]/15 blur-3xl" />
         <div className="pointer-events-none absolute bottom-[8%] left-[12%] -z-10 h-24 w-24 rounded-full bg-[var(--secondary)]/15 blur-3xl" />
         <img
           src={config.hero.imagemUrl}
           alt=""
-          className="relative max-h-[min(76vh,760px)] w-full max-w-[680px] object-contain drop-shadow-[0_30px_70px_rgba(0,0,0,0.56)]"
+          className="relative max-h-[min(58vh,560px)] w-full max-w-[680px] object-contain drop-shadow-[0_30px_70px_rgba(0,0,0,0.56)] sm:max-h-[min(76vh,760px)]"
         />
       </div>
     )
@@ -192,6 +192,182 @@ function cleanCustomFormFields(fields = []) {
     }))
 }
 
+function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
+  const layouts = {
+    'local-service': {
+      metrics: [
+        { value: 'Hoje', label: 'resposta' },
+        { value: 'Local', label: 'regiao' },
+        { value: '1 clique', label: 'contato' },
+      ],
+      signals: [
+        { icon: Zap, title: 'Urgencia real', text: 'A pagina mostra que o atendimento pode resolver agora.' },
+        { icon: ShieldCheck, title: 'Confianca local', text: 'Proximidade, clareza e prova deixam o contato mais seguro.' },
+        { icon: MessageCircle, title: 'WhatsApp em foco', text: 'O visitante encontra o caminho direto para pedir atendimento.' },
+      ],
+      benefitEyebrow: 'Atendimento local',
+      benefitIntro: 'Esse modelo prioriza velocidade, regiao atendida e contato direto para transformar procura em conversa.',
+      proofIntro: 'Prova simples e local reduz receio antes do primeiro contato.',
+      offerBullets: ['Area atendida', 'Prazo claro', 'Contato direto'],
+      formBullets: ['Pedido chega com contexto', 'Atendimento mais rapido', 'Lead pronto para WhatsApp'],
+    },
+    'clinic-editorial': {
+      metrics: [
+        { value: 'Avalie', label: 'com criterio' },
+        { value: 'Clean', label: 'experiencia' },
+        { value: 'Agenda', label: 'organizada' },
+      ],
+      signals: [
+        { icon: Sparkles, title: 'Desejo elegante', text: 'A estetica valoriza resultado sem parecer apelativa.' },
+        { icon: ShieldCheck, title: 'Seguranca percebida', text: 'Cuidado, criterio e acompanhamento aparecem antes da oferta.' },
+        { icon: BadgeCheck, title: 'Autoridade visual', text: 'Ambiente, equipe e prova sustentam a decisao.' },
+      ],
+      benefitEyebrow: 'Experiencia premium',
+      benefitIntro: 'Esse modelo trabalha desejo, seguranca e autoridade com ritmo mais limpo e sofisticado.',
+      proofIntro: 'Depoimentos e cuidado visual ajudam o visitante a confiar antes da avaliacao.',
+      offerBullets: ['Avaliacao', 'Cuidado', 'Acompanhamento'],
+      formBullets: ['Interesse qualificado', 'Dados para avaliacao', 'Conversa sem pressa'],
+    },
+    'expert-launch': {
+      metrics: [
+        { value: 'Metodo', label: 'central' },
+        { value: 'Turma', label: 'aberta' },
+        { value: 'Aplicacao', label: 'guiada' },
+      ],
+      signals: [
+        { icon: Target, title: 'Promessa especifica', text: 'O visitante entende a transformacao antes de ver preco.' },
+        { icon: TrendingUp, title: 'Autoridade em camadas', text: 'Metodo, prova e urgencia constroem decisao.' },
+        { icon: Zap, title: 'Entrada com criterio', text: 'O formulario filtra interessados para turma, lista ou chamada.' },
+      ],
+      benefitEyebrow: 'Arquitetura de lancamento',
+      benefitIntro: 'Esse modelo parece uma pagina de inscricao: autoridade primeiro, urgencia real depois e aplicacao no fim.',
+      proofIntro: 'Prova social posicionada como resultado de metodo, nao apenas opiniao solta.',
+      offerBullets: ['Metodo claro', 'Turma atual', 'Aplicacao'],
+      formBullets: ['Lead para turma', 'Interesse segmentado', 'Contexto comercial'],
+    },
+    'real-estate-showcase': {
+      metrics: [
+        { value: 'Visita', label: 'agendada' },
+        { value: 'Condicao', label: 'em foco' },
+        { value: 'Corretor', label: 'direto' },
+      ],
+      signals: [
+        { icon: Target, title: 'Imovel primeiro', text: 'Imagem, localizacao e condicao ganham prioridade visual.' },
+        { icon: TrendingUp, title: 'Interesse qualificado', text: 'O lead chega sabendo o que quer visitar ou simular.' },
+        { icon: MessageCircle, title: 'Corretor acionado', text: 'A pagina empurra para conversa sem perder o contexto.' },
+      ],
+      benefitEyebrow: 'Vitrine imobiliaria',
+      benefitIntro: 'Esse modelo destaca imagem, disponibilidade e agendamento, como uma pagina de oportunidade real.',
+      proofIntro: 'A prova aparece para confirmar liquidez, procura ou confianca comercial.',
+      offerBullets: ['Localizacao', 'Condicao', 'Visita'],
+      formBullets: ['Contato do comprador', 'Interesse no imovel', 'Simulacao ou visita'],
+    },
+    'event-ticket': {
+      metrics: [
+        { value: 'Data', label: 'marcada' },
+        { value: 'Lote', label: 'atual' },
+        { value: 'Vagas', label: 'limitadas' },
+      ],
+      signals: [
+        { icon: Zap, title: 'Energia de evento', text: 'A primeira dobra cria movimento e senso de acontecimento.' },
+        { icon: TrendingUp, title: 'Virada de lote', text: 'Urgencia aparece cedo para evitar visitante frio.' },
+        { icon: BadgeCheck, title: 'Experiencia concreta', text: 'Galeria, prova e chamada sustentam inscricao.' },
+      ],
+      benefitEyebrow: 'Pagina de inscricao',
+      benefitIntro: 'Esse modelo funciona como pagina de ingresso: data, lote, experiencia e acao aparecem com mais agressividade.',
+      proofIntro: 'A prova reforca energia, presenca e vontade de participar.',
+      offerBullets: ['Data e local', 'Lote atual', 'Inscricao'],
+      formBullets: ['Interessado no evento', 'Contato para inscricao', 'Origem da campanha'],
+    },
+    'product-demo': {
+      metrics: [
+        { value: 'Demo', label: 'guiada' },
+        { value: 'Fluxo', label: 'simples' },
+        { value: 'Escala', label: 'comercial' },
+      ],
+      signals: [
+        { icon: Layers3, title: 'Produto explicado', text: 'Beneficios viram fluxo de uso, nao apenas promessa.' },
+        { icon: Target, title: 'Dor operacional', text: 'A pagina mostra o problema antes da solucao.' },
+        { icon: TrendingUp, title: 'Demo qualificada', text: 'O lead chega com contexto para venda consultiva.' },
+      ],
+      benefitEyebrow: 'Demonstracao de produto',
+      benefitIntro: 'Esse modelo organiza SaaS como produto: problema, fluxo, prova, planos e demo com menos ruido.',
+      proofIntro: 'Prova de produto ajuda o lead a imaginar implantacao e uso real.',
+      offerBullets: ['Problema claro', 'Fluxo de uso', 'Demo'],
+      formBullets: ['Lead para demo', 'Contexto da operacao', 'Dados para venda'],
+    },
+    'fashion-store': {
+      metrics: [
+        { value: 'Drop', label: 'atual' },
+        { value: 'Looks', label: 'prontos' },
+        { value: 'Whats', label: 'compra' },
+      ],
+      signals: [
+        { icon: Sparkles, title: 'Vitrine de desejo', text: 'As pecas aparecem como colecao, nao como tabela fria.' },
+        { icon: BadgeCheck, title: 'Preco visivel', text: 'Cada produto pode mostrar nome, preco, descricao e chamada.' },
+        { icon: MessageCircle, title: 'Pedido no WhatsApp', text: 'O visitante escolhe e chama a loja no canal de venda.' },
+      ],
+      benefitEyebrow: 'Moda e colecao',
+      benefitIntro: 'Esse modelo troca a logica de LP por vitrine: colecao, prova visual, produtos e chamada direta para comprar.',
+      proofIntro: 'Prova visual e estilo ajudam a roupa parecer desejada antes do contato.',
+      offerBullets: ['Colecao atual', 'Pedido no WhatsApp', 'Entrega ou retirada'],
+      formBullets: ['Peca desejada', 'Tamanho e cor', 'Contato para fechar pedido'],
+    },
+    'shoe-store': {
+      metrics: [
+        { value: 'Modelos', label: 'em destaque' },
+        { value: 'Numeros', label: 'consulta' },
+        { value: 'Whats', label: 'reserva' },
+      ],
+      signals: [
+        { icon: Target, title: 'Modelo em foco', text: 'O produto ganha destaque por foto, preco e disponibilidade.' },
+        { icon: ShieldCheck, title: 'Compra assistida', text: 'O cliente pode tirar duvida de numero, cor e entrega.' },
+        { icon: MessageCircle, title: 'Reserva rapida', text: 'A chamada leva direto para conversa de venda.' },
+      ],
+      benefitEyebrow: 'Calcados e disponibilidade',
+      benefitIntro: 'Esse modelo funciona como vitrine de modelos: destaque visual, preco, numeracao e reserva por WhatsApp.',
+      proofIntro: 'Prova e imagem ajudam o cliente confiar no modelo antes de pedir numeracao.',
+      offerBullets: ['Modelo em destaque', 'Numeracao', 'Reserva no WhatsApp'],
+      formBullets: ['Modelo desejado', 'Numero do cliente', 'Contato para reserva'],
+    },
+    'pharmacy-store': {
+      metrics: [
+        { value: 'Ofertas', label: 'do dia' },
+        { value: 'Entrega', label: 'local' },
+        { value: 'Whats', label: 'pedido' },
+      ],
+      signals: [
+        { icon: Zap, title: 'Oferta rapida', text: 'Produtos essenciais ficam claros para pedido imediato.' },
+        { icon: ShieldCheck, title: 'Confianca e cuidado', text: 'A pagina valoriza orientacao, entrega e atendimento humano.' },
+        { icon: MessageCircle, title: 'Pedido assistido', text: 'O cliente chama no WhatsApp para confirmar produto e entrega.' },
+      ],
+      benefitEyebrow: 'Farmacia local',
+      benefitIntro: 'Esse modelo prioriza oferta, conveniencia, entrega e contato rapido para pedidos por WhatsApp.',
+      proofIntro: 'Confianca e atendimento proximo reduzem friccao em compra de farmacia.',
+      offerBullets: ['Oferta do dia', 'Entrega local', 'Atendimento no WhatsApp'],
+      formBullets: ['Produto desejado', 'Bairro para entrega', 'Contato para confirmar pedido'],
+    },
+  }
+
+  return layouts[templateLayout] || {
+    metrics: [
+      { value: '24h', label: 'no ar' },
+      { value: '+3x', label: 'clareza' },
+      { value: '100%', label: 'editavel' },
+    ],
+    signals: [
+      { icon: Zap, title: 'Decisao rapida', text: 'Promessa, prova e oferta aparecem no ritmo certo.' },
+      { icon: Layers3, title: 'Secoes fluidas', text: 'Cada bloco sustenta o proximo passo sem quebrar a leitura.' },
+      { icon: ShieldCheck, title: 'Contato claro', text: 'O formulario chega depois do visitante entender o valor.' },
+    ],
+    benefitEyebrow: 'Metodo visual',
+    benefitIntro: 'Uma LP forte precisa ser entendida em segundos: promessa clara, prova suficiente e chamada para acao sem friccao.',
+    proofIntro: 'Prova social posicionada antes da oferta reduz duvida e aumenta confianca na decisao.',
+    offerBullets: ['Promessa clara', 'Contato direto', 'Layout mobile'],
+    formBullets: ['Retorno com contexto da LP', 'Dados organizados no painel', 'Pronto para contato comercial'],
+  }
+}
+
 export default function GeneratedLandingPage({ page, config, previewMode = false }) {
   const pageRef = useRef(null)
   const [form, setForm] = useState(emptyLeadForm)
@@ -213,6 +389,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
   const formFields = config.formulario.campos || {}
   const customFormFields = cleanCustomFormFields(config.formulario.camposExtras)
   const visualStyle = config.estilo?.preset || 'editorial-premium'
+  const templateLayout = config.layout?.templateLayout || 'conversion-flow'
+  const layoutContent = getTemplateLayoutContent(templateLayout)
   const heroVariant = config.hero.variante || 'split-media'
   const heroCoverUrl = config.hero.backgroundUrl || (heroVariant === 'cover-story' ? config.hero.imagemUrl : '')
   const heroGridClassName = {
@@ -352,7 +530,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
       style={sectionStyle(config)}
       data-lp-style={visualStyle}
       data-lp-hero={heroVariant}
-      className="lp-page min-h-screen overflow-hidden bg-[var(--page-bg)] pb-20 text-[var(--page-text)] selection:bg-[var(--primary)] selection:text-black md:pb-0"
+      data-lp-template={templateLayout}
+      className="lp-page min-h-screen [overflow-x:clip] bg-[var(--page-bg)] pb-20 text-[var(--page-text)] selection:bg-[var(--primary)] selection:text-black md:pb-0"
     >
       {!previewMode && <Toaster position="top-right" />}
       <style jsx global>{`
@@ -397,6 +576,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           --lp-surface: rgba(0, 0, 0, .48);
           --lp-soft-surface: rgba(255, 255, 255, .045);
           --lp-line: rgba(255, 255, 255, .1);
+          max-width: 100%;
         }
 
         .lp-page .lp-surface,
@@ -565,6 +745,187 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         .lp-page[data-lp-hero="cover-story"] .lp-hero-media {
           display: none;
         }
+
+        .lp-page[data-lp-template="local-service"] .lp-hero {
+          background:
+            linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px),
+            radial-gradient(circle at 18% 24%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 24rem);
+          background-size: 26px 26px, auto;
+        }
+
+        .lp-page[data-lp-template="local-service"] .lp-signal-card {
+          border-left: 4px solid var(--primary);
+        }
+
+        .lp-page[data-lp-template="local-service"] .lp-benefit-card {
+          min-height: 230px;
+          border-radius: 1rem;
+        }
+
+        .lp-page[data-lp-template="clinic-editorial"] .lp-hero h1 {
+          max-width: 12ch;
+          font-weight: 850;
+        }
+
+        .lp-page[data-lp-template="clinic-editorial"] .lp-signal-card,
+        .lp-page[data-lp-template="clinic-editorial"] .lp-benefit-card,
+        .lp-page[data-lp-template="clinic-editorial"] .lp-gallery-card {
+          border-radius: 2.25rem;
+        }
+
+        .lp-page[data-lp-template="clinic-editorial"] .lp-gallery-card:first-child {
+          transform: translateY(-18px);
+        }
+
+        .lp-page[data-lp-template="expert-launch"] .lp-hero h1 {
+          max-width: 13ch;
+          text-transform: uppercase;
+        }
+
+        .lp-page[data-lp-template="expert-launch"] .lp-signal-card {
+          background: linear-gradient(135deg, color-mix(in srgb, var(--primary) 16%, transparent), rgba(0,0,0,.62));
+        }
+
+        .lp-page[data-lp-template="expert-launch"] .lp-price-card[data-featured="true"] {
+          transform: translateY(-34px) scale(1.08);
+        }
+
+        .lp-page[data-lp-template="real-estate-showcase"] .lp-hero-grid {
+          gap: clamp(1.5rem, 4vw, 5rem);
+        }
+
+        .lp-page[data-lp-template="real-estate-showcase"] .lp-hero-media img {
+          width: min(100%, 780px);
+          max-width: none;
+        }
+
+        .lp-page[data-lp-template="real-estate-showcase"] .lp-gallery-card:first-child {
+          grid-column: span 2 / span 2;
+        }
+
+        .lp-page[data-lp-template="real-estate-showcase"] .lp-offer-card {
+          border-radius: .9rem;
+        }
+
+        .lp-page[data-lp-template="event-ticket"] .lp-hero h1 {
+          max-width: 10ch;
+          text-transform: uppercase;
+        }
+
+        .lp-page[data-lp-template="event-ticket"] .lp-signal-card {
+          transform: rotate(-1deg);
+        }
+
+        .lp-page[data-lp-template="event-ticket"] .lp-signal-card:nth-child(even) {
+          transform: rotate(1deg) translateY(12px);
+        }
+
+        .lp-page[data-lp-template="event-ticket"] .lp-urgency-card {
+          border-color: color-mix(in srgb, var(--primary) 54%, rgba(255,255,255,.08));
+          box-shadow: 0 30px 120px color-mix(in srgb, var(--primary) 18%, transparent);
+        }
+
+        .lp-page[data-lp-template="product-demo"] .lp-hero h1 {
+          max-width: 12ch;
+        }
+
+        .lp-page[data-lp-template="product-demo"] .lp-benefit-card {
+          min-height: 240px;
+          border-radius: 1.1rem;
+          background:
+            linear-gradient(135deg, rgba(255,255,255,.055), rgba(255,255,255,.012)),
+            rgba(0,0,0,.55);
+        }
+
+        .lp-page[data-lp-template="product-demo"] .lp-offer-card {
+          border-radius: 1.2rem;
+          grid-template-columns: minmax(0, .95fr) minmax(320px, 1.05fr);
+        }
+
+        .lp-page[data-lp-template="fashion-store"] .lp-hero h1,
+        .lp-page[data-lp-template="shoe-store"] .lp-hero h1,
+        .lp-page[data-lp-template="pharmacy-store"] .lp-hero h1 {
+          max-width: 11ch;
+        }
+
+        .lp-page[data-lp-template="fashion-store"] .lp-price-card,
+        .lp-page[data-lp-template="shoe-store"] .lp-price-card,
+        .lp-page[data-lp-template="pharmacy-store"] .lp-price-card {
+          min-height: 0;
+          padding: 0;
+          border-radius: 1.35rem;
+        }
+
+        .lp-page[data-lp-template="fashion-store"] .lp-product-image,
+        .lp-page[data-lp-template="shoe-store"] .lp-product-image,
+        .lp-page[data-lp-template="pharmacy-store"] .lp-product-image {
+          display: block;
+        }
+
+        .lp-page[data-lp-template="fashion-store"] .lp-price-card {
+          background: linear-gradient(145deg, rgba(255,255,255,.08), rgba(0,0,0,.62));
+        }
+
+        .lp-page[data-lp-template="fashion-store"] .lp-gallery-card {
+          border-radius: .75rem 2.2rem .75rem 2.2rem;
+        }
+
+        .lp-page[data-lp-template="shoe-store"] .lp-price-card {
+          border-radius: .9rem;
+          border-bottom-width: 4px;
+          border-bottom-color: var(--primary);
+        }
+
+        .lp-page[data-lp-template="shoe-store"] .lp-signal-card {
+          border-radius: .9rem;
+        }
+
+        .lp-page[data-lp-template="pharmacy-store"] .lp-hero {
+          background:
+            radial-gradient(circle at 80% 18%, color-mix(in srgb, var(--primary) 18%, transparent), transparent 24rem),
+            linear-gradient(180deg, rgba(255,255,255,.035), transparent);
+        }
+
+        .lp-page[data-lp-template="pharmacy-store"] .lp-price-card,
+        .lp-page[data-lp-template="pharmacy-store"] .lp-signal-card,
+        .lp-page[data-lp-template="pharmacy-store"] .lp-benefit-card {
+          border-radius: 1rem;
+        }
+
+        @media (max-width: 1023px) {
+          .lp-page[data-lp-template="real-estate-showcase"] .lp-gallery-card:first-child {
+            grid-column: auto;
+          }
+
+          .lp-page[data-lp-template="product-demo"] .lp-offer-card {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .lp-page .lp-nav {
+            border-radius: 1.25rem;
+          }
+
+          .lp-page .lp-hero-copy {
+            min-width: 0;
+          }
+
+          .lp-page[data-lp-hero="media-left"] .lp-hero-copy,
+          .lp-page[data-lp-hero="media-left"] .lp-hero-media {
+            order: initial;
+          }
+
+          .lp-page[data-lp-template="event-ticket"] .lp-signal-card,
+          .lp-page[data-lp-template="event-ticket"] .lp-signal-card:nth-child(even),
+          .lp-page[data-lp-style="imobiliario-impactante"] .lp-signal-card:first-child {
+            transform: none;
+          }
+
+          .lp-page[data-lp-template="clinic-editorial"] .lp-gallery-card:first-child {
+            transform: none;
+          }
+        }
       `}</style>
 
       {config.cabecalho.ativo ? (
@@ -595,7 +956,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
       {config.hero.ativo && (
         <section
-          className={config.cabecalho.ativo ? 'lp-hero relative -mt-[76px] pt-[76px]' : 'lp-hero relative'}
+          className="lp-hero relative"
           style={heroCoverUrl ? {
             backgroundImage: `linear-gradient(120deg, rgba(5,5,5,.96), rgba(5,5,5,.72), rgba(5,5,5,.42)), url(${heroCoverUrl})`,
             backgroundSize: 'cover',
@@ -606,15 +967,15 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/70 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[var(--page-bg)] to-transparent" />
 
-          <div className="relative mx-auto flex min-h-[92vh] w-full max-w-7xl flex-col px-5 pb-14 pt-5 sm:px-8">
-            <div className={`lp-hero-grid mt-10 grid flex-1 items-center gap-12 sm:mt-14 ${heroGridClassName}`}>
+          <div className="relative mx-auto flex min-h-[calc(100svh-76px)] w-full max-w-7xl flex-col px-5 pb-12 pt-8 sm:px-8 sm:pb-14">
+            <div className={`lp-hero-grid mt-6 grid flex-1 items-center gap-8 sm:mt-10 sm:gap-12 ${heroGridClassName}`}>
               <div data-lp-reveal="left" className="lp-hero-copy">
                 <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)] backdrop-blur-xl">
                   <Sparkles size={14} />
                   {config.hero.eyebrow}
                 </p>
 
-                <h1 className="max-w-5xl text-balance text-5xl font-black leading-[0.92] tracking-tight sm:text-7xl lg:text-8xl">
+                <h1 className="max-w-5xl text-balance text-4xl font-black leading-[0.95] tracking-tight sm:text-7xl sm:leading-[0.92] lg:text-8xl">
                   {config.hero.titulo}
                 </h1>
 
@@ -628,9 +989,9 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                 </div>
 
                 <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3 border-t border-white/10 pt-7 sm:gap-5">
-                  <Metric value="24h" label="no ar" />
-                  <Metric value="+3x" label="clareza" />
-                  <Metric value="100%" label="editavel" />
+                  {layoutContent.metrics.map((metric) => (
+                    <Metric key={`${metric.value}-${metric.label}`} value={metric.value} label={metric.label} />
+                  ))}
                 </div>
               </div>
 
@@ -649,11 +1010,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
       {config.hero.ativo ? (
         <section className="relative z-10 mx-auto -mt-4 grid w-full max-w-7xl gap-3 px-5 sm:grid-cols-3 sm:px-8">
-          {[
-            { icon: Zap, title: 'Decisao rapida', text: 'Promessa, prova e oferta aparecem no ritmo certo.' },
-            { icon: Layers3, title: 'Secoes fluidas', text: 'Cada bloco sustenta o proximo passo sem quebrar a leitura.' },
-            { icon: ShieldCheck, title: 'Contato claro', text: 'O formulario chega depois do visitante entender o valor.' },
-          ].map(({ icon: Icon, title, text }, index) => (
+          {layoutContent.signals.map(({ icon: Icon, title, text }, index) => (
             <div
               key={title}
               data-lp-reveal
@@ -709,11 +1066,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-end">
               <div>
-                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">Metodo visual</p>
+                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{layoutContent.benefitEyebrow}</p>
                 <h2 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{config.beneficios.titulo}</h2>
               </div>
               <p className="max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">
-                Uma LP forte precisa ser entendida em segundos: promessa clara, prova suficiente e chamada para acao sem friccao.
+                {layoutContent.benefitIntro}
               </p>
             </div>
 
@@ -751,7 +1108,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <BadgeCheck className="text-[var(--primary)]" size={34} />
               <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.prova.titulo}</p>
               <p className="mt-3 text-sm leading-relaxed text-[var(--page-muted)]">
-                Prova social posicionada antes da oferta reduz duvida e aumenta confianca na decisao.
+                {layoutContent.proofIntro}
               </p>
             </div>
 
@@ -819,7 +1176,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <p className="mt-6 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.oferta.texto}</p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                {['Promessa clara', 'Contato direto', 'Layout mobile'].map((item) => (
+                {layoutContent.offerBullets.map((item) => (
                   <div key={item} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-bold text-white">
                     <CheckCircle2 size={17} className="text-[var(--primary)]" />
                     {item}
@@ -901,13 +1258,21 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                 <article
                   key={`${plan.nome || 'plano'}-${index}`}
                   data-lp-reveal
+                  data-featured={plan.destaque ? 'true' : 'false'}
                   style={{ '--lp-reveal-delay': `${index * 100}ms` }}
-                  className={`lp-surface lp-price-card relative flex min-h-[520px] flex-col overflow-hidden rounded-[1.75rem] border p-6 shadow-2xl shadow-black/25 backdrop-blur-sm transition duration-300 sm:p-7 ${
+                  className={`lp-surface lp-price-card relative flex min-h-[520px] flex-col overflow-hidden rounded-[1.75rem] border shadow-2xl shadow-black/25 backdrop-blur-sm transition duration-300 ${
                     plan.destaque
                       ? 'border-[var(--primary)]/60 bg-[var(--primary)]/[0.14] shadow-[0_28px_110px_rgba(0,0,0,.55)] ring-1 ring-[var(--primary)]/40 lg:-translate-y-7 lg:scale-[1.06]'
                       : 'border-white/10 bg-black/55'
                   }`}
                 >
+                  {plan.imagemUrl ? (
+                    <div className="lp-product-image hidden aspect-[4/3] overflow-hidden border-b border-white/10 bg-white/[0.04]">
+                      <img src={plan.imagemUrl} alt={plan.nome || ''} className="h-full w-full object-cover transition duration-500 hover:scale-[1.035]" />
+                    </div>
+                  ) : null}
+
+                  <div className="flex flex-1 flex-col p-6 sm:p-7">
                   {plan.destaque ? (
                     <>
                       <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-[linear-gradient(90deg,transparent,var(--primary),var(--secondary),transparent)]" />
@@ -947,6 +1312,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                     <Cta href={plan.ctaUrl || '#formulario'} className="w-full">
                       {plan.ctaTexto || 'Escolher plano'}
                     </Cta>
+                  </div>
                   </div>
                 </article>
               ))}
@@ -1015,9 +1381,9 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{config.formulario.texto}</p>
 
               <div className="mt-8 space-y-3 text-sm font-bold text-white">
-                <p className="flex items-center gap-2"><CheckCircle2 size={17} className="text-[var(--primary)]" /> Retorno com contexto da LP</p>
-                <p className="flex items-center gap-2"><CheckCircle2 size={17} className="text-[var(--primary)]" /> Dados organizados no painel</p>
-                <p className="flex items-center gap-2"><CheckCircle2 size={17} className="text-[var(--primary)]" /> Pronto para contato comercial</p>
+                {layoutContent.formBullets.map((item) => (
+                  <p key={item} className="flex items-center gap-2"><CheckCircle2 size={17} className="text-[var(--primary)]" /> {item}</p>
+                ))}
               </div>
             </div>
 

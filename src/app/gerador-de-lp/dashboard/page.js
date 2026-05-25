@@ -125,7 +125,26 @@ export default function LpGeneratorDashboard() {
     archived: pages.filter((page) => page.status === 'archived').length,
   }), [pages, statusSummary])
 
+  const selectedCliente = useMemo(
+    () => clientes.find((cliente) => cliente.id === selectedClienteId) || null,
+    [clientes, selectedClienteId]
+  )
+  const selectedTemplateData = useMemo(
+    () => LP_GENERATOR_TEMPLATES.find((template) => template.id === selectedTemplate) || null,
+    [selectedTemplate]
+  )
+  const selectedTemplateBlocked = Boolean(
+    selectedCliente &&
+    selectedTemplateData?.premium &&
+    selectedCliente.lp_limits?.templates_premium === false
+  )
+
   async function createPage() {
+    if (selectedTemplateBlocked) {
+      toast.error('Este template premium nao esta liberado no plano do cliente selecionado.')
+      return
+    }
+
     setSaving(true)
 
     try {
@@ -237,6 +256,11 @@ export default function LpGeneratorDashboard() {
                     <div>
                       <p className="text-sm font-black text-white">{template.name}</p>
                       <p className="mt-2 text-xs leading-relaxed text-neutral-500">{template.description}</p>
+                      {template.premium ? (
+                        <span className="mt-3 inline-flex rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-300">
+                          Premium
+                        </span>
+                      ) : null}
                     </div>
                     <span className={`mt-1 h-3 w-3 shrink-0 rounded-full ${selected ? 'bg-[#6be12f]' : 'bg-white/15'}`} />
                   </div>
@@ -264,6 +288,11 @@ export default function LpGeneratorDashboard() {
             <p className="mt-2 text-xs text-neutral-500">
               O cliente vinculado vera esta LP, os leads e as metricas na area dele.
             </p>
+            {selectedTemplateBlocked ? (
+              <p className="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-200">
+                O plano deste cliente nao libera templates premium. Escolha um template comum ou altere o plano.
+              </p>
+            ) : null}
           </label>
         </section>
 

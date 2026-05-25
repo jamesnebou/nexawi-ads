@@ -20,6 +20,7 @@ import {
   Copy,
   Upload,
   Eye,
+  Globe2,
   Image as ImageIcon,
   Loader2,
   Monitor,
@@ -66,6 +67,7 @@ function getEditorContext(scope = 'admin') {
       apiPath: '/api/cliente/lp-generator',
       uploadPath: '/api/cliente/lp-generator/upload-url',
       assetsPath: '/api/cliente/lp-generator/assets',
+      domainStatusPath: '/api/cliente/lp-generator/domain-status',
       backHref: '/cliente/lps',
       backLabel: 'Voltar para minhas LPs',
       sessionLabel: 'cliente',
@@ -77,6 +79,7 @@ function getEditorContext(scope = 'admin') {
     apiPath: '/api/admin/lp-generator',
     uploadPath: '/api/admin/lp-generator/upload-url',
     assetsPath: '/api/admin/lp-generator/assets',
+    domainStatusPath: '/api/admin/lp-generator/domain-status',
     backHref: '/gerador-de-lp/dashboard',
     backLabel: 'Voltar para LPs',
     sessionLabel: 'administrativa',
@@ -301,7 +304,7 @@ function ListEditor({ items = [], labels, onChange }) {
   )
 }
 
-function PricePlansEditor({ plans = [], onChange }) {
+function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
   function updatePlan(index, key, value) {
     const next = [...plans]
     next[index] = { ...next[index], [key]: value }
@@ -318,6 +321,7 @@ function PricePlansEditor({ plans = [], onChange }) {
         descricao: '',
         preco: '',
         periodo: '',
+        imagemUrl: '',
         ctaTexto: 'Escolher plano',
         ctaUrl: '#formulario',
         destaque: false,
@@ -380,6 +384,15 @@ function PricePlansEditor({ plans = [], onChange }) {
 
           <div className="mt-3 grid gap-3">
             <Field label="Descricao" value={plan.descricao} onChange={(value) => updatePlan(planIndex, 'descricao', value)} textarea />
+            <ImageUploadField
+              label="Imagem do produto/plano"
+              field={`preco-${planIndex + 1}`}
+              slug={slug}
+              scope={scope}
+              pageId={pageId}
+              value={plan.imagemUrl}
+              onChange={(value) => updatePlan(planIndex, 'imagemUrl', value)}
+            />
             <Field label="URL do CTA" value={plan.ctaUrl} onChange={(value) => updatePlan(planIndex, 'ctaUrl', value)} />
             <Toggle label="Destacar esta tabela" checked={plan.destaque} onChange={(value) => updatePlan(planIndex, 'destaque', value)} />
           </div>
@@ -756,6 +769,8 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
   const [assets, setAssets] = useState([])
   const [assetsLoading, setAssetsLoading] = useState(false)
   const [assetsWarning, setAssetsWarning] = useState('')
+  const [domainStatus, setDomainStatus] = useState(null)
+  const [domainStatusLoading, setDomainStatusLoading] = useState(false)
 
   const publicUrl = useMemo(() => `/lp/${slug || 'slug-da-lp'}`, [slug])
   const previewPage = useMemo(() => ({
@@ -854,6 +869,32 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       toast.success('URL da imagem copiada.')
     } catch {
       toast.error('Nao foi possivel copiar a URL.')
+    }
+  }
+
+  async function checkDomainStatus() {
+    if (!hasValidId) {
+      toast.error('Salve a LP antes de verificar o dominio.')
+      return
+    }
+
+    setDomainStatusLoading(true)
+    setDomainStatus(null)
+
+    try {
+      const params = new URLSearchParams({ id })
+      const data = await editorApiFetch(scope, `${context.domainStatusPath}?${params.toString()}`)
+      setDomainStatus(data.domainStatus || null)
+
+      if (data.domainStatus?.ok) {
+        toast.success('DNS apontado para a estrutura esperada.')
+      } else {
+        toast.error(data.domainStatus?.label || 'DNS ainda pendente.')
+      }
+    } catch (error) {
+      toast.error(error.message || 'Nao foi possivel verificar o dominio.')
+    } finally {
+      setDomainStatusLoading(false)
     }
   }
 
@@ -1187,7 +1228,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Field label="Titulo" value={config.precos.titulo} onChange={(value) => updateNested(setConfig, 'precos', 'titulo', value)} textarea />
           <Field label="Texto" value={config.precos.texto} onChange={(value) => updateNested(setConfig, 'precos', 'texto', value)} textarea />
           <ImageUploadField label="Background da secao" field="precos-background" slug={slug || name} scope={scope} pageId={id} value={config.precos.backgroundUrl} onChange={(value) => updateNested(setConfig, 'precos', 'backgroundUrl', value)} />
-          <PricePlansEditor plans={config.precos.planos || []} onChange={(value) => updateNested(setConfig, 'precos', 'planos', value)} />
+          <PricePlansEditor plans={config.precos.planos || []} onChange={(value) => updateNested(setConfig, 'precos', 'planos', value)} slug={slug || name} scope={scope} pageId={id} />
         </div>
       )
     }
@@ -1321,6 +1362,63 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               )}
               placeholder="lp.cliente.com.br"
             />
+          </div>
+          <div className="mt-4 grid gap-3 rounded-2xl border border-white/[0.06] bg-black/40 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-neutral-500">Checklist DNS</p>
+                <p className="mt-1 text-sm font-bold text-white">
+                  Aponte o dominio e depois verifique a propagacao.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={checkDomainStatus}
+                disabled={domainStatusLoading || !config.integracoes.customDomain}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {domainStatusLoading ? <Loader2 size={15} className="animate-spin" /> : <Globe2 size={15} />}
+                Verificar DNS
+              </button>
+            </div>
+
+            <div className="grid gap-2 text-xs leading-relaxed text-neutral-400">
+              <p>
+                Subdominio: crie um registro <strong className="text-white">CNAME</strong> para <strong className="text-white">cname.vercel-dns.com</strong>.
+              </p>
+              <p>
+                Dominio raiz: crie um registro <strong className="text-white">A</strong> para <strong className="text-white">76.76.21.21</strong>.
+              </p>
+              <p>Depois disso, adicione o dominio no projeto da Vercel para liberar SSL e roteamento.</p>
+            </div>
+
+            {domainStatus ? (
+              <div className={`rounded-2xl border p-4 ${
+                domainStatus.ok
+                  ? 'border-[#6be12f]/20 bg-[#6be12f]/10'
+                  : 'border-yellow-500/20 bg-yellow-500/10'
+              }`}>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className={`text-sm font-black ${domainStatus.ok ? 'text-[#8cf059]' : 'text-yellow-200'}`}>
+                      {domainStatus.label}
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-neutral-300">{domainStatus.message}</p>
+                  </div>
+                  <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-neutral-300">
+                    {domainStatus.host || 'sem dominio'}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-2 rounded-xl bg-black/25 p-3 text-xs text-neutral-400">
+                  <p>
+                    Esperado: <strong className="text-white">{domainStatus.expected?.type}</strong> {domainStatus.expected?.name} -{'>'} <strong className="text-white">{domainStatus.expected?.value}</strong>
+                  </p>
+                  <p>CNAME atual: {(domainStatus.records?.cname || []).join(', ') || '-'}</p>
+                  <p>A atual: {(domainStatus.records?.a || []).join(', ') || '-'}</p>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
         <Field

@@ -2,7 +2,13 @@ import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAdminAction } from '@/lib/admin-audit-log'
-import { getLpConfig, getLpTemplate, getLpTemplateConfig, slugifyLp } from '@/lib/lp-generator-defaults'
+import {
+  getLpConfig,
+  getLpTemplate,
+  getLpTemplateConfig,
+  isLpTemplatePremium,
+  slugifyLp,
+} from '@/lib/lp-generator-defaults'
 
 export const runtime = 'nodejs'
 
@@ -24,6 +30,11 @@ function isValidUuid(value) {
 
 function isSlugConflict(error) {
   return error?.code === '23505' && String(error?.message || '').includes('lp_generator_pages_slug_key')
+}
+
+function isMissingPlanLimitColumn(error) {
+  const message = String(error?.message || '')
+  return error?.code === '42703' || message.includes('max_lps') || message.includes('max_leads_mes') || message.includes('templates_premium')
 }
 
 function nextSlugCandidate(baseSlug, attempt) {
@@ -94,15 +105,39 @@ async function getPage(id) {
 async function getOwnerClients(auth) {
   let query = supabaseAdmin
     .from('clientes')
-    .select('id, nome, nome_empresa, email, empresa_id, status')
+    .select('id, nome, nome_empresa, email, empresa_id, status, planos(max_lps, max_leads_mes, templates_premium)')
     .neq('status', 'Cancelado')
     .order('nome_empresa', { ascending: true })
 
   query = auth.applyEmpresaScope(query)
 
-  const { data, error } = await query
+  let { data, error } = await query
+
+  if (isMissingPlanLimitColumn(error)) {
+    let fallbackQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, nome, nome_empresa, email, empresa_id, status')
+      .neq('status', 'Cancelado')
+      .order('nome_empresa', { ascending: true })
+
+    fallbackQuery = auth.applyEmpresaScope(fallbackQuery)
+
+    const retry = await fallbackQuery
+    data = retry.data
+    error = retry.error
+  }
+
   if (error) throw error
-  return data || []
+
+  return (data || []).map((cliente) => ({
+    ...cliente,
+    lp_limits: {
+      max_lps: Number(cliente.planos?.max_lps || 0),
+      max_leads_mes: Number(cliente.planos?.max_leads_mes || 0),
+      templates_premium: cliente.planos?.templates_premium !== false,
+    },
+    planos: undefined,
+  }))
 }
 
 async function getStatusSummary(auth) {
@@ -137,13 +172,40 @@ async function getLpPlanLimits({ clienteId, empresaId }) {
   if (clienteId) query = query.eq('id', clienteId)
   else query = query.eq('empresa_id', empresaId)
 
-  const { data, error } = await query.maybeSingle()
+  let { data, error } = await query.maybeSingle()
+
+  if (isMissingPlanLimitColumn(error)) {
+    let fallbackQuery = supabaseAdmin
+      .from('clientes')
+      .select('id, empresa_id, plano_id, planos(id)')
+      .neq('status', 'Cancelado')
+      .limit(1)
+
+    if (clienteId) fallbackQuery = fallbackQuery.eq('id', clienteId)
+    else fallbackQuery = fallbackQuery.eq('empresa_id', empresaId)
+
+    const retry = await fallbackQuery.maybeSingle()
+    data = retry.data
+    error = retry.error
+  }
+
   if (error || !data?.planos) return { maxLps: 0, maxLeadsMes: 0, templatesPremium: true }
 
   return {
     maxLps: Number(data.planos.max_lps || 0),
     maxLeadsMes: Number(data.planos.max_leads_mes || 0),
     templatesPremium: data.planos.templates_premium !== false,
+  }
+}
+
+async function assertCanUseTemplate({ templateId, owner }) {
+  if (!isLpTemplatePremium(templateId)) return
+  if (!owner.clienteId && !owner.empresaId) return
+
+  const limits = await getLpPlanLimits(owner)
+
+  if (!limits.templatesPremium) {
+    throw new Error('Este template e premium e nao esta liberado no plano do cliente selecionado.')
   }
 }
 
@@ -283,6 +345,7 @@ export async function POST(request) {
 
     if (action === 'create') {
       const template = getLpTemplate(cleanText(body.template))
+      const templateId = template?.id || ''
       const name = cleanText(body.name || template?.defaultName || 'Nova landing page')
       const slug = slugifyLp(body.slug || name)
       const owner = await resolveOwner({
@@ -293,8 +356,9 @@ export async function POST(request) {
 
       if (!name) return errorJson('Nome da landing page e obrigatorio')
       if (!slug) return errorJson('Slug da landing page e obrigatorio')
+      await assertCanUseTemplate({ templateId, owner })
 
-      const templateConfig = getLpTemplateConfig(template?.id)
+      const templateConfig = getLpTemplateConfig(templateId)
       const data = await insertPageWithUniqueSlug(slug, {
         name,
         cliente_id: owner.clienteId,
