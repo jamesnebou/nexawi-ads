@@ -21,7 +21,7 @@ import {
 export const runtime = 'nodejs'
 
 const TIPOS_MIDIA_VALIDOS = ['imagem', 'video']
-const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna']
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -79,16 +79,13 @@ function sanitizarAnuncioPayload(anuncio = {}, empresaId = null) {
     titulo: limparTexto(anuncio.titulo),
     descricao: limparTexto(anuncio.descricao),
     media_url: limparTexto(anuncio.media_url),
-    tipo_media: TIPOS_MIDIA_VALIDOS.includes(anuncio.tipo_media)
-      ? anuncio.tipo_media
+    tipo_media: TIPOS_MIDIA_VALIDOS.includes(anuncio.tipo_media) ? anuncio.tipo_media
       : 'imagem',
-    url_destino: limparTexto(anuncio.url_destino),
-    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)
-      ? anuncio.tipo_destino
+    url_destino: anuncio.tipo_destino === 'site_nexawi' ? '/' : limparTexto(anuncio.url_destino),
+    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino) ? anuncio.tipo_destino
       : 'externo',
     lp_slug: limparTexto(anuncio.lp_slug),
-    tempo_liberacao_lp: Number.isFinite(Number(anuncio.tempo_liberacao_lp))
-      ? Math.min(60, Math.max(3, Number(anuncio.tempo_liberacao_lp)))
+    tempo_liberacao_lp: Number.isFinite(Number(anuncio.tempo_liberacao_lp)) ? Math.min(60, Math.max(3, Number(anuncio.tempo_liberacao_lp)))
       : 10,
     duracao_segundos: Number.isFinite(duracao) ? duracao : 15,
     ativo: Boolean(anuncio.ativo),
@@ -104,6 +101,7 @@ function validarAnuncio(payload, hotspotIds = []) {
   if (payload.tipo_destino === 'externo' && !payload.url_destino) {
     return 'Link externo é obrigatório para campanhas com destino externo'
   }
+  if (payload.tipo_destino === 'site_nexawi') return ''
   if (payload.tipo_destino === 'lp_interna' && !payload.lp_slug) {
     return 'Selecione uma LP interna para este anúncio'
   }
@@ -285,8 +283,7 @@ async function montarPlanoUso(auth, recurso = 'criativos', clienteId = '') {
 
     return {
       recurso,
-      plano: context.plano
-        ? {
+      plano: context.plano ?{
             id: context.plano.id,
             nome: context.plano.nome,
           }
@@ -353,7 +350,7 @@ export async function GET(request) {
 
       return {
         ...hotspot,
-        clientes: cliente ? { id: cliente.id, nome: cliente.nome } : null,
+        clientes: cliente ?{ id: cliente.id, nome: cliente.nome } : null,
       }
     })
 
@@ -507,7 +504,7 @@ export async function POST(request) {
     if (action === 'toggle') {
       const id = String(body.id || '').trim()
       const ativo = Boolean(body.ativo)
-      const acaoNecessaria = ativo ? 'activate' : 'pause'
+      const acaoNecessaria = ativo ?'activate' : 'pause'
 
       if (!auth.canAccess('anuncios', acaoNecessaria)) {
         return permissaoNegada('anuncios', acaoNecessaria)
@@ -550,10 +547,10 @@ export async function POST(request) {
       await logAdminAction({
         request,
         adminUser: auth.user,
-        action: ativo ? 'activate' : 'pause',
+        action: ativo ?'activate' : 'pause',
         entity: 'anuncios',
         entityId: data.id,
-        description: ativo ? 'Ativou um anúncio' : 'Pausou um anúncio',
+        description: ativo ?'Ativou um anúncio' : 'Pausou um anúncio',
         metadata: {
           empresa_id: data.empresa_id || anuncioAntes?.empresa_id || '',
           anuncio_id: data.id,
@@ -568,7 +565,7 @@ export async function POST(request) {
       return NextResponse.json({
         ok: true,
         anuncio: data,
-        message: ativo ? 'Anúncio ativado' : 'Anúncio pausado',
+        message: ativo ?'Anúncio ativado' : 'Anúncio pausado',
       })
     }
 
@@ -673,8 +670,7 @@ export async function POST(request) {
 
     const empresaId = resolveEmpresaIdForWrite(auth, body.anuncio?.empresa_id)
     const payload = sanitizarAnuncioPayload(body.anuncio || {}, empresaId)
-    const hotspotIds = Array.isArray(body.hotspotIds)
-      ? body.hotspotIds.map((id) => String(id)).filter(Boolean)
+    const hotspotIds = Array.isArray(body.hotspotIds) ? body.hotspotIds.map((id) => String(id)).filter(Boolean)
       : []
 
     const erroValidacao = validarAnuncio(payload, hotspotIds)
@@ -789,10 +785,10 @@ export async function POST(request) {
     await logAdminAction({
       request,
       adminUser: auth.user,
-      action: action === 'update' ? 'update' : 'create',
+      action: action === 'update' ?'update' : 'create',
       entity: 'anuncios',
       entityId: anuncioId,
-      description: action === 'update' ? 'Atualizou um anúncio' : 'Criou um novo anúncio',
+      description: action === 'update' ?'Atualizou um anúncio' : 'Criou um novo anúncio',
       metadata: {
         empresa_id: anuncioAtual?.empresa_id || payload.empresa_id || '',
         anuncio_id: anuncioId,
@@ -823,7 +819,7 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       anuncioId,
-      message: action === 'update' ? 'Anúncio atualizado com sucesso' : 'Anúncio criado com sucesso',
+      message: action === 'update' ?'Anúncio atualizado com sucesso' : 'Anúncio criado com sucesso',
     })
   } catch (error) {
     return NextResponse.json(

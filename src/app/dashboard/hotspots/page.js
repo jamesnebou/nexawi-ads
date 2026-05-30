@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 // src/app/dashboard/hotspots/page.js
 // ============================================================
@@ -67,6 +67,11 @@ const DEFAULT_FORM = {
   parceiro: '',
   status: 'Ativo',
   router_id: '',
+  portal_email_obrigatorio: true,
+  portal_cpf_visivel: true,
+  portal_cpf_obrigatorio: true,
+  portal_promocoes_optin_ativo: false,
+  portal_promocoes_texto: 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.',
 }
 
 function corStatus(status) {
@@ -138,7 +143,7 @@ function StatCard({ icon: Icon, label, value, description, accent = false }) {
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
             {label}
           </p>
-          <p className={`text-2xl font-black mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
+          <p className={`text-2xl font-black mt-2 ${accent ?'text-[#6be12f]' : 'text-white'}`}>
             {value}
           </p>
           {description && (
@@ -181,7 +186,7 @@ function StatusBadge({ children, className = '' }) {
 }
 
 function formatarLimitePlano(uso = 0, limite = 0) {
-  return limite && limite > 0 ? `${uso}/${limite}` : `${uso}/∞`
+  return limite && limite > 0 ?`${uso}/${limite}` : `${uso}/∞`
 }
 
 function percentualLimitePlano(uso = 0, limite = 0) {
@@ -196,26 +201,26 @@ function PlanoUsoBanner({ planoUso }) {
   const noLimite = Boolean(planoUso.limite) && planoUso.uso >= planoUso.limite
   const pertoLimite = Boolean(planoUso.limite) && percentual >= 80 && !noLimite
   const bloqueado = Boolean(planoUso.bloqueado)
-  const corBarra = bloqueado || noLimite ? 'bg-red-400' : pertoLimite ? 'bg-yellow-300' : 'bg-[#6be12f]'
-  const corBorda = bloqueado || noLimite ? 'border-red-500/20 bg-red-500/10' : pertoLimite ? 'border-yellow-500/20 bg-yellow-500/10' : 'border-[#6be12f]/20 bg-[#6be12f]/10'
+  const corBarra = bloqueado || noLimite ?'bg-red-400' : pertoLimite ?'bg-yellow-300' : 'bg-[#6be12f]'
+  const corBorda = bloqueado || noLimite ?'border-red-500/20 bg-red-500/10' : pertoLimite ?'border-yellow-500/20 bg-yellow-500/10' : 'border-[#6be12f]/20 bg-[#6be12f]/10'
 
   return (
     <section className={`relative z-10 mb-8 rounded-3xl border p-5 ${corBorda}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-            {bloqueado || noLimite ? <AlertTriangle size={21} className="text-red-300" /> : <Wifi size={21} className="text-[#8cf059]" />}
+            {bloqueado || noLimite ?<AlertTriangle size={21} className="text-red-300" /> : <Wifi size={21} className="text-[#8cf059]" />}
           </div>
           <div>
             <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Uso do plano</p>
             <h2 className="text-lg font-black text-white mt-1">Pontos Wi-Fi: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
             <p className="text-sm text-neutral-400 mt-1">
-              {planoUso.plano?.nome ? `Plano ${planoUso.plano.nome}. ` : ''}
-              {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ? 'Limite atingido para este recurso.' : pertoLimite ? 'Uso próximo do limite contratado.' : 'Dentro do limite contratado.'}
+              {planoUso.plano?.nome ?`Plano ${planoUso.plano.nome}. ` : ''}
+              {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ?'Limite atingido para este recurso.' : pertoLimite ?'Uso próximo do limite contratado.' : 'Dentro do limite contratado.'}
             </p>
           </div>
         </div>
-        {planoUso.limite > 0 ? (
+        {planoUso.limite > 0 ?(
           <div className="w-full lg:w-72">
             <div className="h-3 rounded-full bg-black/40 overflow-hidden border border-white/[0.06]">
               <div className={`h-full ${corBarra}`} style={{ width: `${percentual}%` }} />
@@ -338,6 +343,11 @@ export default function HotspotsPro() {
         parceiro: hotspot.parceiro || '',
         status: hotspot.status || 'Ativo',
         router_id: hotspot.router_id || '',
+        portal_email_obrigatorio: hotspot.portal_email_obrigatorio !== false,
+        portal_cpf_visivel: hotspot.portal_cpf_visivel !== false,
+        portal_cpf_obrigatorio: hotspot.portal_cpf_obrigatorio !== false,
+        portal_promocoes_optin_ativo: Boolean(hotspot.portal_promocoes_optin_ativo),
+        portal_promocoes_texto: hotspot.portal_promocoes_texto || DEFAULT_FORM.portal_promocoes_texto,
       })
     } else {
       setHotspotSelecionado(null)
@@ -563,7 +573,7 @@ export default function HotspotsPro() {
               disabled={carregando}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-3.5 text-sm font-bold text-white hover:bg-white/[0.06] disabled:opacity-50 transition-all"
             >
-              {carregando ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
+              {carregando ?<Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
               Atualizar
             </button>
 
@@ -646,14 +656,14 @@ export default function HotspotsPro() {
           </div>
         </section>
 
-        {carregando ? (
+        {carregando ?(
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
               <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin" />
               <Wifi className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
-        ) : hotspotsFiltrados.length === 0 ? (
+        ) : hotspotsFiltrados.length === 0 ?(
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] py-24 text-center flex flex-col items-center justify-center backdrop-blur-xl shadow-2xl">
             <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center mb-6 border border-white/[0.05]">
               <Wifi size={32} className="text-neutral-600" />
@@ -718,8 +728,8 @@ export default function HotspotsPro() {
                           <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 truncate font-medium">
                             <MapPin size={12} className="flex-shrink-0 text-neutral-600" />
                             {hotspot.cidade || 'Cidade não informada'}
-                            {hotspot.estado ? `/${hotspot.estado}` : ''}
-                            {hotspot.endereco ? ` · ${hotspot.endereco}` : ''}
+                            {hotspot.estado ?`/${hotspot.estado}` : ''}
+                            {hotspot.endereco ?` · ${hotspot.endereco}` : ''}
                           </p>
                         </div>
                       </div>
@@ -768,7 +778,7 @@ export default function HotspotsPro() {
                       <MiniMetric
                         icon={Gauge}
                         label="Velocidade"
-                        value={policy ? `${policy.download_limit || '10M'} / ${policy.upload_limit || '3M'}` : '—'}
+                        value={policy ?`${policy.download_limit || '10M'} / ${policy.upload_limit || '3M'}` : 'â€”'}
                       />
                     </div>
 
@@ -789,7 +799,7 @@ export default function HotspotsPro() {
                           </div>
                         </div>
 
-                        {routerInfo ? (
+                        {routerInfo ?(
                           <div className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm font-bold text-neutral-300 truncate">
@@ -822,7 +832,7 @@ export default function HotspotsPro() {
                       <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
-                            {policy?.active ? (
+                            {policy?.active ?(
                               <ShieldCheck size={18} className="text-[#6be12f]" />
                             ) : (
                               <ShieldAlert size={18} className="text-yellow-400" />
@@ -839,7 +849,7 @@ export default function HotspotsPro() {
                           </div>
                         </div>
 
-                        {policy ? (
+                        {policy ?(
                           <div className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
                               <p className="text-sm font-bold text-neutral-300">
@@ -848,17 +858,16 @@ export default function HotspotsPro() {
 
                               <StatusBadge
                                 className={
-                                  policy.active
-                                    ? 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
+                                  policy.active ?'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
                                     : 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
                                 }
                               >
-                                {policy.active ? 'Ativa' : 'Inativa'}
+                                {policy.active ?'Ativa' : 'Inativa'}
                               </StatusBadge>
                             </div>
 
                             <p className="text-xs text-neutral-500">
-                              DNS: {policy.force_dns ? 'ON' : 'OFF'} · QUIC: {policy.block_quic ? 'ON' : 'OFF'} · Jogos: {policy.block_games ? 'ON' : 'OFF'}
+                              DNS: {policy.force_dns ?'ON' : 'OFF'} · QUIC: {policy.block_quic ?'ON' : 'OFF'} · Jogos: {policy.block_games ?'ON' : 'OFF'}
                             </p>
 
                             <p className="text-xs text-neutral-600">
@@ -890,7 +899,7 @@ export default function HotspotsPro() {
                         disabled={!routerInfo || testing}
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-3 text-sm font-bold text-white hover:bg-white/[0.06] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        {testing ? <Loader2 size={16} className="animate-spin" /> : <Server size={16} />}
+                        {testing ?<Loader2 size={16} className="animate-spin" /> : <Server size={16} />}
                         Testar MikroTik
                       </button>
 
@@ -929,7 +938,7 @@ export default function HotspotsPro() {
 
                 <div>
                   <h2 className="text-2xl font-bold text-white tracking-tight">
-                    {hotspotSelecionado ? 'Editar Hotspot' : 'Novo Hotspot'}
+                    {hotspotSelecionado ?'Editar Hotspot' : 'Novo Hotspot'}
                   </h2>
                   <p className="text-xs text-neutral-500 mt-1">
                     Vincule o ponto físico ao MikroTik correto.
@@ -1059,7 +1068,7 @@ export default function HotspotsPro() {
                     <input
                       list="lista-cidades-hotspot"
                       type="text"
-                      placeholder={form.estado ? 'Digite para buscar a cidade' : 'Selecione o estado primeiro'}
+                      placeholder={form.estado ?'Digite para buscar a cidade' : 'Selecione o estado primeiro'}
                       value={form.cidade}
                       onChange={(e) => setForm({ ...form, cidade: e.target.value })}
                       disabled={!form.estado}
@@ -1122,6 +1131,77 @@ export default function HotspotsPro() {
                     </p>
                   </div>
                 </div>
+                <div className="rounded-3xl border border-white/[0.06] bg-[#050505] p-5">
+                  <div className="flex items-start gap-3 mb-5">
+                    <ShieldCheck size={18} className="text-[#6be12f] mt-0.5 flex-shrink-0" />
+                    <div>
+                      <h3 className="text-sm font-black text-white">Regras do portal deste hotspot</h3>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        Use para adaptar Cândido Sales sem alterar o fluxo das outras cidades.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer">
+                      <span className="text-xs font-bold text-neutral-300">E-mail obrigatório</span>
+                      <input
+                        type="checkbox"
+                        checked={form.portal_email_obrigatorio}
+                        onChange={(e) => setForm({ ...form, portal_email_obrigatorio: e.target.checked })}
+                        className="h-4 w-4 accent-[#6be12f]"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer">
+                      <span className="text-xs font-bold text-neutral-300">Exibir CPF</span>
+                      <input
+                        type="checkbox"
+                        checked={form.portal_cpf_visivel}
+                        onChange={(e) => setForm({
+                          ...form,
+                          portal_cpf_visivel: e.target.checked,
+                          portal_cpf_obrigatorio: e.target.checked ? form.portal_cpf_obrigatorio : false,
+                        })}
+                        className="h-4 w-4 accent-[#6be12f]"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer">
+                      <span className="text-xs font-bold text-neutral-300">CPF obrigatório</span>
+                      <input
+                        type="checkbox"
+                        checked={form.portal_cpf_visivel && form.portal_cpf_obrigatorio}
+                        disabled={!form.portal_cpf_visivel}
+                        onChange={(e) => setForm({ ...form, portal_cpf_obrigatorio: e.target.checked })}
+                        className="h-4 w-4 accent-[#6be12f] disabled:opacity-40"
+                      />
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer">
+                      <span className="text-xs font-bold text-neutral-300">Opt-in de promoções</span>
+                      <input
+                        type="checkbox"
+                        checked={form.portal_promocoes_optin_ativo}
+                        onChange={(e) => setForm({ ...form, portal_promocoes_optin_ativo: e.target.checked })}
+                        className="h-4 w-4 accent-[#6be12f]"
+                      />
+                    </label>
+                  </div>
+
+                  <label className="block mt-4">
+                    <span className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                      Texto do aceite de promoções
+                    </span>
+                    <textarea
+                      value={form.portal_promocoes_texto}
+                      onChange={(e) => setForm({ ...form, portal_promocoes_texto: e.target.value })}
+                      rows={3}
+                      className="w-full bg-black/30 border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+                    />
+                  </label>
+                </div>
+
               </div>
             </div>
 
@@ -1138,12 +1218,12 @@ export default function HotspotsPro() {
                 disabled={salvando || !form.nome.trim()}
                 className="flex-1 bg-[#6be12f] hover:bg-[#8cf059] disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold py-4 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
-                {salvando ? (
+                {salvando ?(
                   <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                 ) : (
                   <>
                     <Check size={18} strokeWidth={2.5} />
-                    {hotspotSelecionado ? 'Salvar Alterações' : 'Cadastrar Hotspot'}
+                    {hotspotSelecionado ?'Salvar Alterações' : 'Cadastrar Hotspot'}
                   </>
                 )}
               </button>
@@ -1205,3 +1285,6 @@ export default function HotspotsPro() {
     </>
   )
 }
+
+
+

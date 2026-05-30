@@ -87,6 +87,8 @@ function trackLead(page) {
 }
 
 function VisualPanel({ config }) {
+  const previewCards = normalizePreviewCards(config.textos?.previewCards)
+
   if (config.hero.imagemUrl) {
     return (
       <div className="relative isolate flex min-h-[260px] items-center justify-center sm:min-h-[360px]">
@@ -107,11 +109,11 @@ function VisualPanel({ config }) {
       <div className="rounded-[1.5rem] border border-white/10 bg-black/80 p-4">
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)]">Live preview</p>
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)]">{textOr(config.textos?.previewEyebrow, 'Live preview')}</p>
             <p className="mt-1 text-sm font-black text-white">{config.identidade.marca}</p>
           </div>
           <div className="rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[var(--primary)]">
-            Online
+            {textOr(config.textos?.previewStatus, 'Online')}
           </div>
         </div>
 
@@ -127,10 +129,10 @@ function VisualPanel({ config }) {
         </div>
 
         <div className="grid grid-cols-3 gap-3">
-          {['Oferta', 'Prova', 'Lead'].map((item, index) => (
-            <div key={item} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-lg font-black text-white">0{index + 1}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-[var(--page-muted)]">{item}</p>
+          {previewCards.map((item, index) => (
+            <div key={`${item.numero}-${item.texto}-${index}`} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <p className="text-lg font-black text-white">{item.numero}</p>
+              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-[var(--page-muted)]">{item.texto}</p>
             </div>
           ))}
         </div>
@@ -166,7 +168,11 @@ function buildFloatingWhatsappUrl(config) {
   if (!phone) return ''
 
   const brand = config.identidade.marca || 'sua empresa'
-  const message = `Olá ${brand}, vim pelo seu site e queria saber mais informações.`
+  const template = textOr(
+    config.textos?.whatsappMensagem,
+    'Ola [Nome da empresa], vim pelo seu site e queria saber mais informacoes.'
+  )
+  const message = template.replace(/\[Nome da empresa\]/g, brand)
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
 }
 
@@ -190,6 +196,90 @@ function cleanCustomFormFields(fields = []) {
       ...field,
       id: field.id || `campo-${index + 1}`,
     }))
+}
+
+function cleanText(value) {
+  return String(value || '').trim()
+}
+
+function textOr(value, fallback) {
+  return cleanText(value) || fallback
+}
+
+function normalizePreviewCards(items = []) {
+  const fallback = [
+    { numero: '01', texto: 'Oferta' },
+    { numero: '02', texto: 'Prova' },
+    { numero: '03', texto: 'Lead' },
+  ]
+
+  const valid = (Array.isArray(items) ? items : [])
+    .map((item, index) => ({
+      numero: textOr(item?.numero, `0${index + 1}`),
+      texto: cleanText(item?.texto),
+    }))
+    .filter((item) => item.texto)
+
+  return valid.length ? valid.slice(0, 3) : fallback
+}
+
+function normalizeMetrics(items = [], fallback = []) {
+  const valid = (Array.isArray(items) ? items : [])
+    .map((item) => ({
+      value: cleanText(item?.value || item?.valor),
+      label: cleanText(item?.label || item?.rotulo),
+    }))
+    .filter((item) => item.value || item.label)
+
+  return valid.length ? valid.slice(0, 3) : fallback
+}
+
+function normalizeSignals(items = [], fallback = []) {
+  const icons = [Zap, ShieldCheck, MessageCircle]
+  const valid = (Array.isArray(items) ? items : [])
+    .map((item, index) => ({
+      icon: fallback[index]?.icon || icons[index % icons.length],
+      title: cleanText(item?.titulo || item?.title),
+      text: cleanText(item?.texto || item?.text),
+    }))
+    .filter((item) => item.title || item.text)
+
+  return valid.length ? valid.slice(0, 3) : fallback
+}
+
+function normalizeTextList(items = [], fallback = []) {
+  const valid = (Array.isArray(items) ? items : [])
+    .map((item) => cleanText(typeof item === 'string' ? item : item?.texto || item?.label || item?.titulo))
+    .filter(Boolean)
+
+  return valid.length ? valid : fallback
+}
+
+function getEditableTextContent(config, layoutContent) {
+  const textos = config.textos || {}
+
+  return {
+    heroBotaoSecundario: textOr(textos.heroBotaoSecundario, 'Ver detalhes'),
+    heroScrollTexto: textOr(textos.heroScrollTexto, 'Descer'),
+    metrics: normalizeMetrics(textos.metricas, layoutContent.metrics),
+    signals: normalizeSignals(textos.sinais, layoutContent.signals),
+    benefitEyebrow: textOr(textos.beneficiosEyebrow, layoutContent.benefitEyebrow),
+    benefitIntro: textOr(textos.beneficiosIntro, layoutContent.benefitIntro),
+    proofIntro: textOr(textos.provaIntro, layoutContent.proofIntro),
+    ofertaEyebrow: textOr(textos.ofertaEyebrow, 'Oferta principal'),
+    offerBullets: normalizeTextList(textos.ofertaItens, layoutContent.offerBullets),
+    ofertaCondicaoLabel: textOr(textos.ofertaCondicaoLabel, 'Condicao'),
+    ofertaTextoAuxiliar: textOr(textos.ofertaTextoAuxiliar, 'Direcione o visitante para o proximo passo sem excesso de texto.'),
+    formBullets: normalizeTextList(textos.formularioItens, layoutContent.formBullets),
+    faqEyebrow: textOr(textos.faqEyebrow, 'Duvidas'),
+    planoDestaqueTexto: textOr(textos.planoDestaqueTexto, 'Destaque'),
+    planoCtaFallback: textOr(textos.planoCtaFallback, 'Escolher plano'),
+    formularioEnviandoTexto: textOr(textos.formularioEnviandoTexto, 'Enviando...'),
+    rodapeTermosTexto: textOr(textos.rodapeTermosTexto, 'Termos de Uso'),
+    rodapePrivacidadeTexto: textOr(textos.rodapePrivacidadeTexto, 'Privacidade'),
+    rodapeContatoTexto: textOr(textos.rodapeContatoTexto, 'Contato'),
+    rodapeInstagramTexto: textOr(textos.rodapeInstagramTexto, 'Instagram'),
+  }
 }
 
 function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
@@ -391,6 +481,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
   const visualStyle = config.estilo?.preset || 'editorial-premium'
   const templateLayout = config.layout?.templateLayout || 'conversion-flow'
   const layoutContent = getTemplateLayoutContent(templateLayout)
+  const editableText = getEditableTextContent(config, layoutContent)
   const mobileCtaText = String(config.cta?.mobileTexto || '').trim() || config.formulario.botao
   const heroVariant = config.hero.variante || 'split-media'
   const heroCoverUrl = config.hero.backgroundUrl || (heroVariant === 'cover-story' ? config.hero.imagemUrl : '')
@@ -986,11 +1077,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
                 <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                   <Cta href={config.hero.ctaUrl} className="w-full sm:w-auto">{config.hero.ctaTexto}</Cta>
-                  <Cta href={detailsHref} variant="ghost" className="w-full sm:w-auto">Ver detalhes</Cta>
+                  <Cta href={detailsHref} variant="ghost" className="w-full sm:w-auto">{editableText.heroBotaoSecundario}</Cta>
                 </div>
 
                 <div className="mt-10 grid max-w-2xl grid-cols-3 gap-3 border-t border-white/10 pt-7 sm:gap-5">
-                  {layoutContent.metrics.map((metric) => (
+                  {editableText.metrics.map((metric) => (
                     <Metric key={`${metric.value}-${metric.label}`} value={metric.value} label={metric.label} />
                   ))}
                 </div>
@@ -1002,7 +1093,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
             </div>
 
             <a href={detailsHref} className="mt-10 inline-flex w-fit items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[var(--page-muted)] hover:text-white">
-              Descer
+              {editableText.heroScrollTexto}
               <ChevronDown size={15} />
             </a>
           </div>
@@ -1011,7 +1102,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
       {config.hero.ativo ? (
         <section className="relative z-10 mx-auto -mt-4 grid w-full max-w-7xl gap-3 px-5 sm:grid-cols-3 sm:px-8">
-          {layoutContent.signals.map(({ icon: Icon, title, text }, index) => (
+          {editableText.signals.map(({ icon: Icon, title, text }, index) => (
             <div
               key={title}
               data-lp-reveal
@@ -1067,11 +1158,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-end">
               <div>
-                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{layoutContent.benefitEyebrow}</p>
+                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.benefitEyebrow}</p>
                 <h2 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{config.beneficios.titulo}</h2>
               </div>
               <p className="max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">
-                {layoutContent.benefitIntro}
+                {editableText.benefitIntro}
               </p>
             </div>
 
@@ -1109,7 +1200,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <BadgeCheck className="text-[var(--primary)]" size={34} />
               <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.prova.titulo}</p>
               <p className="mt-3 text-sm leading-relaxed text-[var(--page-muted)]">
-                {layoutContent.proofIntro}
+                {editableText.proofIntro}
               </p>
             </div>
 
@@ -1172,12 +1263,12 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div data-lp-reveal className="lp-surface lp-offer-card mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-black/50 shadow-2xl shadow-black/25 backdrop-blur-sm lg:grid-cols-[1.1fr_.9fr]">
             <div className="p-7 sm:p-10 lg:p-12">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">Oferta principal</p>
+              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.ofertaEyebrow}</p>
               <h2 className="mt-5 text-balance text-4xl font-black leading-tight sm:text-6xl">{config.oferta.titulo}</h2>
               <p className="mt-6 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.oferta.texto}</p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
-                {layoutContent.offerBullets.map((item) => (
+                {editableText.offerBullets.map((item) => (
                   <div key={item} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-bold text-white">
                     <CheckCircle2 size={17} className="text-[var(--primary)]" />
                     {item}
@@ -1188,10 +1279,10 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
             <div className="flex flex-col justify-between border-t border-white/10 bg-black/30 p-7 sm:p-10 lg:border-l lg:border-t-0">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--page-muted)]">Condicao</p>
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--page-muted)]">{editableText.ofertaCondicaoLabel}</p>
                 <p className="mt-5 text-5xl font-black tracking-tight">{config.oferta.preco}</p>
                 <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">
-                  Direcione o visitante para o proximo passo sem excesso de texto.
+                  {editableText.ofertaTextoAuxiliar}
                 </p>
               </div>
 
@@ -1284,7 +1375,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
                   {plan.destaque ? (
                     <div className="absolute right-5 top-5 z-10 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black shadow-lg shadow-black/30">
-                      Destaque
+                      {editableText.planoDestaqueTexto}
                     </div>
                   ) : null}
 
@@ -1311,7 +1402,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
                   <div className="relative z-10 mt-8">
                     <Cta href={plan.ctaUrl || '#formulario'} className="w-full">
-                      {plan.ctaTexto || 'Escolher plano'}
+                      {plan.ctaTexto || editableText.planoCtaFallback}
                     </Cta>
                   </div>
                   </div>
@@ -1345,7 +1436,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.8fr_1.2fr]">
             <div data-lp-reveal="left">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">Duvidas</p>
+              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.faqEyebrow}</p>
               <h2 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">{config.faq.titulo}</h2>
             </div>
 
@@ -1382,7 +1473,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{config.formulario.texto}</p>
 
               <div className="mt-8 space-y-3 text-sm font-bold text-white">
-                {layoutContent.formBullets.map((item) => (
+                {editableText.formBullets.map((item) => (
                   <p key={item} className="flex items-center gap-2"><CheckCircle2 size={17} className="text-[var(--primary)]" /> {item}</p>
                 ))}
               </div>
@@ -1426,7 +1517,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                 </label>
               ) : null}
               <button disabled={sending} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-4 text-sm font-black text-black transition hover:brightness-110 disabled:opacity-60">
-                {sending ? 'Enviando...' : config.formulario.botao}
+                {sending ? editableText.formularioEnviandoTexto : config.formulario.botao}
                 {!sending && <ArrowRight size={17} />}
               </button>
             </form>
@@ -1446,29 +1537,29 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
             {config.rodape.mostrarCopyright ? (
               <p data-lp-reveal className="text-center text-xs text-gray-500 sm:text-sm">
-                © {new Date().getFullYear()} {config.identidade.marca}. {config.rodape.copyright}
+              &copy; {new Date().getFullYear()} {config.identidade.marca}. {config.rodape.copyright}
               </p>
             ) : null}
 
             <div data-lp-reveal="right" className="flex flex-wrap justify-center gap-4 text-xs font-medium text-gray-400 sm:gap-6 sm:text-sm md:justify-end">
               {footerLinkVisible(config.rodape.mostrarTermos, config.rodape.termosUrl) ? (
                 <a href={config.rodape.termosUrl} className="transition-colors hover:text-[var(--primary)]">
-                  Termos de Uso
+                  {editableText.rodapeTermosTexto}
                 </a>
               ) : null}
               {footerLinkVisible(config.rodape.mostrarPrivacidade, config.rodape.privacidadeUrl) ? (
                 <a href={config.rodape.privacidadeUrl} className="transition-colors hover:text-[var(--primary)]">
-                  Privacidade
+                  {editableText.rodapePrivacidadeTexto}
                 </a>
               ) : null}
               {footerLinkVisible(config.rodape.mostrarContato, config.rodape.contatoUrl) ? (
                 <a href={config.rodape.contatoUrl} className="transition-colors hover:text-[var(--primary)]">
-                  Contato
+                  {editableText.rodapeContatoTexto}
                 </a>
               ) : null}
               {footerLinkVisible(config.rodape.mostrarInstagram, config.rodape.instagramUrl) ? (
                 <a href={config.rodape.instagramUrl} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-[var(--primary)]">
-                  Instagram
+                  {editableText.rodapeInstagramTexto}
                 </a>
               ) : null}
             </div>

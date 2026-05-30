@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
@@ -45,8 +45,7 @@ function extrairLpSlug(value = '') {
   if (!raw) return ''
 
   try {
-    const url = raw.startsWith('http://') || raw.startsWith('https://')
-      ? new URL(raw)
+    const url = raw.startsWith('http://') || raw.startsWith('https://') ? new URL(raw)
       : new URL(raw, 'https://www.nexawi.com.br')
 
     const partes = url.pathname.split('/').filter(Boolean)
@@ -59,7 +58,7 @@ function extrairLpSlug(value = '') {
 
   return raw
     .replace(/^https?:\/\/[^/]+/i, '')
-    .replace(/^\/?lp\//i, '')
+    .replace(/^\/lp\//i, '')
     .replace(/^\//, '')
     .split('?')[0]
     .trim()
@@ -101,6 +100,11 @@ function montarUrlLpInterna(anuncio = {}, contexto = {}) {
   return `${base}/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`
 }
 
+function montarUrlSiteNexawi() {
+  const base = typeof window !== 'undefined' ? window.location.origin : 'https://www.nexawi.com.br'
+  return `${base}/`
+}
+
 function normalizarUrlDestino(url = '') {
   const valor = String(url || '').trim()
 
@@ -122,8 +126,7 @@ function normalizarUrlDestino(url = '') {
   const somenteNumeros = valor.replace(/\D/g, '')
 
   if (/^\d{10,15}$/.test(somenteNumeros)) {
-    const telefoneComPais = somenteNumeros.startsWith('55')
-      ? somenteNumeros
+    const telefoneComPais = somenteNumeros.startsWith('55') ? somenteNumeros
       : `55${somenteNumeros}`
 
     return `https://wa.me/${telefoneComPais}`
@@ -253,6 +256,7 @@ export default function Portal() {
     telefone: '',
     cpf: '',
     aceite_lgpd: false,
+    aceitou_promocoes: false,
   })
 
   const [erros, setErros] = useState({})
@@ -264,6 +268,13 @@ export default function Portal() {
   const liberacaoCtaTimerRef = useRef(null)
   const videoAdRef = useRef(null)
   const videoAdBufferingRef = useRef(false)
+
+  const portalRules = hotspot?.portal_rules || {}
+  const emailObrigatorio = portalRules.email_obrigatorio !== false
+  const cpfVisivel = portalRules.cpf_visivel !== false
+  const cpfObrigatorio = portalRules.cpf_obrigatorio !== false
+  const promocoesOptinAtivo = Boolean(portalRules.promocoes_optin_ativo)
+  const promocoesTexto = portalRules.promocoes_texto || 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.'
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -325,12 +336,11 @@ export default function Portal() {
 
   function falhar(etiqueta, erro = '') {
     const detalhe =
-      typeof erro === 'string'
-        ? erro
+      typeof erro === 'string' ? erro
         : erro?.message || JSON.stringify(erro) || 'Erro desconhecido'
 
     console.error(etiqueta, erro)
-    setErroDetalhe(`${etiqueta}${detalhe ? `: ${detalhe}` : ''}`)
+    setErroDetalhe(`${etiqueta}${detalhe ?`: ${detalhe}` : ''}`)
     setEtapa(ETAPAS.ERRO)
   }
 
@@ -534,18 +544,19 @@ export default function Portal() {
   function validarForm() {
     const novosErros = {}
 
-    if (!form.nome.trim()) novosErros.nome = 'Nome é obrigatório'
-    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      novosErros.email = 'E-mail inválido'
+    if (!form.nome.trim()) novosErros.nome = 'Nome obrigat?rio'
+    if (emailObrigatorio && !form.email.trim()) {
+      novosErros.email = 'E-mail obrigat?rio'
+    } else if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      novosErros.email = 'E-mail inv?lido'
     }
-    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inválido (11 dígitos)'
-    if (!validateCpf(form.cpf)) novosErros.cpf = 'CPF inválido'
-    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
+    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inv?lido (11 d?gitos)'
+    if (cpfVisivel && cpfObrigatorio && !validateCpf(form.cpf)) novosErros.cpf = 'CPF inv?lido'
+    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Voc? precisa aceitar os termos'
 
     setErros(novosErros)
     return Object.keys(novosErros).length === 0
   }
-
   function autorizarSessaoEmBackground(explicitLeadId = null) {
     const resolvedLeadId =
       explicitLeadId ||
@@ -621,6 +632,7 @@ const data = await portalApiFetch('/api/portal/lead', {
   telefone: telefoneLimpo,
   cpf: cpfLimpo,
   aceiteLgpd: form.aceite_lgpd,
+  aceitouPromocoes: form.aceitou_promocoes,
   anuncioId: null,
   macAddress: resolvedMac || null,
   ipAddress: resolvedIp || null,
@@ -831,7 +843,9 @@ leadIdRef.current = data.leadId
               clientMac: getClientMac(),
               clientIp: getClientIp(),
             })
-          : normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
+          : tipoDestino === 'site_nexawi'
+            ? montarUrlSiteNexawi()
+            : normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
         setUrlCliente(urlNormalizada)
         setLinkCopiado(false)
@@ -842,6 +856,26 @@ leadIdRef.current = data.leadId
           })
 
           window.location.href = urlNormalizada
+          return
+        }
+
+        if (tipoDestino === 'site_nexawi') {
+          registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
+            console.error('Erro ao registrar clique no site NexaWi:', error)
+          })
+
+          setLoadingTexto('Liberando internet e abrindo NexaWi...')
+          setEtapa(ETAPAS.LOADING)
+
+          try {
+            await autorizarSessaoEmBackground(resolvedLeadId)
+          } catch (error) {
+            console.error('Erro ao liberar internet antes do site NexaWi:', error)
+          }
+
+          window.setTimeout(() => {
+            window.location.href = urlNormalizada
+          }, 250)
           return
         }
 
@@ -968,6 +1002,19 @@ async function handleCopiarLinkCliente() {
       setLeadId(leadDoMes.id)
       leadIdRef.current = leadDoMes.id
 
+      const regrasPortal = hotspotData.portal_rules || {}
+      const deveValidarCpfRapido =
+        regrasPortal.cpf_visivel !== false &&
+        regrasPortal.cpf_obrigatorio !== false
+
+      if (!deveValidarCpfRapido) {
+        setLeadRapido(null)
+        setLeadId(null)
+        leadIdRef.current = null
+        setEtapa(ETAPAS.CADASTRO)
+        return
+      }
+
       // Mesmo que exista sessão authorized antiga,
       // se o portal abriu de novo, o usuário precisa validar CPF rápido.
       setEtapa(ETAPAS.CPF_RAPIDO)
@@ -1073,7 +1120,7 @@ async function handleCopiarLinkCliente() {
           <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
           <p className="text-gray-500 mb-3">Não foi possível carregar as configurações deste ponto de acesso.</p>
 
-          {erroDetalhe ? (
+          {erroDetalhe ?(
             <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-left">
               <p className="text-[11px] uppercase tracking-[0.2em] text-red-400 font-bold mb-2">
                 Detalhe técnico
@@ -1131,7 +1178,7 @@ async function handleCopiarLinkCliente() {
                 disabled={salvandoCpfRapido}
                 className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                {salvandoCpfRapido ? <Loader2 size={20} className="animate-spin" /> : <>Continuar <ArrowRight size={18} /></>}
+                {salvandoCpfRapido ?<Loader2 size={20} className="animate-spin" /> : <>Continuar <ArrowRight size={18} /></>}
               </button>
             </form>
           </div>
@@ -1205,19 +1252,21 @@ async function handleCopiarLinkCliente() {
                 {erros.telefone && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.telefone}</span>}
               </div>
 
-              <div className="relative group/input">
-                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+              {cpfVisivel && (
+                <div className="relative group/input">
+                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                    <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+                  </div>
+                  <input
+                    type="text"
+                    value={form.cpf}
+                    onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                    className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                    placeholder={cpfObrigatorio ?'CPF' : 'CPF (opcional)'}
+                  />
+                  {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
                 </div>
-                <input
-                  type="text"
-                  value={form.cpf}
-                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-                  className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
-                  placeholder="CPF"
-                />
-                {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
-              </div>
+              )}
 
               <div className="pt-2">
                 <label className="flex items-start gap-3 cursor-pointer group">
@@ -1246,12 +1295,33 @@ async function handleCopiarLinkCliente() {
                 {erros.aceite_lgpd && <span className="text-red-400 text-xs mt-2 ml-8 block">{erros.aceite_lgpd}</span>}
               </div>
 
+              {promocoesOptinAtivo && (
+                <div className="pt-1">
+                  <label className="flex items-start gap-3 cursor-pointer group">
+                    <div className="relative flex items-center justify-center mt-0.5">
+                      <input
+                        type="checkbox"
+                        checked={form.aceitou_promocoes}
+                        onChange={(e) => setForm({ ...form, aceitou_promocoes: e.target.checked })}
+                        className="peer sr-only"
+                      />
+                      <div className="w-5 h-5 rounded border border-white/[0.1] bg-[#0a0a0a] peer-checked:bg-[#6be12f] peer-checked:border-[#6be12f] transition-all duration-300 flex items-center justify-center">
+                        <CheckCircle2 size={14} className="text-black opacity-0 peer-checked:opacity-100 transition-opacity duration-300" />
+                      </div>
+                    </div>
+                    <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-400 transition-colors">
+                      {promocoesTexto}
+                    </span>
+                  </label>
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={salvando}
                 className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                {salvando ? <Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
+                {salvando ?<Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
               </button>
             </form>
           </div>
@@ -1268,7 +1338,7 @@ async function handleCopiarLinkCliente() {
           </div>
 
           <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ?(
               <div className="relative w-full h-full">
                 <video
                   ref={videoAdRef}
@@ -1310,7 +1380,7 @@ async function handleCopiarLinkCliente() {
                   </div>
                 )}
               </div>
-            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ?(
               <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
             ) : (
               <div className="text-gray-600 text-sm">Mídia não disponível</div>
@@ -1330,9 +1400,9 @@ async function handleCopiarLinkCliente() {
       {etapa === ETAPAS.CTA && anuncioAtual && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-[#050505]/80 backdrop-blur-xl p-4">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ?(
               <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay muted loop playsInline />
-            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ?(
               <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" alt="Fundo anúncio" />
             ) : null}
           </div>
@@ -1358,7 +1428,7 @@ async function handleCopiarLinkCliente() {
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
 
               <div className="flex flex-col gap-4">
-                {(anuncioAtual.url_destino || anuncioAtual.tipo_destino === 'lp_interna') && (
+                {(anuncioAtual.url_destino || anuncioAtual.tipo_destino === 'lp_interna' || anuncioAtual.tipo_destino === 'site_nexawi') && (
                   <button
                     type="button"
                     disabled={!internetLiberadaNaCta}
@@ -1415,7 +1485,7 @@ async function handleCopiarLinkCliente() {
               Sua internet já foi conectada. Toque no botão abaixo para copiar o link e abrir a página do anunciante.
             </p>
 
-            {urlCliente ? (
+            {urlCliente ?(
               <button
                 type="button"
                 onClick={() => {
@@ -1514,9 +1584,9 @@ async function handleCopiarLinkCliente() {
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
               <div className="flex items-center gap-3">
-                {modalAberto === 'termos' ? <FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
+                {modalAberto === 'termos' ?<FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
                 <h2 className="text-xl font-bold text-white">
-                  {modalAberto === 'termos' ? 'Termos de Uso' : 'Política de Privacidade'}
+                  {modalAberto === 'termos' ?'Termos de Uso' : 'Política de Privacidade'}
                 </h2>
               </div>
 
@@ -1529,7 +1599,7 @@ async function handleCopiarLinkCliente() {
             </div>
 
             <div className="p-6 overflow-y-auto text-sm text-gray-400 space-y-4 custom-scrollbar">
-              {modalAberto === 'termos' ? (
+              {modalAberto === 'termos' ?(
                 <>
                   <p><strong>1. Aceitação dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, você concorda com estes termos. O acesso é fornecido de forma gratuita mediante a visualização de anúncios publicitários.</p>
                   <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lícitos. É estritamente proibido o uso para download de conteúdo ilegal, pirataria, ataques cibernéticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
@@ -1590,3 +1660,4 @@ async function handleCopiarLinkCliente() {
     </div>
   )
 }
+

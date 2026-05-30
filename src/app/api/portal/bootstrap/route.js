@@ -11,7 +11,7 @@ import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
-const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna']
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
 
 function sanitizeSlug(value = '') {
   return String(value || '').trim()
@@ -23,12 +23,18 @@ function publicHotspot(hotspot = {}) {
     nome: hotspot.nome,
     slug: hotspot.slug,
     status: hotspot.status,
+    portal_rules: {
+      email_obrigatorio: hotspot.portal_email_obrigatorio !== false,
+      cpf_visivel: hotspot.portal_cpf_visivel !== false,
+      cpf_obrigatorio: hotspot.portal_cpf_obrigatorio !== false,
+      promocoes_optin_ativo: Boolean(hotspot.portal_promocoes_optin_ativo),
+      promocoes_texto: hotspot.portal_promocoes_texto || 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.',
+    },
   }
 }
 
 function publicAnuncio(anuncio = {}) {
-  const tipoDestino = TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino)
-    ? anuncio.tipo_destino
+  const tipoDestino = TIPOS_DESTINO_VALIDOS.includes(anuncio.tipo_destino) ? anuncio.tipo_destino
     : 'externo'
 
   return {
@@ -92,7 +98,19 @@ export async function POST(request) {
     // Busca o hotspot por slug.
     let { data: hotspot, error: hotspotError } = await supabaseAdmin
       .from('hotspots')
-      .select('id, empresa_id, cliente_id, nome, slug, status')
+      .select(`
+        id,
+        empresa_id,
+        cliente_id,
+        nome,
+        slug,
+        status,
+        portal_email_obrigatorio,
+        portal_cpf_visivel,
+        portal_cpf_obrigatorio,
+        portal_promocoes_optin_ativo,
+        portal_promocoes_texto
+      `)
       .eq('slug', slug)
       .maybeSingle()
 
@@ -102,7 +120,19 @@ export async function POST(request) {
     if (!hotspot) {
       const result = await supabaseAdmin
         .from('hotspots')
-        .select('id, empresa_id, cliente_id, nome, slug, status')
+        .select(`
+          id,
+          empresa_id,
+          cliente_id,
+          nome,
+          slug,
+          status,
+          portal_email_obrigatorio,
+          portal_cpf_visivel,
+          portal_cpf_obrigatorio,
+          portal_promocoes_optin_ativo,
+          portal_promocoes_texto
+        `)
         .eq('nome', slug)
         .maybeSingle()
 

@@ -4,7 +4,7 @@ import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
-const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna']
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
 
 function clean(value = '') {
   return String(value || '').trim()

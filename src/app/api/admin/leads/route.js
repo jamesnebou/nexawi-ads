@@ -60,6 +60,8 @@ export async function GET(request) {
         hotspot_id,
         anuncio_id,
         aceite_lgpd,
+        aceitou_promocoes,
+        data_aceite_promocoes,
         created_at,
         mac_address,
         ip_address

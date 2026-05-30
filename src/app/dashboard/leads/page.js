@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -77,12 +77,12 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 }
 
 function formatDate(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
 function formatDateTime(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -232,12 +232,13 @@ export default function AdminLeadsPage() {
     }
 
     const linhas = [
-      ['Cliente', 'Nome', 'Telefone', 'E-mail', 'Campanha', 'Hotspot', 'Status', 'Próximo contato', 'Observações', 'Data'],
+      ['Cliente', 'Nome', 'Telefone', 'E-mail', 'Aceitou promoções', 'Campanha', 'Hotspot', 'Status', 'Próximo contato', 'Observações', 'Data'],
       ...leads.map((lead) => [
         getClienteLabel(lead.clientes),
         lead.nome || '',
         lead.telefone || '',
         lead.email || '',
+        lead.aceitou_promocoes ? 'Sim' : 'Não',
         lead.anuncios?.titulo || '',
         lead.hotspots?.nome || '',
         normalizeStatus(lead.crm_status),
@@ -310,8 +311,7 @@ export default function AdminLeadsPage() {
 
       setLeads((current) =>
         current.map((lead) =>
-          lead.id === leadId
-            ? {
+          lead.id === leadId ?{
                 ...lead,
                 ...data.lead,
                 crm_status: normalizeStatus(data.lead?.crm_status),
@@ -583,11 +583,11 @@ export default function AdminLeadsPage() {
             </div>
           </div>
 
-          {loading ? (
+          {loading ?(
             <div className="py-24 flex items-center justify-center">
               <div className="w-14 h-14 rounded-full border-t-2 border-[#6be12f]/60 animate-spin" />
             </div>
-          ) : leads.length === 0 ? (
+          ) : leads.length === 0 ?(
             <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-12 text-center">
               <Users size={34} className="mx-auto text-neutral-600 mb-4" />
               <h3 className="text-lg font-bold text-white">Nenhum lead encontrado</h3>
@@ -685,7 +685,7 @@ function LeadCard({
 }) {
   return (
     <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 hover:border-[#6be12f]/20 transition-colors">
-      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr_1.1fr_1fr_auto] gap-5 items-center">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1.4fr_0.95fr_1.1fr_1fr_auto] gap-5 items-center">
         <div>
           <div className="mb-2">
             <StatusBadge status={lead.crm_status} />
@@ -708,10 +708,21 @@ function LeadCard({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ContactPill icon={Phone} label="Telefone" value={lead.telefone || '—'} />
-          <ContactPill icon={Mail} label="E-mail" value={lead.email || '—'} />
+          <ContactPill icon={Phone} label="Telefone" value={lead.telefone || 'â€”'} />
+          <ContactPill icon={Mail} label="E-mail" value={lead.email || 'â€”'} />
         </div>
 
+        <div className="grid gap-2">
+          <SmallInfo
+            icon={CheckCircle2}
+            value={lead.aceitou_promocoes ? 'Aceitou promoções' : 'Não aceitou promoções'}
+          />
+          {lead.data_aceite_promocoes && (
+            <p className="text-xs text-neutral-500">
+              Aceite em {formatDateTime(lead.data_aceite_promocoes)}
+            </p>
+          )}
+        </div>
         <div className="grid gap-2">
           <SmallInfo icon={Building2} value={getClienteLabel(lead.clientes)} />
           <SmallInfo icon={Megaphone} value={lead.anuncios?.titulo || 'Campanha NexaWi'} />
@@ -732,8 +743,8 @@ function LeadCard({
             onClick={isEditing ? onCancel : onEdit}
             className="rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-xs font-black text-white hover:bg-white/[0.06] transition-colors flex items-center justify-center gap-2"
           >
-            {isEditing ? <XCircle size={15} /> : <Edit3 size={15} />}
-            {isEditing ? 'Fechar' : 'Editar'}
+            {isEditing ?<XCircle size={15} /> : <Edit3 size={15} />}
+            {isEditing ?'Fechar' : 'Editar'}
           </button>
         )}
       </div>
@@ -792,7 +803,7 @@ function LeadCard({
               className="rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-black text-black hover:bg-[#8cf059] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save size={16} />
-              {isSaving ? 'Salvando...' : 'Salvar'}
+              {isSaving ?'Salvando...' : 'Salvar'}
             </button>
           </div>
         </div>
@@ -821,3 +832,5 @@ function SmallInfo({ icon: Icon, value }) {
     </p>
   )
 }
+
+

@@ -94,6 +94,11 @@ function sanitizarHotspotPayload(hotspot = {}, { forUpdate = false } = {}) {
     parceiro: limparTexto(hotspot.parceiro),
     status: STATUS_VALIDOS.includes(hotspot.status) ? hotspot.status : 'Ativo',
     router_id: sanitizeUuid(hotspot.router_id || hotspot.routerId),
+    portal_email_obrigatorio: hotspot.portal_email_obrigatorio !== false,
+    portal_cpf_visivel: hotspot.portal_cpf_visivel !== false,
+    portal_cpf_obrigatorio: hotspot.portal_cpf_visivel === false ? false : hotspot.portal_cpf_obrigatorio !== false,
+    portal_promocoes_optin_ativo: Boolean(hotspot.portal_promocoes_optin_ativo),
+    portal_promocoes_texto: limparTexto(hotspot.portal_promocoes_texto) || 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.',
   }
 
   if (!forUpdate || hotspot.slug) {
@@ -280,7 +285,25 @@ export async function GET(request) {
 
     let query = supabaseAdmin
       .from('hotspots')
-      .select('id, empresa_id, nome, slug, estado, cidade, endereco, parceiro, status, router_id, created_at, updated_at')
+      .select(`
+        id,
+        empresa_id,
+        nome,
+        slug,
+        estado,
+        cidade,
+        endereco,
+        parceiro,
+        status,
+        router_id,
+        portal_email_obrigatorio,
+        portal_cpf_visivel,
+        portal_cpf_obrigatorio,
+        portal_promocoes_optin_ativo,
+        portal_promocoes_texto,
+        created_at,
+        updated_at
+      `)
       .order('created_at', { ascending: false })
 
     query = auth.applyEmpresaScope(query)

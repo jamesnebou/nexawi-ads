@@ -868,7 +868,9 @@ useEffect(() => {
 </nav>
 
         {/* Hero */}
-        <main className="relative z-10 flex flex-col lg:flex-row items-center justify-between px-6 pt-32 md:pt-40 pb-16 md:pb-20 max-w-7xl mx-auto gap-10 md:gap-16">
+        <main 
+        id="inicio"
+          className="relative z-10 flex flex-col lg:flex-row items-center justify-between px-6 pt-32 md:pt-40 pb-16 md:pb-20 max-w-7xl mx-auto gap-10 md:gap-16">
           {/* Coluna Esquerda */}
           <div className="w-full max-w-[640px]">
             <div className="inline-flex items-center gap-2 px-3 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-[#8cf059] text-xs sm:text-sm font-bold mb-6 sm:mb-8 shadow-[0_0_30px_rgba(107,225,47,0.1)] hover:border-[#6be12f]/50 transition-all cursor-default">

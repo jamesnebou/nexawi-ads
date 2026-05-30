@@ -49,6 +49,7 @@ const tabs = [
   { id: 'urgencia', label: 'Urgencia' },
   { id: 'precos', label: 'Precos' },
   { id: 'cta', label: 'CTA' },
+  { id: 'textos', label: 'Textos extras' },
   { id: 'faq', label: 'FAQ' },
   { id: 'formulario', label: 'Formulario' },
   { id: 'rodape', label: 'Rodape' },
@@ -1295,6 +1296,88 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             </div>
           </div>
           <ImageUploadField label="Background da secao" field="cta-background" slug={slug || name} scope={scope} pageId={id} value={config.cta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'cta', 'backgroundUrl', value)} />
+        </div>
+      )
+    }
+
+    if (activeTab === 'textos') {
+      const textos = config.textos || {}
+
+      return (
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4 text-sm leading-relaxed text-neutral-300">
+            Edite os textos menores que aparecem no layout automatico da LP. Campos vazios usam o texto padrao do template escolhido.
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+            <p className="text-sm font-black text-white">Hero e preview</p>
+            <Field label="Botao secundario do hero" value={textos.heroBotaoSecundario} onChange={(value) => updateNested(setConfig, 'textos', 'heroBotaoSecundario', value)} placeholder="Ver detalhes" />
+            <Field label="Texto de rolagem" value={textos.heroScrollTexto} onChange={(value) => updateNested(setConfig, 'textos', 'heroScrollTexto', value)} placeholder="Descer" />
+            <Field label="Eyebrow do preview" value={textos.previewEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'previewEyebrow', value)} placeholder="Live preview" />
+            <Field label="Status do preview" value={textos.previewStatus} onChange={(value) => updateNested(setConfig, 'textos', 'previewStatus', value)} placeholder="Online" />
+            <ListEditor
+              items={textos.previewCards || []}
+              labels={[{ key: 'numero', label: 'Numero' }, { key: 'texto', label: 'Texto' }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'previewCards', value)}
+            />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+            <p className="text-sm font-black text-white">Metricas e cards do topo</p>
+            <ListEditor
+              items={textos.metricas || []}
+              labels={[{ key: 'value', label: 'Valor' }, { key: 'label', label: 'Rotulo' }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'metricas', value)}
+            />
+            <ListEditor
+              items={textos.sinais || []}
+              labels={[{ key: 'titulo', label: 'Titulo do card' }, { key: 'texto', label: 'Texto do card', textarea: true }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'sinais', value)}
+            />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+            <p className="text-sm font-black text-white">Textos de apoio das secoes</p>
+            <Field label="Eyebrow dos beneficios" value={textos.beneficiosEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosEyebrow', value)} />
+            <Field label="Introducao dos beneficios" value={textos.beneficiosIntro} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosIntro', value)} textarea />
+            <Field label="Introducao da prova social" value={textos.provaIntro} onChange={(value) => updateNested(setConfig, 'textos', 'provaIntro', value)} textarea />
+            <Field label="Eyebrow da oferta" value={textos.ofertaEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaEyebrow', value)} placeholder="Oferta principal" />
+            <Field label="Label da condicao/preco" value={textos.ofertaCondicaoLabel} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaCondicaoLabel', value)} placeholder="Condicao" />
+            <Field label="Texto auxiliar da condicao" value={textos.ofertaTextoAuxiliar} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaTextoAuxiliar', value)} textarea />
+            <Field label="Eyebrow do FAQ" value={textos.faqEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'faqEyebrow', value)} placeholder="Duvidas" />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+            <p className="text-sm font-black text-white">Bullets automaticos</p>
+            <ListEditor
+              items={textos.ofertaItens || []}
+              labels={[{ key: 'texto', label: 'Item da oferta' }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'ofertaItens', value)}
+            />
+            <ListEditor
+              items={textos.formularioItens || []}
+              labels={[{ key: 'texto', label: 'Item do formulario' }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'formularioItens', value)}
+            />
+          </div>
+
+          <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
+            <p className="text-sm font-black text-white">Precos, formulario e rodape</p>
+            <Field label="Selo do plano em destaque" value={textos.planoDestaqueTexto} onChange={(value) => updateNested(setConfig, 'textos', 'planoDestaqueTexto', value)} placeholder="Destaque" />
+            <Field label="CTA fallback dos planos" value={textos.planoCtaFallback} onChange={(value) => updateNested(setConfig, 'textos', 'planoCtaFallback', value)} placeholder="Escolher plano" />
+            <Field label="Texto enquanto formulario envia" value={textos.formularioEnviandoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'formularioEnviandoTexto', value)} placeholder="Enviando..." />
+            <Field label="Texto do link Termos" value={textos.rodapeTermosTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapeTermosTexto', value)} placeholder="Termos de Uso" />
+            <Field label="Texto do link Privacidade" value={textos.rodapePrivacidadeTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapePrivacidadeTexto', value)} placeholder="Privacidade" />
+            <Field label="Texto do link Contato" value={textos.rodapeContatoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapeContatoTexto', value)} placeholder="Contato" />
+            <Field label="Texto do link Instagram" value={textos.rodapeInstagramTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapeInstagramTexto', value)} placeholder="Instagram" />
+            <Field
+              label="Mensagem do WhatsApp flutuante"
+              value={textos.whatsappMensagem}
+              onChange={(value) => updateNested(setConfig, 'textos', 'whatsappMensagem', value)}
+              placeholder="Ola [Nome da empresa], vim pelo seu site e queria saber mais informacoes."
+              textarea
+            />
+          </div>
         </div>
       )
     }

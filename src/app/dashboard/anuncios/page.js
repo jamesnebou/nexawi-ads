@@ -40,7 +40,7 @@ const SearchIcon = dynamic(() => import('lucide-react').then((mod) => mod.Search
 const supabase = createBrowserSupabaseClient()
 
 function formatarLimitePlano(uso = 0, limite = 0) {
-  return limite && limite > 0 ? `${uso}/${limite}` : `${uso}/∞`
+  return limite && limite > 0 ?`${uso}/${limite}` : `${uso}/∞`
 }
 
 function percentualLimitePlano(uso = 0, limite = 0) {
@@ -55,26 +55,26 @@ function PlanoUsoBanner({ planoUso, label, icon: Icon }) {
   const noLimite = Boolean(planoUso.limite) && planoUso.uso >= planoUso.limite
   const pertoLimite = Boolean(planoUso.limite) && percentual >= 80 && !noLimite
   const bloqueado = Boolean(planoUso.bloqueado)
-  const corBarra = bloqueado || noLimite ? 'bg-red-400' : pertoLimite ? 'bg-yellow-300' : 'bg-[#6be12f]'
-  const corBorda = bloqueado || noLimite ? 'border-red-500/20 bg-red-500/10' : pertoLimite ? 'border-yellow-500/20 bg-yellow-500/10' : 'border-[#6be12f]/20 bg-[#6be12f]/10'
+  const corBarra = bloqueado || noLimite ?'bg-red-400' : pertoLimite ?'bg-yellow-300' : 'bg-[#6be12f]'
+  const corBorda = bloqueado || noLimite ?'border-red-500/20 bg-red-500/10' : pertoLimite ?'border-yellow-500/20 bg-yellow-500/10' : 'border-[#6be12f]/20 bg-[#6be12f]/10'
 
   return (
     <div className={`mb-8 rounded-3xl border p-5 ${corBorda}`}>
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-2xl bg-black/20 border border-white/[0.08] flex items-center justify-center flex-shrink-0">
-            {bloqueado || noLimite ? <AlertTriangle size={21} className="text-red-300" /> : <Icon size={21} className="text-[#8cf059]" />}
+            {bloqueado || noLimite ?<AlertTriangle size={21} className="text-red-300" /> : <Icon size={21} className="text-[#8cf059]" />}
           </div>
           <div>
             <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Criativos contratados</p>
             <h2 className="text-lg font-black text-white mt-1">{label}: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
             <p className="text-sm text-neutral-400 mt-1">
-              {planoUso.plano?.nome ? `Plano ${planoUso.plano.nome}. ` : ''}
-              {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ? 'Quantidade de anúncios contratada atingida.' : pertoLimite ? 'Uso próximo da quantidade contratada.' : 'Dentro da quantidade contratada.'}
+              {planoUso.plano?.nome ?`Plano ${planoUso.plano.nome}. ` : ''}
+              {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ?'Quantidade de anúncios contratada atingida.' : pertoLimite ?'Uso próximo da quantidade contratada.' : 'Dentro da quantidade contratada.'}
             </p>
           </div>
         </div>
-        {planoUso.limite > 0 ? (
+        {planoUso.limite > 0 ?(
           <div className="w-full lg:w-72">
             <div className="h-3 rounded-full bg-black/40 overflow-hidden border border-white/[0.06]">
               <div className={`h-full ${corBarra}`} style={{ width: `${percentual}%` }} />
@@ -265,14 +265,13 @@ export default function Anuncios() {
         lp_slug: anuncio.lp_slug || '',
         tempo_liberacao_lp: anuncio.tempo_liberacao_lp || 10,
         duracao_segundos: anuncio.duracao_segundos || 15,
-        ativo: anuncio.ativo ?? true,
+        ativo: anuncio.ativo ? true : false,
         estado: anuncio.estado || '',
         cidade: anuncio.cidade || '',
       })
       setSelectedClientInModal(anuncio.cliente_id || '')
       setSelectedHotspotIds(
-        anuncio.anuncio_hotspots
-          ? anuncio.anuncio_hotspots.map((ah) => ah.hotspots?.id).filter(Boolean)
+        anuncio.anuncio_hotspots ? anuncio.anuncio_hotspots.map((ah) => ah.hotspots?.id).filter(Boolean)
           : []
       )
     } else {
@@ -317,8 +316,7 @@ export default function Anuncios() {
 
   function handleHotspotSelection(hotspotId) {
     setSelectedHotspotIds((prevSelected) =>
-      prevSelected.includes(hotspotId)
-        ? prevSelected.filter((id) => id !== hotspotId)
+      prevSelected.includes(hotspotId) ? prevSelected.filter((id) => id !== hotspotId)
         : [...prevSelected, hotspotId]
     )
   }
@@ -332,7 +330,7 @@ export default function Anuncios() {
     filename: file.name,
     contentType: file.type,
     sizeBytes: file.size,
-    mode: anuncioEditando ? 'update' : 'create',
+    mode: anuncioEditando ?'update' : 'create',
   },
 })
 
@@ -641,14 +639,14 @@ export default function Anuncios() {
           </div>
         </div>
 
-        {carregando ? (
+        {carregando ?(
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
               <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin" />
               <ImageIcon className="text-[#6be12f] animate-pulse" size={24} />
             </div>
           </div>
-        ) : anuncios.length === 0 ? (
+        ) : anuncios.length === 0 ?(
           <div className="text-center bg-white/[0.02] border border-white/[0.05] rounded-[2.5rem] py-24 backdrop-blur-xl shadow-2xl">
             <div className="w-20 h-20 bg-white/[0.02] rounded-full flex items-center justify-center mx-auto mb-6 border border-white/[0.05]">
               <ImageIcon size={32} className="text-gray-600" />
@@ -674,8 +672,8 @@ export default function Anuncios() {
                 >
                   <div className="relative w-full flex justify-center bg-[#050505] border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden lg:w-[150px] lg:min-w-[150px] lg:h-full lg:block">
                     <div className="relative w-full max-w-[260px] aspect-[9/16] bg-[#050505] overflow-hidden lg:max-w-none lg:w-full lg:h-full lg:aspect-auto">
-                      {anuncio.media_url ? (
-                        anuncio.tipo_media === 'video' ? (
+                      {anuncio.media_url ?(
+                        anuncio.tipo_media === 'video' ?(
                           <video
                             src={anuncio.media_url}
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
@@ -700,9 +698,9 @@ export default function Anuncios() {
                       <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-90" />
 
                       <div className="absolute top-3 left-3">
-                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                          <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ? 'bg-[#8cf059] animate-pulse' : 'bg-red-400'}`} />
-                          {anuncio.ativo ? 'Ativo' : 'Inativo'}
+                        <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest backdrop-blur-md border flex items-center gap-1.5 ${anuncio.ativo ?'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                          <div className={`w-1.5 h-1.5 rounded-full ${anuncio.ativo ?'bg-[#8cf059] animate-pulse' : 'bg-red-400'}`} />
+                          {anuncio.ativo ?'Ativo' : 'Inativo'}
                         </span>
                       </div>
 
@@ -724,7 +722,7 @@ export default function Anuncios() {
                     </p>
 
                     <div className="flex flex-col items-center lg:items-start gap-2 mb-4 lg:mb-2 overflow-visible lg:overflow-y-auto custom-scrollbar flex-none lg:flex-1 pr-0 lg:pr-2">
-                      {anuncio.hotspot_nomes && anuncio.hotspot_nomes.length > 0 ? (
+                      {anuncio.hotspot_nomes && anuncio.hotspot_nomes.length > 0 ?(
                         anuncio.hotspot_nomes.map((nome, idx) => (
                           <div key={idx} className="flex items-start justify-center lg:justify-start gap-2 text-xs text-gray-400 group-hover:text-gray-300 transition-colors max-w-full">
                             <MapPin size={12} className="text-[#6be12f]/70 mt-0.5 flex-shrink-0" />
@@ -740,8 +738,7 @@ export default function Anuncios() {
                       <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-between gap-2 text-xs text-gray-500 mb-4">
                         <MapPin size={12} className="text-gray-600 flex-shrink-0" />
                         <span className="truncate font-medium text-gray-400">
-                          {(anuncio.cidade || anuncio.cliente?.cidade) && (anuncio.estado || anuncio.cliente?.estado)
-                            ? `${anuncio.cidade || anuncio.cliente?.cidade}, ${anuncio.estado || anuncio.cliente?.estado}`
+                          {(anuncio.cidade || anuncio.cliente?.cidade) && (anuncio.estado || anuncio.cliente?.estado) ?`${anuncio.cidade || anuncio.cliente?.cidade}, ${anuncio.estado || anuncio.cliente?.estado}`
                             : 'Localização não definida'}
                         </span>
                       </div>
@@ -762,9 +759,9 @@ export default function Anuncios() {
                           {canToggleThisAd && (
                             <button
                               onClick={() => toggleAtivo(anuncio)}
-                              className={`w-full sm:flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ? 'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] hover:bg-[#6be12f]/20'}`}
+                              className={`w-full sm:flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider transition-all duration-300 ${anuncio.ativo ?'bg-white/[0.02] border border-white/[0.05] text-gray-500 hover:bg-white/[0.05] hover:text-white' : 'bg-[#6be12f]/10 border border-[#6be12f]/20 text-[#8cf059] hover:bg-[#6be12f]/20'}`}
                             >
-                              {anuncio.ativo ? 'Pausar' : 'Ativar'}
+                              {anuncio.ativo ?'Pausar' : 'Ativar'}
                             </button>
                           )}
 
@@ -801,7 +798,7 @@ export default function Anuncios() {
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-3xl flex flex-col max-h-[90vh] shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between p-8 border-b border-white/[0.05] flex-shrink-0">
               <h2 className="text-white font-bold text-2xl tracking-tight">
-                {anuncioEditando ? 'Editar Campanha' : 'Nova Campanha'}
+                {anuncioEditando ?'Editar Campanha' : 'Nova Campanha'}
               </h2>
               <button onClick={fecharModal} className="p-2.5 text-gray-500 hover:text-white hover:bg-white/[0.05] rounded-full transition-colors">
                 <X size={20} />
@@ -879,7 +876,7 @@ export default function Anuncios() {
                   Vincular Hotspots
                 </label>
                 <div className="bg-[#050505] border border-white/[0.05] rounded-2xl p-5 shadow-inner">
-                  {allActiveHotspotsForModal.length === 0 ? (
+                  {allActiveHotspotsForModal.length === 0 ?(
                     <p className="text-sm text-gray-600 italic">
                       Nenhum hotspot ativo disponível para o estado deste cliente.
                     </p>
@@ -893,7 +890,7 @@ export default function Anuncios() {
                             key={hotspot.id}
                             type="button"
                             onClick={() => handleHotspotSelection(hotspot.id)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 border ${isSelected ? 'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'bg-white/[0.02] text-gray-500 border-white/[0.05] hover:border-white/[0.1] hover:text-white'}`}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wide transition-all duration-300 border ${isSelected ?'bg-[#6be12f]/10 text-[#8cf059] border-[#6be12f]/30 shadow-[0_0_15px_rgba(34,197,94,0.1)]' : 'bg-white/[0.02] text-gray-500 border-white/[0.05] hover:border-white/[0.1] hover:text-white'}`}
                           >
                             {hotspot.nome}
                           </button>
@@ -961,6 +958,12 @@ export default function Anuncios() {
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
                     />
                   </div>
+                ) : form.tipo_destino === 'site_nexawi' ? (
+                  <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/5 px-5 py-4">
+                    <p className="text-xs font-black uppercase tracking-widest text-[#8cf059]">Destino interno</p>
+                    <p className="mt-2 text-sm text-gray-300">O CTA abre a home oficial da NexaWi no mesmo domínio.</p>
+                    <p className="mt-1 text-[11px] text-gray-600">URL: www.nexawi.com.br/</p>
+                  </div>
                 ) : (
                   <div>
                     <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
@@ -974,7 +977,7 @@ export default function Anuncios() {
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
                     />
                     <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
-                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi só será liberado depois de 10 segundos na LP.
+                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi s? ser? liberado depois de 10 segundos na LP.
                     </p>
                   </div>
                 )}
@@ -1022,13 +1025,13 @@ export default function Anuncios() {
                 {(selectedFile || form.media_url) && (
                   <div className="mt-5 p-4 bg-[#050505] border border-white/[0.05] rounded-2xl flex items-center gap-5 shadow-inner">
                     <div className="w-16 h-24 rounded-xl overflow-hidden bg-[#0a0a0a] flex-shrink-0 border border-white/[0.05]">
-                      {selectedFile && selectedFile.type.startsWith('video/') ? (
+                      {selectedFile && selectedFile.type.startsWith('video/') ?(
                         <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" muted loop playsInline autoPlay />
-                      ) : selectedFile && selectedFile.type.startsWith('image/') ? (
+                      ) : selectedFile && selectedFile.type.startsWith('image/') ?(
                         <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
-                      ) : form.media_url && form.tipo_media === 'video' ? (
+                      ) : form.media_url && form.tipo_media === 'video' ?(
                         <video src={form.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
-                      ) : form.media_url && form.tipo_media === 'imagem' ? (
+                      ) : form.media_url && form.tipo_media === 'imagem' ?(
                         <img src={form.media_url} alt="Preview" className="w-full h-full object-cover" />
                       ) : null}
                     </div>
@@ -1057,12 +1060,12 @@ export default function Anuncios() {
                 disabled={salvando || uploading || !form.titulo.trim() || !selectedClientInModal || selectedHotspotIds.length === 0}
                 className="flex-1 py-4 rounded-2xl font-bold text-sm text-black bg-[#6be12f] hover:bg-[#8cf059] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
               >
-                {salvando || uploading ? (
+                {salvando || uploading ?(
                   <>
                     <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
                     Salvando...
                   </>
-                ) : anuncioEditando ? (
+                ) : anuncioEditando ?(
                   'Salvar Alterações'
                 ) : (
                   'Publicar Anúncio'
