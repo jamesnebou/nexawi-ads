@@ -77,9 +77,24 @@ function salvarAutorizacaoPendenteLp(payload = {}) {
 }
 
 function montarUrlLpInterna(anuncio = {}, contexto = {}) {
-  const lpSlug = extrairLpSlug(anuncio.lp_slug || '')
+  const caminhoInterno = String(anuncio.lp_slug || '').trim()
+  const base = typeof window !== 'undefined' ? window.location.origin : 'https://www.nexawi.com.br'
 
-  if (!lpSlug) return ''
+  if (!caminhoInterno.startsWith('/') || caminhoInterno.startsWith('//') || caminhoInterno.includes('\\\\')) {
+    return ''
+  }
+
+  let destino
+
+  try {
+    destino = new URL(caminhoInterno, base)
+
+    if (destino.origin !== base) {
+      return ''
+    }
+  } catch {
+    return ''
+  }
 
   const payload = {
     pendingAuth: '1',
@@ -88,16 +103,17 @@ function montarUrlLpInterna(anuncio = {}, contexto = {}) {
     clientMac: contexto.clientMac || '',
     clientIp: contexto.clientIp || '',
     anuncioId: anuncio.id || '',
-    delaySeconds: String(anuncio.tempo_liberacao_lp || 30),
-    lpSlug,
+    delaySeconds: String(anuncio.tempo_liberacao_lp || 10),
+    internalPath: caminhoInterno,
   }
 
   salvarAutorizacaoPendenteLp(payload)
 
-  const params = new URLSearchParams(payload)
-  const base = typeof window !== 'undefined' ? window.location.origin : ''
+  Object.entries(payload).forEach(([key, value]) => {
+    destino.searchParams.set(key, String(value || ''))
+  })
 
-  return `${base}/lp/${encodeURIComponent(lpSlug)}?${params.toString()}`
+  return destino.toString()
 }
 
 function montarUrlSiteNexawi() {

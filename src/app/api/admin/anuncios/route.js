@@ -41,6 +41,21 @@ function sanitizeUuid(value = '') {
   return uuidRegex.test(clean) ? clean : null
 }
 
+function caminhoInternoValido(value = '') {
+  const caminho = limparTexto(value)
+
+  if (!caminho.startsWith('/') || caminho.startsWith('//') || caminho.includes('\\')) {
+    return false
+  }
+
+  try {
+    const destino = new URL(caminho, 'https://www.nexawi.com.br')
+    return destino.origin === 'https://www.nexawi.com.br'
+  } catch {
+    return false
+  }
+}
+
 function permissaoNegada(modulo, acao) {
   return NextResponse.json(
     {
@@ -102,8 +117,8 @@ function validarAnuncio(payload, hotspotIds = []) {
     return 'Link externo é obrigatório para campanhas com destino externo'
   }
   if (payload.tipo_destino === 'site_nexawi') return ''
-  if (payload.tipo_destino === 'lp_interna' && !payload.lp_slug) {
-    return 'Selecione uma LP interna para este anúncio'
+  if (payload.tipo_destino === 'lp_interna' && !caminhoInternoValido(payload.lp_slug)) {
+    return 'Informe um caminho interno válido. Exemplos: /, /anunciar ou /lp/rastrek'
   }
 
   if (!Array.isArray(hotspotIds) || hotspotIds.length === 0) {

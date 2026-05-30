@@ -374,7 +374,7 @@ export default function Anuncios() {
     }
 
     if (form.tipo_destino === 'lp_interna' && !form.lp_slug.trim()) {
-      alert('Informe o slug da LP interna. Exemplo: lp-evento')
+      alert('Informe o caminho da página interna. Exemplo: /, /anunciar ou /lp/rastrek')
       return
     }
 
@@ -940,8 +940,8 @@ export default function Anuncios() {
                     })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner appearance-none"
                   >
-                    <option value="externo" className="bg-[#050505]">Link externo: libera internet e abre fora</option>
-                    <option value="lp_interna" className="bg-[#050505]">LP interna NexaWi: abre LP e libera após 10s</option>
+                    <option value="externo" className="bg-[#050505]">Site Externo</option>
+                    <option value="lp_interna" className="bg-[#050505]">Site Interno</option>
                   </select>
                 </div>
 
@@ -952,7 +952,7 @@ export default function Anuncios() {
                     </label>
                     <input
                       type="url"
-                      placeholder="https://seusite.com.br"
+                      placeholder="Digitar site do Cliente"
                       value={form.url_destino}
                       onChange={(e) => setForm({ ...form, url_destino: e.target.value })}
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
@@ -967,17 +967,17 @@ export default function Anuncios() {
                 ) : (
                   <div>
                     <label className="text-xs font-bold text-gray-500 mb-3 block uppercase tracking-widest">
-                      Slug da LP interna
+                      Caminho de página interna
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex: lp-evento"
+                      placeholder="Digitar caminho de página interna"
                       value={form.lp_slug}
                       onChange={(e) => setForm({ ...form, lp_slug: e.target.value })}
                       className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-gray-600 focus:outline-none focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all shadow-inner"
                     />
                     <p className="mt-2 text-[11px] leading-relaxed text-gray-600">
-                      Exemplo: www.nexawi.com.br/lp/lp-evento. O Wi-Fi s? ser? liberado depois de 10 segundos na LP.
+                      Base fixa: www.nexawi.com.br. Use / para a home, /anunciar ou /lp/rastrek. O Wi-Fi será liberado após o tempo configurado.
                     </p>
                   </div>
                 )}
