@@ -1,5 +1,6 @@
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
   ensureBypassBinding,
   ensureClientBandwidthQueue,
@@ -20,8 +21,64 @@ import {
 } from '@/lib/session-control'
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
+const AD_COMPLETION_MAX_AGE_MS = 15 * 60 * 1000
 
 export const runtime = 'nodejs'
+
+function clean(value = '') {
+  return String(value || '').trim()
+}
+
+async function validateCompletedAdSession({ lead, hotspotId, adSessionId }) {
+  if (!lead?.anuncio_id) {
+    return null
+  }
+
+  const sessionId = clean(adSessionId)
+
+  if (!sessionId) {
+    return NextResponse.json(
+      { ok: false, error: 'Conclusao do anuncio obrigatoria antes da liberacao' },
+      { status: 403 }
+    )
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('portal_ad_rotations')
+    .select('id, lead_id, hotspot_id, anuncio_id, eligible_at, completed_at')
+    .eq('id', sessionId)
+    .eq('lead_id', lead.id)
+    .eq('hotspot_id', hotspotId)
+    .eq('anuncio_id', lead.anuncio_id)
+    .maybeSingle()
+
+  if (error) throw error
+
+  if (!data?.completed_at) {
+    return NextResponse.json(
+      { ok: false, error: 'Anuncio ainda nao foi concluido' },
+      { status: 403 }
+    )
+  }
+
+  const completedAtMs = new Date(data.completed_at).getTime()
+
+  if (!Number.isFinite(completedAtMs) || Date.now() - completedAtMs > AD_COMPLETION_MAX_AGE_MS) {
+    return NextResponse.json(
+      { ok: false, error: 'Sessao do anuncio expirada. Veja o anuncio novamente para liberar o Wi-Fi.' },
+      { status: 403 }
+    )
+  }
+
+  if (data.eligible_at && new Date(data.eligible_at).getTime() > Date.now()) {
+    return NextResponse.json(
+      { ok: false, error: 'Tempo obrigatorio do anuncio ainda nao foi cumprido' },
+      { status: 403 }
+    )
+  }
+
+  return null
+}
 
 export async function POST(request) {
   if (CONTROL_API_MODE === 'proxy') {
@@ -34,6 +91,7 @@ export async function POST(request) {
     const leadId = String(body.leadId || '').trim()
     const clientMac = normalizeMac(body.clientMac || '')
     const clientIp = String(body.clientIp || '').trim()
+    const adSessionId = clean(body.adSessionId || body.ad_session_id)
 
     if (!hotspotSlug) {
       return NextResponse.json({ ok: false, error: 'hotspotSlug é obrigatório' }, { status: 400 })
@@ -168,6 +226,16 @@ const hostCleanup = await removeHotspotHostsByMac({
       if (status.state === 'authorized_expired' || status.state === 'cooldown_expired') {
         await markSessionExpired(latestSession.id)
       }
+    }
+
+    const adErrorResponse = await validateCompletedAdSession({
+      lead,
+      hotspotId: hotspot.id,
+      adSessionId,
+    })
+
+    if (adErrorResponse) {
+      return adErrorResponse
     }
 
     const pendingSession = await createPendingSession({

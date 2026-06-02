@@ -22,6 +22,7 @@ function lerPayloadPendente() {
       clientMac: params.get('clientMac') || '',
       clientIp: params.get('clientIp') || '',
       anuncioId: params.get('anuncioId') || '',
+      adSessionId: params.get('adSessionId') || '',
       delaySeconds: params.get('delaySeconds') || '10',
       expiresAt: Date.now() + 5 * 60 * 1000,
     }
@@ -97,6 +98,7 @@ export default function PendingInternalCtaAuthorization() {
             leadId: payload.leadId,
             clientMac: payload.clientMac,
             clientIp: payload.clientIp || '',
+            adSessionId: payload.adSessionId || '',
           }),
         })
 

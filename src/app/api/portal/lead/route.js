@@ -53,6 +53,14 @@ function getMesAtualRange() {
   }
 }
 
+function cpfObrigatorioNoHotspot(hotspot = {}) {
+  const slug = String(hotspot.slug || '').trim().toLowerCase()
+
+  if (slug === 'candido-sales') return false
+
+  return hotspot.portal_cpf_visivel !== false && hotspot.portal_cpf_obrigatorio !== false
+}
+
 export async function POST(request) {
   try {
     const body = await request.json()
@@ -63,15 +71,29 @@ export async function POST(request) {
     const telefone = somenteNumeros(body.telefone)
     const cpf = somenteNumeros(body.cpf)
     const aceiteLgpd = Boolean(body.aceiteLgpd)
+    const aceitouPromocoes = Boolean(body.aceitouPromocoes || body.aceitou_promocoes)
     const anuncioId = body.anuncioId ? String(body.anuncioId).trim() : null
     const macAddress = normalizeMac(body.macAddress || '')
     const ipAddress = String(body.ipAddress || '').trim()
 
     if (!hotspotId) throw new Error('hotspotId é obrigatório')
+
+    const { data: hotspot, error: hotspotError } = await supabaseAdmin
+      .from('hotspots')
+      .select('id, slug, portal_cpf_visivel, portal_cpf_obrigatorio')
+      .eq('id', hotspotId)
+      .maybeSingle()
+
+    if (hotspotError) throw hotspotError
+    if (!hotspot) throw new Error('hotspot não encontrado')
+
+    const exigirCpf = cpfObrigatorioNoHotspot(hotspot)
+
     if (!nome) throw new Error('nome é obrigatório')
     if (!email) throw new Error('email é obrigatório')
     if (telefone.length !== 11) throw new Error('telefone inválido')
-    if (cpf.length !== 11) throw new Error('cpf inválido')
+    if (exigirCpf && cpf.length !== 11) throw new Error('cpf inválido')
+    if (!exigirCpf && cpf && cpf.length !== 11) throw new Error('cpf inválido')
     if (!aceiteLgpd) throw new Error('aceite LGPD é obrigatório')
     if (!macAddress) throw new Error('MAC do cliente é obrigatório')
 
@@ -99,7 +121,10 @@ export async function POST(request) {
           nome,
           email,
           telefone,
+          ...(cpf ? { cpf } : {}),
           aceite_lgpd: aceiteLgpd,
+          aceitou_promocoes: aceitouPromocoes,
+          data_aceite_promocoes: aceitouPromocoes ? new Date().toISOString() : null,
           anuncio_id: anuncioId,
           ip_address: ipAddress || null,
         })
@@ -121,8 +146,10 @@ export async function POST(request) {
         nome,
         email,
         telefone,
-        cpf,
+        cpf: cpf || null,
         aceite_lgpd: aceiteLgpd,
+        aceitou_promocoes: aceitouPromocoes,
+        data_aceite_promocoes: aceitouPromocoes ? new Date().toISOString() : null,
         anuncio_id: anuncioId,
         mac_address: macAddress || null,
         ip_address: ipAddress || null,

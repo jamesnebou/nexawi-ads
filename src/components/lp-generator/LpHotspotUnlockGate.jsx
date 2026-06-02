@@ -64,6 +64,7 @@ export default function LpHotspotUnlockGate() {
       clientMac: normalizeMac(getParam(params, 'clientMac') || getParam(params, 'mac') || stored?.clientMac || ''),
       clientIp: getParam(params, 'clientIp') || getParam(params, 'ip') || stored?.clientIp || '',
       anuncioId: getParam(params, 'anuncioId') || stored?.anuncioId || '',
+      adSessionId: getParam(params, 'adSessionId') || stored?.adSessionId || '',
       delaySeconds: parseDelaySeconds(getParam(params, 'delaySeconds') || stored?.delaySeconds || 30),
     }
   }, [])
@@ -97,6 +98,7 @@ export default function LpHotspotUnlockGate() {
             leadId: payload.leadId,
             clientMac: payload.clientMac,
             clientIp: payload.clientIp || '',
+            adSessionId: payload.adSessionId || '',
           }),
         })
 

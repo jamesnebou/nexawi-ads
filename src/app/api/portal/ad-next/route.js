@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { getSaasFinanceContext } from '@/lib/saas-finance'
 
 export const runtime = 'nodejs'
 
@@ -26,6 +27,50 @@ function userKey({ hotspotId, macAddress, telefone }) {
   return createHash('sha256').update(raw).digest('hex')
 }
 
+const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
+
+function publicAd(ad = {}) {
+  return {
+    id: ad.id,
+    titulo: ad.titulo,
+    descricao: ad.descricao,
+    url_destino: ad.url_destino,
+    tipo_destino: TIPOS_DESTINO_VALIDOS.includes(ad.tipo_destino) ? ad.tipo_destino : 'externo',
+    lp_slug: ad.lp_slug || '',
+    tempo_liberacao_lp: Number(ad.tempo_liberacao_lp || 10),
+    duracao_segundos: Number(ad.duracao_segundos || 15),
+    ativo: ad.ativo,
+    media_url: ad.media_url,
+    tipo_media: ad.tipo_media,
+  }
+}
+
+async function filtrarContaAtiva(anuncios = []) {
+  const cache = new Map()
+  const filtrados = []
+
+  for (const anuncio of anuncios) {
+    const key = `${anuncio.empresa_id || ''}:${anuncio.cliente_id || ''}`
+
+    if (!cache.has(key)) {
+      try {
+        const context = await getSaasFinanceContext({
+          empresaId: anuncio.empresa_id || '',
+          clienteId: anuncio.cliente_id || '',
+        })
+
+        cache.set(key, !context.bloqueado)
+      } catch {
+        cache.set(key, false)
+      }
+    }
+
+    if (cache.get(key)) filtrados.push(anuncio)
+  }
+
+  return filtrados
+}
+
 async function getActiveAdsForHotspot(hotspotId) {
   const { data: vinculos, error: vinculosError } = await supabaseAdmin
     .from('anuncio_hotspots')
@@ -42,14 +87,23 @@ async function getActiveAdsForHotspot(hotspotId) {
 
   const { data, error } = await supabaseAdmin
     .from('anuncios')
-    .select('id, titulo, descricao, url_destino, duracao_segundos, ativo, media_url, tipo_media, created_at')
+    .select('id, titulo, descricao, url_destino, tipo_destino, lp_slug, tempo_liberacao_lp, duracao_segundos, ativo, media_url, tipo_media, empresa_id, cliente_id, created_at')
     .in('id', anuncioIds)
     .eq('ativo', true)
     .order('created_at', { ascending: true })
 
   if (error) throw error
 
-  return data || []
+  return filtrarContaAtiva(data || [])
+}
+
+async function clearLeadAd(leadId) {
+  if (!leadId) return
+
+  await supabaseAdmin
+    .from('leads')
+    .update({ anuncio_id: null })
+    .eq('id', leadId)
 }
 
 export async function POST(request) {
@@ -68,9 +122,12 @@ export async function POST(request) {
     const anuncios = await getActiveAdsForHotspot(hotspotId)
 
     if (anuncios.length === 0) {
+      await clearLeadAd(leadId)
+
       return NextResponse.json({
         ok: true,
         anuncio: null,
+        adSessionId: null,
         cycle: 0,
       })
     }
@@ -106,15 +163,22 @@ export async function POST(request) {
       nextAd = anuncios[0]
     }
 
-    const { error: insertError } = await supabaseAdmin
+    const durationSeconds = Math.max(5, Math.floor(Number(nextAd.duracao_segundos || 15)))
+    const eligibleAt = new Date(Date.now() + durationSeconds * 1000).toISOString()
+
+    const { data: sessionRows, error: insertError } = await supabaseAdmin
       .from('portal_ad_rotations')
       .insert([{
         user_key: key,
         hotspot_id: hotspotId,
         lead_id: leadId,
         anuncio_id: nextAd.id,
+        duration_seconds: durationSeconds,
+        eligible_at: eligibleAt,
         cycle,
       }])
+      .select('id, eligible_at, duration_seconds')
+      .limit(1)
 
     if (insertError) throw insertError
 
@@ -125,7 +189,10 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
-      anuncio: nextAd,
+      anuncio: publicAd(nextAd),
+      adSessionId: sessionRows?.[0]?.id || null,
+      eligibleAt: sessionRows?.[0]?.eligible_at || eligibleAt,
+      durationSeconds,
       cycle,
     })
   } catch (error) {
