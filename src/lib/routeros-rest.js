@@ -1568,6 +1568,14 @@ async function upsertDnsStaticByName({ name, address, comment, routerConfig } = 
   }
 
   if (existing?.['.id']) {
+    if (routerFlag(existing.dynamic)) {
+      return {
+        ...existing,
+        skipped: true,
+        reason: 'Entrada DNS dinamica do RouterOS; nao pode ser editada via REST.',
+      }
+    }
+
     await routerosFetch(`/ip/dns/static/${encodeURIComponent(existing['.id'])}`, {
       method: 'PATCH',
       body: payload,
