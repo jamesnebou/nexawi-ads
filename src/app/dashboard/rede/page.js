@@ -16,7 +16,6 @@ import {
   Plus,
   RefreshCcw,
   Router,
-  Search,
   Server,
   ShieldCheck,
   ShieldOff,
@@ -44,9 +43,8 @@ const QUICK_PRESETS = [
   {
     id: 'meta',
     title: 'Facebook / Meta',
-    description: 'Bloqueia Facebook, Messenger, CDNs e infraestrutura Meta com DNS, TLS, IP, DoH e QUIC.',
+    description: 'Bloqueia Facebook, Messenger e domínios essenciais da Meta com DNS, TLS, IP e DoH.',
     domains: ['facebook.com'],
-    coverage: 'Facebook, Messenger, CDN Meta e IPs conhecidos',
     badge: 'Forte',
   },
   {
@@ -54,7 +52,6 @@ const QUICK_PRESETS = [
     title: 'Instagram',
     description: 'Bloqueia Instagram, CDN do Instagram e ativa infraestrutura Meta no backend.',
     domains: ['instagram.com'],
-    coverage: 'Instagram, CDN, Threads e infraestrutura compartilhada Meta',
     badge: 'Forte',
   },
   {
@@ -62,23 +59,20 @@ const QUICK_PRESETS = [
     title: 'TikTok',
     description: 'Bloqueia domínios principais do TikTok com DNS, TLS, DoH e QUIC.',
     domains: ['tiktok.com'],
-    coverage: 'TikTok, CDN, imagens, API e entrega de vídeo ByteDance',
     badge: 'Forte',
   },
   {
     id: 'youtube',
     title: 'YouTube',
-    description: 'Bloqueia YouTube, imagens, player, APIs e entrega de vídeo.',
+    description: 'Bloqueia YouTube, imagens, player e entrega de vídeo.',
     domains: ['youtube.com'],
-    coverage: 'YouTube, YouTube Kids, Shorts, thumbnails e Googlevideo',
     badge: 'Forte',
   },
   {
     id: 'streaming',
-    title: 'Streaming',
-    description: 'Bloqueia plataformas de vídeo sob demanda e CDNs de streaming para reduzir consumo de banda.',
+    title: 'Netflix / Streaming',
+    description: 'Bloqueia domínios principais de entrega da Netflix para reduzir consumo de banda.',
     domains: ['netflix.com'],
-    coverage: 'Netflix, Prime Video, Disney+, Max, Globoplay, Twitch e Pluto TV',
     badge: 'Forte',
   },
   {
@@ -86,15 +80,13 @@ const QUICK_PRESETS = [
     title: 'Apostas',
     description: 'Bloqueia casas de apostas e plataformas de cassino mais comuns em redes abertas.',
     domains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com'],
-    coverage: 'Bets populares no Brasil, cassino, odds e afiliadas principais',
     badge: 'Forte',
   },
   {
     id: 'adult',
     title: 'Adulto / pornografia',
-    description: 'Bloqueia sites adultos populares e plataformas de conteúdo sensível para redes familiares.',
+    description: 'Bloqueia sites adultos populares e plataformas de conteudo sensivel para redes familiares.',
     domains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com'],
-    coverage: 'Sites adultos, webcams, conteúdo pago e redes populares',
     badge: 'Forte',
   },
   {
@@ -102,7 +94,6 @@ const QUICK_PRESETS = [
     title: 'Jogos pesados',
     description: 'Reforça bloqueio de plataformas de jogos, CDNs e launchers comuns.',
     domains: ['roblox.com', 'epicgames.com', 'steampowered.com', 'riotgames.com'],
-    coverage: 'Roblox, Steam, Epic, Fortnite, Riot, Xbox e PlayStation',
     badge: 'Forte',
   },
 ]
@@ -238,27 +229,15 @@ function InfoCard({ icon: Icon, label, value, description }) {
 function RuleRow({ rule }) {
   const invalid = Boolean(rule.invalid)
   const disabled = Boolean(rule.disabled)
-  const typeLabel = {
-    filter: 'Filter',
-    nat: 'NAT',
-    dns: 'DNS',
-  }[rule.ruleType] || 'Regra'
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-3 rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-neutral-400">
-            {typeLabel}
-          </span>
-          <p className="text-sm font-extrabold text-white break-all">
-            {rule.comment || 'Regra sem comentario'}
-          </p>
-        </div>
+        <p className="text-sm font-extrabold text-white break-all">
+          {rule.comment || 'Regra sem comentário'}
+        </p>
         <p className="text-xs text-neutral-500 mt-1">
-          {rule.ruleType === 'dns'
-            ? `${rule.type || 'DNS'} · ${rule.name || rule.regexp || '-'}`
-            : `${rule.chain || '-'} · ${rule.action || '-'} · ${rule.protocol || '-'}`}
+          {rule.chain || '-'} · {rule.action || '-'} · {rule.protocol || '-'}
         </p>
       </div>
 
@@ -267,7 +246,7 @@ function RuleRow({ rule }) {
           Origem
         </p>
         <p className="text-xs font-bold text-neutral-300 mt-1">
-          {rule.ruleType === 'dns' ? rule.name || '-' : rule.srcAddress || '-'}
+          {rule.srcAddress || '-'}
         </p>
       </div>
 
@@ -276,9 +255,7 @@ function RuleRow({ rule }) {
           Destino
         </p>
         <p className="text-xs font-bold text-neutral-300 mt-1 break-all">
-          {rule.ruleType === 'dns'
-            ? rule.regexp || rule.address || '-'
-            : rule.tlsHost || rule.dstPort || rule.toPorts || '-'}
+          {rule.tlsHost || rule.dstPort || rule.toPorts || '-'}
         </p>
       </div>
 
@@ -396,8 +373,6 @@ export default function ControleRedePage() {
 
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
-  const [hotspots, setHotspots] = useState([])
-  const [hotspotsLoading, setHotspotsLoading] = useState(false)
 
   const [status, setStatus] = useState(null)
   const [permissions, setPermissions] = useState({ view: false, update: false })
@@ -409,83 +384,23 @@ export default function ControleRedePage() {
 
   const [blockedInput, setBlockedInput] = useState('')
   const [allowedInput, setAllowedInput] = useState('')
-  const [ruleSearch, setRuleSearch] = useState('')
-  const [ruleTypeFilter, setRuleTypeFilter] = useState('all')
 
   const [message, setMessage] = useState('')
   const [policyNotice, setPolicyNotice] = useState(null)
   const [error, setError] = useState('')
 
   const allRules = useMemo(() => {
-    const filters = (status?.filters || []).map((rule) => ({ ...rule, ruleType: 'filter' }))
-    const natRules = (status?.natRules || []).map((rule) => ({ ...rule, ruleType: 'nat' }))
-    const dnsRules = (status?.dnsRules || []).map((rule) => ({ ...rule, ruleType: 'dns' }))
-    return [...filters, ...natRules, ...dnsRules]
+    const filters = status?.filters || []
+    const natRules = status?.natRules || []
+    return [...filters, ...natRules]
   }, [status])
 
   const invalidRules = useMemo(() => {
     return allRules.filter((rule) => rule.invalid)
   }, [allRules])
 
-  const visibleRules = useMemo(() => {
-    const search = normalizeDomain(ruleSearch) || String(ruleSearch || '').trim().toLowerCase()
-
-    return allRules.filter((rule) => {
-      const matchesType = ruleTypeFilter === 'all' || rule.ruleType === ruleTypeFilter
-
-      if (!matchesType) return false
-      if (!search) return true
-
-      const haystack = [
-        rule.comment,
-        rule.chain,
-        rule.action,
-        rule.protocol,
-        rule.srcAddress,
-        rule.dstPort,
-        rule.toPorts,
-        rule.tlsHost,
-        rule.name,
-        rule.regexp,
-        rule.address,
-        rule.type,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-
-      return haystack.includes(search)
-    })
-  }, [allRules, ruleSearch, ruleTypeFilter])
-
-  const activePresetTitles = useMemo(() => {
-    const blocked = new Set((policy.customBlockedDomains || []).map((domain) => normalizeDomain(domain)))
-
-    return QUICK_PRESETS
-      .filter((preset) => {
-        const domains = (preset.domains || []).map((domain) => normalizeDomain(domain)).filter(Boolean)
-        return domains.length > 0 && domains.every((domain) => blocked.has(domain))
-      })
-      .map((preset) => preset.title)
-  }, [policy.customBlockedDomains])
-
-  const currentHotspotId = hotspotIdFromUrl || hotspot?.id || ''
-  const selectedHotspotFromList = hotspots.find((item) => item.id === currentHotspotId)
-
   const canUpdate = Boolean(permissions.update)
   const statusUnavailable = Boolean(status?.unavailable)
-
-  async function carregarHotspots() {
-    try {
-      setHotspotsLoading(true)
-      const data = await adminApiFetch('/api/admin/rede/hotsposts')
-      setHotspots(data.hotspots || [])
-    } catch (err) {
-      console.error('Erro ao carregar hotspots de rede:', err)
-    } finally {
-      setHotspotsLoading(false)
-    }
-  }
 
   async function carregarStatus() {
     setError('')
@@ -504,10 +419,7 @@ export default function ControleRedePage() {
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
       setLoading(false)
-      setStatus(null)
-      setHotspot(null)
-      setMikrotik(null)
-      setError('')
+      setError('Selecione um hotspot para gerenciar a rede.')
       return
     }
 
@@ -557,11 +469,6 @@ customAllowedDomains: cleanDomainList(allowedDomains),
     } finally {
       setLoading(false)
     }
-  }
-
-  function selecionarHotspot(hotspotId) {
-    if (!hotspotId) return
-    router.push(`/dashboard/rede?hotspotId=${encodeURIComponent(hotspotId)}`)
   }
 
 function getPresetDomains(preset) {
@@ -844,6 +751,42 @@ function togglePreset(preset) {
     }
   }
 
+  async function configurarPortalCativo() {
+    setError('')
+    setMessage('')
+    setPolicyNotice(null)
+
+    if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
+      setError('Selecione um hotspot antes de configurar o portal cativo.')
+      return
+    }
+
+    try {
+      setProcessing(true)
+
+      const data = await adminApiFetch('/api/admin/rede/portal/apply', {
+        method: 'POST',
+        body: {
+          hotspotId: hotspotIdFromUrl,
+          hotspotSlug: hotspotSlugFromUrl,
+          hotspotSubnet: policy.hotspotSubnet || '192.168.88.0/24',
+        },
+      })
+
+      setHotspot(data.hotspot || hotspot)
+      setMikrotik(data.router || mikrotik)
+      setMessage(
+        `Portal cativo configurado: ${data.result?.portalUrl || 'link do portal aplicado no MikroTik'}.`
+      )
+      await carregarStatus()
+    } catch (err) {
+      console.error('Erro ao configurar portal cativo:', err)
+      setError(err.message || 'Erro ao configurar portal cativo')
+    } finally {
+      setProcessing(false)
+    }
+  }
+
   async function resetarPolitica() {
     const confirmar = window.confirm(
       'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenção.'
@@ -882,10 +825,6 @@ function togglePreset(preset) {
   }
 
   
-
-  useEffect(() => {
-    carregarHotspots()
-  }, [])
 
   useEffect(() => {
     carregarStatus()
@@ -945,6 +884,17 @@ function togglePreset(preset) {
 
           {canUpdate && (
             <button
+              onClick={configurarPortalCativo}
+              disabled={processing}
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
+            >
+              {processing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
+              Configurar Portal Cativo
+            </button>
+          )}
+
+          {canUpdate && (
+            <button
               onClick={aplicarPolitica}
               disabled={processing}
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all shadow-[0_0_30px_rgba(107,225,47,0.18)]"
@@ -955,47 +905,6 @@ function togglePreset(preset) {
           )}
         </div>
       </header>
-
-      <section className="relative z-10 mb-6 rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-5">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          <div>
-            <p className="text-sm font-black text-white">
-              Operar hotspot
-            </p>
-            <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-              Escolha o ponto Wi-Fi, confira o resumo e aplique a politica somente no MikroTik vinculado.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 lg:min-w-[520px]">
-            <select
-              value={currentHotspotId}
-              disabled={hotspotsLoading || processing}
-              onChange={(event) => selecionarHotspot(event.target.value)}
-              className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30 disabled:opacity-60"
-            >
-              <option value="">
-                {hotspotsLoading ? 'Carregando hotspots...' : 'Selecione um hotspot'}
-              </option>
-              {hotspots.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.nome || item.slug} {item.router?.nome ? `- ${item.router.nome}` : ''}
-                </option>
-              ))}
-            </select>
-
-            {selectedHotspotFromList?.slug && (
-              <button
-                type="button"
-                onClick={() => router.push(`/portal/${selectedHotspotFromList.slug}`)}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-3 text-sm font-bold text-neutral-300 hover:bg-white/[0.06] hover:text-white transition-all"
-              >
-                Ver portal
-              </button>
-            )}
-          </div>
-        </div>
-      </section>
 
       {error && (
         <div className="relative z-10 mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-4 text-sm font-bold text-red-300">
@@ -1041,13 +950,13 @@ function togglePreset(preset) {
         </div>
       )}
 
-      {!canUpdate && (hotspotIdFromUrl || hotspotSlugFromUrl) && (
+      {!canUpdate && (
         <div className="relative z-10 mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-bold text-neutral-400">
           Modo leitura: você pode visualizar a política, mas não pode aplicar ou resetar regras.
         </div>
       )}
 
-      <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4 mb-8">
+      <section className="relative z-10 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           icon={statusUnavailable ? AlertTriangle : status?.enabled ? ShieldCheck : ShieldOff}
           label="Status"
@@ -1063,11 +972,6 @@ function togglePreset(preset) {
           icon={Globe}
           label="Regras NAT"
           value={statusUnavailable ? '-' : status?.natCount ?? 0}
-        />
-        <StatCard
-          icon={Server}
-          label="Regras DNS"
-          value={statusUnavailable ? '-' : status?.dnsCount ?? 0}
         />
         <StatCard
           icon={AlertTriangle}
@@ -1119,51 +1023,17 @@ function togglePreset(preset) {
                 description="Servidor hotspot usado no RouterOS"
               />
             </div>
-          </div>
 
-          <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-11 h-11 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
-                <ShieldCheck size={19} className="text-[#6be12f]" />
-              </div>
-
-              <div>
-                <h2 className="text-lg font-black text-white">Resumo operacional</h2>
-                <p className="text-xs text-neutral-500 font-medium">
-                  Conferencia rapida antes de aplicar
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <InfoCard
-                icon={ShieldOff}
-                label="Bloqueados"
-                value={(policy.customBlockedDomains || []).length}
-                description="Dominios salvos para bloqueio"
-              />
-              <InfoCard
-                icon={ShieldCheck}
-                label="Liberados"
-                value={(policy.customAllowedDomains || []).length}
-                description="Permitidos com prioridade"
-              />
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
-              <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-2">
-                Presets ativos
-              </p>
-              <p className="text-sm font-bold text-white leading-relaxed">
-                {activePresetTitles.length > 0 ? activePresetTitles.join(', ') : 'Nenhum preset forte selecionado'}
-              </p>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-yellow-500/15 bg-yellow-500/5 px-4 py-3">
-              <p className="text-xs leading-relaxed text-yellow-100/80">
-                Sites liberados vencem bloqueios. Revise esta lista antes de aplicar presets fortes em redes de clientes.
-              </p>
-            </div>
+            {canUpdate && (
+              <button
+                onClick={configurarPortalCativo}
+                disabled={processing}
+                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
+              >
+                {processing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
+                Configurar Portal Cativo
+              </button>
+            )}
           </div>
 
           <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
@@ -1280,10 +1150,10 @@ function togglePreset(preset) {
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
     <div>
       <h2 className="text-lg font-black text-white">
-        Presets fortes
+        Presets rápidos
       </h2>
       <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-        Bloqueios inteligentes para apps grandes. O painel adiciona gatilhos simples e a Control API expande para regras avançadas no MikroTik.
+        Bloqueios inteligentes para apps grandes. O painel adiciona um domínio simples e a Control API expande para regras avançadas no MikroTik.
       </p>
     </div>
 
@@ -1323,10 +1193,6 @@ function togglePreset(preset) {
 
               <p className="text-xs text-neutral-500 leading-relaxed">
                 {preset.description}
-              </p>
-
-              <p className="text-[11px] text-neutral-400 mt-3 leading-relaxed">
-                Cobre: <span className="font-bold text-neutral-200">{preset.coverage}</span>
               </p>
 
               <p className="text-xs text-neutral-600 mt-3">
@@ -1388,34 +1254,9 @@ function togglePreset(preset) {
 
               <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
                 <Activity size={14} />
-                {statusUnavailable ? 'consulta indisponivel' : `${visibleRules.length}/${allRules.length} regras`}
+                {statusUnavailable ? 'consulta indisponivel' : `${allRules.length} regras`}
               </div>
             </div>
-
-            {!statusUnavailable && allRules.length > 0 && (
-              <div className="grid grid-cols-1 lg:grid-cols-[1fr_180px] gap-3 mb-4">
-                <div className="relative">
-                  <Search size={15} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" />
-                  <input
-                    value={ruleSearch}
-                    onChange={(event) => setRuleSearch(event.target.value)}
-                    placeholder="Buscar por comentario, dominio, porta ou destino..."
-                    className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] pl-11 pr-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30"
-                  />
-                </div>
-
-                <select
-                  value={ruleTypeFilter}
-                  onChange={(event) => setRuleTypeFilter(event.target.value)}
-                  className="w-full rounded-2xl border border-white/[0.06] bg-[#050505] px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/30"
-                >
-                  <option value="all">Todas as regras</option>
-                  <option value="filter">Filter</option>
-                  <option value="nat">NAT</option>
-                  <option value="dns">DNS</option>
-                </select>
-              </div>
-            )}
 
             {statusUnavailable ? (
               <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-8 text-center">
@@ -1442,20 +1283,10 @@ function togglePreset(preset) {
                   Clique em “Aplicar Política” para ativar o controle de rede.
                 </p>
               </div>
-            ) : visibleRules.length === 0 ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
-                <Search className="mx-auto text-neutral-600 mb-3" size={32} />
-                <p className="text-sm font-bold text-neutral-400">
-                  Nenhuma regra encontrada para o filtro atual.
-                </p>
-                <p className="text-xs text-neutral-600 mt-1">
-                  Limpe a busca ou altere o tipo de regra.
-                </p>
-              </div>
             ) : (
               <div className="space-y-3 max-h-[720px] overflow-y-auto pr-1 custom-scrollbar">
-                {visibleRules.map((rule) => (
-                  <RuleRow key={`${rule.ruleType}-${rule.comment}-${rule.id}`} rule={rule} />
+                {allRules.map((rule) => (
+                  <RuleRow key={`${rule.comment}-${rule.id}`} rule={rule} />
                 ))}
               </div>
             )}

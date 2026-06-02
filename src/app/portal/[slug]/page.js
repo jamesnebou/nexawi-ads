@@ -21,7 +21,7 @@ import { controlApiFetch } from '@/lib/control-api-client'
 
 const ETAPAS = {
   LOADING: 'loading',
-  CPF_RAPIDO: 'cpf_rapido',
+  TELEFONE_RAPIDO: 'telefone_rapido',
   CADASTRO: 'cadastro',
   ANUNCIO: 'anuncio',
   CTA: 'cta',
@@ -38,107 +38,6 @@ function normalizeMac(value = '') {
     .replace(/-/g, ':')
 }
 
-
-function extrairLpSlug(value = '') {
-  const raw = String(value || '').trim()
-
-  if (!raw) return ''
-
-  try {
-    const url = raw.startsWith('http://') || raw.startsWith('https://') ? new URL(raw)
-      : new URL(raw, 'https://www.nexawi.com.br')
-
-    const partes = url.pathname.split('/').filter(Boolean)
-    const lpIndex = partes.indexOf('lp')
-
-    if (lpIndex >= 0 && partes[lpIndex + 1]) {
-      return decodeURIComponent(partes[lpIndex + 1])
-    }
-  } catch {}
-
-  return raw
-    .replace(/^https?:\/\/[^/]+/i, '')
-    .replace(/^\/lp\//i, '')
-    .replace(/^\//, '')
-    .split('?')[0]
-    .trim()
-}
-
-function salvarAutorizacaoPendenteLp(payload = {}) {
-  if (typeof window === 'undefined') return
-
-  try {
-    window.sessionStorage.setItem('nexawi_pending_auth', JSON.stringify({
-      ...payload,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + 5 * 60 * 1000,
-    }))
-  } catch {}
-}
-
-function montarUrlLpInterna(anuncio = {}, contexto = {}) {
-  const caminhoInterno = String(anuncio.lp_slug || '').trim()
-  const base = typeof window !== 'undefined' ? window.location.origin : 'https://www.nexawi.com.br'
-
-  if (!caminhoInterno.startsWith('/') || caminhoInterno.startsWith('//') || caminhoInterno.includes('\\\\')) {
-    return ''
-  }
-
-  let destino
-
-  try {
-    destino = new URL(caminhoInterno, base)
-
-    if (destino.origin !== base) {
-      return ''
-    }
-  } catch {
-    return ''
-  }
-
-  const payload = {
-    pendingAuth: '1',
-    hotspotSlug: contexto.hotspotSlug || '',
-    leadId: contexto.leadId || '',
-    clientMac: contexto.clientMac || '',
-    clientIp: contexto.clientIp || '',
-    anuncioId: anuncio.id || '',
-    delaySeconds: String(anuncio.tempo_liberacao_lp || 10),
-    internalPath: caminhoInterno,
-  }
-
-  salvarAutorizacaoPendenteLp(payload)
-
-  Object.entries(payload).forEach(([key, value]) => {
-    destino.searchParams.set(key, String(value || ''))
-  })
-
-  return destino.toString()
-}
-
-function montarUrlSiteNexawi(anuncio = {}, contexto = {}) {
-  const base = typeof window !== 'undefined' ? window.location.origin : 'https://www.nexawi.com.br'
-  const destino = new URL('/', base)
-
-  const payload = {
-    pendingAuth: '1',
-    hotspotSlug: contexto.hotspotSlug || '',
-    leadId: contexto.leadId || '',
-    clientMac: contexto.clientMac || '',
-    clientIp: contexto.clientIp || '',
-    anuncioId: anuncio.id || '',
-    delaySeconds: String(anuncio.tempo_liberacao_lp || 10),
-    internalPath: '/',
-  }
-
-  salvarAutorizacaoPendenteLp(payload)
-
-  Object.entries(payload).forEach(([key, value]) => {
-    destino.searchParams.set(key, String(value || ''))
-  })
-
-  return destino.toString()
-}
 
 function normalizarUrlDestino(url = '') {
   const valor = String(url || '').trim()
@@ -161,7 +60,8 @@ function normalizarUrlDestino(url = '') {
   const somenteNumeros = valor.replace(/\D/g, '')
 
   if (/^\d{10,15}$/.test(somenteNumeros)) {
-    const telefoneComPais = somenteNumeros.startsWith('55') ? somenteNumeros
+    const telefoneComPais = somenteNumeros.startsWith('55')
+      ? somenteNumeros
       : `55${somenteNumeros}`
 
     return `https://wa.me/${telefoneComPais}`
@@ -192,39 +92,6 @@ async function portalApiFetch(path, payload = {}) {
   return data
 }
 
-
-function gerarStringAleatoria(tamanho = 24) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-  const bytes = new Uint32Array(tamanho)
-  window.crypto.getRandomValues(bytes)
-
-  let resultado = ''
-  for (let i = 0; i < tamanho; i++) {
-    resultado += chars[bytes[i] % chars.length]
-  }
-  return resultado
-}
-
-function gerarCredenciaisRadius(macAddress = '') {
-  const macLimpo = String(macAddress || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase()
-  const sufixo = gerarStringAleatoria(6).toUpperCase()
-
-  return {
-    radiusUsername: `NXW${macLimpo || 'SEMMA'}${Date.now()}${sufixo}`,
-    radiusPassword: gerarStringAleatoria(32),
-  }
-}
-
-function getMesAtualRange() {
-  const agora = new Date()
-  const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0)
-  const fim = new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 0, 0, 0, 0)
-
-  return {
-    inicio: inicio.toISOString(),
-    fim: fim.toISOString(),
-  }
-}
 
 function AvisoAcessoPorInatividade() {
   return (
@@ -258,31 +125,38 @@ export default function Portal() {
   const { slug } = useParams()
   const searchParams = useSearchParams()
 
-  const macParam = normalizeMac(searchParams.get('mac') || '')
+  const macParam = normalizeMac(
+    searchParams.get('mac') ||
+      searchParams.get('client_mac') ||
+      searchParams.get('client-mac') ||
+      searchParams.get('username') ||
+      ''
+  )
+  const ipParam = String(
+    searchParams.get('ip') ||
+      searchParams.get('client_ip') ||
+      searchParams.get('client-ip') ||
+      ''
+  ).trim()
   const [etapa, setEtapa] = useState(ETAPAS.LOADING)
   const [hotspot, setHotspot] = useState(null)
   const [leadRapido, setLeadRapido] = useState(null)
   const [anuncioAtual, setAnuncioAtual] = useState(null)
-  const [anuncios, setAnuncios] = useState([])
-  const [anunciosExibidos, setAnunciosExibidos] = useState([])
   const [contador, setContador] = useState(0)
   const [salvando, setSalvando] = useState(false)
-  const [salvandoCpfRapido, setSalvandoCpfRapido] = useState(false)
   const [leadId, setLeadId] = useState(null)
   const [ipAddress, setIpAddress] = useState('0.0.0.0')
   const [macAddress, setMacAddress] = useState('')
   const [modalAberto, setModalAberto] = useState(null)
-  const [cpfRapido, setCpfRapido] = useState('')
-  const [erroCpfRapido, setErroCpfRapido] = useState('')
+  const [telefoneRapido, setTelefoneRapido] = useState('')
+  const [erroTelefoneRapido, setErroTelefoneRapido] = useState('')
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
   const [urlCliente, setUrlCliente] = useState('')
   const [linkCopiado, setLinkCopiado] = useState(false)
   const [copiandoLink, setCopiandoLink] = useState(false)
-  const [videoAdStarted, setVideoAdStarted] = useState(false)
-  const [videoAdLoading, setVideoAdLoading] = useState(false)
-  const [videoAdError, setVideoAdError] = useState('')
+  const [salvandoTelefoneRapido, setSalvandoTelefoneRapido] = useState(false)
 
   
   const [form, setForm] = useState({
@@ -291,7 +165,6 @@ export default function Portal() {
     telefone: '',
     cpf: '',
     aceite_lgpd: false,
-    aceitou_promocoes: false,
   })
 
   const [erros, setErros] = useState({})
@@ -301,15 +174,6 @@ export default function Portal() {
   const sessaoAutorizadaRef = useRef(false)
   const autorizacaoPromiseRef = useRef(null)
   const liberacaoCtaTimerRef = useRef(null)
-  const videoAdRef = useRef(null)
-  const videoAdBufferingRef = useRef(false)
-
-  const portalRules = hotspot?.portal_rules || {}
-  const emailObrigatorio = portalRules.email_obrigatorio !== false
-  const cpfVisivel = portalRules.cpf_visivel !== false
-  const cpfObrigatorio = portalRules.cpf_obrigatorio !== false
-  const promocoesOptinAtivo = Boolean(portalRules.promocoes_optin_ativo)
-  const promocoesTexto = portalRules.promocoes_texto || 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.'
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -328,54 +192,17 @@ export default function Portal() {
   }
 
   function getClientIp(customIp = '') {
-    return String(customIp || ipAddress || (isLocalhost ? DEV_CLIENT_IP : '')).trim()
-  }
-
-  function isVideoAd(ad = anuncioAtual) {
-    return Boolean(ad?.media_url && ad?.tipo_media === 'video')
-  }
-
-  function setVideoBuffering(value) {
-    videoAdBufferingRef.current = Boolean(value)
-    setVideoAdLoading(Boolean(value))
-  }
-
-  async function tentarIniciarVideoAutomatico() {
-    const video = videoAdRef.current
-
-    if (!video || !isVideoAd()) return
-
-    setVideoAdError('')
-    setVideoBuffering(true)
-
-    try {
-      video.muted = false
-      video.defaultMuted = false
-      video.volume = 1
-
-      const playPromise = video.play()
-
-      if (playPromise && typeof playPromise.then === 'function') {
-        await playPromise
-      }
-
-      setVideoAdStarted(true)
-      setVideoBuffering(false)
-    } catch (error) {
-      console.warn('Autoplay com áudio bloqueado ou falhou:', error)
-      setVideoBuffering(false)
-      setVideoAdStarted(false)
-      setVideoAdError('O vídeo ainda não iniciou. O tempo está pausado.')
-    }
+    return String(customIp || ipParam || ipAddress || (isLocalhost ? DEV_CLIENT_IP : '')).trim()
   }
 
   function falhar(etiqueta, erro = '') {
     const detalhe =
-      typeof erro === 'string' ? erro
+      typeof erro === 'string'
+        ? erro
         : erro?.message || JSON.stringify(erro) || 'Erro desconhecido'
 
     console.error(etiqueta, erro)
-    setErroDetalhe(`${etiqueta}${detalhe ?`: ${detalhe}` : ''}`)
+    setErroDetalhe(`${etiqueta}${detalhe ? `: ${detalhe}` : ''}`)
     setEtapa(ETAPAS.ERRO)
   }
 
@@ -392,8 +219,6 @@ export default function Portal() {
 
     setHotspot(data.hotspot || null)
     hotspotIdRef.current = data.hotspot?.id || ''
-    setAnuncios(data.anuncios || [])
-
     return data.hotspot
   } catch (error) {
     falhar('Erro ao carregar hotspot', error)
@@ -501,16 +326,12 @@ export default function Portal() {
     return data
   }
 
-  async function buscarProximoAnuncioObrigatorio(explicitLeadId = null) {
-    const hotspotId = hotspot?.id || hotspotIdRef.current || ''
-    const mac = getClientMac()
-
-    if (!hotspotId || !mac) return null
-
-    const data = await portalApiFetch('/api/portal/next-ad', {
-      hotspotId,
-      macAddress: mac,
-      leadId: explicitLeadId || leadIdRef.current || leadId || leadRapido?.id || '',
+  async function buscarProximoAnuncio({ leadId: targetLeadId, telefone }) {
+    const data = await portalApiFetch('/api/portal/ad-next', {
+      hotspotId: hotspot?.id || hotspotIdRef.current || '',
+      leadId: targetLeadId,
+      macAddress: getClientMac(),
+      telefone,
     })
 
     return data.anuncio || null
@@ -579,19 +400,18 @@ export default function Portal() {
   function validarForm() {
     const novosErros = {}
 
-    if (!form.nome.trim()) novosErros.nome = 'Nome obrigat?rio'
-    if (emailObrigatorio && !form.email.trim()) {
-      novosErros.email = 'E-mail obrigat?rio'
-    } else if (form.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      novosErros.email = 'E-mail inv?lido'
+    if (!form.nome.trim()) novosErros.nome = 'Nome é obrigatório'
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+      novosErros.email = 'E-mail inválido'
     }
-    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inv?lido (11 d?gitos)'
-    if (cpfVisivel && cpfObrigatorio && !validateCpf(form.cpf)) novosErros.cpf = 'CPF inv?lido'
-    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Voc? precisa aceitar os termos'
+    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inválido (11 dígitos)'
+    if (!validateCpf(form.cpf)) novosErros.cpf = 'CPF inválido'
+    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
 
     setErros(novosErros)
     return Object.keys(novosErros).length === 0
   }
+
   function autorizarSessaoEmBackground(explicitLeadId = null) {
     const resolvedLeadId =
       explicitLeadId ||
@@ -656,7 +476,6 @@ export default function Portal() {
       const cpfLimpo = String(form.cpf).replace(/\D/g, '')
       const resolvedMac = getClientMac()
       const resolvedIp = getClientIp()
-      const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(resolvedMac)
 
       // Salva o lead por API server-side.
 // Assim CPF, telefone, e-mail, MAC e IP não dependem mais de permissão pública na tabela leads.
@@ -667,7 +486,6 @@ const data = await portalApiFetch('/api/portal/lead', {
   telefone: telefoneLimpo,
   cpf: cpfLimpo,
   aceiteLgpd: form.aceite_lgpd,
-  aceitouPromocoes: form.aceitou_promocoes,
   anuncioId: null,
   macAddress: resolvedMac || null,
   ipAddress: resolvedIp || null,
@@ -676,15 +494,14 @@ const data = await portalApiFetch('/api/portal/lead', {
       setLeadId(data.leadId)
 leadIdRef.current = data.leadId
 
-      const anuncioSorteado = await buscarProximoAnuncioObrigatorio(data.leadId)
+      const anuncioSorteado = await buscarProximoAnuncio({
+        leadId: data.leadId,
+        telefone: telefoneLimpo,
+      })
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setInternetLiberadaNaCta(false)
-        setVideoAdStarted(false)
-        setVideoAdLoading(false)
-        setVideoAdError('')
-        videoAdBufferingRef.current = false
         setEtapa(ETAPAS.ANUNCIO)
         registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
@@ -700,66 +517,50 @@ leadIdRef.current = data.leadId
     }
   }
 
-    async function handleCpfRapido(e) {
+  async function handleTelefoneRapido(e) {
     e.preventDefault()
+    setErroTelefoneRapido('')
 
-    // Limpa mensagens antigas antes de validar novamente.
-    setErroCpfRapido('')
+    const telefoneLimpo = String(telefoneRapido).replace(/\D/g, '')
 
-    // Remove tudo que não for número.
-    // Importante: CPF precisa continuar como string para não perder zero à esquerda.
-    const cpfLimpo = String(cpfRapido).replace(/\D/g, '')
-
-    // Validação básica feita no navegador só para evitar envio de CPF inválido.
-    // A comparação com o CPF salvo no banco acontece somente no servidor.
-    if (!validateCpf(cpfLimpo)) {
-      setErroCpfRapido('CPF inválido')
+    if (!validatePhoneNumber(telefoneLimpo)) {
+      setErroTelefoneRapido('Celular invalido')
       return
     }
 
-    // Se não existe lead rápido encontrado para este MAC/hotspot,
-    // não faz sentido tentar validar CPF rápido.
     if (!leadRapido?.id) {
-      setErroCpfRapido('Cadastro não encontrado para este dispositivo')
+      setErroTelefoneRapido('Cadastro nao encontrado para este dispositivo')
       return
     }
 
-    setSalvandoCpfRapido(true)
+    setSalvandoTelefoneRapido(true)
 
     try {
-      // Validação segura server-side:
-      // O CPF é enviado para a API, comparado no servidor e não fica exposto no front-end.
-      const validacao = await portalApiFetch('/api/portal/cpf-rapido', {
+      const validacao = await portalApiFetch('/api/portal/telefone-rapido', {
         hotspotId: hotspot.id,
         macAddress: getClientMac(),
-        cpf: cpfLimpo,
+        telefone: telefoneLimpo,
       })
 
-      if (!validacao.ok || !validacao.leadId) {
-        setErroCpfRapido('CPF não confere com este dispositivo')
-        return
-      }
+      const validatedLeadId = validacao.lead?.id || leadRapido.id
 
-      // A partir daqui usamos somente o leadId validado pelo servidor.
-      setLeadId(validacao.leadId)
-      leadIdRef.current = validacao.leadId
+      setLeadId(validatedLeadId)
+      leadIdRef.current = validatedLeadId
 
-      const anuncioSorteado = await buscarProximoAnuncioObrigatorio(validacao.leadId)
+      const anuncioSorteado = await buscarProximoAnuncio({
+        leadId: validatedLeadId,
+        telefone: telefoneLimpo,
+      })
+
       const resolvedIp = getClientIp()
 
       if (anuncioSorteado) {
         setAnuncioAtual(anuncioSorteado)
         setInternetLiberadaNaCta(false)
-        setVideoAdStarted(false)
-        setVideoAdLoading(false)
-        setVideoAdError('')
-        videoAdBufferingRef.current = false
         setEtapa(ETAPAS.ANUNCIO)
-
-        // Registro de visualização agora deve passar pela API segura.
         registrarVisualizacao(anuncioSorteado.id, resolvedIp)
       } else {
-        const autorizacao = await autorizarSessaoNoBackend(validacao.leadId)
+        const autorizacao = await autorizarSessaoNoBackend(validatedLeadId)
 
         if (autorizacao) {
           setEtapa(ETAPAS.ACESSO)
@@ -768,18 +569,16 @@ leadIdRef.current = data.leadId
     } catch (error) {
       const mensagem = error?.message || ''
 
-      // Mensagem amigável para o usuário quando o CPF não bate com o cadastro.
-      if (mensagem.includes('CPF') || mensagem.includes('confere')) {
-        setErroCpfRapido('CPF não confere com este dispositivo')
+      if (mensagem.includes('Celular') || mensagem.includes('telefone')) {
+        setErroTelefoneRapido('Celular nao confere com este dispositivo')
         return
       }
 
-      falhar('Erro no CPF rápido', error)
+      falhar('Erro no celular rapido', error)
     } finally {
-      setSalvandoCpfRapido(false)
+      setSalvandoTelefoneRapido(false)
     }
   }
-
   function liberarInternetAposDelay(explicitLeadId = null, delayMs = 5000) {
     const resolvedLeadId =
       explicitLeadId ||
@@ -827,39 +626,6 @@ leadIdRef.current = data.leadId
     }
   }
 
-  async function copiarLinkSilencioso(texto = '') {
-    if (!texto) return false
-
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(texto)
-        setLinkCopiado(true)
-        return true
-      }
-    } catch {}
-
-    try {
-      const textarea = document.createElement('textarea')
-      textarea.value = texto
-      textarea.setAttribute('readonly', '')
-      textarea.style.position = 'fixed'
-      textarea.style.left = '-9999px'
-      textarea.style.top = '-9999px'
-      document.body.appendChild(textarea)
-      textarea.focus()
-      textarea.select()
-      const copied = document.execCommand('copy')
-      document.body.removeChild(textarea)
-
-      if (copied) {
-        setLinkCopiado(true)
-        return true
-      }
-    } catch {}
-
-    return false
-  }
-
   async function handleCtaClick(clicou, destinoExterno = '') {
     try {
       const resolvedIp = getClientIp()
@@ -870,62 +636,19 @@ leadIdRef.current = data.leadId
         null
 
       if (clicou && anuncioAtual) {
-        const tipoDestino = anuncioAtual?.tipo_destino || 'externo'
-        const contextoInterno = {
-          hotspotSlug: hotspot?.slug || slug,
-          leadId: resolvedLeadId || '',
-          clientMac: getClientMac(),
-          clientIp: getClientIp(),
-        }
-        const urlNormalizada = tipoDestino === 'lp_interna'
-          ? montarUrlLpInterna(anuncioAtual, contextoInterno)
-          : tipoDestino === 'site_nexawi'
-            ? montarUrlSiteNexawi(anuncioAtual, contextoInterno)
-            : normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
+        const urlNormalizada = normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
         setUrlCliente(urlNormalizada)
         setLinkCopiado(false)
 
-        if (tipoDestino === 'lp_interna') {
-          registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
-            console.error('Erro ao registrar interesse no CTA interno:', error)
-          })
-
-          window.location.href = urlNormalizada
-          return
-        }
-
-        if (tipoDestino === 'site_nexawi') {
-          registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
-            console.error('Erro ao registrar interesse no site NexaWi:', error)
-          })
-
-          window.location.href = urlNormalizada
-          return
-        }
-
-        // FLUXO EXTERNO PROFISSIONAL:
-        // Não mostra mais a tela intermediária de 3 botões.
-        // O clique em "Quero aproveitar" já copia, registra, libera e tenta abrir.
-        await copiarLinkSilencioso(urlNormalizada)
-
-        registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
-          console.error('Erro ao registrar clique externo:', error)
+        registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
+          console.error('Erro ao registrar interesse no CTA:', error)
         })
 
-        setLoadingTexto('Liberando internet e abrindo oferta...')
-        setEtapa(ETAPAS.LOADING)
-
-        try {
-          await autorizarSessaoEmBackground(resolvedLeadId)
-        } catch (error) {
-          console.error('Erro ao liberar internet antes do link externo:', error)
-        }
-
-        window.setTimeout(() => {
-          window.location.href = urlNormalizada
-        }, 250)
-
+        // No Android, liberar imediatamente fecha o captive portal.
+        // Por isso primeiro mostramos a tela de copiar/abrir oferta e só liberamos após 5s.
+        setEtapa(ETAPAS.ABRIR_CLIENTE)
+        liberarInternetAposDelay(resolvedLeadId, 5000)
         return
       }
 
@@ -935,7 +658,6 @@ leadIdRef.current = data.leadId
       falhar('Erro na CTA', error)
     }
   }
-
 
 async function handleCopiarLinkCliente() {
   try {
@@ -990,7 +712,7 @@ async function handleCopiarLinkCliente() {
 
     setMacAddress(resolvedMac)
 
-    if (isLocalhost) {
+    if (ipParam || isLocalhost) {
       setIpAddress(resolvedIp)
     } else {
       try {
@@ -1027,22 +749,7 @@ async function handleCopiarLinkCliente() {
       setLeadId(leadDoMes.id)
       leadIdRef.current = leadDoMes.id
 
-      const regrasPortal = hotspotData.portal_rules || {}
-      const deveValidarCpfRapido =
-        regrasPortal.cpf_visivel !== false &&
-        regrasPortal.cpf_obrigatorio !== false
-
-      if (!deveValidarCpfRapido) {
-        setLeadRapido(null)
-        setLeadId(null)
-        leadIdRef.current = null
-        setEtapa(ETAPAS.CADASTRO)
-        return
-      }
-
-      // Mesmo que exista sessão authorized antiga,
-      // se o portal abriu de novo, o usuário precisa validar CPF rápido.
-      setEtapa(ETAPAS.CPF_RAPIDO)
+      setEtapa(ETAPAS.TELEFONE_RAPIDO)
       return
     }
 
@@ -1058,29 +765,22 @@ async function handleCopiarLinkCliente() {
     return () => {
       isMounted = false
     }
-  }, [slug, macParam])
+  }, [slug, macParam, ipParam])
 
   useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
-      const duracao = anuncioAtual.duracao_segundos || 15
-      setContador(duracao)
-
-      if (isVideoAd(anuncioAtual) && !videoAdStarted) {
-        return
-      }
+      // Android fecha automaticamente o captive portal quando detecta internet.
+      // Por isso não liberamos a sessão durante o anúncio.
+      // A liberação acontece somente após o clique no CTA ou ao recusar.
+      setContador(anuncioAtual.duracao_segundos || 15)
 
       intervaloAnuncioRef.current = setInterval(() => {
         setContador((prev) => {
-          if (isVideoAd(anuncioAtual) && videoAdBufferingRef.current) {
-            return prev
-          }
-
           if (prev <= 1) {
             clearInterval(intervaloAnuncioRef.current)
             concluirAnuncioComAutorizacao(leadIdRef.current || leadRapido?.id || null)
             return 0
           }
-
           return prev - 1
         })
       }, 1000)
@@ -1089,17 +789,7 @@ async function handleCopiarLinkCliente() {
     return () => {
       if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
     }
-  }, [etapa, anuncioAtual, leadRapido, videoAdStarted])
-
-  useEffect(() => {
-    if (etapa !== ETAPAS.ANUNCIO || !isVideoAd(anuncioAtual)) return
-
-    const timer = window.setTimeout(() => {
-      tentarIniciarVideoAutomatico()
-    }, 250)
-
-    return () => window.clearTimeout(timer)
-  }, [etapa, anuncioAtual?.id])
+  }, [etapa, anuncioAtual, leadRapido])
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -1145,7 +835,7 @@ async function handleCopiarLinkCliente() {
           <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
           <p className="text-gray-500 mb-3">Não foi possível carregar as configurações deste ponto de acesso.</p>
 
-          {erroDetalhe ?(
+          {erroDetalhe ? (
             <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-left">
               <p className="text-[11px] uppercase tracking-[0.2em] text-red-400 font-bold mb-2">
                 Detalhe técnico
@@ -1158,7 +848,7 @@ async function handleCopiarLinkCliente() {
         </div>
       )}
 
-      {etapa === ETAPAS.CPF_RAPIDO && (
+      {etapa === ETAPAS.TELEFONE_RAPIDO && (
         <div className="relative z-10 w-full max-w-md animate-fade-in-up">
           <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
             <div className="flex justify-center mb-8 group cursor-pointer">
@@ -1177,33 +867,33 @@ async function handleCopiarLinkCliente() {
               <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bom ter você novamente...</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
-                Digite apenas seu CPF para continuar.
+                Digite seu celular para continuar.
               </p>
 
               <AvisoAcessoPorInatividade />
             </div>
 
-            <form onSubmit={handleCpfRapido} className="space-y-4">
+            <form onSubmit={handleTelefoneRapido} className="space-y-4">
               <div className="relative group/input">
                 <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
+                  <Smartphone size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
                 <input
                   type="text"
-                  value={cpfRapido}
-                  onChange={(e) => setCpfRapido(e.target.value)}
+                  value={telefoneRapido}
+                  onChange={(e) => setTelefoneRapido(e.target.value)}
                   className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
-                  placeholder="Digite seu CPF"
+                  placeholder="DDD + numero"
                 />
-                {erroCpfRapido && <span className="text-red-400 text-xs mt-1 ml-2 block">{erroCpfRapido}</span>}
+                {erroTelefoneRapido && <span className="text-red-400 text-xs mt-1 ml-2 block">{erroTelefoneRapido}</span>}
               </div>
 
               <button
                 type="submit"
-                disabled={salvandoCpfRapido}
+                disabled={salvandoTelefoneRapido}
                 className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                {salvandoCpfRapido ?<Loader2 size={20} className="animate-spin" /> : <>Continuar <ArrowRight size={18} /></>}
+                {salvandoTelefoneRapido ? <Loader2 size={20} className="animate-spin" /> : <>Continuar <ArrowRight size={18} /></>}
               </button>
             </form>
           </div>
@@ -1277,21 +967,19 @@ async function handleCopiarLinkCliente() {
                 {erros.telefone && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.telefone}</span>}
               </div>
 
-              {cpfVisivel && (
-                <div className="relative group/input">
-                  <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
-                    <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
-                  </div>
-                  <input
-                    type="text"
-                    value={form.cpf}
-                    onChange={(e) => setForm({ ...form, cpf: e.target.value })}
-                    className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
-                    placeholder={cpfObrigatorio ?'CPF' : 'CPF (opcional)'}
-                  />
-                  {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
+              <div className="relative group/input">
+                <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+                  <FileText size={18} className="text-gray-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
                 </div>
-              )}
+                <input
+                  type="text"
+                  value={form.cpf}
+                  onChange={(e) => setForm({ ...form, cpf: e.target.value })}
+                  className="w-full pl-12 pr-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.05] focus:border-[#6be12f]/30 focus:ring-1 focus:ring-[#6be12f]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                  placeholder="CPF"
+                />
+                {erros.cpf && <span className="text-red-400 text-xs mt-1 ml-2 block">{erros.cpf}</span>}
+              </div>
 
               <div className="pt-2">
                 <label className="flex items-start gap-3 cursor-pointer group">
@@ -1320,33 +1008,12 @@ async function handleCopiarLinkCliente() {
                 {erros.aceite_lgpd && <span className="text-red-400 text-xs mt-2 ml-8 block">{erros.aceite_lgpd}</span>}
               </div>
 
-              {promocoesOptinAtivo && (
-                <div className="pt-1">
-                  <label className="flex items-start gap-3 cursor-pointer group">
-                    <div className="relative flex items-center justify-center mt-0.5">
-                      <input
-                        type="checkbox"
-                        checked={form.aceitou_promocoes}
-                        onChange={(e) => setForm({ ...form, aceitou_promocoes: e.target.checked })}
-                        className="peer sr-only"
-                      />
-                      <div className="w-5 h-5 rounded border border-white/[0.1] bg-[#0a0a0a] peer-checked:bg-[#6be12f] peer-checked:border-[#6be12f] transition-all duration-300 flex items-center justify-center">
-                        <CheckCircle2 size={14} className="text-black opacity-0 peer-checked:opacity-100 transition-opacity duration-300" />
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-500 leading-relaxed group-hover:text-gray-400 transition-colors">
-                      {promocoesTexto}
-                    </span>
-                  </label>
-                </div>
-              )}
-
               <button
                 type="submit"
                 disabled={salvando}
                 className="w-full mt-6 bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
               >
-                {salvando ?<Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
+                {salvando ? <Loader2 size={20} className="animate-spin" /> : <>Conectar Agora <ArrowRight size={18} /></>}
               </button>
             </form>
           </div>
@@ -1363,49 +1030,9 @@ async function handleCopiarLinkCliente() {
           </div>
 
           <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ?(
-              <div className="relative w-full h-full">
-                <video
-                  ref={videoAdRef}
-                  src={anuncioAtual.media_url}
-                  className="w-full h-full object-cover"
-                  autoPlay
-                  playsInline
-                  preload="auto"
-                  onLoadedMetadata={tentarIniciarVideoAutomatico}
-                  onCanPlay={tentarIniciarVideoAutomatico}
-                  onPlay={() => {
-                    setVideoAdStarted(true)
-                    setVideoBuffering(false)
-                  }}
-                  onPlaying={() => {
-                    setVideoAdStarted(true)
-                    setVideoBuffering(false)
-                  }}
-                  onWaiting={() => setVideoBuffering(true)}
-                  onStalled={() => setVideoBuffering(true)}
-                  onSeeking={() => setVideoBuffering(true)}
-                  onSeeked={() => setVideoBuffering(false)}
-                  onError={() => {
-                    setVideoBuffering(false)
-                    setVideoAdStarted(false)
-                    setVideoAdError('Não foi possível carregar este vídeo.')
-                  }}
-                />
-
-                {!videoAdStarted && (
-                  <div className="absolute inset-x-4 bottom-24 z-20 rounded-2xl border border-white/10 bg-black/75 px-4 py-3 text-center text-xs font-bold text-white backdrop-blur-xl">
-                    {videoAdError || 'Carregando vídeo com áudio... tempo pausado.'}
-                  </div>
-                )}
-
-                {videoAdStarted && videoAdLoading && (
-                  <div className="absolute inset-x-4 bottom-24 z-20 rounded-2xl border border-white/10 bg-black/75 px-4 py-3 text-center text-xs font-bold text-white backdrop-blur-xl">
-                    Vídeo carregando... tempo pausado.
-                  </div>
-                )}
-              </div>
-            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ?(
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
+              <video src={anuncioAtual.media_url} className="w-full h-full object-cover" autoPlay muted playsInline loop />
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
               <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
             ) : (
               <div className="text-gray-600 text-sm">Mídia não disponível</div>
@@ -1425,9 +1052,9 @@ async function handleCopiarLinkCliente() {
       {etapa === ETAPAS.CTA && anuncioAtual && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-[#050505]/80 backdrop-blur-xl p-4">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ?(
+            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
               <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay muted loop playsInline />
-            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ?(
+            ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
               <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" alt="Fundo anúncio" />
             ) : null}
           </div>
@@ -1453,7 +1080,7 @@ async function handleCopiarLinkCliente() {
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
 
               <div className="flex flex-col gap-4">
-                {(anuncioAtual.url_destino || anuncioAtual.tipo_destino === 'lp_interna' || anuncioAtual.tipo_destino === 'site_nexawi') && (
+                {anuncioAtual.url_destino && (
                   <button
                     type="button"
                     disabled={!internetLiberadaNaCta}
@@ -1481,73 +1108,93 @@ async function handleCopiarLinkCliente() {
 
 
       {etapa === ETAPAS.ABRIR_CLIENTE && (
-        <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
-          <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
-            <div className="flex justify-center mb-8 group cursor-pointer">
-              <div className="relative">
-                <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
-                <img
-                  src="/Nexa-logo.png"
-                  alt="Nexa Logo"
-                  className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
-                  onError={(e) => { e.target.style.display = 'none' }}
-                />
-              </div>
-            </div>
-
-            <div className="relative w-20 h-20 mx-auto mb-8">
-              <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
-              <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
-                <ArrowRight size={34} className="text-black" />
-              </div>
-            </div>
-
-            <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
-              Oferta liberada!
-            </h1>
-
-            <p className="text-gray-500 text-sm mb-8 leading-relaxed">
-              Sua internet já foi conectada. Toque no botão abaixo para copiar o link e abrir a página do anunciante.
-            </p>
-
-            {urlCliente ?(
-              <button
-                type="button"
-                onClick={() => {
-                  if (!urlCliente) return
-
-                  try {
-                    navigator.clipboard?.writeText(urlCliente)
-                      .then(() => setLinkCopiado(true))
-                      .catch(() => {})
-                  } catch {}
-
-                  if (anuncioAtual) {
-                    registrarClique(anuncioAtual.id, getClientIp(), 'open', urlCliente)
-                  }
-
-                  window.location.href = urlCliente
-                }}
-                className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1"
-              >
-                Copiar link / abrir página <ArrowRight size={18} />
-              </button>
-            ) : null}
-
-            <button
-              type="button"
-              onClick={() => setEtapa(ETAPAS.ACESSO)}
-              className="w-full mt-4 py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
-            >
-              Continuar usando o Wi-Fi
-            </button>
-
-            <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
-              Se a página não abrir automaticamente, o link já foi enviado para a área de transferência do celular.
-            </p>
-          </div>
+  <div className="relative z-10 w-full max-w-sm text-center animate-fade-in-up">
+    <div className="bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-10 border border-white/[0.05] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+      <div className="flex justify-center mb-8 group cursor-pointer">
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#6be12f]/30 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-all duration-700"></div>
+          <img
+            src="/Nexa-logo.png"
+            alt="Nexa Logo"
+            className="h-14 relative z-10 object-contain transition-all duration-500 group-hover:scale-105"
+            onError={(e) => { e.target.style.display = 'none' }}
+          />
         </div>
+      </div>
+
+      <div className="relative w-20 h-20 mx-auto mb-8">
+        <div className="absolute inset-0 rounded-full animate-ping opacity-20 bg-[#6be12f]"></div>
+        <div className="relative w-full h-full rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)] bg-gradient-to-br from-[#8cf059] to-[#46a31a]">
+          <ArrowRight size={34} className="text-black" />
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">
+        Oferta liberada!
+      </h1>
+
+      <p className="text-gray-500 text-sm mb-8 leading-relaxed">
+        Sua internet já foi conectada. Agora toque no botão abaixo para abrir a página do anunciante.
+      </p>
+
+      {urlCliente ? (
+  <div className="flex flex-col gap-4">
+    <button
+      type="button"
+      onClick={handleCopiarLinkCliente}
+      disabled={copiandoLink}
+      className="w-full bg-[#6be12f] hover:bg-[#8cf059] text-black font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(34,197,94,0.2)] hover:shadow-[0_0_30px_rgba(34,197,94,0.4)] hover:-translate-y-1 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+    >
+      {copiandoLink ? (
+        <>
+          <Loader2 size={18} className="animate-spin" />
+          Copiando...
+        </>
+      ) : linkCopiado ? (
+        <>
+          <CheckCircle2 size={18} />
+          Link copiado!
+        </>
+      ) : (
+        <>
+          Copiar link da oferta <ArrowRight size={18} />
+        </>
       )}
+    </button>
+
+    <a
+      href={urlCliente}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={() => {
+        if (anuncioAtual) {
+          registrarClique(anuncioAtual.id, getClientIp(), 'open', urlCliente)
+        }
+      }}
+      className="w-full py-4 rounded-2xl font-medium text-sm text-gray-400 hover:text-white hover:bg-white/[0.04] transition-all duration-300 border border-white/[0.05] flex items-center justify-center gap-2"
+    >
+      Tentar abrir página do cliente <ArrowRight size={16} />
+    </a>
+  </div>
+) : null}
+
+      <button
+        type="button"
+        onClick={() => setEtapa(ETAPAS.ACESSO)}
+        className="w-full mt-4 py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300"
+      >
+        Continuar usando o Wi-Fi
+      </button>
+
+      <p className="text-[11px] text-gray-600 mt-6 leading-relaxed">
+  Alguns celulares fecham automaticamente esta tela após liberar o Wi-Fi.
+  Se a página não abrir, copie o link e cole no navegador do seu celular.
+</p>
+    </div>
+  </div>
+)}
+
+
 
 
 
@@ -1609,9 +1256,9 @@ async function handleCopiarLinkCliente() {
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] w-full max-w-lg max-h-[80vh] flex flex-col shadow-[0_20px_40px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between p-6 border-b border-white/[0.05]">
               <div className="flex items-center gap-3">
-                {modalAberto === 'termos' ?<FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
+                {modalAberto === 'termos' ? <FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
                 <h2 className="text-xl font-bold text-white">
-                  {modalAberto === 'termos' ?'Termos de Uso' : 'Política de Privacidade'}
+                  {modalAberto === 'termos' ? 'Termos de Uso' : 'Política de Privacidade'}
                 </h2>
               </div>
 
@@ -1624,7 +1271,7 @@ async function handleCopiarLinkCliente() {
             </div>
 
             <div className="p-6 overflow-y-auto text-sm text-gray-400 space-y-4 custom-scrollbar">
-              {modalAberto === 'termos' ?(
+              {modalAberto === 'termos' ? (
                 <>
                   <p><strong>1. Aceitação dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, você concorda com estes termos. O acesso é fornecido de forma gratuita mediante a visualização de anúncios publicitários.</p>
                   <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lícitos. É estritamente proibido o uso para download de conteúdo ilegal, pirataria, ataques cibernéticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
@@ -1685,5 +1332,3 @@ async function handleCopiarLinkCliente() {
     </div>
   )
 }
-
-

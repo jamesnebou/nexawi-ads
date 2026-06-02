@@ -842,49 +842,29 @@ const INSTAGRAM_PRESET_DOMAINS = [
   'cdninstagram.com',
   'ig.me',
   'threads.net',
-  'igcdn.com',
-  'igsonar.com',
-  'instagram.fgru5-1.fna.fbcdn.net',
 ]
 
 const TIKTOK_PRESET_DOMAINS = [
   'tiktok.com',
-  'www.tiktok.com',
-  'm.tiktok.com',
   'tiktokcdn.com',
   'tiktokv.com',
   'tiktokcdn-us.com',
-  'tiktokcdn-us.com.c.footprint.net',
   'byteoversea.com',
-  'byteoversea.net',
-  'byteoversea.org',
   'ibyteimg.com',
   'ibytedtos.com',
-  'ibytedtos.com.edgekey.net',
-  'bytedance.com',
-  'bytedance.net',
   'muscdn.com',
   'snssdk.com',
-  'pstatp.com',
 ]
 
 const YOUTUBE_PRESET_DOMAINS = [
   'youtube.com',
   'youtu.be',
   'm.youtube.com',
-  'music.youtube.com',
-  'kids.youtube.com',
   'youtube-nocookie.com',
   'ytimg.com',
-  'i.ytimg.com',
-  's.ytimg.com',
   'googlevideo.com',
-  'redirector.googlevideo.com',
-  'manifest.googlevideo.com',
   'ytstatic.l.google.com',
   'youtubei.googleapis.com',
-  'youtube.googleapis.com',
-  'youtubeembeddedplayer.googleapis.com',
 ]
 
 const STREAMING_PRESET_DOMAINS = [
@@ -895,25 +875,6 @@ const STREAMING_PRESET_DOMAINS = [
   'nflxsearch.net',
   'nflxso.net',
   'nflxvideo.net',
-  'primevideo.com',
-  'amazonvideo.com',
-  'aiv-cdn.net',
-  'media-amazon.com',
-  'disneyplus.com',
-  'disney-plus.net',
-  'disney.demdex.net',
-  'bamgrid.com',
-  'dssott.com',
-  'max.com',
-  'hbomax.com',
-  'hbo.com',
-  'globoplay.globo.com',
-  'globo.com',
-  'video.globo.com',
-  'twitch.tv',
-  'ttvnw.net',
-  'pluto.tv',
-  'paramountplus.com',
 ]
 
 const BETTING_PRESET_DOMAINS = [
@@ -934,18 +895,6 @@ const BETTING_PRESET_DOMAINS = [
   'vbet.com',
   'betsson.com',
   'betway.com',
-  'betmgm.com',
-  'bodog.com',
-  'sportsbet.io',
-  'esportesdasorte.com',
-  'vaidebet.com',
-  'betpix365.com',
-  'cassino.bet365.com',
-  'betboo.com',
-  'galera.bet',
-  'f12.bet',
-  'br4bet.com',
-  'aposta10.com',
 ]
 
 const ADULT_PRESET_DOMAINS = [
@@ -965,17 +914,6 @@ const ADULT_PRESET_DOMAINS = [
   'cam4.com',
   'onlyfans.com',
   'fansly.com',
-  'brazzers.com',
-  'xnxx-cdn.com',
-  'xvideos-cdn.com',
-  'redgifs.com',
-  'tnaflix.com',
-  'eporner.com',
-  'beeg.com',
-  'motherless.com',
-  'fapello.com',
-  'erome.com',
-  'manyvids.com',
 ]
 
 const HEAVY_GAMES_PRESET_DOMAINS = [
@@ -1002,31 +940,31 @@ const STRONG_PRESETS = [
   },
   {
     id: 'tiktok',
-    triggerDomains: ['tiktok.com', 'tiktokcdn.com', 'byteoversea.com', 'bytedance.com'],
+    triggerDomains: ['tiktok.com', 'tiktokcdn.com'],
     domains: TIKTOK_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
   {
     id: 'youtube',
-    triggerDomains: ['youtube.com', 'youtu.be', 'googlevideo.com', 'ytimg.com'],
+    triggerDomains: ['youtube.com', 'youtu.be', 'googlevideo.com'],
     domains: YOUTUBE_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
   {
     id: 'streaming',
-    triggerDomains: ['netflix.com', 'nflxvideo.net', 'primevideo.com', 'disneyplus.com', 'max.com', 'hbomax.com', 'globoplay.globo.com', 'twitch.tv', 'pluto.tv', 'paramountplus.com'],
+    triggerDomains: ['netflix.com', 'nflxvideo.net'],
     domains: STREAMING_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
   {
     id: 'betting',
-    triggerDomains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com', 'kto.com', 'superbet.com', 'esportesdasorte.com', 'vaidebet.com'],
+    triggerDomains: ['bet365.com', 'betano.com', 'betfair.com', 'stake.com', 'blaze.com'],
     domains: BETTING_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
   {
     id: 'adult',
-    triggerDomains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com', 'redtube.com', 'youporn.com', 'xhamster.com'],
+    triggerDomains: ['pornhub.com', 'xvideos.com', 'xnxx.com', 'onlyfans.com'],
     domains: ADULT_PRESET_DOMAINS,
     usesMetaInfrastructure: false,
   },
@@ -1595,6 +1533,263 @@ export async function applyNexawiNetworkPolicy(options = {}) {
     createdDnsRulesCount: createdDnsRules.length,
     createdAddressListRulesCount: createdAddressListRules.length,
     status,
+    appliedAt: new Date().toISOString(),
+  }
+}
+
+function gatewayIpFromCidr(cidr = '') {
+  const network = String(cidr || '').split('/')[0]
+  const parts = network.split('.').map((part) => Number(part))
+
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return '192.168.88.1'
+  }
+
+  parts[3] = 1
+  return parts.join('.')
+}
+
+function buildPortalLoginTemplateUrl({ portalBaseUrl, hotspotSlug }) {
+  const baseUrl = String(portalBaseUrl || 'https://www.nexawi.com.br').replace(/\/$/, '')
+  const slug = encodeURIComponent(String(hotspotSlug || '').trim())
+
+  return `${baseUrl}/api/mikrotik/login-template?slug=${slug}`
+}
+
+async function upsertDnsStaticByName({ name, address, comment, routerConfig } = {}) {
+  const dnsRules = await listDnsStaticRules({ routerConfig })
+  const existing = dnsRules.find((item) => String(item.name || '').toLowerCase() === String(name || '').toLowerCase())
+  const payload = {
+    name,
+    type: 'A',
+    address,
+    comment,
+    disabled: false,
+  }
+
+  if (existing?.['.id']) {
+    await routerosFetch(`/ip/dns/static/${encodeURIComponent(existing['.id'])}`, {
+      method: 'PATCH',
+      body: payload,
+      routerConfig,
+    })
+
+    return {
+      ...existing,
+      ...payload,
+      '.id': existing['.id'],
+      updated: true,
+    }
+  }
+
+  const created = await addDnsStaticRule(payload, { routerConfig })
+
+  return {
+    ...created,
+    created: true,
+  }
+}
+
+async function listHotspotWalledGarden({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/hotspot/walled-garden', { routerConfig })
+  return Array.isArray(data) ? data : []
+}
+
+async function addHotspotWalledGardenRule(payload, { routerConfig } = {}) {
+  return routerosFetch('/ip/hotspot/walled-garden', {
+    method: 'PUT',
+    body: payload,
+    routerConfig,
+  })
+}
+
+async function upsertWalledGardenHost({ host, hotspotServer, routerConfig } = {}) {
+  const cleanHost = normalizeDomain(host)
+  const rules = await listHotspotWalledGarden({ routerConfig })
+  const existing = rules.find((item) => {
+    const sameHost = normalizeDomain(item['dst-host'] || '') === cleanHost
+    const sameServer = !hotspotServer || !item.server || item.server === hotspotServer
+
+    return sameHost && sameServer
+  })
+
+  const payload = {
+    action: 'allow',
+    'dst-host': cleanHost,
+    server: hotspotServer,
+    disabled: false,
+    comment: `NEXAWI_PORTAL_ALLOW_${sanitizePolicyComment(cleanHost)}`,
+  }
+
+  if (existing?.['.id']) {
+    await routerosFetch(`/ip/hotspot/walled-garden/${encodeURIComponent(existing['.id'])}`, {
+      method: 'PATCH',
+      body: payload,
+      routerConfig,
+    })
+
+    return {
+      ...existing,
+      ...payload,
+      '.id': existing['.id'],
+      updated: true,
+    }
+  }
+
+  const created = await addHotspotWalledGardenRule(payload, { routerConfig })
+
+  return {
+    ...created,
+    created: true,
+  }
+}
+
+async function configureHotspotProfileDnsName({ hotspotServer, dnsName, routerConfig } = {}) {
+  const hotspotServersRaw = await routerosFetch('/ip/hotspot', { routerConfig })
+  const hotspotServers = Array.isArray(hotspotServersRaw) ? hotspotServersRaw : []
+  const selectedServer = hotspotServers.find((server) => server.name === hotspotServer)
+
+  if (!selectedServer?.profile) {
+    return {
+      skipped: true,
+      reason: `Hotspot server ${hotspotServer || ''} sem profile encontrado`,
+    }
+  }
+
+  const profilesRaw = await routerosFetch('/ip/hotspot/profile', { routerConfig })
+  const profiles = Array.isArray(profilesRaw) ? profilesRaw : []
+  const profile = profiles.find((item) => item.name === selectedServer.profile)
+
+  if (!profile?.['.id']) {
+    return {
+      skipped: true,
+      reason: `Profile ${selectedServer.profile} nao encontrado`,
+    }
+  }
+
+  await routerosFetch(`/ip/hotspot/profile/${encodeURIComponent(profile['.id'])}`, {
+    method: 'PATCH',
+    body: {
+      'dns-name': dnsName,
+    },
+    routerConfig,
+  })
+
+  return {
+    ok: true,
+    server: selectedServer.name,
+    profile: profile.name,
+    dnsName,
+  }
+}
+
+async function fetchLoginTemplateToRouter({ templateUrl, routerConfig } = {}) {
+  const payload = {
+    url: templateUrl,
+    'dst-path': 'hotspot/login.html',
+    'keep-result': 'yes',
+    mode: templateUrl.startsWith('https://') ? 'https' : 'http',
+  }
+
+  const attempts = [
+    { method: 'POST', path: '/tool/fetch' },
+    { method: 'PUT', path: '/tool/fetch' },
+  ]
+
+  let lastError = null
+
+  for (const attempt of attempts) {
+    try {
+      return await routerosFetch(attempt.path, {
+        method: attempt.method,
+        body: payload,
+        routerConfig,
+      })
+    } catch (error) {
+      lastError = error
+    }
+  }
+
+  throw lastError || new Error('Falha ao baixar login.html no MikroTik')
+}
+
+export async function applyNexawiCaptivePortalConfig(options = {}) {
+  const routerConfig = options.routerConfig || null
+  const { hotspotServer } = getRouterConfig(routerConfig || {})
+  const targetHotspotServer = options.hotspotServer || routerConfig?.hotspotServer || hotspotServer || 'hotspot1'
+  const hotspotSlug = String(options.hotspotSlug || '').trim()
+  const portalBaseUrl = String(options.portalBaseUrl || process.env.NEXAWI_PUBLIC_BASE_URL || 'https://www.nexawi.com.br').replace(/\/$/, '')
+  const hotspotSubnet =
+    options.hotspotSubnet ||
+    routerConfig?.hotspotSubnet ||
+    routerConfig?.hotspot_subnet ||
+    process.env.NEXAWI_HOTSPOT_SUBNET ||
+    '192.168.88.0/24'
+  const gatewayIp = options.gatewayIp || gatewayIpFromCidr(hotspotSubnet)
+  const hotspotDnsName = options.hotspotDnsName || 'hotspot.local'
+
+  if (!hotspotSlug) {
+    throw new Error('hotspotSlug e obrigatorio para configurar o portal cativo')
+  }
+
+  const templateUrl = buildPortalLoginTemplateUrl({
+    portalBaseUrl,
+    hotspotSlug,
+  })
+
+  const dnsSettings = await tryEnsureDnsSettings({ routerConfig })
+  const dnsStatic = await upsertDnsStaticByName({
+    name: hotspotDnsName,
+    address: gatewayIp,
+    comment: 'NEXAWI_HOTSPOT_LOCAL',
+    routerConfig,
+  })
+
+  const profile = await configureHotspotProfileDnsName({
+    hotspotServer: targetHotspotServer,
+    dnsName: hotspotDnsName,
+    routerConfig,
+  })
+
+  const allowedHosts = uniqueDomains([
+    'nexawi.com.br',
+    'www.nexawi.com.br',
+    new URL(portalBaseUrl).hostname,
+    options.extraAllowedHost,
+  ])
+
+  const walledGarden = []
+
+  for (const host of allowedHosts) {
+    walledGarden.push(await upsertWalledGardenHost({
+      host,
+      hotspotServer: targetHotspotServer,
+      routerConfig,
+    }))
+  }
+
+  const loginTemplate = await fetchLoginTemplateToRouter({
+    templateUrl,
+    routerConfig,
+  })
+
+  return {
+    ok: true,
+    hotspotSlug,
+    portalBaseUrl,
+    portalUrl: `${portalBaseUrl}/portal/${hotspotSlug}`,
+    templateUrl,
+    hotspotServer: targetHotspotServer,
+    hotspotSubnet,
+    gatewayIp,
+    hotspotDnsName,
+    dnsSettings,
+    dnsStatic,
+    profile,
+    allowedHosts,
+    walledGardenCount: walledGarden.length,
+    walledGarden,
+    loginTemplate,
     appliedAt: new Date().toISOString(),
   }
 }

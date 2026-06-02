@@ -1,4 +1,4 @@
-﻿// src/app/api/portal/lead/route.js
+// src/app/api/portal/lead/route.js
 // ============================================================
 // API segura para salvar lead.
 // O CPF, telefone, e-mail, MAC e IP não são mais enviados direto
@@ -19,19 +19,6 @@ function normalizeMac(value = '') {
 
 function somenteNumeros(value = '') {
   return String(value || '').replace(/\D/g, '')
-}
-
-function getPortalRules(hotspot = {}) {
-  return {
-    emailObrigatorio: hotspot.portal_email_obrigatorio !== false,
-    cpfVisivel: hotspot.portal_cpf_visivel !== false,
-    cpfObrigatorio: hotspot.portal_cpf_obrigatorio !== false,
-  }
-}
-
-function isMissingColumnError(error) {
-  const message = `${error?.message || ''} ${error?.details || ''}`
-  return error?.code === '42703' || error?.code === 'PGRST204' || message.includes('column')
 }
 
 function gerarStringAleatoria(tamanho = 24) {
@@ -55,6 +42,17 @@ function gerarCredenciaisRadius(macAddress = '') {
   }
 }
 
+function getMesAtualRange() {
+  const agora = new Date()
+  const inicio = new Date(agora.getFullYear(), agora.getMonth(), 1, 0, 0, 0, 0)
+  const fim = new Date(agora.getFullYear(), agora.getMonth() + 1, 1, 0, 0, 0, 0)
+
+  return {
+    inicio: inicio.toISOString(),
+    fim: fim.toISOString(),
+  }
+}
+
 export async function POST(request) {
   try {
     const body = await request.json()
@@ -65,87 +63,75 @@ export async function POST(request) {
     const telefone = somenteNumeros(body.telefone)
     const cpf = somenteNumeros(body.cpf)
     const aceiteLgpd = Boolean(body.aceiteLgpd)
-    const aceitouPromocoes = Boolean(body.aceitouPromocoes)
     const anuncioId = body.anuncioId ? String(body.anuncioId).trim() : null
     const macAddress = normalizeMac(body.macAddress || '')
     const ipAddress = String(body.ipAddress || '').trim()
 
-    if (!hotspotId) throw new Error('hotspotId obrigatorio')
-
-    let { data: hotspot, error: hotspotError } = await supabaseAdmin
-      .from('hotspots')
-      .select(`
-        id,
-        portal_email_obrigatorio,
-        portal_cpf_visivel,
-        portal_cpf_obrigatorio
-      `)
-      .eq('id', hotspotId)
-      .maybeSingle()
-
-    if (isMissingColumnError(hotspotError)) {
-      const fallback = await supabaseAdmin
-        .from('hotspots')
-        .select('id')
-        .eq('id', hotspotId)
-        .maybeSingle()
-
-      hotspot = fallback.data
-      hotspotError = fallback.error
-    }
-
-    if (hotspotError) throw hotspotError
-    if (!hotspot) throw new Error('hotspot nao encontrado')
-
-    const portalRules = getPortalRules(hotspot)
-
-    if (!nome) throw new Error('nome obrigatorio')
-    if (portalRules.emailObrigatorio && !email) throw new Error('email obrigatorio')
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('email invalido')
-    if (telefone.length !== 11) throw new Error('telefone invalido')
-    if (portalRules.cpfVisivel && portalRules.cpfObrigatorio && cpf.length !== 11) throw new Error('cpf invalido')
-    if (!aceiteLgpd) throw new Error('aceite LGPD obrigatorio')
-    if (!macAddress) throw new Error('MAC do cliente obrigatorio')
+    if (!hotspotId) throw new Error('hotspotId é obrigatório')
+    if (!nome) throw new Error('nome é obrigatório')
+    if (!email) throw new Error('email é obrigatório')
+    if (telefone.length !== 11) throw new Error('telefone inválido')
+    if (cpf.length !== 11) throw new Error('cpf inválido')
+    if (!aceiteLgpd) throw new Error('aceite LGPD é obrigatório')
+    if (!macAddress) throw new Error('MAC do cliente é obrigatório')
 
     const { radiusUsername, radiusPassword } = gerarCredenciaisRadius(macAddress)
+    const { inicio, fim } = getMesAtualRange()
 
-    const insertPayload = {
-      hotspot_id: hotspotId,
-      nome,
-      email: email || null,
-      telefone,
-      cpf: portalRules.cpfVisivel ? cpf : null,
-      aceite_lgpd: aceiteLgpd,
-      anuncio_id: anuncioId,
-      mac_address: macAddress || null,
-      ip_address: ipAddress || null,
-      radius_username: radiusUsername,
-      radius_password: radiusPassword,
-      radius_used: false,
-      aceitou_promocoes: aceitouPromocoes,
-      data_aceite_promocoes: aceitouPromocoes ? new Date().toISOString() : null,
+    const { data: existingLead, error: existingError } = await supabaseAdmin
+      .from('leads')
+      .select('id')
+      .eq('hotspot_id', hotspotId)
+      .eq('mac_address', macAddress)
+      .eq('telefone', telefone)
+      .gte('created_at', inicio)
+      .lt('created_at', fim)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    if (existingError) throw existingError
+
+    if (existingLead?.id) {
+      const { error: updateError } = await supabaseAdmin
+        .from('leads')
+        .update({
+          nome,
+          email,
+          telefone,
+          aceite_lgpd: aceiteLgpd,
+          anuncio_id: anuncioId,
+          ip_address: ipAddress || null,
+        })
+        .eq('id', existingLead.id)
+
+      if (updateError) throw updateError
+
+      return NextResponse.json({
+        ok: true,
+        leadId: existingLead.id,
+        reused: true,
+      })
     }
 
-    let { data, error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from('leads')
-      .insert([insertPayload])
+      .insert([{
+        hotspot_id: hotspotId,
+        nome,
+        email,
+        telefone,
+        cpf,
+        aceite_lgpd: aceiteLgpd,
+        anuncio_id: anuncioId,
+        mac_address: macAddress || null,
+        ip_address: ipAddress || null,
+        radius_username: radiusUsername,
+        radius_password: radiusPassword,
+        radius_used: false,
+      }])
       .select('id')
       .single()
-
-    if (isMissingColumnError(error)) {
-      const fallbackPayload = { ...insertPayload }
-      delete fallbackPayload.aceitou_promocoes
-      delete fallbackPayload.data_aceite_promocoes
-
-      const fallback = await supabaseAdmin
-        .from('leads')
-        .insert([fallbackPayload])
-        .select('id')
-        .single()
-
-      data = fallback.data
-      error = fallback.error
-    }
 
     if (error) throw error
 
