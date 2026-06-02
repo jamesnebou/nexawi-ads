@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
@@ -116,9 +116,28 @@ function montarUrlLpInterna(anuncio = {}, contexto = {}) {
   return destino.toString()
 }
 
-function montarUrlSiteNexawi() {
+function montarUrlSiteNexawi(anuncio = {}, contexto = {}) {
   const base = typeof window !== 'undefined' ? window.location.origin : 'https://www.nexawi.com.br'
-  return `${base}/`
+  const destino = new URL('/', base)
+
+  const payload = {
+    pendingAuth: '1',
+    hotspotSlug: contexto.hotspotSlug || '',
+    leadId: contexto.leadId || '',
+    clientMac: contexto.clientMac || '',
+    clientIp: contexto.clientIp || '',
+    anuncioId: anuncio.id || '',
+    delaySeconds: String(anuncio.tempo_liberacao_lp || 10),
+    internalPath: '/',
+  }
+
+  salvarAutorizacaoPendenteLp(payload)
+
+  Object.entries(payload).forEach(([key, value]) => {
+    destino.searchParams.set(key, String(value || ''))
+  })
+
+  return destino.toString()
 }
 
 function normalizarUrlDestino(url = '') {
@@ -852,15 +871,16 @@ leadIdRef.current = data.leadId
 
       if (clicou && anuncioAtual) {
         const tipoDestino = anuncioAtual?.tipo_destino || 'externo'
+        const contextoInterno = {
+          hotspotSlug: hotspot?.slug || slug,
+          leadId: resolvedLeadId || '',
+          clientMac: getClientMac(),
+          clientIp: getClientIp(),
+        }
         const urlNormalizada = tipoDestino === 'lp_interna'
-          ? montarUrlLpInterna(anuncioAtual, {
-              hotspotSlug: hotspot?.slug || slug,
-              leadId: resolvedLeadId || '',
-              clientMac: getClientMac(),
-              clientIp: getClientIp(),
-            })
+          ? montarUrlLpInterna(anuncioAtual, contextoInterno)
           : tipoDestino === 'site_nexawi'
-            ? montarUrlSiteNexawi()
+            ? montarUrlSiteNexawi(anuncioAtual, contextoInterno)
             : normalizarUrlDestino(destinoExterno || anuncioAtual.url_destino || '')
 
         setUrlCliente(urlNormalizada)
@@ -876,22 +896,11 @@ leadIdRef.current = data.leadId
         }
 
         if (tipoDestino === 'site_nexawi') {
-          registrarClique(anuncioAtual.id, resolvedIp, 'open', urlNormalizada).catch((error) => {
-            console.error('Erro ao registrar clique no site NexaWi:', error)
+          registrarClique(anuncioAtual.id, resolvedIp, 'open_attempt', urlNormalizada).catch((error) => {
+            console.error('Erro ao registrar interesse no site NexaWi:', error)
           })
 
-          setLoadingTexto('Liberando internet e abrindo NexaWi...')
-          setEtapa(ETAPAS.LOADING)
-
-          try {
-            await autorizarSessaoEmBackground(resolvedLeadId)
-          } catch (error) {
-            console.error('Erro ao liberar internet antes do site NexaWi:', error)
-          }
-
-          window.setTimeout(() => {
-            window.location.href = urlNormalizada
-          }, 250)
+          window.location.href = urlNormalizada
           return
         }
 
@@ -1676,4 +1685,5 @@ async function handleCopiarLinkCliente() {
     </div>
   )
 }
+
 

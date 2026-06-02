@@ -942,6 +942,7 @@ export default function Anuncios() {
                   >
                     <option value="externo" className="bg-[#050505]">Site Externo</option>
                     <option value="lp_interna" className="bg-[#050505]">Site Interno</option>
+                    <option value="site_nexawi" className="bg-[#050505]">Site NexaWi</option>
                   </select>
                 </div>
 
