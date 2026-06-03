@@ -903,6 +903,9 @@ leadIdRef.current = data.leadId
     return () => {
       isMounted = false
     }
+    // Portal bootstrap must run only when the captive URL identity changes.
+    // Adding local helper functions here restarts the flow during normal state updates.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug, macParam, ipParam])
 
   useEffect(() => {
@@ -936,6 +939,9 @@ leadIdRef.current = data.leadId
     return () => {
       if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
     }
+    // Timer is controlled by the current ad and video-start state. The completion
+    // callback reads lead/session refs to avoid resetting the timer on each render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etapa, anuncioAtual, leadRapido, videoAnuncioPronto])
 
   const anuncioEhVideo = anuncioAtual?.tipo_media === 'video' && Boolean(anuncioAtual?.media_url)
