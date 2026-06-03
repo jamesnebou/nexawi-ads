@@ -32,6 +32,8 @@ import {
   X,
   Lock,
   AlertTriangle,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 
@@ -165,6 +167,7 @@ export default function Anuncios() {
   const [selectedHotspotIds, setSelectedHotspotIds] = useState([])
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [previewComAudio, setPreviewComAudio] = useState(false)
   const [selectedAnuncioIds, setSelectedAnuncioIds] = useState([])
   const [bulkProcessing, setBulkProcessing] = useState(false)
 
@@ -835,6 +838,7 @@ export default function Anuncios() {
                             loop
                             playsInline
                             autoPlay
+                            muted={!previewComAudio}
                           />
                         ) : (
                           <img
@@ -859,9 +863,21 @@ export default function Anuncios() {
                       </div>
 
                       {anuncio.tipo_media === 'video' && (
-                        <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md p-1.5 rounded-lg border border-white/[0.05]">
-                          <VideoIcon size={14} className="text-white" />
-                        </div>
+                        <>
+                          <div className="absolute bottom-3 left-3 bg-black/40 backdrop-blur-md p-1.5 rounded-lg border border-white/[0.05]">
+                            <VideoIcon size={14} className="text-white" />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => setPreviewComAudio((value) => !value)}
+                            className="absolute bottom-3 right-3 z-20 flex h-9 w-9 items-center justify-center rounded-xl border border-white/[0.08] bg-black/60 text-white backdrop-blur-md transition hover:border-[#6be12f]/40 hover:text-[#8cf059]"
+                            title={previewComAudio ? 'Mutar previews' : 'Ativar audio dos previews'}
+                            aria-label={previewComAudio ? 'Mutar previews' : 'Ativar audio dos previews'}
+                          >
+                            {previewComAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -1179,16 +1195,28 @@ export default function Anuncios() {
 
                 {(selectedFile || form.media_url) && (
                   <div className="mt-5 p-4 bg-[#050505] border border-white/[0.05] rounded-2xl flex items-center gap-5 shadow-inner">
-                    <div className="w-16 h-24 rounded-xl overflow-hidden bg-[#0a0a0a] flex-shrink-0 border border-white/[0.05]">
+                    <div className="relative w-16 h-24 rounded-xl overflow-hidden bg-[#0a0a0a] flex-shrink-0 border border-white/[0.05]">
                       {selectedFile && selectedFile.type.startsWith('video/') ?(
-                        <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" loop playsInline autoPlay />
+                        <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" loop playsInline autoPlay muted={!previewComAudio} />
                       ) : selectedFile && selectedFile.type.startsWith('image/') ?(
                         <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
                       ) : form.media_url && form.tipo_media === 'video' ?(
-                        <video src={form.media_url} className="w-full h-full object-cover" loop playsInline autoPlay />
+                        <video src={form.media_url} className="w-full h-full object-cover" loop playsInline autoPlay muted={!previewComAudio} />
                       ) : form.media_url && form.tipo_media === 'imagem' ?(
                         <img src={form.media_url} alt="Preview" className="w-full h-full object-cover" />
                       ) : null}
+
+                      {((selectedFile && selectedFile.type.startsWith('video/')) || (form.media_url && form.tipo_media === 'video')) && (
+                        <button
+                          type="button"
+                          onClick={() => setPreviewComAudio((value) => !value)}
+                          className="absolute bottom-1.5 right-1.5 flex h-7 w-7 items-center justify-center rounded-lg border border-white/[0.08] bg-black/65 text-white backdrop-blur-md transition hover:border-[#6be12f]/40 hover:text-[#8cf059]"
+                          title={previewComAudio ? 'Mutar preview' : 'Ativar audio do preview'}
+                          aria-label={previewComAudio ? 'Mutar preview' : 'Ativar audio do preview'}
+                        >
+                          {previewComAudio ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                        </button>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-white truncate">
