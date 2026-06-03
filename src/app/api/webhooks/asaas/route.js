@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { timingSafeEqual } from 'node:crypto'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import {
   extractNexawiPaymentId,
@@ -8,8 +9,16 @@ import {
   normalizeAsaasStatus,
 } from '@/lib/asaas'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+const MAX_WEBHOOK_BODY_BYTES = 256 * 1024
+const WEBHOOK_RATE_LIMIT = {
+  keyPrefix: 'webhook:asaas',
+  limit: 120,
+  windowMs: 60_000,
+}
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
@@ -19,6 +28,15 @@ function onlyDate(value = '') {
   return /^\d{4}-\d{2}-\d{2}/.test(String(value || ''))
     ? String(value).slice(0, 10)
     : null
+}
+
+function secureCompare(a = '', b = '') {
+  const left = Buffer.from(String(a))
+  const right = Buffer.from(String(b))
+
+  if (left.length !== right.length) return false
+
+  return timingSafeEqual(left, right)
 }
 
 async function findLocalPayment(payment = {}) {
@@ -185,14 +203,37 @@ async function auditAsaasPaymentEvent(request, event, result = {}, payment = {})
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, WEBHOOK_RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Muitas requisições para o webhook Asaas' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))),
+        },
+      }
+    )
+  }
+
   const config = getAsaasConfig()
   const configuredToken = config.webhookToken
   const receivedToken = request.headers.get('asaas-access-token') || ''
 
-  if (configuredToken && receivedToken !== configuredToken) {
+  if (!configuredToken || !receivedToken || !secureCompare(receivedToken, configuredToken)) {
     return NextResponse.json(
       { ok: false, error: 'Webhook Asaas nao autorizado' },
       { status: 401 }
+    )
+  }
+
+  const contentLength = Number(request.headers.get('content-length') || 0)
+
+  if (contentLength > MAX_WEBHOOK_BODY_BYTES) {
+    return NextResponse.json(
+      { ok: false, error: 'Payload do webhook Asaas muito grande' },
+      { status: 413 }
     )
   }
 

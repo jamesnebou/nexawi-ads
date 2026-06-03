@@ -18,9 +18,9 @@ dotenv.config({ path: path.join(projectRoot, '.env') })
 
 console.log('ENV PATH:', path.join(projectRoot, '.env'))
 console.log(
-  'SECRET LIDO:',
+  'RADIUS_SECRET:',
   process.env.RADIUS_SECRET
-    ? `${process.env.RADIUS_SECRET.slice(0, 6)}... len=${process.env.RADIUS_SECRET.length}`
+    ? `configurado, len=${process.env.RADIUS_SECRET.length}`
     : 'VAZIO'
 )
 
@@ -28,6 +28,13 @@ const RADIUS_PORT = Number(process.env.RADIUS_PORT || 1812)
 const RADIUS_SECRET = String(process.env.RADIUS_SECRET || '').trim()
 const SUPABASE_URL = String(process.env.SUPABASE_URL || '').trim()
 const SUPABASE_SERVICE_ROLE_KEY = String(process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim()
+const RADIUS_ALLOWED_CLIENTS = String(process.env.RADIUS_ALLOWED_CLIENTS || '')
+  .split(',')
+  .map((item) => item.trim())
+  .filter(Boolean)
+const RADIUS_MAX_PACKET_BYTES = Number(process.env.RADIUS_MAX_PACKET_BYTES || 4096)
+const RADIUS_RATE_LIMIT_PER_MINUTE = Number(process.env.RADIUS_RATE_LIMIT_PER_MINUTE || 120)
+const radiusRateBuckets = new Map()
 
 if (!RADIUS_SECRET) {
   throw new Error('RADIUS_SECRET não definido no .env')
@@ -37,7 +44,11 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não definidos no .env')
 }
 
-console.log(`RADIUS rodando com secret carregado: ${RADIUS_SECRET.slice(0, 6)}... (len=${RADIUS_SECRET.length})`)
+console.log(`RADIUS rodando com secret configurado (len=${RADIUS_SECRET.length})`)
+console.log(
+  'RADIUS allowed clients:',
+  RADIUS_ALLOWED_CLIENTS.length ? RADIUS_ALLOWED_CLIENTS.join(', ') : 'qualquer origem UDP'
+)
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 const server = dgram.createSocket('udp4')
@@ -60,10 +71,46 @@ function sendRadiusResponse(packet, code, rinfo, extraAttributes = []) {
   server.send(response, 0, response.length, rinfo.port, rinfo.address)
 }
 
+function isAllowedRadiusClient(address = '') {
+  if (RADIUS_ALLOWED_CLIENTS.length === 0) return true
+  return RADIUS_ALLOWED_CLIENTS.includes(address)
+}
+
+function isRateLimited(address = '') {
+  const now = Date.now()
+  const key = address || 'unknown'
+  const current = radiusRateBuckets.get(key)
+
+  if (!current || current.resetAt <= now) {
+    radiusRateBuckets.set(key, { count: 1, resetAt: now + 60_000 })
+    return false
+  }
+
+  current.count += 1
+  radiusRateBuckets.set(key, current)
+
+  return current.count > RADIUS_RATE_LIMIT_PER_MINUTE
+}
+
 server.on('message', async (msg, rinfo) => {
   let packet
 
   try {
+    if (!isAllowedRadiusClient(rinfo.address)) {
+      console.warn(`Pacote RADIUS ignorado: origem nao autorizada ${rinfo.address}`)
+      return
+    }
+
+    if (isRateLimited(rinfo.address)) {
+      console.warn(`Pacote RADIUS ignorado: rate limit excedido para ${rinfo.address}`)
+      return
+    }
+
+    if (msg.length > RADIUS_MAX_PACKET_BYTES) {
+      console.warn(`Pacote RADIUS ignorado: tamanho invalido ${msg.length} bytes`)
+      return
+    }
+
     packet = radius.decode({
       packet: msg,
       secret: RADIUS_SECRET,

@@ -8,7 +8,7 @@
 // - anuncios.view: permite visualizar a lista
 // - anuncios.create: mostra Novo Anúncio e permite criar
 // - anuncios.update: mostra Editar e permite salvar alterações
-// - anuncios.delete: mostra Excluir
+// - anuncios.delete: mostra Arquivar
 // - anuncios.activate: mostra Ativar
 // - anuncios.pause: mostra Pausar
 // - anuncios.export: reservado para exportação futura
@@ -463,13 +463,13 @@ export default function Anuncios() {
     }
   }
 
-  async function excluir(id) {
+  async function arquivar(id) {
     if (!canDelete) {
-      alert('Você não tem permissão para excluir anúncios.')
+      alert('Você não tem permissão para arquivar anúncios.')
       return
     }
 
-    if (!window.confirm('Tem certeza que deseja excluir este anúncio?')) {
+    if (!window.confirm('Arquivar este anúncio? Ele sairá do portal e da listagem operacional, mas histórico, leads, views e cliques serão preservados.')) {
       return
     }
 
@@ -484,8 +484,8 @@ export default function Anuncios() {
 
       buscarDados()
     } catch (error) {
-      console.error('Erro ao excluir anúncio:', error)
-      alert(error.message || 'Erro ao excluir anúncio. Por favor, tente novamente.')
+      console.error('Erro ao arquivar anúncio:', error)
+      alert(error.message || 'Erro ao arquivar anúncio. Por favor, tente novamente.')
     }
   }
 
@@ -776,10 +776,10 @@ export default function Anuncios() {
 
                           {canDelete && (
                             <button
-                              onClick={() => excluir(anuncio.id)}
+                              onClick={() => arquivar(anuncio.id)}
                               className="w-full sm:flex-1 text-[11px] py-2 rounded-xl font-bold uppercase tracking-wider bg-red-500/5 border border-red-500/10 text-red-500/70 hover:bg-red-500/10 hover:text-red-400 transition-all duration-300"
                             >
-                              Excluir
+                              Arquivar
                             </button>
                           )}
                         </div>
@@ -1095,4 +1095,3 @@ export default function Anuncios() {
     </>
   )
 }
-

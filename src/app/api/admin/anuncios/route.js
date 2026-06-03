@@ -179,6 +179,7 @@ async function buscarAnuncioBasico(anuncioId, auth) {
       tempo_liberacao_lp,
       duracao_segundos,
       ativo,
+      arquivado_em,
       cliente_id,
       estado,
       cidade,
@@ -417,6 +418,7 @@ export async function GET(request) {
         duracao_segundos,
         ativo,
         created_at,
+        arquivado_em,
         cliente_id,
         estado,
         cidade,
@@ -429,6 +431,7 @@ export async function GET(request) {
       .order('created_at', { ascending: false })
 
     query = auth.applyEmpresaScope(query)
+    query = query.is('arquivado_em', null)
 
     if (filterStatus === 'ativo') {
       query = query.eq('ativo', true)
@@ -610,59 +613,28 @@ export async function POST(request) {
       const hotspotIdsAntes = await buscarHotspotIdsDoAnuncio(id)
       const eventosAntes = await contarEventosDoAnuncio(id, auth)
 
-      const { error: linksDeleteError } = await supabaseAdmin
-        .from('anuncio_hotspots')
-        .delete()
-        .eq('anuncio_id', id)
-
-      if (linksDeleteError) throw linksDeleteError
-
-      let viewsDeleteQuery = supabaseAdmin
-        .from('anuncio_views')
-        .delete()
-        .eq('anuncio_id', id)
-
-      let clicksDeleteQuery = supabaseAdmin
-        .from('anuncio_clicks')
-        .delete()
-        .eq('anuncio_id', id)
-
-      viewsDeleteQuery = auth.applyEmpresaScope(viewsDeleteQuery)
-      clicksDeleteQuery = auth.applyEmpresaScope(clicksDeleteQuery)
-
-      const { error: viewsDeleteError } = await viewsDeleteQuery
-      if (viewsDeleteError) throw viewsDeleteError
-
-      const { error: clicksDeleteError } = await clicksDeleteQuery
-      if (clicksDeleteError) throw clicksDeleteError
-
-      // Desvincula leads antes de excluir o anúncio.
-      // Assim os cadastros continuam salvos, mas o anúncio pode ser removido.
-      let leadsUpdateQuery = supabaseAdmin
-        .from('leads')
-        .update({ anuncio_id: null })
-        .eq('anuncio_id', id)
-
-      leadsUpdateQuery = auth.applyEmpresaScope(leadsUpdateQuery)
-
-      const { error: leadsUpdateError } = await leadsUpdateQuery
-
-      if (leadsUpdateError) throw leadsUpdateError
-
-      const { error } = await supabaseAdmin
+      let archiveQuery = supabaseAdmin
         .from('anuncios')
-        .delete()
+        .update({
+          ativo: false,
+          arquivado_em: new Date().toISOString(),
+          arquivado_por: auth.user?.id || null,
+        })
         .eq('id', id)
 
-      if (error) throw error
+      archiveQuery = auth.applyEmpresaScope(archiveQuery)
+
+      const { error: archiveError } = await archiveQuery
+
+      if (archiveError) throw archiveError
 
       await logAdminAction({
         request,
         adminUser: auth.user,
-        action: 'delete',
+        action: 'archive',
         entity: 'anuncios',
         entityId: id,
-        description: 'Excluiu um anúncio',
+        description: 'Arquivou um anúncio',
         metadata: {
           empresa_id: anuncioAntes?.empresa_id || '',
           anuncio_id: id,
@@ -670,17 +642,19 @@ export async function POST(request) {
           cliente_id: anuncioAntes?.cliente_id || null,
           tipo_media: anuncioAntes?.tipo_media || '',
           ativo_anterior: anuncioAntes?.ativo ?? null,
+          ativo_atual: false,
           hotspot_ids_anteriores: hotspotIdsAntes,
           quantidade_hotspots_vinculados: hotspotIdsAntes.length,
-          views_removidas: eventosAntes.views_removidas,
-          clicks_removidos: eventosAntes.clicks_removidos,
+          views_preservadas: eventosAntes.views_removidas,
+          clicks_preservados: eventosAntes.clicks_removidos,
         },
       })
 
       return NextResponse.json({
         ok: true,
-        message: 'Anúncio excluído com sucesso',
+        message: 'Anúncio arquivado com sucesso',
       })
+
     }
 
     const empresaId = resolveEmpresaIdForWrite(auth, body.anuncio?.empresa_id)

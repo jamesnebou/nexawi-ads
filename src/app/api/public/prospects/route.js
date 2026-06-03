@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { sendAdminAlertEmail } from '@/lib/email-service'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+const PROSPECT_RATE_LIMIT = {
+  keyPrefix: 'public:prospects',
+  limit: 20,
+  windowMs: 60_000,
+}
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -35,6 +42,20 @@ function formatCurrency(value) {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, PROSPECT_RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Muitas tentativas. Aguarde alguns segundos e tente novamente.' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.max(1, Math.ceil((rate.resetAt - Date.now()) / 1000))),
+        },
+      }
+    )
+  }
+
   try {
     const body = await request.json().catch(() => ({}))
 
