@@ -37,6 +37,46 @@ function normalizeMac(value = '') {
     .replace(/-/g, ':')
 }
 
+function isMacLike(value = '') {
+  return /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(normalizeMac(value))
+}
+
+function gerarMacLocalDeNavegador() {
+  const bytes = new Uint8Array(6)
+
+  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
+    window.crypto.getRandomValues(bytes)
+  } else {
+    for (let i = 0; i < bytes.length; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256)
+    }
+  }
+
+  bytes[0] = 0x02
+
+  return Array.from(bytes)
+    .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+    .join(':')
+}
+
+function getMacLocalDeNavegador(slug = '') {
+  if (typeof window === 'undefined') return ''
+
+  const key = `nexawi_portal_client_mac:${String(slug || 'default').trim().toLowerCase()}`
+
+  try {
+    const existente = normalizeMac(window.localStorage.getItem(key) || '')
+
+    if (isMacLike(existente)) return existente
+
+    const criado = gerarMacLocalDeNavegador()
+    window.localStorage.setItem(key, criado)
+    return criado
+  } catch {
+    return gerarMacLocalDeNavegador()
+  }
+}
+
 
 function normalizarUrlDestino(url = '') {
   const valor = String(url || '').trim()
@@ -232,7 +272,12 @@ export default function Portal() {
       window.location.hostname === '127.0.0.1')
 
   function getClientMac(customMac = '') {
-    return normalizeMac(customMac || macAddress || macParam || (isLocalhost ? DEV_CLIENT_MAC : ''))
+    return normalizeMac(
+      customMac ||
+        macAddress ||
+        macParam ||
+        (isLocalhost ? DEV_CLIENT_MAC : getMacLocalDeNavegador(slug))
+    )
   }
 
   function getClientIp(customIp = '') {
