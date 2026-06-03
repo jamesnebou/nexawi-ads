@@ -193,6 +193,8 @@ export default function Portal() {
   const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
   const [salvandoTelefoneRapido, setSalvandoTelefoneRapido] = useState(false)
+  const [videoAnuncioPronto, setVideoAnuncioPronto] = useState(false)
+  const [erroVideoAnuncio, setErroVideoAnuncio] = useState('')
 
   
   const [form, setForm] = useState({
@@ -211,6 +213,7 @@ export default function Portal() {
   const hotspotIdRef = useRef('')
   const sessaoAutorizadaRef = useRef(false)
   const autorizacaoPromiseRef = useRef(null)
+  const videoAnuncioRef = useRef(null)
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -531,6 +534,24 @@ export default function Portal() {
     return autorizacaoPromiseRef.current
   }
 
+  async function iniciarVideoAnuncioComAudio() {
+    const video = videoAnuncioRef.current
+
+    if (!video) return
+
+    try {
+      setErroVideoAnuncio('')
+      video.muted = false
+      video.defaultMuted = false
+      video.volume = 1
+      await video.play()
+      setVideoAnuncioPronto(true)
+    } catch (error) {
+      console.error('Erro ao iniciar video do anuncio com audio:', error)
+      setErroVideoAnuncio('Toque novamente para iniciar o anuncio com audio.')
+    }
+  }
+
   async function concluirAnuncioComAutorizacao(explicitLeadId = null) {
     try {
       const resolvedLeadId =
@@ -840,7 +861,16 @@ leadIdRef.current = data.leadId
   }, [slug, macParam, ipParam])
 
   useEffect(() => {
+    if (etapa !== ETAPAS.ANUNCIO || !anuncioAtual) return
+
+    setContador(anuncioAtual.duracao_segundos || 15)
+    setErroVideoAnuncio('')
+    setVideoAnuncioPronto(anuncioAtual.tipo_media !== 'video' || !anuncioAtual.media_url)
+  }, [etapa, anuncioAtual])
+
+  useEffect(() => {
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
+      if (anuncioAtual.tipo_media === 'video' && anuncioAtual.media_url && !videoAnuncioPronto) return
       // Android fecha automaticamente o captive portal quando detecta internet.
       // Por isso não liberamos a sessão durante o anúncio.
       // A liberação acontece somente após o clique no CTA ou ao recusar.
@@ -861,7 +891,13 @@ leadIdRef.current = data.leadId
     return () => {
       if (intervaloAnuncioRef.current) clearInterval(intervaloAnuncioRef.current)
     }
-  }, [etapa, anuncioAtual, leadRapido])
+  }, [etapa, anuncioAtual, leadRapido, videoAnuncioPronto])
+
+  const anuncioEhVideo = anuncioAtual?.tipo_media === 'video' && Boolean(anuncioAtual?.media_url)
+  const duracaoAnuncio = anuncioAtual?.duracao_segundos || 15
+  const progressoAnuncio = anuncioAtual
+    ? Math.max(0, Math.min(100, ((duracaoAnuncio - contador) / duracaoAnuncio) * 100))
+    : 0
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -1120,25 +1156,59 @@ leadIdRef.current = data.leadId
           <div className="absolute top-0 left-0 w-full h-1.5 bg-white/[0.05] z-30">
             <div
               className="h-full bg-[#6be12f] transition-all duration-1000 ease-linear shadow-[0_0_15px_rgba(34,197,94,0.8)]"
-              style={{ width: `${((anuncioAtual.duracao_segundos - contador) / anuncioAtual.duracao_segundos) * 100}%` }}
+              style={{ width: `${progressoAnuncio}%` }}
             />
           </div>
 
           <div className="relative w-full h-full max-w-[calc(100vh*(9/16))] bg-[#0a0a0a] shadow-2xl flex items-center justify-center overflow-hidden">
-            {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-              <video src={anuncioAtual.media_url} className="w-full h-full object-cover" autoPlay muted playsInline loop />
+            {anuncioAtual.media_url && anuncioEhVideo ? (
+              <>
+                <video
+                  ref={videoAnuncioRef}
+                  src={anuncioAtual.media_url}
+                  className="w-full h-full object-cover"
+                  playsInline
+                  loop
+                  preload="auto"
+                />
+
+                {!videoAnuncioPronto && (
+                  <button
+                    type="button"
+                    onClick={iniciarVideoAnuncioComAudio}
+                    className="absolute inset-0 z-20 cursor-pointer bg-gradient-to-t from-black/70 via-black/10 to-black/20 text-left"
+                    aria-label="Iniciar anuncio com audio"
+                  >
+                    <div className="absolute inset-x-0 bottom-0 px-6 pb-10 pt-20 text-center">
+                      <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#6be12f] text-black shadow-[0_0_28px_rgba(107,225,47,0.45)]">
+                        <ArrowRight size={30} />
+                      </div>
+
+                      <p className="text-xl font-bold text-white tracking-tight">Toque para seguir</p>
+                      <p className="mx-auto mt-2 max-w-xs text-sm text-gray-200 leading-relaxed">
+                        A internet será liberada após o anúcio breve.
+                      </p>
+
+                      {erroVideoAnuncio ? (
+                        <p className="mx-auto mt-3 max-w-xs text-xs text-red-200 leading-relaxed">{erroVideoAnuncio}</p>
+                      ) : null}
+                    </div>
+                  </button>
+                )}
+              </>
             ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
               <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
             ) : (
               <div className="text-gray-600 text-sm">Mídia não disponível</div>
             )}
-            <div className="absolute bottom-0 left-0 w-full h-1/3 bg-gradient-to-t from-[#050505] to-transparent pointer-events-none" />
           </div>
 
           <div className="absolute top-6 right-6 z-20">
             <div className="bg-black/40 backdrop-blur-xl border border-white/[0.05] px-4 py-2 rounded-full flex items-center gap-2 shadow-lg">
               <Loader2 size={14} className="text-[#6be12f] animate-spin" />
-              <span className="text-white text-sm font-medium tracking-wide">Aguarde {contador}s</span>
+              <span className="text-white text-sm font-medium tracking-wide">
+                {anuncioEhVideo && !videoAnuncioPronto ? 'Toque para iniciar' : `Aguarde ${contador}s`}
+              </span>
             </div>
           </div>
         </div>
@@ -1148,7 +1218,7 @@ leadIdRef.current = data.leadId
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-[#050505]/80 backdrop-blur-xl p-4">
           <div className="absolute inset-0 opacity-20 pointer-events-none">
             {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
-              <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay muted loop playsInline />
+              <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay loop playsInline />
             ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
               <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" alt="Fundo anúncio" />
             ) : null}
@@ -1169,10 +1239,12 @@ leadIdRef.current = data.leadId
               </div>
 
               <h2 className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-500 mb-3 tracking-tight">
-                Oferta Especial!
+                {anuncioAtual.titulo || 'Oferta liberada!'}
               </h2>
 
-              <p className="text-gray-400 text-sm mb-10 leading-relaxed">{anuncioAtual.titulo}</p>
+              <p className="text-gray-400 text-sm mb-10 leading-relaxed">
+                {anuncioAtual.descricao || 'Toque no botão abaixo para abrir a oferta do anunciante.'}
+              </p>
 
               <div className="flex flex-col gap-4">
                 {resolverDestinoAnuncio(anuncioAtual) && (

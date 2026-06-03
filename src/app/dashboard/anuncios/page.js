@@ -165,6 +165,8 @@ export default function Anuncios() {
   const [selectedHotspotIds, setSelectedHotspotIds] = useState([])
   const [selectedFile, setSelectedFile] = useState(null)
   const [uploading, setUploading] = useState(false)
+  const [selectedAnuncioIds, setSelectedAnuncioIds] = useState([])
+  const [bulkProcessing, setBulkProcessing] = useState(false)
 
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState('todos')
@@ -209,6 +211,10 @@ export default function Anuncios() {
   useEffect(() => {
     buscarDados()
   }, [searchTerm, filterStatus, filterHotspotId, filterClientId, filterMediaType, filterEstado, filterCidade])
+
+  useEffect(() => {
+    setSelectedAnuncioIds((ids) => ids.filter((id) => anuncios.some((anuncio) => anuncio.id === id)))
+  }, [anuncios])
 
   async function buscarDados() {
     setCarregando(true)
@@ -489,6 +495,92 @@ export default function Anuncios() {
     }
   }
 
+  function toggleSelecionado(id) {
+    setSelectedAnuncioIds((ids) =>
+      ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
+    )
+  }
+
+  function toggleSelecionarTodos() {
+    const idsVisiveis = anuncios.map((anuncio) => anuncio.id).filter(Boolean)
+    const todosSelecionados = idsVisiveis.length > 0 && idsVisiveis.every((id) => selectedAnuncioIds.includes(id))
+
+    setSelectedAnuncioIds(todosSelecionados ? [] : idsVisiveis)
+  }
+
+  async function executarAcaoMassa(acao) {
+    const selecionados = anuncios.filter((anuncio) => selectedAnuncioIds.includes(anuncio.id))
+
+    if (selecionados.length === 0 || bulkProcessing) return
+
+    if (acao === 'ativar' && !canActivate) {
+      alert('Você não tem permissão para ativar anúncios.')
+      return
+    }
+
+    if (acao === 'pausar' && !canPause) {
+      alert('Você não tem permissão para pausar anúncios.')
+      return
+    }
+
+    if (acao === 'arquivar' && !canDelete) {
+      alert('Você não tem permissão para arquivar anúncios.')
+      return
+    }
+
+    const label = acao === 'ativar' ? 'ativar' : acao === 'pausar' ? 'pausar' : 'arquivar'
+    const extra = acao === 'arquivar'
+      ? ' Eles sairão do portal e da listagem operacional, mas histórico, leads, views e cliques serão preservados.'
+      : ''
+
+    if (!window.confirm(`Deseja ${label} ${selecionados.length} anúncio(s)?${extra}`)) {
+      return
+    }
+
+    setBulkProcessing(true)
+
+    try {
+      for (const anuncio of selecionados) {
+        if (acao === 'ativar') {
+          await adminApiFetch('/api/admin/anuncios', {
+            method: 'POST',
+            body: {
+              action: 'toggle',
+              id: anuncio.id,
+              ativo: true,
+            },
+          })
+        } else if (acao === 'pausar') {
+          await adminApiFetch('/api/admin/anuncios', {
+            method: 'POST',
+            body: {
+              action: 'toggle',
+              id: anuncio.id,
+              ativo: false,
+            },
+          })
+        } else if (acao === 'arquivar') {
+          await adminApiFetch('/api/admin/anuncios', {
+            method: 'POST',
+            body: {
+              action: 'delete',
+              id: anuncio.id,
+            },
+          })
+        }
+      }
+
+      setSelectedAnuncioIds([])
+      await buscarDados()
+    } catch (error) {
+      console.error('Erro na ação em massa de anúncios:', error)
+      alert(error.message || 'Erro ao executar ação em massa. Verifique o resultado e tente novamente.')
+      buscarDados()
+    } finally {
+      setBulkProcessing(false)
+    }
+  }
+
   return (
     <>
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
@@ -639,6 +731,59 @@ export default function Anuncios() {
           </div>
         </div>
 
+        {anuncios.length > 0 && (
+          <div className="mb-6 rounded-3xl border border-white/[0.05] bg-white/[0.02] p-4 backdrop-blur-xl">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <label className="flex items-center gap-3 text-sm font-bold text-neutral-300">
+                <input
+                  type="checkbox"
+                  checked={anuncios.length > 0 && anuncios.every((anuncio) => selectedAnuncioIds.includes(anuncio.id))}
+                  onChange={toggleSelecionarTodos}
+                  className="h-4 w-4 accent-[#6be12f]"
+                />
+                {selectedAnuncioIds.length > 0
+                  ? `${selectedAnuncioIds.length} anúncio(s) selecionado(s)`
+                  : 'Selecionar anúncios visíveis'}
+              </label>
+
+              <div className="flex flex-col gap-2 sm:flex-row">
+                {canActivate && (
+                  <button
+                    type="button"
+                    disabled={selectedAnuncioIds.length === 0 || bulkProcessing}
+                    onClick={() => executarAcaoMassa('ativar')}
+                    className="rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black uppercase tracking-widest text-[#8cf059] transition hover:bg-[#6be12f]/20 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Ativar
+                  </button>
+                )}
+
+                {canPause && (
+                  <button
+                    type="button"
+                    disabled={selectedAnuncioIds.length === 0 || bulkProcessing}
+                    onClick={() => executarAcaoMassa('pausar')}
+                    className="rounded-2xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-xs font-black uppercase tracking-widest text-neutral-400 transition hover:bg-white/[0.05] hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Pausar
+                  </button>
+                )}
+
+                {canDelete && (
+                  <button
+                    type="button"
+                    disabled={selectedAnuncioIds.length === 0 || bulkProcessing}
+                    onClick={() => executarAcaoMassa('arquivar')}
+                    className="rounded-2xl border border-red-500/10 bg-red-500/5 px-4 py-2 text-xs font-black uppercase tracking-widest text-red-400 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Arquivar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {carregando ?(
           <div className="flex justify-center items-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
@@ -670,6 +815,16 @@ export default function Anuncios() {
                   className="group relative bg-white/[0.02] border border-white/[0.05] rounded-3xl overflow-hidden flex flex-col lg:flex-row hover:border-white/[0.1] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] h-auto lg:h-[280px] animate-fade-in-up"
                   style={{ animationDelay: `${index * 0.05}s` }}
                 >
+                  <label className="absolute right-3 top-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-2xl border border-white/[0.08] bg-black/50 backdrop-blur-xl transition hover:border-[#6be12f]/30">
+                    <input
+                      type="checkbox"
+                      checked={selectedAnuncioIds.includes(anuncio.id)}
+                      onChange={() => toggleSelecionado(anuncio.id)}
+                      className="h-4 w-4 accent-[#6be12f]"
+                      aria-label={`Selecionar anúncio ${anuncio.titulo || ''}`}
+                    />
+                  </label>
+
                   <div className="relative w-full flex justify-center bg-[#050505] border-b lg:border-b-0 lg:border-r border-white/[0.05] overflow-hidden lg:w-[150px] lg:min-w-[150px] lg:h-full lg:block">
                     <div className="relative w-full max-w-[260px] aspect-[9/16] bg-[#050505] overflow-hidden lg:max-w-none lg:w-full lg:h-full lg:aspect-auto">
                       {anuncio.media_url ?(
@@ -677,7 +832,6 @@ export default function Anuncios() {
                           <video
                             src={anuncio.media_url}
                             className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 ease-out"
-                            muted
                             loop
                             playsInline
                             autoPlay
@@ -1027,11 +1181,11 @@ export default function Anuncios() {
                   <div className="mt-5 p-4 bg-[#050505] border border-white/[0.05] rounded-2xl flex items-center gap-5 shadow-inner">
                     <div className="w-16 h-24 rounded-xl overflow-hidden bg-[#0a0a0a] flex-shrink-0 border border-white/[0.05]">
                       {selectedFile && selectedFile.type.startsWith('video/') ?(
-                        <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                        <video src={URL.createObjectURL(selectedFile)} className="w-full h-full object-cover" loop playsInline autoPlay />
                       ) : selectedFile && selectedFile.type.startsWith('image/') ?(
                         <img src={URL.createObjectURL(selectedFile)} alt="Preview" className="w-full h-full object-cover" />
                       ) : form.media_url && form.tipo_media === 'video' ?(
-                        <video src={form.media_url} className="w-full h-full object-cover" muted loop playsInline autoPlay />
+                        <video src={form.media_url} className="w-full h-full object-cover" loop playsInline autoPlay />
                       ) : form.media_url && form.tipo_media === 'imagem' ?(
                         <img src={form.media_url} alt="Preview" className="w-full h-full object-cover" />
                       ) : null}
