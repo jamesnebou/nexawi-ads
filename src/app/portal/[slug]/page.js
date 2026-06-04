@@ -338,6 +338,7 @@ export default function Portal() {
     return {
       id: data.lead.id,
       nome: data.lead.nome || '',
+      telefoneMascarado: data.lead.telefoneMascarado || '',
     }
   } catch (error) {
     console.error('Erro ao buscar lead rápido:', error)
@@ -1026,7 +1027,8 @@ leadIdRef.current = data.leadId
               <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bom ter você novamente...</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
-                Digite seu celular para continuar.
+                Digite seu celular para continuar
+                {leadRapido?.telefoneMascarado ? ` (${leadRapido.telefoneMascarado}).` : '.'}
               </p>
 
               <AvisoAcessoPorInatividade />

@@ -112,6 +112,54 @@ function contarEventosComHotspotReal(rows = []) {
   return rows.filter((row) => Boolean(row.hotspot_id)).length
 }
 
+async function buscarMetricasLandingNativa({ periodo }) {
+  const dataInicio = getDataInicio(periodo)
+
+  try {
+    let viewsQuery = supabaseAdmin
+      .from('landing_native_views')
+      .select('id, ip_address, created_at')
+
+    if (dataInicio) {
+      viewsQuery = viewsQuery.gte('created_at', dataInicio)
+    }
+
+    let leadsQuery = supabaseAdmin
+      .from('crm_prospects')
+      .select('id', { count: 'exact', head: true })
+      .eq('origem', 'Landing Page')
+
+    if (dataInicio) {
+      leadsQuery = leadsQuery.gte('created_at', dataInicio)
+    }
+
+    const [
+      { data: viewsData, error: viewsError },
+      { count: leadsCount, error: leadsError },
+    ] = await Promise.all([viewsQuery, leadsQuery])
+
+    if (viewsError) throw viewsError
+    if (leadsError) throw leadsError
+
+    return {
+      totalViews: viewsData?.length || 0,
+      visitantesUnicos: uniqueCount(viewsData || []),
+      leads: leadsCount || 0,
+    }
+  } catch (error) {
+    if (error?.code === 'PGRST205' || /landing_native_views/i.test(error?.message || '')) {
+      return {
+        totalViews: 0,
+        visitantesUnicos: 0,
+        leads: 0,
+        pendenteMigracao: true,
+      }
+    }
+
+    throw error
+  }
+}
+
 export async function GET(request) {
   const auth = await requireAdmin(request, {
     module: 'relatorios',
@@ -167,7 +215,7 @@ export async function GET(request) {
       ...new Set((vinculos || []).map((v) => v.anuncio_id).filter(Boolean)),
     ]
 
-    const [views, clicks] = await Promise.all([
+    const [views, clicks, landingNativa] = await Promise.all([
       buscarEventosComData({
         tabela: 'anuncio_views',
         anuncioIds,
@@ -182,6 +230,8 @@ export async function GET(request) {
         auth,
         extras: 'tipo_acao',
       }),
+
+      buscarMetricasLandingNativa({ periodo }),
     ])
 
     const clientePorId = new Map((clientes || []).map((cliente) => [cliente.id, cliente]))
@@ -260,6 +310,7 @@ export async function GET(request) {
       totalViewsComHotspotReal: relatorio.reduce((acc, item) => acc + item.views_com_hotspot_real, 0),
       totalClicksComHotspotReal: relatorio.reduce((acc, item) => acc + item.clicks_com_hotspot_real, 0),
       taxaCliqueGeral: calcularTaxa(totalClicks, totalViews),
+      landingNativa,
     }
 
     return NextResponse.json({

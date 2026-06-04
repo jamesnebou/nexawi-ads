@@ -29,6 +29,7 @@ import {
   TrendingUp,
   Download,
   Lock,
+  Globe2,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -91,6 +92,11 @@ export default function RelatorioAcesso() {
     totalClicks: 0,
     totalCopias: 0,
     totalTentativasAbrir: 0,
+    landingNativa: {
+      totalViews: 0,
+      visitantesUnicos: 0,
+      leads: 0,
+    },
   })
   const [periodo, setPeriodo] = useState('ultimos_30')
   const [carregando, setCarregando] = useState(true)
@@ -118,6 +124,11 @@ export default function RelatorioAcesso() {
         totalClicks: 0,
         totalCopias: 0,
         totalTentativasAbrir: 0,
+        landingNativa: {
+          totalViews: 0,
+          visitantesUnicos: 0,
+          leads: 0,
+        },
       })
       setPermissions({
         ...permissoesIniciais,
@@ -196,6 +207,14 @@ export default function RelatorioAcesso() {
       : '0.0'
 
   const cards = [
+    {
+      label: 'LP nativa',
+      valor: resumo.landingNativa?.visitantesUnicos || 0,
+      sub: `${resumo.landingNativa?.totalViews || 0} visita(s) em www.nexawi.com.br`,
+      icon: Globe2,
+      text: 'text-emerald-400',
+      bg: 'bg-emerald-500/20',
+    },
     {
       label: 'Visualizações',
       valor: resumo.totalViews,
@@ -315,7 +334,7 @@ export default function RelatorioAcesso() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-5 mb-10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-10">
           {cards.map((card, index) => (
             <div
               key={card.label}

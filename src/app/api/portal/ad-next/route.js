@@ -106,6 +106,29 @@ async function clearLeadAd(leadId) {
     .eq('id', leadId)
 }
 
+function escolherProximoAnuncioGlobal(anuncios = [], historico = []) {
+  const vistosPorAnuncio = new Map()
+
+  for (const item of historico || []) {
+    const anuncioId = item?.anuncio_id
+    if (!anuncioId || vistosPorAnuncio.has(anuncioId)) continue
+
+    vistosPorAnuncio.set(anuncioId, item.seen_at || item.created_at || '')
+  }
+
+  const nuncaVisto = anuncios.find((ad) => !vistosPorAnuncio.has(ad.id))
+  if (nuncaVisto) return nuncaVisto
+
+  return [...anuncios].sort((a, b) => {
+    const aSeen = new Date(vistosPorAnuncio.get(a.id) || 0).getTime()
+    const bSeen = new Date(vistosPorAnuncio.get(b.id) || 0).getTime()
+
+    if (aSeen !== bSeen) return aSeen - bSeen
+
+    return String(a.created_at || '').localeCompare(String(b.created_at || ''))
+  })[0]
+}
+
 export async function POST(request) {
   try {
     const body = await request.json().catch(() => ({}))
@@ -133,34 +156,39 @@ export async function POST(request) {
     }
 
     const key = userKey({ hotspotId, macAddress, telefone })
+    const adIds = anuncios.map((ad) => ad.id)
 
-    const { data: lastRows, error: lastError } = await supabaseAdmin
+    const { data: historicoGlobal, error: historicoError } = await supabaseAdmin
       .from('portal_ad_rotations')
-      .select('cycle')
+      .select('anuncio_id, seen_at, created_at')
+      .eq('hotspot_id', hotspotId)
+      .in('anuncio_id', adIds)
+      .order('seen_at', { ascending: false })
+      .limit(Math.max(adIds.length * 3, 20))
+
+    if (historicoError) throw historicoError
+
+    const nextAd = escolherProximoAnuncioGlobal(anuncios, historicoGlobal || [])
+
+    const { data: ciclosUsuario, error: ciclosUsuarioError } = await supabaseAdmin
+      .from('portal_ad_rotations')
+      .select('cycle, anuncio_id')
       .eq('user_key', key)
       .eq('hotspot_id', hotspotId)
       .order('cycle', { ascending: false })
-      .limit(1)
+      .limit(adIds.length + 1)
 
-    if (lastError) throw lastError
+    if (ciclosUsuarioError) throw ciclosUsuarioError
 
-    let cycle = lastRows?.[0]?.cycle || 1
+    let cycle = ciclosUsuario?.[0]?.cycle || 1
+    const vistosNoCicloAtual = new Set(
+      (ciclosUsuario || [])
+        .filter((item) => item.cycle === cycle)
+        .map((item) => item.anuncio_id)
+    )
 
-    const { data: seenRows, error: seenError } = await supabaseAdmin
-      .from('portal_ad_rotations')
-      .select('anuncio_id')
-      .eq('user_key', key)
-      .eq('hotspot_id', hotspotId)
-      .eq('cycle', cycle)
-
-    if (seenError) throw seenError
-
-    const seenIds = new Set((seenRows || []).map((item) => item.anuncio_id))
-    let nextAd = anuncios.find((ad) => !seenIds.has(ad.id))
-
-    if (!nextAd) {
+    if (vistosNoCicloAtual.has(nextAd.id)) {
       cycle += 1
-      nextAd = anuncios[0]
     }
 
     const durationSeconds = Math.max(5, Math.floor(Number(nextAd.duracao_segundos || 15)))

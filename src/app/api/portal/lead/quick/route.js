@@ -28,6 +28,14 @@ function getMesAtualRange() {
   }
 }
 
+function mascararTelefone(value = '') {
+  const digits = String(value || '').replace(/\D/g, '')
+
+  if (digits.length !== 11) return ''
+
+  return `(${digits.slice(0, 2)}) *****-${digits.slice(-4)}`
+}
+
 export async function POST(request) {
   try {
     const body = await request.json()
@@ -46,7 +54,7 @@ export async function POST(request) {
 
     const { data, error } = await supabaseAdmin
       .from('leads')
-      .select('id, nome')
+      .select('id, nome, telefone')
       .eq('hotspot_id', hotspotId)
       .eq('mac_address', macAddress)
       .gte('created_at', inicio)
@@ -64,6 +72,7 @@ export async function POST(request) {
         ? {
             id: data.id,
             nome: data.nome || '',
+            telefoneMascarado: mascararTelefone(data.telefone),
           }
         : null,
     })

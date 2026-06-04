@@ -176,6 +176,32 @@ useEffect(() => {
 useEffect(() => {
   let ativo = true
 
+  async function registrarVisitaLandingNativa() {
+    try {
+      const params = new URLSearchParams(window.location.search)
+
+      await fetch('/api/public/landing-view', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          pageSlug: currentSlug || 'home',
+          pageUrl: window.location.href,
+          referer: document.referrer || '',
+          utm: {
+            source: params.get('utm_source') || '',
+            medium: params.get('utm_medium') || '',
+            campaign: params.get('utm_campaign') || '',
+            content: params.get('utm_content') || '',
+            term: params.get('utm_term') || '',
+          },
+        }),
+      })
+    } catch (error) {
+      console.error('Erro ao registrar visita da landing nativa:', error)
+    }
+  }
+
   async function carregarLandingConfig() {
     try {
       const query = currentSlug ? `?slug=${encodeURIComponent(currentSlug)}` : ''
@@ -201,6 +227,7 @@ useEffect(() => {
     }
   }
 
+  registrarVisitaLandingNativa()
   carregarLandingConfig()
 
   return () => {
