@@ -48,7 +48,7 @@ export async function POST(request) {
 
   try {
     const nowIso = new Date().toISOString()
-    const offlineIdleSeconds = Number(process.env.NEXAWI_OFFLINE_IDLE_SECONDS || 120)
+    const offlineIdleSeconds = Number(process.env.NEXAWI_OFFLINE_IDLE_SECONDS || 900)
 
     const hosts = await listHotspotHosts()
 
