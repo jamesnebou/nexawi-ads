@@ -299,7 +299,6 @@ export default function Configuracoes() {
 
 const canUpdate = Boolean(permissions.update)
 
-  const [senhaAtual, setSenhaAtual] = useState('')
   const [novaSenha, setNovaSenha] = useState('')
   const [confirmarSenha, setConfirmarSenha] = useState('')
   const [erroSenha, setErroSenha] = useState('')
@@ -557,7 +556,6 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       setErroSenha('Erro ao alterar senha. Tente novamente.')
     } else {
       setSenhaOk(true)
-      setSenhaAtual('')
       setNovaSenha('')
       setConfirmarSenha('')
       setTimeout(() => setSenhaOk(false), 3000)

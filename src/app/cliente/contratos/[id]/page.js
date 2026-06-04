@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
-import { ArrowLeft, CheckCircle2, FileText, Loader2, Printer, RefreshCw, ShieldCheck, XCircle } from 'lucide-react'
+import { ArrowLeft, CheckCircle2, Loader2, Printer, RefreshCw, ShieldCheck, XCircle } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createClient()

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   LifeBuoy,
@@ -8,9 +8,6 @@ import {
   Send,
   Loader2,
   MessageCircle,
-  AlertTriangle,
-  CheckCircle2,
-  UserCheck,
   RefreshCw,
   Lock,
 } from 'lucide-react'
@@ -98,7 +95,6 @@ export default function DashboardSuportePage() {
   const canReply = Boolean(permissions.reply)
   const canUpdate = Boolean(permissions.update)
   const canAssign = Boolean(permissions.assign)
-  const canClose = Boolean(permissions.close)
 
   useEffect(() => {
   const params = new URLSearchParams(window.location.search)

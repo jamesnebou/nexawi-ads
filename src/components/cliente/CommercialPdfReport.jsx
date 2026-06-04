@@ -1,6 +1,6 @@
 'use client'
 
-import { Activity, CheckCircle2, CreditCard, MousePointerClick, TrendingUp, Users, Wifi } from 'lucide-react'
+import { Activity, CheckCircle2, MousePointerClick, TrendingUp, Users, Wifi } from 'lucide-react'
 
 function formatNumber(value) {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0))

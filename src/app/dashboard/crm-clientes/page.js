@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Building2,
-  CalendarDays,
   CheckCircle2,
   DollarSign,
   Download,

@@ -212,7 +212,6 @@ export default function MikrotiksPage() {
   const [permissions, setPermissions] = useState(permissoesIniciais)
 
   const [loading, setLoading] = useState(true)
-  const [processingId, setProcessingId] = useState(null)
   const [saving, setSaving] = useState(false)
 
   const [busca, setBusca] = useState('')
@@ -1108,7 +1107,6 @@ export default function MikrotiksPage() {
         ) : (
           <section className="relative z-10 grid grid-cols-1 xl:grid-cols-2 gap-6">
             {routersFiltrados.map((routerItem) => {
-              const testing = processingId === routerItem.id
               const diagnosing = diagnosticsLoadingId === routerItem.id
 
               return (

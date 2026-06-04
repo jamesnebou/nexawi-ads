@@ -110,7 +110,7 @@ export async function GET(request, context) {
         .limit(50)
 
       eventos = data || []
-    } catch (eventError) {
+    } catch {
       eventos = []
     }
 

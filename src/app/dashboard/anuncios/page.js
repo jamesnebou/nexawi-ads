@@ -28,7 +28,6 @@ import {
   Video as VideoIcon,
   User,
   Plus,
-  Search,
   X,
   Lock,
   AlertTriangle,
@@ -189,7 +188,6 @@ export default function Anuncios() {
   const canDelete = Boolean(permissions.delete)
   const canActivate = Boolean(permissions.activate)
   const canPause = Boolean(permissions.pause)
-  const canExport = Boolean(permissions.export)
 
   useEffect(() => {
     fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')

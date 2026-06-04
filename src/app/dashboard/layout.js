@@ -245,9 +245,6 @@ export default function DashboardLayout({ children }) {
   const [loadingAccess, setLoadingAccess] = useState(true)
   const [accessDenied, setAccessDenied] = useState(null)
   const [adminEmail, setAdminEmail] = useState('')
-  const [permissions, setPermissions] = useState({})
-  const [isMaster, setIsMaster] = useState(false)
-
   const rotaAtual = useMemo(() => resolverRota(pathname), [pathname])
 
   useEffect(() => {
@@ -269,8 +266,6 @@ export default function DashboardLayout({ children }) {
           data?.user?.email ||
           ''
 
-        setPermissions(novasPermissoes)
-        setIsMaster(master)
         setAdminEmail(email)
 
         const permitido = temPermissao({

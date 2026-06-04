@@ -21,7 +21,6 @@ import {
 export const runtime = 'nodejs'
 
 const STATUS_VALIDOS = ['Ativo', 'Inativo', 'Manutenção']
-const EMPTY_UUID = '00000000-0000-0000-0000-000000000000'
 
 function limparTexto(value = '') {
   return String(value || '').trim()

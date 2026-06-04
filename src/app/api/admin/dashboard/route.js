@@ -83,10 +83,6 @@ function inicioDoMesISO() {
   return new Date(hoje.getFullYear(), hoje.getMonth(), 1, 0, 0, 0, 0).toISOString()
 }
 
-function subtrairMinutosISO(minutos) {
-  return new Date(Date.now() - minutos * 60 * 1000).toISOString()
-}
-
 function ultimosDiasISO(qtd = 14) {
   const hoje = new Date()
 
@@ -299,54 +295,6 @@ function montarOnboardingPorStatus(clientes = []) {
       value,
     }))
     .sort((a, b) => b.value - a.value)
-}
-
-async function buscarUltimosAcessosPortalClientes(clientes = []) {
-  if (!clientes.length) return []
-
-  const clientesPorId = new Map()
-
-  clientes.forEach((cliente) => {
-    if (cliente.id) {
-      clientesPorId.set(cliente.id, cliente)
-    }
-  })
-
-  const { data, error } = await supabaseAdmin
-    .from('cliente_access_logs')
-    .select(`
-      id,
-      cliente_id,
-      cliente_email,
-      cliente_nome,
-      cliente_empresa,
-      event_type,
-      ip_address,
-      user_agent,
-      created_at
-    `)
-    .order('created_at', { ascending: false })
-    .limit(10)
-
-  if (error) throw error
-
-  return (data || []).map((log) => {
-    const cliente = clientesPorId.get(log.cliente_id)
-
-    return {
-      id: log.id,
-      cliente_id: log.cliente_id,
-      nome: log.cliente_nome || cliente?.nome || '',
-      nome_empresa: log.cliente_empresa || cliente?.nome_empresa || '',
-      email: log.cliente_email || cliente?.email || '',
-      status: cliente?.status || '',
-      plano_nome: cliente?.planos?.nome || '',
-      event_type: log.event_type || '',
-      ip_address: log.ip_address || '',
-      user_agent: log.user_agent || '',
-      created_at: log.created_at || '',
-    }
-  })
 }
 
 async function buscarUltimosAcessosClientes(clientes = []) {

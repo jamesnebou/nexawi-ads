@@ -42,7 +42,6 @@ import {
   Settings2,
   Globe2,
   RadioTower,
-  Zap,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 

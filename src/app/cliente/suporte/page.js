@@ -10,9 +10,7 @@ import {
   Send,
   Loader2,
   MessageCircle,
-  AlertTriangle,
   CheckCircle2,
-  Clock3,
   X,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
