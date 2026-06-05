@@ -5,7 +5,6 @@ import {
   ensureBypassBinding,
   ensureClientBandwidthQueue,
   findHotspotHostByMac,
-  removeHotspotHostsByMac,
   normalizeMac,
 } from '@/lib/routeros-rest'
 import {
@@ -27,6 +26,23 @@ export const runtime = 'nodejs'
 
 function clean(value = '') {
   return String(value || '').trim()
+}
+
+function privateClientIp(value = '') {
+  const ip = clean(value)
+  const parts = ip.split('.').map((part) => Number(part))
+
+  if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) {
+    return ''
+  }
+
+  const [a, b] = parts
+
+  if (a === 10) return ip
+  if (a === 172 && b >= 16 && b <= 31) return ip
+  if (a === 192 && b === 168) return ip
+
+  return ''
 }
 
 async function validateCompletedAdSession({ lead, hotspotId, adSessionId }) {
@@ -150,9 +166,11 @@ export async function POST(request) {
   macAddress: clientMac,
 })
 
+    const bindingAddress = hostBeforeAuthorization?.address || privateClientIp(clientIp)
 
     const binding = await ensureBypassBinding({
       macAddress: clientMac,
+      address: bindingAddress,
       comment: `auth_session:${latestSession.id}`,
     })
 
@@ -161,10 +179,6 @@ export async function POST(request) {
   macAddress: clientMac,
   targetAddress: hostBeforeAuthorization?.address || '',
   comment: `auth_session:${latestSession.id}`,
-})
-
-const hostCleanup = await removeHotspotHostsByMac({
-  macAddress: clientMac,
 })
 
     const authorizedSession = await markSessionAuthorized(
@@ -186,7 +200,7 @@ const hostCleanup = await removeHotspotHostsByMac({
   session: authorizedSession,
   binding,
   bandwidthQueue,
-  hostCleanup,
+  hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
   status,
 })
   } catch (routerError) {
@@ -264,8 +278,11 @@ const hostCleanup = await removeHotspotHostsByMac({
   macAddress: clientMac,
 })
 
+      const bindingAddress = hostBeforeAuthorization?.address || privateClientIp(clientIp)
+
       const binding = await ensureBypassBinding({
         macAddress: clientMac,
+        address: bindingAddress,
         comment: `auth_session:${pendingSession.id}`,
       })
 
@@ -273,10 +290,6 @@ const hostCleanup = await removeHotspotHostsByMac({
   macAddress: clientMac,
   targetAddress: hostBeforeAuthorization?.address || '',
   comment: `auth_session:${pendingSession.id}`,
-})
-
-const hostCleanup = await removeHotspotHostsByMac({
-  macAddress: clientMac,
 })
 
       const authorizedSession = await markSessionAuthorized(
@@ -296,7 +309,7 @@ const hostCleanup = await removeHotspotHostsByMac({
   session: authorizedSession,
   binding,
   bandwidthQueue,
-  hostCleanup,
+  hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
 })
     } catch (routerError) {
       await markSessionError(pendingSession.id, routerError.message || 'Falha no RouterOS')

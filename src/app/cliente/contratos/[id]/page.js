@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
@@ -75,11 +75,9 @@ export default function ClienteContratoDetalhePage() {
   const [loading, setLoading] = useState(true)
   const [aceitando, setAceitando] = useState(false)
 
-  useEffect(() => {
-    carregarContrato()
-  }, [id])
+  const carregarContrato = useCallback(async () => {
+    if (!id) return
 
-  async function carregarContrato() {
     setLoading(true)
 
     try {
@@ -96,7 +94,11 @@ export default function ClienteContratoDetalhePage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, router])
+
+  useEffect(() => {
+    carregarContrato()
+  }, [carregarContrato])
 
   async function aceitarContrato() {
     if (!contrato) return

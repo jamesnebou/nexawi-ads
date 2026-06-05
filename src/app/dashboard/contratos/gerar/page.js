@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import { ArrowLeft, Building2, Copy, Database, FileText, Mail, Printer, RefreshCw, Save } from 'lucide-react'
@@ -92,10 +92,6 @@ export default function GerarContratoPage() {
     return `Contrato NexaWi — ${nome}`
   }, [data])
 
-  useEffect(() => {
-    carregar()
-  }, [source, id])
-
   async function gerarContratoAtualizado() {
     return adminApiFetch('/api/admin/contratos/gerar', {
       method: 'POST',
@@ -107,7 +103,7 @@ export default function GerarContratoPage() {
     })
   }
 
-  async function carregar(updates = null) {
+  const carregar = useCallback(async (updates = null) => {
     if (!id) {
       toast.error('ID não informado para gerar contrato.')
       setLoading(false)
@@ -134,7 +130,11 @@ export default function GerarContratoPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [id, source])
+
+  useEffect(() => {
+    carregar()
+  }, [carregar])
 
   async function atualizarPrevia() {
     setGenerating(true)

@@ -20,7 +20,7 @@
 // - Botão para gerar contrato automático do cliente
 // ============================================================
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
@@ -246,30 +246,7 @@ export default function Clientes() {
   const canGenerateContract = Boolean(permissions.view || permissions.update || permissions.create)
   const showActionsColumn = canUpdate || canDelete || canGenerateContract
 
-  useEffect(() => {
-    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
-      .then((res) => res.json())
-      .then((dados) => setEstadosIBGE(dados))
-      .catch((err) => console.error('Erro ao buscar estados:', err))
-  }, [])
-
-  useEffect(() => {
-    if (!form.estado) {
-      setCidadesIBGE([])
-      return
-    }
-
-    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.estado}/municipios`)
-      .then((res) => res.json())
-      .then((dados) => setCidadesIBGE(dados))
-      .catch((err) => console.error('Erro ao buscar cidades:', err))
-  }, [form.estado])
-
-  useEffect(() => {
-    buscarDados()
-  }, [busca, filtroStatus, filtroOnboarding, filtroTravado])
-
-  async function buscarDados() {
+  const buscarDados = useCallback(async () => {
     setCarregando(true)
 
     try {
@@ -295,7 +272,30 @@ export default function Clientes() {
     } finally {
       setCarregando(false)
     }
-  }
+  }, [busca, filtroOnboarding, filtroStatus, filtroTravado])
+
+  useEffect(() => {
+    fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome')
+      .then((res) => res.json())
+      .then((dados) => setEstadosIBGE(dados))
+      .catch((err) => console.error('Erro ao buscar estados:', err))
+  }, [])
+
+  useEffect(() => {
+    if (!form.estado) {
+      setCidadesIBGE([])
+      return
+    }
+
+    fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${form.estado}/municipios`)
+      .then((res) => res.json())
+      .then((dados) => setCidadesIBGE(dados))
+      .catch((err) => console.error('Erro ao buscar cidades:', err))
+  }, [form.estado])
+
+  useEffect(() => {
+    buscarDados()
+  }, [buscarDados])
 
   const validarCpfCnpj = (valor) => {
     const numeros = valor.replace(/\D/g, '')

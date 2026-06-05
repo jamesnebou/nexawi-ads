@@ -365,9 +365,25 @@ export async function findHotspotHostByMac({ macAddress, server } = {}) {
   )
 }
 
-export async function ensureBypassBinding({ macAddress, comment }) {
+function normalizeIPv4(value = '') {
+  const ip = String(value || '').trim()
+  const parts = ip.split('.')
+
+  if (parts.length !== 4) return ''
+
+  const valid = parts.every((part) => {
+    if (!/^\d+$/.test(part)) return false
+    const number = Number(part)
+    return number >= 0 && number <= 255
+  })
+
+  return valid ? ip : ''
+}
+
+export async function ensureBypassBinding({ macAddress, address = '', comment }) {
   const { hotspotServer } = getRouterConfig()
   const mac = normalizeMac(macAddress)
+  const normalizedAddress = normalizeIPv4(address)
 
   if (!mac) {
     throw new Error('MAC inválido para binding')
@@ -379,6 +395,10 @@ export async function ensureBypassBinding({ macAddress, comment }) {
     type: 'bypassed',
     disabled: false,
     comment: comment || '',
+  }
+
+  if (normalizedAddress) {
+    payload.address = normalizedAddress
   }
 
   const bindings = await listHotspotBindings()

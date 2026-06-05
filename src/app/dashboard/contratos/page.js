@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import { CalendarDays, CheckCircle2, FileText, Mail, Printer, RefreshCw, Search, Send, XCircle } from 'lucide-react'
@@ -91,11 +91,7 @@ export default function ContratosPage() {
     { label: 'Pendentes', value: resumo.envio_pendente || 0, icon: Mail },
   ], [resumo])
 
-  useEffect(() => {
-    carregarContratos()
-  }, [status, buscaAplicada])
-
-  async function carregarContratos() {
+  const carregarContratos = useCallback(async () => {
     setLoading(true)
 
     try {
@@ -113,7 +109,11 @@ export default function ContratosPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [buscaAplicada, status])
+
+  useEffect(() => {
+    carregarContratos()
+  }, [carregarContratos])
 
   function aplicarBusca(event) {
     event.preventDefault()
