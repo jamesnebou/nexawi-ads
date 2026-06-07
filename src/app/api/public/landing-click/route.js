@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { buildLpAnalyticsMetadata } from '@/lib/lp-generator-analytics'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { sendNativeLandingServerConversions } from '@/lib/native-landing-conversions'
 
 export const runtime = 'nodejs'
 
@@ -39,28 +40,39 @@ export async function POST(request) {
     const targetLabel = cleanText(body.targetLabel || body.target_label || 'Clique', 180)
     const targetUrl = cleanText(body.targetUrl || body.target_url || '', 1000)
 
-    const { error } = await supabaseAdmin
-      .from('landing_native_clicks')
-      .insert([{
-        page_slug: pageSlug,
-        page_url: cleanText(body.pageUrl || metadata.page_url, 1000),
+    const clickPayload = {
+      page_slug: pageSlug,
+      page_url: cleanText(body.pageUrl || metadata.page_url, 1000),
+      target_label: targetLabel,
+      target_url: targetUrl,
+      ip_address: getClientIp(request) || metadata.ip || null,
+      user_agent: metadata.user_agent || null,
+      referer: metadata.referer || null,
+      source_type: metadata.source_type || 'direto',
+      metadata: {
+        ...metadata,
         target_label: targetLabel,
         target_url: targetUrl,
-        ip_address: getClientIp(request) || metadata.ip || null,
-        user_agent: metadata.user_agent || null,
-        referer: metadata.referer || null,
-        source_type: metadata.source_type || 'direto',
-        metadata: {
-          ...metadata,
-          target_label: targetLabel,
-          target_url: targetUrl,
-          element_tag: cleanText(body.elementTag || body.element_tag || '', 40),
-        },
-      }])
+        element_tag: cleanText(body.elementTag || body.element_tag || '', 40),
+      },
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from('landing_native_clicks')
+      .insert([clickPayload])
+      .select('id')
+      .single()
 
     if (error) throw error
 
-    return NextResponse.json({ ok: true })
+    const conversions = await sendNativeLandingServerConversions({
+      request,
+      body,
+      metadata,
+      clickId: data?.id ? `landing_native_click:${data.id}` : '',
+    })
+
+    return NextResponse.json({ ok: true, conversions })
   } catch (error) {
     if (isMissingTableError(error)) {
       return NextResponse.json({ ok: true, skipped: true, pendingMigration: true })

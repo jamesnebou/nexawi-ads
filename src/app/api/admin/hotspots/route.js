@@ -199,6 +199,33 @@ async function ensureNetworkPolicyForHotspot({ hotspotId, routerId, empresaId })
   return data
 }
 
+async function countActiveWifiPixPlans({ auth, hotspotId }) {
+  if (!hotspotId) return 0
+
+  let query = supabaseAdmin
+    .from('wifi_pix_planos')
+    .select('id', { count: 'exact', head: true })
+    .eq('hotspot_id', hotspotId)
+    .eq('ativo', true)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { count, error } = await query
+  if (error) throw error
+
+  return count || 0
+}
+
+async function assertPaidModeHasActivePlan({ auth, hotspotId, modo }) {
+  if (!['pix', 'hibrido'].includes(modo)) return
+
+  const activePlans = await countActiveWifiPixPlans({ auth, hotspotId })
+
+  if (activePlans <= 0) {
+    throw new Error('Cadastre e ative pelo menos um plano Wi-Fi no Pix antes de publicar este hotspot em Pix ou Híbrido.')
+  }
+}
+
 async function callControlApi(path, { method = 'POST', body } = {}) {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
   const secret = process.env.NEXAWI_CONTROL_SECRET || process.env.NEXAWI_CRON_SECRET
@@ -674,6 +701,12 @@ export async function POST(request) {
         await ensureRouterInScope({ auth, routerId: payload.router_id })
       }
 
+      await assertPaidModeHasActivePlan({
+        auth,
+        hotspotId: id,
+        modo: payload.portal_modo_acesso,
+      })
+
       const erroValidacao = validarHotspot(payload)
 
       if (erroValidacao) {
@@ -754,6 +787,10 @@ export async function POST(request) {
 
       if (payload.router_id) {
         await ensureRouterInScope({ auth, routerId: payload.router_id })
+      }
+
+      if (['pix', 'hibrido'].includes(payload.portal_modo_acesso)) {
+        throw new Error('Crie o hotspot em modo Anúncios, cadastre um plano Wi-Fi no Pix e depois altere para Pix ou Híbrido.')
       }
 
       const erroValidacao = validarHotspot(payload)

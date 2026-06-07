@@ -24,6 +24,26 @@ function sanitizeModo(value = '') {
   return ['anuncios', 'pix', 'hibrido'].includes(value) ? value : 'anuncios'
 }
 
+function isMissingRecommendedColumn(error) {
+  const message = String(error?.message || '')
+  return /recomendado/i.test(message) && (/schema cache/i.test(message) || /column/i.test(message))
+}
+
+async function countActivePlansForHotspot(auth, hotspotId) {
+  let query = supabaseAdmin
+    .from('wifi_pix_planos')
+    .select('id', { count: 'exact', head: true })
+    .eq('hotspot_id', hotspotId)
+    .eq('ativo', true)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { count, error } = await query
+  if (error) throw error
+
+  return count || 0
+}
+
 function getDataInicio(periodo = 'ultimos_30') {
   const agora = new Date()
 
@@ -74,13 +94,29 @@ async function loadPlanos(auth) {
   let query = supabaseAdmin
     .from('wifi_pix_planos')
     .select('*')
+    .order('recomendado', { ascending: false })
     .order('ordem', { ascending: true })
     .order('valor', { ascending: true })
 
   query = auth.applyEmpresaScope(query)
 
   const { data, error } = await query
-  if (error) throw error
+  if (error) {
+    if (!isMissingRecommendedColumn(error)) throw error
+
+    let fallbackQuery = supabaseAdmin
+      .from('wifi_pix_planos')
+      .select('*')
+      .order('ordem', { ascending: true })
+      .order('valor', { ascending: true })
+
+    fallbackQuery = auth.applyEmpresaScope(fallbackQuery)
+
+    const { data: fallbackData, error: fallbackError } = await fallbackQuery
+    if (fallbackError) throw fallbackError
+
+    return (fallbackData || []).map((plano) => ({ ...plano, recomendado: false }))
+  }
 
   return data || []
 }
@@ -229,12 +265,21 @@ export async function POST(request) {
     if (action === 'hotspot') {
       const hotspotId = sanitizeUuid(body.hotspotId)
       if (!hotspotId) throw new Error('Hotspot invalido.')
+      const modo = sanitizeModo(body.portalModoAcesso)
+
+      if (modo !== 'anuncios') {
+        const activePlans = await countActivePlansForHotspot(auth, hotspotId)
+
+        if (activePlans <= 0) {
+          throw new Error('Cadastre e ative pelo menos um plano antes de publicar o hotspot em Pix ou Hibrido.')
+        }
+      }
 
       let query = supabaseAdmin
         .from('hotspots')
         .update({
-          portal_modo_acesso: sanitizeModo(body.portalModoAcesso),
-          wifi_pix_ativo: Boolean(body.wifiPixAtivo),
+          portal_modo_acesso: modo,
+          wifi_pix_ativo: modo === 'anuncios' ? Boolean(body.wifiPixAtivo) : true,
           updated_at: new Date().toISOString(),
         })
         .eq('id', hotspotId)
@@ -268,12 +313,28 @@ export async function POST(request) {
         velocidade_download: clean(body.velocidadeDownload) || '15M',
         velocidade_upload: clean(body.velocidadeUpload) || '15M',
         ativo: body.ativo !== false,
+        recomendado: Boolean(body.recomendado),
         ordem: Math.max(0, Math.round(numberValue(body.ordem, 0))),
         updated_at: new Date().toISOString(),
       }
 
       if (!payload.nome) throw new Error('Nome do plano e obrigatorio.')
       if (payload.valor <= 0) throw new Error('Valor do plano deve ser maior que zero.')
+
+      if (payload.recomendado) {
+        let resetQuery = supabaseAdmin
+          .from('wifi_pix_planos')
+          .update({
+            recomendado: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('hotspot_id', hotspotId)
+
+        resetQuery = auth.applyEmpresaScope(resetQuery)
+
+        const { error: resetError } = await resetQuery
+        if (resetError) throw resetError
+      }
 
       if (planoId) {
         let query = supabaseAdmin
@@ -324,6 +385,13 @@ export async function POST(request) {
 
     throw new Error('Acao invalida.')
   } catch (error) {
+    if (isMissingRecommendedColumn(error)) {
+      return NextResponse.json(
+        { ok: false, error: 'Aplique a migration 20260607050000_wifi_pix_planos_recomendado.sql para salvar plano recomendado.' },
+        { status: 400 }
+      )
+    }
+
     return NextResponse.json(
       { ok: false, error: error.message || 'Erro ao salvar Wi-Fi no Pix.' },
       { status: 400 }

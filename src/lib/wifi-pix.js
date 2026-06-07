@@ -49,6 +49,7 @@ export function publicWifiPixPlano(plano = {}) {
     duracao_minutos: Number(plano.duracao_minutos || 0),
     velocidade_download: plano.velocidade_download || '15M',
     velocidade_upload: plano.velocidade_upload || '15M',
+    recomendado: Boolean(plano.recomendado),
   }
 }
 
@@ -65,14 +66,31 @@ export async function getWifiPixPlanosForHotspot(hotspotId) {
 
   const { data, error } = await supabaseAdmin
     .from('wifi_pix_planos')
-    .select('id, nome, descricao, valor, duracao_minutos, velocidade_download, velocidade_upload, ordem')
+    .select('id, nome, descricao, valor, duracao_minutos, velocidade_download, velocidade_upload, ordem, recomendado')
     .eq('hotspot_id', hotspotId)
     .eq('ativo', true)
+    .order('recomendado', { ascending: false })
     .order('ordem', { ascending: true })
     .order('valor', { ascending: true })
 
   if (error) {
     const message = String(error.message || '')
+    const missingRecommended = /recomendado/i.test(message) && (/schema cache/i.test(message) || /column/i.test(message))
+
+    if (missingRecommended) {
+      const { data: fallbackData, error: fallbackError } = await supabaseAdmin
+        .from('wifi_pix_planos')
+        .select('id, nome, descricao, valor, duracao_minutos, velocidade_download, velocidade_upload, ordem')
+        .eq('hotspot_id', hotspotId)
+        .eq('ativo', true)
+        .order('ordem', { ascending: true })
+        .order('valor', { ascending: true })
+
+      if (fallbackError) return []
+
+      return (fallbackData || []).map((plano) => ({ ...plano, recomendado: false }))
+    }
+
     if (message.includes('wifi_pix_planos') || message.includes('schema cache')) return []
     throw error
   }

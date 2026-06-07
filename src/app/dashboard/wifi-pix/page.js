@@ -14,6 +14,7 @@ import {
   Save,
   Trash2,
   Wifi,
+  Star,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -28,6 +29,7 @@ const planoInicial = {
   velocidadeUpload: '15M',
   ordem: 0,
   ativo: true,
+  recomendado: false,
 }
 
 const periodosRelatorio = [
@@ -96,6 +98,15 @@ function statusClass(status = '') {
   return 'bg-white/[0.06] text-gray-400'
 }
 
+function formatDuration(minutes = 0) {
+  const total = Number(minutes || 0)
+
+  if (total >= 1440 && total % 1440 === 0) return `${total / 1440} dia(s)`
+  if (total >= 60 && total % 60 === 0) return `${total / 60} hora(s)`
+
+  return `${total} minuto(s)`
+}
+
 export default function WifiPixPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -117,6 +128,11 @@ export default function WifiPixPage() {
   const planosDoHotspot = useMemo(
     () => planos.filter((plano) => plano.hotspot_id === hotspotId),
     [planos, hotspotId]
+  )
+
+  const planosAtivosDoHotspot = useMemo(
+    () => planosDoHotspot.filter((plano) => plano.ativo !== false),
+    [planosDoHotspot]
   )
 
   async function carregar() {
@@ -246,6 +262,7 @@ export default function WifiPixPage() {
       velocidadeUpload: plano.velocidade_upload || '15M',
       ordem: Number(plano.ordem || 0),
       ativo: plano.ativo !== false,
+      recomendado: Boolean(plano.recomendado),
     })
   }
 
@@ -424,6 +441,17 @@ export default function WifiPixPage() {
           </div>
         </section>
 
+        {(portalModoAcesso === 'pix' || portalModoAcesso === 'hibrido') && planosAtivosDoHotspot.length === 0 ? (
+          <div className="rounded-2xl border border-yellow-500/25 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-100">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 text-yellow-300" size={18} />
+              <p>
+                Este hotspot esta em modo pago, mas ainda nao tem plano ativo. Cadastre e ative pelo menos um plano antes de publicar o modo Pix ou Hibrido.
+              </p>
+            </div>
+          </div>
+        ) : null}
+
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
             <h2 className="text-xl font-black mb-5 flex items-center gap-2">
@@ -431,6 +459,13 @@ export default function WifiPixPage() {
             </h2>
 
             <form onSubmit={salvarPlano} className="grid gap-4">
+              <div className="rounded-2xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 p-4">
+                <p className="text-xs uppercase tracking-[0.18em] text-[#ffb15c] font-black">Oferta no portal</p>
+                <p className="text-sm text-gray-300 mt-2">
+                  Use nome curto, descricao direta, duracao clara e marque um plano como recomendado para aumentar conversao.
+                </p>
+              </div>
+
               <input
                 value={formPlano.nome}
                 onChange={(event) => setFormPlano((prev) => ({ ...prev, nome: event.target.value }))}
@@ -444,24 +479,41 @@ export default function WifiPixPage() {
                 placeholder="Descrição curta"
               />
 
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  value={formPlano.valor}
-                  onChange={(event) => setFormPlano((prev) => ({ ...prev, valor: event.target.value }))}
-                  className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-white outline-none"
-                  placeholder="Valor"
-                />
-                <input
-                  type="number"
-                  min="1"
-                  value={formPlano.duracaoMinutos}
-                  onChange={(event) => setFormPlano((prev) => ({ ...prev, duracaoMinutos: event.target.value }))}
-                  className="rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-white outline-none"
-                  placeholder="Minutos"
-                />
+              <div className="grid grid-cols-3 gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Preco</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    value={formPlano.valor}
+                    onChange={(event) => setFormPlano((prev) => ({ ...prev, valor: event.target.value }))}
+                    className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-white outline-none"
+                    placeholder="Valor"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Duracao</span>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formPlano.duracaoMinutos}
+                    onChange={(event) => setFormPlano((prev) => ({ ...prev, duracaoMinutos: event.target.value }))}
+                    className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-white outline-none"
+                    placeholder="Minutos"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Ordem</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={formPlano.ordem}
+                    onChange={(event) => setFormPlano((prev) => ({ ...prev, ordem: event.target.value }))}
+                    className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 text-white outline-none"
+                    placeholder="0"
+                  />
+                </label>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -479,15 +531,27 @@ export default function WifiPixPage() {
                 />
               </div>
 
-              <label className="flex items-center gap-3 text-sm font-bold text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={formPlano.ativo}
-                  onChange={(event) => setFormPlano((prev) => ({ ...prev, ativo: event.target.checked }))}
-                  className="h-5 w-5 accent-[#6be12f]"
-                />
-                Plano ativo no portal
-              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] px-4 py-3 text-sm font-bold text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={formPlano.ativo}
+                    onChange={(event) => setFormPlano((prev) => ({ ...prev, ativo: event.target.checked }))}
+                    className="h-5 w-5 accent-[#6be12f]"
+                  />
+                  Plano ativo no portal
+                </label>
+
+                <label className="flex items-center gap-3 rounded-2xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 px-4 py-3 text-sm font-bold text-[#ffb15c]">
+                  <input
+                    type="checkbox"
+                    checked={formPlano.recomendado}
+                    onChange={(event) => setFormPlano((prev) => ({ ...prev, recomendado: event.target.checked }))}
+                    className="h-5 w-5 accent-[#ff7a00]"
+                  />
+                  Plano recomendado
+                </label>
+              </div>
 
               <button
                 type="submit"
@@ -509,13 +573,20 @@ export default function WifiPixPage() {
                 <Loader2 className="animate-spin text-[#6be12f]" />
               </div>
             ) : planosDoHotspot.length ? (
-              <div className="grid gap-3">
+              <div className="grid gap-4">
                 {planosDoHotspot.map((plano) => (
                   <div
                     key={plano.id}
-                    className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] px-4 py-4"
+                    className={`relative overflow-hidden rounded-3xl border px-5 py-5 ${
+                      plano.recomendado
+                        ? 'border-[#ff7a00]/45 bg-[#ff7a00]/10 shadow-[0_0_32px_rgba(255,122,0,0.12)]'
+                        : 'border-white/[0.06] bg-[#0a0a0a]'
+                    }`}
                   >
-                    <div className="flex items-start justify-between gap-4">
+                    {plano.recomendado ? (
+                      <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[plan-reflex_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                    ) : null}
+                    <div className="relative flex items-start justify-between gap-4">
                       <div>
                         <div className="flex items-center gap-2">
                           <p className="font-black">{plano.nome}</p>
@@ -524,14 +595,24 @@ export default function WifiPixPage() {
                           }`}>
                             {plano.ativo ? 'Ativo' : 'Arquivado'}
                           </span>
+                          {plano.recomendado ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-1 text-[10px] font-black uppercase text-black">
+                              <Star size={11} fill="currentColor" /> Recomendado
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{plano.descricao || 'Sem descrição'}</p>
-                        <p className="text-xs text-gray-600 mt-2">
-                          {plano.duracao_minutos} min / {plano.velocidade_download} download / {plano.velocidade_upload} upload
-                        </p>
+                        <div className="mt-3 grid grid-cols-3 gap-2">
+                          <SmallPlanInfo label="Duracao" value={formatDuration(plano.duracao_minutos)} />
+                          <SmallPlanInfo label="Download" value={plano.velocidade_download || '15M'} />
+                          <SmallPlanInfo label="Upload" value={plano.velocidade_upload || '15M'} />
+                        </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-[#6be12f] font-black">{money(plano.valor)}</p>
+                        <p className={plano.recomendado ? 'text-[#ff9d2e] font-black' : 'text-[#6be12f] font-black'}>
+                          {money(plano.valor)}
+                        </p>
+                        <p className="text-[10px] uppercase tracking-[0.16em] text-gray-600">Ordem {plano.ordem ?? 0}</p>
                         <div className="flex justify-end gap-2 mt-3">
                           <button
                             type="button"
@@ -572,6 +653,21 @@ export default function WifiPixPage() {
           </section>
         </div>
       </div>
+      <style jsx global>{`
+        @keyframes plan-reflex {
+          0%, 18% { transform: translateX(-100%); }
+          55%, 100% { transform: translateX(100%); }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function SmallPlanInfo({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
+      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
     </div>
   )
 }
