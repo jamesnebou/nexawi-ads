@@ -1,1 +1,38 @@
 @import "tailwindcss";
+
+@keyframes wifiPixGlassSweep {
+  0% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+
+  50% {
+    transform: translateX(140%) skewX(-18deg);
+  }
+
+  100% {
+    transform: translateX(-140%) skewX(-18deg);
+  }
+}
+
+.wifi-pix-glass-shine {
+  position: relative;
+  overflow: hidden;
+}
+
+.wifi-pix-glass-shine::after {
+  content: "";
+  position: absolute;
+  inset: -35% auto -35% -25%;
+  width: 42%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 190, 110, 0.35),
+    rgba(255, 255, 255, 0.08),
+    transparent
+  );
+  filter: blur(2px);
+  pointer-events: none;
+  animation: wifiPixGlassSweep 3.2s ease-in-out infinite;
+}

@@ -976,6 +976,7 @@ leadIdRef.current = data.leadId
     ? Math.max(0, Math.min(100, ((duracaoAnuncio - contador) / duracaoAnuncio) * 100))
     : 0
   const wifiPixPlanoSelecionado = wifiPixPlanos.find((plano) => plano.id === wifiPixPlanoId) || wifiPixPlanos[0]
+  const etapaWifiPixAtiva = etapa === ETAPAS.WIFI_PIX
 
   async function gerarCheckoutWifiPix(event) {
     event.preventDefault()
@@ -1046,8 +1047,8 @@ leadIdRef.current = data.leadId
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none"></div>
+    <div className={`min-h-screen bg-[#050505] text-white font-sans ${etapaWifiPixAtiva ? 'selection:bg-[#ff7a00]/30' : 'selection:bg-[#6be12f]/30'} flex items-center justify-center p-4 relative overflow-hidden`}>
+      <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] ${etapaWifiPixAtiva ? 'bg-[#ff7a00]/8' : 'bg-[#6be12f]/5'} rounded-full blur-[150px] pointer-events-none`}></div>
 
       {etapa === ETAPAS.LOADING && (
         <div className="relative z-10 flex flex-col items-center justify-center animate-fade-in-up">
@@ -1109,7 +1110,7 @@ leadIdRef.current = data.leadId
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#ff7a00] to-transparent" />
             <div className="flex justify-center mb-7">
               <img
-                src="/Nexa-logo.png"
+                src="/NexaWI-laranja.png"
                 alt="NexaWi"
                 className="h-12 object-contain"
                 onError={(e) => { e.target.style.display = 'none' }}
@@ -1136,7 +1137,7 @@ leadIdRef.current = data.leadId
                       onClick={() => setWifiPixPlanoId(plano.id)}
                       className={`text-left rounded-2xl border px-4 py-4 transition-all ${
                         (wifiPixPlanoSelecionado?.id || wifiPixPlanoId) === plano.id
-                          ? 'border-[#ff7a00]/70 bg-[#ff7a00]/12 shadow-[0_0_30px_rgba(255,122,0,0.10)]'
+                          ? 'wifi-pix-glass-shine border-[#ff7a00]/70 bg-[#ff7a00]/12 shadow-[0_0_30px_rgba(255,122,0,0.10)]'
                           : 'border-white/[0.06] bg-[#0a0a0a]'
                       }`}
                     >
