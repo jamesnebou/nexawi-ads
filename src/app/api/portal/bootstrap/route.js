@@ -9,10 +9,16 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getSaasFinanceContext } from '@/lib/saas-finance'
 import { getWifiPixPlanosForHotspot, publicWifiPixPlano } from '@/lib/wifi-pix'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
 const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
+const RATE_LIMIT = {
+  keyPrefix: 'portal:bootstrap',
+  limit: 80,
+  windowMs: 60_000,
+}
 
 function sanitizeSlug(value = '') {
   return String(value || '').trim()
@@ -87,6 +93,12 @@ async function filtrarAnunciosPorContaAtiva(anuncios = []) {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json({ ok: false, error: 'Muitas tentativas. Aguarde um instante.' }, { status: 429 })
+  }
+
   try {
     const body = await request.json()
     const slug = sanitizeSlug(body.slug)

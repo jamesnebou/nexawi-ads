@@ -208,6 +208,7 @@ export async function POST(request) {
       clientMac: macAddress,
       clientIp: ipAddress,
       adSessionId: null,
+      authorizationReason: 'wifi_pix_paid',
     })
 
     const now = new Date().toISOString()

@@ -1,6 +1,7 @@
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { checkRateLimit } from '@/lib/rate-limit'
 import {
   ensureBypassBinding,
   ensureClientBandwidthQueue,
@@ -21,6 +22,11 @@ import {
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
 const AD_COMPLETION_MAX_AGE_MS = 15 * 60 * 1000
+const RATE_LIMIT = {
+  keyPrefix: 'control:session:authorize',
+  limit: 80,
+  windowMs: 60_000,
+}
 
 export const runtime = 'nodejs'
 
@@ -97,6 +103,12 @@ async function validateCompletedAdSession({ lead, hotspotId, adSessionId }) {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json({ ok: false, error: 'Muitas tentativas de liberacao. Aguarde um instante.' }, { status: 429 })
+  }
+
   if (CONTROL_API_MODE === 'proxy') {
   return proxyControlRequest(request, '/api/control/session/authorize', 'POST')
 }

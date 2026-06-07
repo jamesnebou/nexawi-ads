@@ -1057,6 +1057,8 @@ leadIdRef.current = data.leadId
     try {
       const status = await portalApiFetch('/api/portal/pix/status', {
         vendaId: wifiPixCheckout.vendaId,
+        macAddress: getClientMac(),
+        ipAddress: getClientIp(),
       })
 
       if (!['pago', 'autorizado'].includes(status.venda?.status)) {
