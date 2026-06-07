@@ -18,6 +18,7 @@ import {
   Shield,
   CreditCard,
   QrCode,
+  Star,
 } from 'lucide-react'
 import { controlApiFetch } from '@/lib/control-api-client'
 
@@ -138,6 +139,15 @@ function resolverDestinoAnuncio(anuncio = {}) {
 
 // Chamada padrão para as APIs seguras do portal.
 // Assim o componente público não acessa mais tabelas sensíveis direto no Supabase.
+function formatWifiPixDuration(minutes = 0) {
+  const total = Number(minutes || 0)
+
+  if (total >= 1440 && total % 1440 === 0) return `${total / 1440} dia(s)`
+  if (total >= 60 && total % 60 === 0) return `${total / 60} hora(s)`
+
+  return `${total} minuto(s)`
+}
+
 function withTimeout(promise, timeoutMs, fallback) {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -1271,36 +1281,68 @@ leadIdRef.current = data.leadId
             {!wifiPixCheckout ? (
               <form onSubmit={gerarCheckoutWifiPix} className="space-y-4">
                 <div className="grid gap-3">
-                  {wifiPixPlanos.map((plano) => (
-                    <button
-                      key={plano.id}
-                      type="button"
-                      onClick={() => setWifiPixPlanoId(plano.id)}
-                      className={`text-left rounded-2xl border px-4 py-4 transition-all ${
-                        (wifiPixPlanoSelecionado?.id || wifiPixPlanoId) === plano.id
-                          ? 'wifi-pix-glass-shine border-[#ff7a00]/70 bg-[#ff7a00]/12 shadow-[0_0_30px_rgba(255,122,0,0.10)]'
-                          : 'border-white/[0.06] bg-[#0a0a0a]'
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-bold text-white">{plano.nome}</p>
-                          {plano.descricao ? (
-                            <p className="text-xs text-gray-500 mt-1">{plano.descricao}</p>
-                          ) : null}
-                          <p className="text-xs text-gray-500 mt-2">
-                            {plano.duracao_minutos} minutos de acesso
-                          </p>
+                  {wifiPixPlanos.map((plano) => {
+                    const selected = (wifiPixPlanoSelecionado?.id || wifiPixPlanoId) === plano.id
+                    const recommended = Boolean(plano.recomendado)
+
+                    return (
+                      <button
+                        key={plano.id}
+                        type="button"
+                        onClick={() => setWifiPixPlanoId(plano.id)}
+                        className={`group relative overflow-hidden text-left rounded-3xl border px-5 py-5 transition-all ${
+                          selected
+                            ? 'wifi-pix-glass-shine border-[#ff7a00]/80 bg-[#ff7a00]/16 shadow-[0_0_34px_rgba(255,122,0,0.14)]'
+                            : recommended
+                              ? 'border-[#ff7a00]/45 bg-[#ff7a00]/10 shadow-[0_0_24px_rgba(255,122,0,0.10)]'
+                              : 'border-white/[0.06] bg-[#0a0a0a]'
+                        }`}
+                      >
+                        {recommended ? (
+                          <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[plan-reflex_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                        ) : null}
+
+                        <div className="relative space-y-4">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="font-black text-white">{plano.nome}</p>
+                                {recommended ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-1 text-[10px] font-black uppercase text-black">
+                                    <Star size={11} fill="currentColor" /> Melhor escolha
+                                  </span>
+                                ) : null}
+                              </div>
+                              {plano.descricao ? (
+                                <p className="mt-1 text-xs text-gray-500">{plano.descricao}</p>
+                              ) : null}
+                            </div>
+                            <p className="shrink-0 text-[#ff9d2e] font-black text-lg">
+                              {Number(plano.valor || 0).toLocaleString('pt-BR', {
+                                style: 'currency',
+                                currency: 'BRL',
+                              })}
+                            </p>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-2">
+                            <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
+                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Tempo</p>
+                              <p className="mt-1 truncate text-xs font-black text-white">{formatWifiPixDuration(plano.duracao_minutos)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
+                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Download</p>
+                              <p className="mt-1 truncate text-xs font-black text-white">{plano.velocidade_download || '15M'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
+                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Upload</p>
+                              <p className="mt-1 truncate text-xs font-black text-white">{plano.velocidade_upload || '15M'}</p>
+                            </div>
+                          </div>
                         </div>
-                        <p className="text-[#ff9d2e] font-black text-lg">
-                          {Number(plano.valor || 0).toLocaleString('pt-BR', {
-                            style: 'currency',
-                            currency: 'BRL',
-                          })}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    )
+                  })}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
