@@ -167,6 +167,13 @@ export async function createAsaasCustomer(payload) {
   })
 }
 
+export async function updateAsaasCustomer(customerId, payload) {
+  return asaasRequest(`/customers/${customerId}`, {
+    method: 'PUT',
+    body: payload,
+  })
+}
+
 export async function createAsaasPayment(payload) {
   return asaasRequest('/payments', {
     method: 'POST',

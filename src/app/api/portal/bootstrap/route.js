@@ -8,6 +8,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getSaasFinanceContext } from '@/lib/saas-finance'
+import { getWifiPixPlanosForHotspot, publicWifiPixPlano } from '@/lib/wifi-pix'
 
 export const runtime = 'nodejs'
 
@@ -23,6 +24,8 @@ function publicHotspot(hotspot = {}) {
     nome: hotspot.nome,
     slug: hotspot.slug,
     status: hotspot.status,
+    portal_modo_acesso: hotspot.portal_modo_acesso || 'anuncios',
+    wifi_pix_ativo: Boolean(hotspot.wifi_pix_ativo),
     portal_rules: {
       email_obrigatorio: hotspot.portal_email_obrigatorio !== false,
       cpf_visivel: hotspot.portal_cpf_visivel !== false,
@@ -109,7 +112,9 @@ export async function POST(request) {
         portal_cpf_visivel,
         portal_cpf_obrigatorio,
         portal_promocoes_optin_ativo,
-        portal_promocoes_texto
+        portal_promocoes_texto,
+        portal_modo_acesso,
+        wifi_pix_ativo
       `)
       .eq('slug', slug)
       .maybeSingle()
@@ -131,7 +136,9 @@ export async function POST(request) {
           portal_cpf_visivel,
           portal_cpf_obrigatorio,
           portal_promocoes_optin_ativo,
-          portal_promocoes_texto
+          portal_promocoes_texto,
+          portal_modo_acesso,
+          wifi_pix_ativo
         `)
         .eq('nome', slug)
         .maybeSingle()
@@ -186,10 +193,18 @@ export async function POST(request) {
       anuncios = await filtrarAnunciosPorContaAtiva(anunciosData || [])
     }
 
+    const modoAcesso = hotspot.portal_modo_acesso || 'anuncios'
+    const wifiPixPlanos = (
+      hotspot.wifi_pix_ativo || modoAcesso === 'pix' || modoAcesso === 'hibrido'
+    )
+      ? await getWifiPixPlanosForHotspot(hotspot.id)
+      : []
+
     return NextResponse.json({
       ok: true,
       hotspot: publicHotspot(hotspot),
       anuncios: anuncios.map(publicAnuncio),
+      wifiPixPlanos: wifiPixPlanos.map(publicWifiPixPlano),
     })
   } catch (error) {
     return NextResponse.json(

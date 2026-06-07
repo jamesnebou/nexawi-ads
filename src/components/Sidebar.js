@@ -97,6 +97,12 @@ const menu = [
     module: 'hotspots',
   },
   {
+    label: 'Wi-Fi no Pix',
+    path: '/dashboard/wifi-pix',
+    icon: DollarSign,
+    module: 'hotspots',
+  },
+  {
     label: 'Financeiro',
     path: '/dashboard/financeiro',
     icon: DollarSign,

@@ -10,6 +10,7 @@ import {
 } from '@/lib/asaas'
 import { logAdminAction } from '@/lib/admin-audit-log'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { extractWifiPixVendaId, markWifiPixPaymentStatus } from '@/lib/wifi-pix'
 
 export const runtime = 'nodejs'
 
@@ -202,6 +203,34 @@ async function auditAsaasPaymentEvent(request, event, result = {}, payment = {})
   })
 }
 
+async function auditWifiPixPaymentEvent(request, event, result = {}, payment = {}) {
+  await logAdminAction({
+    request,
+    adminUser: {
+      id: null,
+      email: 'asaas-webhook@nexawi.system',
+    },
+    action: result.paid ? 'wifi_pix_payment_paid' : 'wifi_pix_payment_synced',
+    entity: 'wifi_pix_vendas',
+    entityId: result.venda?.id || '',
+    description: result.matched
+      ? `Webhook Asaas ${event}: venda Wi-Fi Pix ${result.venda?.id} sincronizada como ${result.venda?.status}.`
+      : `Webhook Asaas ${event}: venda Wi-Fi Pix nao encontrada.`,
+    metadata: {
+      provider: 'asaas',
+      event,
+      matched: Boolean(result.matched),
+      reason: result.reason || '',
+      venda_id: result.venda?.id || null,
+      status: result.venda?.status || null,
+      paid: Boolean(result.paid),
+      cancelled: Boolean(result.cancelled),
+      asaas_payment_id: payment.id || null,
+      external_reference: payment.externalReference || null,
+    },
+  })
+}
+
 export async function POST(request) {
   const rate = checkRateLimit(request, WEBHOOK_RATE_LIMIT)
 
@@ -243,6 +272,26 @@ export async function POST(request) {
 
     if (isAsaasPaymentEvent(event)) {
       const payment = body.payment || {}
+      const wifiPixVendaId = extractWifiPixVendaId(payment.externalReference)
+
+      if (wifiPixVendaId) {
+        const result = await markWifiPixPaymentStatus(payment)
+        await auditWifiPixPaymentEvent(request, event, result, payment)
+        return NextResponse.json({
+          ok: true,
+          event,
+          wifiPix: true,
+          ...result,
+          venda: result.venda
+            ? {
+                id: result.venda.id,
+                status: result.venda.status,
+                expira_em: result.venda.expira_em || null,
+              }
+            : null,
+        })
+      }
+
       const result = await syncPayment(payment)
       await auditAsaasPaymentEvent(request, event, result, payment)
       return NextResponse.json({ ok: true, event, ...result })

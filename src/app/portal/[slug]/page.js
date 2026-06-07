@@ -15,6 +15,8 @@ import {
   Clock,
   X,
   Shield,
+  CreditCard,
+  QrCode,
 } from 'lucide-react'
 import { controlApiFetch } from '@/lib/control-api-client'
 
@@ -22,6 +24,7 @@ import { controlApiFetch } from '@/lib/control-api-client'
 const ETAPAS = {
   LOADING: 'loading',
   TELEFONE_RAPIDO: 'telefone_rapido',
+  WIFI_PIX: 'wifi_pix',
   CADASTRO: 'cadastro',
   ANUNCIO: 'anuncio',
   CTA: 'cta',
@@ -235,6 +238,15 @@ export default function Portal() {
   const [salvandoTelefoneRapido, setSalvandoTelefoneRapido] = useState(false)
   const [videoAnuncioPronto, setVideoAnuncioPronto] = useState(false)
   const [erroVideoAnuncio, setErroVideoAnuncio] = useState('')
+  const [wifiPixPlanos, setWifiPixPlanos] = useState([])
+  const [wifiPixPlanoId, setWifiPixPlanoId] = useState('')
+  const [wifiPixMetodo, setWifiPixMetodo] = useState('PIX')
+  const [wifiPixNome, setWifiPixNome] = useState('')
+  const [wifiPixTelefone, setWifiPixTelefone] = useState('')
+  const [wifiPixCpfCnpj, setWifiPixCpfCnpj] = useState('')
+  const [wifiPixCheckout, setWifiPixCheckout] = useState(null)
+  const [wifiPixMensagem, setWifiPixMensagem] = useState('')
+  const [wifiPixProcessando, setWifiPixProcessando] = useState(false)
 
   
   const [form, setForm] = useState({
@@ -316,8 +328,13 @@ export default function Portal() {
     }
 
     setHotspot(data.hotspot || null)
+    setWifiPixPlanos(Array.isArray(data.wifiPixPlanos) ? data.wifiPixPlanos : [])
+    setWifiPixPlanoId(data.wifiPixPlanos?.[0]?.id || '')
     hotspotIdRef.current = data.hotspot?.id || ''
-    return data.hotspot
+    return {
+      ...data.hotspot,
+      wifiPixPlanos: Array.isArray(data.wifiPixPlanos) ? data.wifiPixPlanos : [],
+    }
   } catch (error) {
     falhar('Erro ao carregar hotspot', error)
     return null
@@ -877,6 +894,14 @@ leadIdRef.current = data.leadId
       return
     }
 
+    const modoAcesso = hotspotData.portal_modo_acesso || 'anuncios'
+    const planosPix = Array.isArray(hotspotData.wifiPixPlanos) ? hotspotData.wifiPixPlanos : []
+
+    if (modoAcesso === 'pix' && planosPix.length > 0) {
+      setEtapa(ETAPAS.WIFI_PIX)
+      return
+    }
+
     const leadDoMes = await withTimeout(
       buscarLeadRapidoDoMes(hotspotData.id, resolvedMac),
       3500,
@@ -950,6 +975,75 @@ leadIdRef.current = data.leadId
   const progressoAnuncio = anuncioAtual
     ? Math.max(0, Math.min(100, ((duracaoAnuncio - contador) / duracaoAnuncio) * 100))
     : 0
+  const wifiPixPlanoSelecionado = wifiPixPlanos.find((plano) => plano.id === wifiPixPlanoId) || wifiPixPlanos[0]
+
+  async function gerarCheckoutWifiPix(event) {
+    event.preventDefault()
+
+    if (!wifiPixPlanoSelecionado?.id) {
+      setWifiPixMensagem('Escolha um plano para continuar.')
+      return
+    }
+
+    setWifiPixProcessando(true)
+    setWifiPixMensagem('')
+
+    try {
+      const data = await portalApiFetch('/api/portal/pix/checkout', {
+        hotspotId: hotspot?.id,
+        planoId: wifiPixPlanoSelecionado.id,
+        telefone: wifiPixTelefone,
+        nome: wifiPixNome,
+        cpfCnpj: wifiPixCpfCnpj,
+        macAddress: getClientMac(),
+        ipAddress: getClientIp(),
+        metodoPagamento: wifiPixMetodo,
+      })
+
+      setWifiPixCheckout(data.checkout)
+      setWifiPixMensagem(
+        wifiPixMetodo === 'CREDIT_CARD'
+          ? 'Pagamento criado. Abra o link seguro para pagar com cartão.'
+          : 'Pix criado. Abra o link seguro ou copie o código Pix.'
+      )
+    } catch (error) {
+      setWifiPixMensagem(error.message || 'Não foi possível gerar o pagamento.')
+    } finally {
+      setWifiPixProcessando(false)
+    }
+  }
+
+  async function verificarPagamentoWifiPix() {
+    if (!wifiPixCheckout?.vendaId) return
+
+    setWifiPixProcessando(true)
+    setWifiPixMensagem('Verificando pagamento...')
+
+    try {
+      const status = await portalApiFetch('/api/portal/pix/status', {
+        vendaId: wifiPixCheckout.vendaId,
+      })
+
+      if (!['pago', 'autorizado'].includes(status.venda?.status)) {
+        setWifiPixMensagem('Pagamento ainda não confirmado. Aguarde alguns segundos e toque novamente.')
+        return
+      }
+
+      await portalApiFetch('/api/portal/pix/authorize', {
+        vendaId: wifiPixCheckout.vendaId,
+        hotspotSlug: hotspot?.slug || slug,
+        macAddress: getClientMac(),
+        ipAddress: getClientIp(),
+      })
+
+      setWifiPixMensagem('Pagamento confirmado. Internet liberada.')
+      setEtapa(ETAPAS.ACESSO)
+    } catch (error) {
+      setWifiPixMensagem(error.message || 'Não foi possível liberar o acesso.')
+    } finally {
+      setWifiPixProcessando(false)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30 flex items-center justify-center p-4 relative overflow-hidden">
@@ -1005,6 +1099,183 @@ leadIdRef.current = data.leadId
               </p>
             </div>
           ) : null}
+        </div>
+      )}
+
+      {etapa === ETAPAS.WIFI_PIX && (
+        <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+          <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#ff7a00]/20 blur-[90px] pointer-events-none" />
+          <div className="relative overflow-hidden bg-[#080604]/95 backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-[#ff7a00]/25 shadow-[0_24px_80px_rgba(255,122,0,0.16)]">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#ff7a00] to-transparent" />
+            <div className="flex justify-center mb-7">
+              <img
+                src="/Nexa-logo.png"
+                alt="NexaWi"
+                className="h-12 object-contain"
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+            </div>
+
+            <div className="text-center mb-7">
+              <p className="inline-flex items-center justify-center rounded-full border border-[#ff7a00]/35 bg-[#ff7a00]/12 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-[#ff9d2e] font-black mb-4 shadow-[0_0_24px_rgba(255,122,0,0.14)]">
+                Acesso premium instantaneo
+              </p>
+              <h1 className="text-4xl font-black text-white mb-3 tracking-tight leading-none">Internet no Pix</h1>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Pague com Pix ou cartão e libere a internet neste aparelho sem esperar atendimento.
+              </p>
+            </div>
+
+            {!wifiPixCheckout ? (
+              <form onSubmit={gerarCheckoutWifiPix} className="space-y-4">
+                <div className="grid gap-3">
+                  {wifiPixPlanos.map((plano) => (
+                    <button
+                      key={plano.id}
+                      type="button"
+                      onClick={() => setWifiPixPlanoId(plano.id)}
+                      className={`text-left rounded-2xl border px-4 py-4 transition-all ${
+                        (wifiPixPlanoSelecionado?.id || wifiPixPlanoId) === plano.id
+                          ? 'border-[#ff7a00]/70 bg-[#ff7a00]/12 shadow-[0_0_30px_rgba(255,122,0,0.10)]'
+                          : 'border-white/[0.06] bg-[#0a0a0a]'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <p className="font-bold text-white">{plano.nome}</p>
+                          {plano.descricao ? (
+                            <p className="text-xs text-gray-500 mt-1">{plano.descricao}</p>
+                          ) : null}
+                          <p className="text-xs text-gray-500 mt-2">
+                            {plano.duracao_minutos} minutos de acesso
+                          </p>
+                        </div>
+                        <p className="text-[#ff9d2e] font-black text-lg">
+                          {Number(plano.valor || 0).toLocaleString('pt-BR', {
+                            style: 'currency',
+                            currency: 'BRL',
+                          })}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWifiPixMetodo('PIX')}
+                    className={`rounded-2xl border px-4 py-3 flex items-center justify-center gap-2 font-bold text-sm ${
+                      wifiPixMetodo === 'PIX'
+                        ? 'border-[#ff7a00]/70 bg-[#ff7a00] text-black shadow-[0_0_24px_rgba(255,122,0,0.22)]'
+                        : 'border-white/[0.06] bg-[#0a0a0a] text-gray-300'
+                    }`}
+                  >
+                    <QrCode size={17} /> Pix
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWifiPixMetodo('CREDIT_CARD')}
+                    className={`rounded-2xl border px-4 py-3 flex items-center justify-center gap-2 font-bold text-sm ${
+                      wifiPixMetodo === 'CREDIT_CARD'
+                        ? 'border-[#ff7a00]/70 bg-[#ff7a00] text-black shadow-[0_0_24px_rgba(255,122,0,0.22)]'
+                        : 'border-white/[0.06] bg-[#0a0a0a] text-gray-300'
+                    }`}
+                  >
+                    <CreditCard size={17} /> Cartão
+                  </button>
+                </div>
+
+                <input
+                  type="text"
+                  value={wifiPixNome}
+                  onChange={(e) => setWifiPixNome(e.target.value)}
+                  className="w-full px-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.06] focus:border-[#ff7a00]/45 focus:ring-1 focus:ring-[#ff7a00]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                  placeholder="Nome"
+                />
+                <input
+                  type="tel"
+                  value={wifiPixTelefone}
+                  onChange={(e) => setWifiPixTelefone(e.target.value)}
+                  className="w-full px-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.06] focus:border-[#ff7a00]/45 focus:ring-1 focus:ring-[#ff7a00]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                  placeholder="WhatsApp com DDD"
+                />
+                <input
+                  type="text"
+                  value={wifiPixCpfCnpj}
+                  onChange={(e) => setWifiPixCpfCnpj(e.target.value)}
+                  className="w-full px-5 py-4 rounded-2xl bg-[#0a0a0a] text-white border border-white/[0.06] focus:border-[#ff7a00]/45 focus:ring-1 focus:ring-[#ff7a00]/30 transition-all duration-300 outline-none placeholder-gray-600 text-sm font-medium"
+                  placeholder="CPF ou CNPJ do pagador"
+                />
+
+                <button
+                  type="submit"
+                  disabled={wifiPixProcessando || !wifiPixPlanos.length}
+                  className="w-full mt-2 bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-black py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_28px_rgba(255,122,0,0.28)]"
+                >
+                  {wifiPixProcessando ? <Loader2 size={20} className="animate-spin" /> : <>Gerar pagamento <ArrowRight size={18} /></>}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-4">
+                <div className="rounded-2xl border border-[#ff7a00]/25 bg-[#ff7a00]/10 px-4 py-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-[#ff9d2e] font-bold mb-2">
+                    Pagamento gerado
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    Abra o link seguro, conclua o pagamento e volte para liberar o Wi-Fi.
+                  </p>
+                </div>
+
+                {wifiPixCheckout.invoiceUrl ? (
+                  <a
+                    href={wifiPixCheckout.invoiceUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-black py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(255,122,0,0.25)]"
+                  >
+                    Abrir pagamento seguro <ArrowRight size={18} />
+                  </a>
+                ) : null}
+
+                {wifiPixCheckout.pixCopyPaste ? (
+                  <button
+                    type="button"
+                    onClick={() => navigator.clipboard?.writeText(wifiPixCheckout.pixCopyPaste)}
+                    className="w-full border border-white/[0.08] bg-[#0a0a0a] text-gray-200 font-bold py-4 rounded-2xl transition-all duration-300"
+                  >
+                    Copiar código Pix
+                  </button>
+                ) : null}
+
+                <button
+                  type="button"
+                  onClick={verificarPagamentoWifiPix}
+                  disabled={wifiPixProcessando}
+                  className="w-full border border-[#ff7a00]/35 bg-[#ff7a00]/10 text-[#ff9d2e] font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {wifiPixProcessando ? <Loader2 size={20} className="animate-spin" /> : <>Já paguei, liberar Wi-Fi <CheckCircle2 size={18} /></>}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setWifiPixCheckout(null)
+                    setWifiPixMensagem('')
+                  }}
+                  className="w-full text-gray-500 text-sm font-bold py-2"
+                >
+                  Escolher outro plano
+                </button>
+              </div>
+            )}
+
+            {wifiPixMensagem ? (
+              <p className="mt-5 text-center text-sm text-gray-400 leading-relaxed">
+                {wifiPixMensagem}
+              </p>
+            ) : null}
+          </div>
         </div>
       )}
 
