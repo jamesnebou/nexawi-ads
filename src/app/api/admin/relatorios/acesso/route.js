@@ -113,6 +113,27 @@ function contarEventosComHotspotReal(rows = []) {
   return rows.filter((row) => Boolean(row.hotspot_id)).length
 }
 
+function isMissingLandingTableError(error, tableName) {
+  const message = error?.message || ''
+  return error?.code === 'PGRST205' || message.includes(tableName)
+}
+
+function resumirCliquesPorDestino(rows = []) {
+  const totals = new Map()
+
+  rows.forEach((row) => {
+    const metadata = row?.metadata || {}
+    const label = String(row?.target_label || metadata.target_label || 'Clique').trim() || 'Clique'
+    const url = String(row?.target_url || metadata.target_url || '').trim()
+    const key = `${label}::${url}`
+    const current = totals.get(key) || { label, url, total: 0 }
+    current.total += 1
+    totals.set(key, current)
+  })
+
+  return [...totals.values()].sort((a, b) => b.total - a.total)
+}
+
 async function buscarMetricasLandingNativa({ periodo }) {
   const dataInicio = getDataInicio(periodo)
 
@@ -134,6 +155,14 @@ async function buscarMetricasLandingNativa({ periodo }) {
       leadsQuery = leadsQuery.gte('created_at', dataInicio)
     }
 
+    let clicksQuery = supabaseAdmin
+      .from('landing_native_clicks')
+      .select('id, ip_address, target_label, target_url, source_type, metadata, created_at')
+
+    if (dataInicio) {
+      clicksQuery = clicksQuery.gte('created_at', dataInicio)
+    }
+
     const [
       { data: viewsData, error: viewsError },
       { data: leadsData, error: leadsError },
@@ -142,17 +171,28 @@ async function buscarMetricasLandingNativa({ periodo }) {
     if (viewsError) throw viewsError
     if (leadsError) throw leadsError
 
+    const { data: clicksData, error: clicksError } = await clicksQuery
+    const cliquesPendenteInstrumentacao = Boolean(
+      clicksError && isMissingLandingTableError(clicksError, 'landing_native_clicks')
+    )
+
+    if (clicksError && !cliquesPendenteInstrumentacao) throw clicksError
+
+    const cliques = cliquesPendenteInstrumentacao ? [] : clicksData || []
+
     return {
       totalViews: viewsData?.length || 0,
       visitantesUnicos: uniqueCount(viewsData || []),
       leads: leadsData?.length || 0,
-      cliques: 0,
-      cliquesPendenteInstrumentacao: true,
+      cliques: cliques.length,
+      cliquesPendenteInstrumentacao,
       origemVisitas: summarizeSourceBreakdown(viewsData || []),
       origemLeads: summarizeSourceBreakdown(leadsData || []),
+      origemCliques: summarizeSourceBreakdown(cliques),
+      cliquesPorDestino: resumirCliquesPorDestino(cliques),
     }
   } catch (error) {
-    if (error?.code === 'PGRST205' || /landing_native_views/i.test(error?.message || '')) {
+    if (isMissingLandingTableError(error, 'landing_native_views')) {
       return {
         totalViews: 0,
         visitantesUnicos: 0,
@@ -161,6 +201,8 @@ async function buscarMetricasLandingNativa({ periodo }) {
         cliquesPendenteInstrumentacao: true,
         origemVisitas: [],
         origemLeads: [],
+        origemCliques: [],
+        cliquesPorDestino: [],
         pendenteMigracao: true,
       }
     }

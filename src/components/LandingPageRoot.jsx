@@ -19,6 +19,32 @@ function resolveSlugFromPathname(pathname = '/') {
   return ''
 }
 
+function buildClickLabel(element) {
+  return (
+    element.getAttribute('aria-label') ||
+    element.getAttribute('title') ||
+    element.innerText ||
+    element.textContent ||
+    element.getAttribute('href') ||
+    'Clique'
+  )
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 180)
+}
+
+function resolveClickTarget(element) {
+  const href = element.getAttribute('href')
+
+  if (!href) return ''
+
+  try {
+    return new URL(href, window.location.href).toString()
+  } catch {
+    return href
+  }
+}
+
 // Componente Modal
 const Modal = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
@@ -232,6 +258,59 @@ useEffect(() => {
 
   return () => {
     ativo = false
+  }
+}, [currentSlug])
+
+useEffect(() => {
+  function registrarCliqueLandingNativa(event) {
+    const target = event.target?.closest?.('a, button')
+
+    if (!target) return
+
+    try {
+      const params = new URLSearchParams(window.location.search)
+      const payload = {
+        pageSlug: currentSlug || 'home',
+        pageUrl: window.location.href,
+        referer: document.referrer || '',
+        targetLabel: buildClickLabel(target),
+        targetUrl: resolveClickTarget(target),
+        elementTag: target.tagName?.toLowerCase?.() || '',
+        utm: {
+          source: params.get('utm_source') || '',
+          medium: params.get('utm_medium') || '',
+          campaign: params.get('utm_campaign') || '',
+          content: params.get('utm_content') || '',
+          term: params.get('utm_term') || '',
+        },
+      }
+
+      const body = JSON.stringify(payload)
+
+      if (navigator.sendBeacon) {
+        const blob = new Blob([body], { type: 'application/json' })
+        navigator.sendBeacon('/api/public/landing-click', blob)
+        return
+      }
+
+      fetch('/api/public/landing-click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        keepalive: true,
+        body,
+      }).catch((error) => {
+        console.error('Erro ao registrar clique da landing nativa:', error)
+      })
+    } catch (error) {
+      console.error('Erro ao preparar clique da landing nativa:', error)
+    }
+  }
+
+  document.addEventListener('click', registrarCliqueLandingNativa, true)
+
+  return () => {
+    document.removeEventListener('click', registrarCliqueLandingNativa, true)
   }
 }, [currentSlug])
 

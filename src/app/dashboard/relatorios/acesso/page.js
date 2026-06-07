@@ -100,6 +100,8 @@ export default function RelatorioAcesso() {
       cliquesPendenteInstrumentacao: true,
       origemVisitas: [],
       origemLeads: [],
+      origemCliques: [],
+      cliquesPorDestino: [],
     },
   })
   const [periodo, setPeriodo] = useState('ultimos_30')
@@ -136,6 +138,8 @@ export default function RelatorioAcesso() {
           cliquesPendenteInstrumentacao: true,
           origemVisitas: [],
           origemLeads: [],
+          origemCliques: [],
+          cliquesPorDestino: [],
         },
       })
       setPermissions({
@@ -372,7 +376,7 @@ export default function RelatorioAcesso() {
           ))}
         </div>
 
-        <div className="grid gap-5 lg:grid-cols-3 mb-10">
+        <div className="grid gap-5 lg:grid-cols-4 mb-5">
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
             <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase mb-4">
               LP nativa
@@ -388,7 +392,7 @@ export default function RelatorioAcesso() {
             </div>
             {resumo.landingNativa?.cliquesPendenteInstrumentacao ? (
               <p className="text-[11px] text-neutral-600 mt-4 leading-relaxed">
-                Cliques da LP nativa ainda dependem de instrumentacao dos botoes da landing.
+                Aguardando a migration de cliques da LP nativa ser aplicada no Supabase.
               </p>
             ) : null}
           </div>
@@ -402,7 +406,17 @@ export default function RelatorioAcesso() {
             title="Origem dos leads"
             items={resumo.landingNativa?.origemLeads || []}
           />
+
+          <SourceBreakdown
+            title="Origem dos cliques"
+            items={resumo.landingNativa?.origemCliques || []}
+          />
         </div>
+
+        <ClickTargetBreakdown
+          items={resumo.landingNativa?.cliquesPorDestino || []}
+          pending={resumo.landingNativa?.cliquesPendenteInstrumentacao}
+        />
 
         {carregando ? (
           <div className="flex items-center justify-center py-32">
@@ -553,6 +567,51 @@ function SourceBreakdown({ title, items = [] }) {
         </div>
       ) : (
         <p className="text-sm text-neutral-500">Sem origem registrada ainda.</p>
+      )}
+    </div>
+  )
+}
+
+function ClickTargetBreakdown({ items = [], pending = false }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 mb-10">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
+          Destinos mais clicados da LP nativa
+        </p>
+        <p className="text-[11px] text-neutral-600 font-bold uppercase tracking-widest">
+          {pending ? 'Pendente' : `${items.length} destino(s)`}
+        </p>
+      </div>
+
+      {pending ? (
+        <p className="text-sm text-neutral-500">
+          Os destinos clicados aparecerao aqui depois que a migration de cliques for aplicada.
+        </p>
+      ) : items.length ? (
+        <div className="grid gap-3">
+          {items.slice(0, 8).map((item, index) => (
+            <div
+              key={`${item.label}-${item.url}-${index}`}
+              className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-white truncate">{item.label || 'Clique'}</p>
+                {item.url ? (
+                  <p className="text-xs text-neutral-600 truncate mt-1">{item.url}</p>
+                ) : (
+                  <p className="text-xs text-neutral-700 mt-1">Botao sem URL direta</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[#8cf059] font-black text-sm">
+                <MousePointerClick size={15} />
+                {item.total || 0}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-neutral-500">Nenhum clique registrado ainda.</p>
       )}
     </div>
   )
