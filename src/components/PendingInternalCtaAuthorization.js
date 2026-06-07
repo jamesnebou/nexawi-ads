@@ -24,6 +24,8 @@ function lerPayloadPendente() {
       anuncioId: params.get('anuncioId') || '',
       adSessionId: params.get('adSessionId') || '',
       delaySeconds: params.get('delaySeconds') || '10',
+      authorizationReason: params.get('authorizationReason') || '',
+      sessionSecondsOverride: params.get('sessionSecondsOverride') || '',
       expiresAt: Date.now() + 5 * 60 * 1000,
     }
   }
@@ -99,6 +101,12 @@ export default function PendingInternalCtaAuthorization() {
             clientMac: payload.clientMac,
             clientIp: payload.clientIp || '',
             adSessionId: payload.adSessionId || '',
+            ...(payload.authorizationReason
+              ? {
+                  authorizationReason: payload.authorizationReason,
+                  sessionSecondsOverride: payload.sessionSecondsOverride || '',
+                }
+              : {}),
           }),
         })
 

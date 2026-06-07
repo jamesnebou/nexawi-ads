@@ -11,6 +11,7 @@ import {
   Wifi,
   Loader2,
   ArrowRight,
+  ArrowLeft,
   CheckCircle2,
   Clock,
   X,
@@ -24,6 +25,7 @@ import { controlApiFetch } from '@/lib/control-api-client'
 const ETAPAS = {
   LOADING: 'loading',
   TELEFONE_RAPIDO: 'telefone_rapido',
+  WIFI_HIBRIDO: 'wifi_hibrido',
   WIFI_PIX: 'wifi_pix',
   CADASTRO: 'cadastro',
   ANUNCIO: 'anuncio',
@@ -266,6 +268,7 @@ export default function Portal() {
   const sessaoAutorizadaRef = useRef(false)
   const autorizacaoPromiseRef = useRef(null)
   const videoAnuncioRef = useRef(null)
+  const acessoHibridoGratisRef = useRef(false)
 
   useEffect(() => {
     leadIdRef.current = leadId
@@ -426,6 +429,12 @@ export default function Portal() {
         clientMac: resolvedMac,
         clientIp: resolvedIp,
         adSessionId: adSessionIdRef.current || null,
+        ...(acessoHibridoGratisRef.current
+          ? {
+              authorizationReason: 'hybrid_ad_30m',
+              sessionSecondsOverride: 30 * 60,
+            }
+          : {}),
       }),
     })
 
@@ -779,6 +788,12 @@ leadIdRef.current = data.leadId
       adSessionId: adSessionIdRef.current || adSessionId || '',
       delaySeconds: String(delaySeconds),
       expiresAt: Date.now() + 5 * 60 * 1000,
+      ...(acessoHibridoGratisRef.current
+        ? {
+            authorizationReason: 'hybrid_ad_30m',
+            sessionSecondsOverride: String(30 * 60),
+          }
+        : {}),
     }
 
     try {
@@ -797,6 +812,10 @@ leadIdRef.current = data.leadId
         url.searchParams.set('anuncioId', payload.anuncioId)
         url.searchParams.set('adSessionId', payload.adSessionId)
         url.searchParams.set('delaySeconds', payload.delaySeconds)
+        if (payload.authorizationReason) {
+          url.searchParams.set('authorizationReason', payload.authorizationReason)
+          url.searchParams.set('sessionSecondsOverride', payload.sessionSecondsOverride)
+        }
         return url.toString()
       }
     } catch {}
@@ -899,6 +918,11 @@ leadIdRef.current = data.leadId
 
     if (modoAcesso === 'pix' && planosPix.length > 0) {
       setEtapa(ETAPAS.WIFI_PIX)
+      return
+    }
+
+    if (modoAcesso === 'hibrido' && planosPix.length > 0) {
+      setEtapa(ETAPAS.WIFI_HIBRIDO)
       return
     }
 
@@ -1046,6 +1070,35 @@ leadIdRef.current = data.leadId
     }
   }
 
+  async function continuarComAnunciosNoModoHibrido() {
+    setSalvando(true)
+    setErroDetalhe('')
+    acessoHibridoGratisRef.current = true
+
+    try {
+      const resolvedMac = getClientMac()
+      const leadDoMes = await withTimeout(
+        buscarLeadRapidoDoMes(hotspot?.id || hotspotIdRef.current, resolvedMac),
+        3500,
+        null
+      )
+
+      if (leadDoMes) {
+        setLeadRapido(leadDoMes)
+        setLeadId(leadDoMes.id)
+        leadIdRef.current = leadDoMes.id
+        setEtapa(ETAPAS.TELEFONE_RAPIDO)
+        return
+      }
+
+      setEtapa(ETAPAS.CADASTRO)
+    } catch (error) {
+      falhar('Erro ao iniciar acesso patrocinado', error)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
   return (
     <div className={`min-h-screen bg-[#050505] text-white font-sans ${etapaWifiPixAtiva ? 'selection:bg-[#ff7a00]/30' : 'selection:bg-[#6be12f]/30'} flex items-center justify-center p-4 relative overflow-hidden`}>
       <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] ${etapaWifiPixAtiva ? 'bg-[#ff7a00]/8' : 'bg-[#6be12f]/5'} rounded-full blur-[150px] pointer-events-none`}></div>
@@ -1103,11 +1156,99 @@ leadIdRef.current = data.leadId
         </div>
       )}
 
+      {etapa === ETAPAS.WIFI_HIBRIDO && (
+        <div className="relative z-10 w-full max-w-md animate-fade-in-up">
+          <div className="relative overflow-hidden bg-white/[0.02] backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-white/[0.06] shadow-[0_20px_40px_rgba(0,0,0,0.4)]">
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-[#6be12f] via-[#ff7a00] to-[#6be12f]" />
+
+            <div className="flex justify-center mb-7">
+              <img
+                src="/Nexa-logo.png"
+                alt="NexaWi"
+                className="h-12 object-contain"
+                onError={(e) => { e.target.style.display = 'none' }}
+              />
+            </div>
+
+            <div className="text-center mb-8">
+              <p className="inline-flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-gray-300 font-black mb-4">
+                Escolha como continuar
+              </p>
+              <h1 className="text-3xl font-black text-white mb-3 tracking-tight leading-tight">
+                Wi-Fi gratuito ou acesso premium
+              </h1>
+              <p className="text-gray-500 text-sm leading-relaxed">
+                Escolha assistir ao anuncio patrocinado ou comprar um plano premium direto no Pix.
+              </p>
+            </div>
+
+            <div className="grid gap-4">
+              <button
+                type="button"
+                onClick={continuarComAnunciosNoModoHibrido}
+                disabled={salvando}
+                className="group relative overflow-hidden rounded-3xl border border-[#6be12f]/25 bg-[#6be12f]/10 px-5 py-5 text-left transition-all hover:border-[#6be12f]/55 hover:bg-[#6be12f]/15 disabled:opacity-70"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#6be12f] text-black shadow-[0_0_24px_rgba(107,225,47,0.22)]">
+                    <Wifi size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black text-white">Veja o anúncio e ganhe 30 minutos grátis</p>
+                    <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                      Depois desse tempo, a internet deste aparelho sera encerrada automaticamente.
+                    </p>
+                  </div>
+                  <ArrowRight className="ml-auto mt-3 text-[#6be12f] transition-transform group-hover:translate-x-1" size={20} />
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  acessoHibridoGratisRef.current = false
+                  setEtapa(ETAPAS.WIFI_PIX)
+                }}
+                className="group wifi-pix-glass-shine relative overflow-hidden rounded-3xl border border-[#ff7a00]/35 bg-[#ff7a00]/12 px-5 py-5 text-left transition-all hover:border-[#ff7a00]/70 hover:bg-[#ff7a00]/16"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#ff7a00] text-black shadow-[0_0_24px_rgba(255,122,0,0.24)]">
+                    <QrCode size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-lg font-black text-white">Comprar acesso premium</p>
+                    <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                      Escolha um plano, pague no Pix ou cartao e libere este aparelho.
+                    </p>
+                  </div>
+                  <ArrowRight className="ml-auto mt-3 text-[#ff9d2e] transition-transform group-hover:translate-x-1" size={20} />
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {etapa === ETAPAS.WIFI_PIX && (
         <div className="relative z-10 w-full max-w-md animate-fade-in-up">
           <div className="absolute -top-24 left-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-[#ff7a00]/20 blur-[90px] pointer-events-none" />
           <div className="relative overflow-hidden bg-[#080604]/95 backdrop-blur-3xl rounded-[2.5rem] p-8 sm:p-10 border border-[#ff7a00]/25 shadow-[0_24px_80px_rgba(255,122,0,0.16)]">
             <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-transparent via-[#ff7a00] to-transparent" />
+            {(hotspot?.portal_modo_acesso || '') === 'hibrido' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setWifiPixCheckout(null)
+                  setWifiPixMensagem('')
+                  setWifiPixProcessando(false)
+                  setEtapa(ETAPAS.WIFI_HIBRIDO)
+                }}
+                aria-label="Voltar para escolha"
+                className="absolute left-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-[#ff7a00]/25 bg-black/30 text-[#ff9d2e] transition-all hover:border-[#ff7a00]/60 hover:bg-[#ff7a00]/10"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            ) : null}
             <div className="flex justify-center mb-7">
               <img
                 src="/NexaWI-laranja.png"

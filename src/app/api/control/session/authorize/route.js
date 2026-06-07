@@ -108,6 +108,8 @@ export async function POST(request) {
     const clientMac = normalizeMac(body.clientMac || '')
     const clientIp = String(body.clientIp || '').trim()
     const adSessionId = clean(body.adSessionId || body.ad_session_id)
+    const authorizationReason = clean(body.authorizationReason || body.authorization_reason)
+    const sessionSecondsOverride = authorizationReason === 'hybrid_ad_30m' ? 30 * 60 : null
 
     if (!hotspotSlug) {
       return NextResponse.json({ ok: false, error: 'hotspotSlug é obrigatório' }, { status: 400 })
@@ -158,6 +160,7 @@ export async function POST(request) {
         clientMac,
         clientIp,
         reason: 'session_already_authorized_reensure_routeros',
+        authorizationReason: authorizationReason || null,
       },
     })
 
@@ -183,7 +186,8 @@ export async function POST(request) {
 
     const authorizedSession = await markSessionAuthorized(
       latestSession.id,
-      binding?.['.id'] || null
+      binding?.['.id'] || null,
+      { sessionSecondsOverride }
     )
 
     await logRouterAction({
@@ -270,6 +274,7 @@ export async function POST(request) {
           leadId: lead.id,
           clientMac,
           clientIp,
+          authorizationReason: authorizationReason || null,
         },
       })
 
@@ -294,7 +299,8 @@ export async function POST(request) {
 
       const authorizedSession = await markSessionAuthorized(
         pendingSession.id,
-        binding?.['.id'] || null
+        binding?.['.id'] || null,
+        { sessionSecondsOverride }
       )
 
       await logRouterAction({

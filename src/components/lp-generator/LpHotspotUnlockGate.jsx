@@ -66,6 +66,8 @@ export default function LpHotspotUnlockGate() {
       anuncioId: getParam(params, 'anuncioId') || stored?.anuncioId || '',
       adSessionId: getParam(params, 'adSessionId') || stored?.adSessionId || '',
       delaySeconds: parseDelaySeconds(getParam(params, 'delaySeconds') || stored?.delaySeconds || 30),
+      authorizationReason: getParam(params, 'authorizationReason') || stored?.authorizationReason || '',
+      sessionSecondsOverride: getParam(params, 'sessionSecondsOverride') || stored?.sessionSecondsOverride || '',
     }
   }, [])
 
@@ -99,6 +101,12 @@ export default function LpHotspotUnlockGate() {
             clientMac: payload.clientMac,
             clientIp: payload.clientIp || '',
             adSessionId: payload.adSessionId || '',
+            ...(payload.authorizationReason
+              ? {
+                  authorizationReason: payload.authorizationReason,
+                  sessionSecondsOverride: payload.sessionSecondsOverride || '',
+                }
+              : {}),
           }),
         })
 

@@ -119,10 +119,15 @@ export async function createPendingSession({ hotspotId, hotspotSlug, leadId, cli
   return data
 }
 
-export async function markSessionAuthorized(sessionId, routerBindingId = null) {
+export async function markSessionAuthorized(sessionId, routerBindingId = null, options = {}) {
   const runtimeConfig = await getPortalRuntimeConfig()
+  const overrideSeconds = Number(options.sessionSecondsOverride)
+  const sessionSeconds =
+    Number.isFinite(overrideSeconds) && overrideSeconds >= 60 && overrideSeconds <= 24 * 60 * 60
+      ? Math.floor(overrideSeconds)
+      : runtimeConfig.sessionSeconds
   const now = new Date()
-  const expiresAt = addSeconds(now, runtimeConfig.sessionSeconds).toISOString()
+  const expiresAt = addSeconds(now, sessionSeconds).toISOString()
 
   const { data, error } = await supabaseAdmin
     .from('auth_sessions')
