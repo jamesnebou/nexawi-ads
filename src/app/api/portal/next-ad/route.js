@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { getSaasFinanceContext } from '@/lib/saas-finance'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+const RATE_LIMIT = {
+  keyPrefix: 'portal:next-ad',
+  limit: 60,
+  windowMs: 60_000,
+}
 
 const TIPOS_DESTINO_VALIDOS = ['externo', 'lp_interna', 'site_nexawi']
 
@@ -77,6 +84,12 @@ function escolherProximo({ anuncios = [], historico = [] }) {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json({ ok: false, error: 'Muitas tentativas. Aguarde um instante.' }, { status: 429 })
+  }
+
   try {
     const body = await request.json().catch(() => ({}))
     const hotspotId = clean(body.hotspotId || body.hotspot_id)

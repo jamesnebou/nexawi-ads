@@ -10,8 +10,15 @@
 
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+const RATE_LIMIT = {
+  keyPrefix: 'portal:view',
+  limit: 120,
+  windowMs: 60_000,
+}
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -48,6 +55,12 @@ async function validarVinculoAnuncioHotspot({ anuncioId, hotspotId }) {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json({ ok: true, rateLimited: true })
+  }
+
   try {
     const body = await request.json().catch(() => ({}))
 

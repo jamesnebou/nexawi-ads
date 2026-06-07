@@ -96,6 +96,10 @@ export default function RelatorioAcesso() {
       totalViews: 0,
       visitantesUnicos: 0,
       leads: 0,
+      cliques: 0,
+      cliquesPendenteInstrumentacao: true,
+      origemVisitas: [],
+      origemLeads: [],
     },
   })
   const [periodo, setPeriodo] = useState('ultimos_30')
@@ -128,6 +132,10 @@ export default function RelatorioAcesso() {
           totalViews: 0,
           visitantesUnicos: 0,
           leads: 0,
+          cliques: 0,
+          cliquesPendenteInstrumentacao: true,
+          origemVisitas: [],
+          origemLeads: [],
         },
       })
       setPermissions({
@@ -210,7 +218,7 @@ export default function RelatorioAcesso() {
     {
       label: 'LP nativa',
       valor: resumo.landingNativa?.visitantesUnicos || 0,
-      sub: `${resumo.landingNativa?.totalViews || 0} visita(s) em www.nexawi.com.br`,
+      sub: `${resumo.landingNativa?.totalViews || 0} visita(s), ${resumo.landingNativa?.leads || 0} lead(s)`,
       icon: Globe2,
       text: 'text-emerald-400',
       bg: 'bg-emerald-500/20',
@@ -364,6 +372,38 @@ export default function RelatorioAcesso() {
           ))}
         </div>
 
+        <div className="grid gap-5 lg:grid-cols-3 mb-10">
+          <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+            <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase mb-4">
+              LP nativa
+            </p>
+            <div className="grid grid-cols-3 gap-3">
+              <MiniStat label="Acessos" value={resumo.landingNativa?.totalViews || 0} />
+              <MiniStat label="Leads" value={resumo.landingNativa?.leads || 0} />
+              <MiniStat
+                label="Cliques"
+                value={resumo.landingNativa?.cliques || 0}
+                muted={resumo.landingNativa?.cliquesPendenteInstrumentacao}
+              />
+            </div>
+            {resumo.landingNativa?.cliquesPendenteInstrumentacao ? (
+              <p className="text-[11px] text-neutral-600 mt-4 leading-relaxed">
+                Cliques da LP nativa ainda dependem de instrumentacao dos botoes da landing.
+              </p>
+            ) : null}
+          </div>
+
+          <SourceBreakdown
+            title="Origem das visitas"
+            items={resumo.landingNativa?.origemVisitas || []}
+          />
+
+          <SourceBreakdown
+            title="Origem dos leads"
+            items={resumo.landingNativa?.origemLeads || []}
+          />
+        </div>
+
         {carregando ? (
           <div className="flex items-center justify-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
@@ -472,6 +512,49 @@ export default function RelatorioAcesso() {
         }
       `}} />
     </>
+  )
+}
+
+function MiniStat({ label, value, muted = false }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+      <p className="text-[10px] uppercase tracking-widest text-neutral-500 font-bold">{label}</p>
+      <p className={`mt-2 text-2xl font-black ${muted ? 'text-neutral-600' : 'text-white'}`}>{value}</p>
+    </div>
+  )
+}
+
+function SourceBreakdown({ title, items = [] }) {
+  const total = items.reduce((acc, item) => acc + Number(item.total || 0), 0)
+
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+      <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase mb-4">
+        {title}
+      </p>
+
+      {items.length ? (
+        <div className="grid gap-3">
+          {items.slice(0, 5).map((item) => {
+            const percent = total > 0 ? Math.round((Number(item.total || 0) / total) * 100) : 0
+
+            return (
+              <div key={item.source} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-3">
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <p className="text-sm font-bold text-white capitalize">{item.source}</p>
+                  <p className="text-xs font-black text-[#8cf059]">{item.total}</p>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="h-full rounded-full bg-[#6be12f]" style={{ width: `${percent}%` }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-neutral-500">Sem origem registrada ainda.</p>
+      )}
+    </div>
   )
 }
 

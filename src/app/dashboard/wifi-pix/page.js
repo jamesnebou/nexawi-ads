@@ -3,6 +3,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
+  AlertTriangle,
+  BarChart3,
+  CalendarDays,
+  CheckCircle2,
   CreditCard,
   Loader2,
   Plus,
@@ -24,6 +28,30 @@ const planoInicial = {
   velocidadeUpload: '15M',
   ordem: 0,
   ativo: true,
+}
+
+const periodosRelatorio = [
+  { value: 'hoje', label: 'Hoje' },
+  { value: 'ultimos_7', label: 'Ultimos 7 dias' },
+  { value: 'ultimos_30', label: 'Ultimos 30 dias' },
+  { value: 'mes_atual', label: 'Mes atual' },
+  { value: 'todos', label: 'Todo periodo' },
+]
+
+const relatorioInicial = {
+  resumo: {
+    totalVendas: 0,
+    vendasConfirmadas: 0,
+    pendentes: 0,
+    autorizadas: 0,
+    erros: 0,
+    receitaConfirmada: 0,
+    ticketMedio: 0,
+    porStatus: [],
+    porMetodo: [],
+    porHotspot: [],
+  },
+  vendas: [],
 }
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
@@ -60,6 +88,14 @@ function money(value) {
   })
 }
 
+function statusClass(status = '') {
+  if (status === 'autorizado') return 'bg-[#6be12f]/15 text-[#6be12f]'
+  if (status === 'pago') return 'bg-blue-500/15 text-blue-300'
+  if (status === 'pendente') return 'bg-yellow-500/15 text-yellow-300'
+  if (status === 'erro') return 'bg-red-500/15 text-red-300'
+  return 'bg-white/[0.06] text-gray-400'
+}
+
 export default function WifiPixPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -70,6 +106,8 @@ export default function WifiPixPage() {
   const [wifiPixAtivo, setWifiPixAtivo] = useState(false)
   const [formPlano, setFormPlano] = useState(planoInicial)
   const [mensagem, setMensagem] = useState('')
+  const [periodoRelatorio, setPeriodoRelatorio] = useState('ultimos_30')
+  const [relatorioPix, setRelatorioPix] = useState(relatorioInicial)
 
   const hotspotSelecionado = useMemo(
     () => hotspots.find((item) => item.id === hotspotId) || null,
@@ -86,11 +124,15 @@ export default function WifiPixPage() {
     setMensagem('')
 
     try {
-      const data = await adminApiFetch('/api/admin/wifi-pix')
+      const params = new URLSearchParams()
+      params.set('periodo', periodoRelatorio)
+
+      const data = await adminApiFetch(`/api/admin/wifi-pix?${params.toString()}`)
       const loadedHotspots = data.hotspots || []
 
       setHotspots(loadedHotspots)
       setPlanos(data.planos || [])
+      setRelatorioPix(data.relatorio || relatorioInicial)
 
       const primeiro = loadedHotspots[0]
       if (primeiro && !hotspotId) {
@@ -108,7 +150,7 @@ export default function WifiPixPage() {
   useEffect(() => {
     carregar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [periodoRelatorio])
 
   useEffect(() => {
     if (!hotspotSelecionado) return
@@ -207,6 +249,10 @@ export default function WifiPixPage() {
     })
   }
 
+  const resumoPix = relatorioPix?.resumo || relatorioInicial.resumo
+  const vendasPix = relatorioPix?.vendas || []
+  const hotspotsMaisRentaveis = resumoPix.porHotspot || []
+
   return (
     <div className="min-h-screen bg-[#050505] text-white px-6 py-8">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -236,6 +282,96 @@ export default function WifiPixPage() {
             {mensagem}
           </div>
         ) : null}
+
+        <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h2 className="text-xl font-black flex items-center gap-2">
+                <BarChart3 size={20} className="text-[#ff9d2e]" /> Relatorio Wi-Fi no Pix
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Vendas, receita, status, planos e hotspots no periodo selecionado.
+              </p>
+            </div>
+
+            <label className="relative block">
+              <select
+                value={periodoRelatorio}
+                onChange={(event) => setPeriodoRelatorio(event.target.value)}
+                className="w-full lg:w-56 rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pr-11 text-sm font-bold text-white outline-none"
+              >
+                {periodosRelatorio.map((periodo) => (
+                  <option key={periodo.value} value={periodo.value}>
+                    {periodo.label}
+                  </option>
+                ))}
+              </select>
+              <CalendarDays size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+            </label>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <PixMetricCard label="Receita confirmada" value={money(resumoPix.receitaConfirmada)} detail={`${resumoPix.vendasConfirmadas || 0} venda(s) confirmadas`} icon={CreditCard} />
+            <PixMetricCard label="Total de vendas" value={resumoPix.totalVendas || 0} detail={`${resumoPix.pendentes || 0} pendente(s)`} icon={QrCode} />
+            <PixMetricCard label="Autorizadas" value={resumoPix.autorizadas || 0} detail="Internet liberada no MikroTik" icon={CheckCircle2} />
+            <PixMetricCard label="Ticket medio" value={money(resumoPix.ticketMedio)} detail="Sobre vendas confirmadas" icon={BarChart3} />
+            <PixMetricCard label="Erros" value={resumoPix.erros || 0} detail="Exigem verificacao manual" icon={AlertTriangle} />
+          </div>
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Hotspots por receita</p>
+              {hotspotsMaisRentaveis.length ? (
+                <div className="grid gap-3">
+                  {hotspotsMaisRentaveis.slice(0, 5).map((item) => (
+                    <div key={item.hotspot_id || item.hotspot_nome} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.02] px-3 py-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-white">{item.hotspot_nome}</p>
+                        <p className="text-xs text-gray-600">{item.total_vendas} venda(s)</p>
+                      </div>
+                      <p className="text-sm font-black text-[#ff9d2e]">{money(item.receita_confirmada)}</p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Sem vendas no periodo.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Vendas recentes</p>
+              {vendasPix.length ? (
+                <div className="max-h-80 overflow-auto pr-1">
+                  <div className="grid gap-3">
+                    {vendasPix.slice(0, 12).map((venda) => (
+                      <div key={venda.id} className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-black text-white">{venda.nome || 'Cliente sem nome'}</p>
+                            <p className="truncate text-xs text-gray-500">
+                              {venda.hotspot_nome || 'Sem hotspot'} / {venda.plano_nome || 'Sem plano'}
+                            </p>
+                            <p className="text-xs text-gray-600">
+                              {venda.cliente_nome || 'Sem cliente vinculado'} - {venda.metodo_pagamento || 'PIX'}
+                            </p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-sm font-black text-[#ff9d2e]">{money(venda.valor)}</p>
+                            <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusClass(venda.status)}`}>
+                              {venda.status || 'pendente'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Nenhuma venda registrada no periodo.</p>
+              )}
+            </div>
+          </div>
+        </section>
 
         <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
@@ -436,6 +572,21 @@ export default function WifiPixPage() {
           </section>
         </div>
       </div>
+    </div>
+  )
+}
+
+function PixMetricCard({ label, value, detail, icon: Icon }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-5">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <p className="text-xs uppercase tracking-[0.16em] text-gray-500 font-black">{label}</p>
+        <div className="rounded-xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 p-2 text-[#ff9d2e]">
+          <Icon size={17} />
+        </div>
+      </div>
+      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="mt-1 text-xs text-gray-600">{detail}</p>
     </div>
   )
 }

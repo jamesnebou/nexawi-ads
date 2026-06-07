@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
+
+const RATE_LIMIT = {
+  keyPrefix: 'portal:telefone-rapido',
+  limit: 30,
+  windowMs: 60_000,
+}
 
 function normalizeMac(value = '') {
   return String(value || '')
@@ -26,6 +33,12 @@ function getMesAtualRange() {
 }
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json({ ok: false, error: 'Muitas tentativas. Aguarde um instante.' }, { status: 429 })
+  }
+
   try {
     const body = await request.json()
     const hotspotId = String(body.hotspotId || '').trim()

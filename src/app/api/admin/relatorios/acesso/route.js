@@ -10,6 +10,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
+import { summarizeSourceBreakdown } from '@/lib/lp-generator-analytics'
 
 export const runtime = 'nodejs'
 
@@ -118,7 +119,7 @@ async function buscarMetricasLandingNativa({ periodo }) {
   try {
     let viewsQuery = supabaseAdmin
       .from('landing_native_views')
-      .select('id, ip_address, created_at')
+      .select('id, ip_address, source_type, metadata, created_at')
 
     if (dataInicio) {
       viewsQuery = viewsQuery.gte('created_at', dataInicio)
@@ -126,7 +127,7 @@ async function buscarMetricasLandingNativa({ periodo }) {
 
     let leadsQuery = supabaseAdmin
       .from('crm_prospects')
-      .select('id', { count: 'exact', head: true })
+      .select('id, origem, created_at')
       .eq('origem', 'Landing Page')
 
     if (dataInicio) {
@@ -135,7 +136,7 @@ async function buscarMetricasLandingNativa({ periodo }) {
 
     const [
       { data: viewsData, error: viewsError },
-      { count: leadsCount, error: leadsError },
+      { data: leadsData, error: leadsError },
     ] = await Promise.all([viewsQuery, leadsQuery])
 
     if (viewsError) throw viewsError
@@ -144,7 +145,11 @@ async function buscarMetricasLandingNativa({ periodo }) {
     return {
       totalViews: viewsData?.length || 0,
       visitantesUnicos: uniqueCount(viewsData || []),
-      leads: leadsCount || 0,
+      leads: leadsData?.length || 0,
+      cliques: 0,
+      cliquesPendenteInstrumentacao: true,
+      origemVisitas: summarizeSourceBreakdown(viewsData || []),
+      origemLeads: summarizeSourceBreakdown(leadsData || []),
     }
   } catch (error) {
     if (error?.code === 'PGRST205' || /landing_native_views/i.test(error?.message || '')) {
@@ -152,6 +157,10 @@ async function buscarMetricasLandingNativa({ periodo }) {
         totalViews: 0,
         visitantesUnicos: 0,
         leads: 0,
+        cliques: 0,
+        cliquesPendenteInstrumentacao: true,
+        origemVisitas: [],
+        origemLeads: [],
         pendenteMigracao: true,
       }
     }
