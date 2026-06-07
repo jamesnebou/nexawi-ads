@@ -21,6 +21,7 @@ import {
 export const runtime = 'nodejs'
 
 const STATUS_VALIDOS = ['Ativo', 'Inativo', 'Manutenção']
+const MODOS_PORTAL_VALIDOS = ['anuncios', 'pix', 'hibrido']
 
 function limparTexto(value = '') {
   return String(value || '').trim()
@@ -63,6 +64,11 @@ function sanitizeUuid(value = '') {
   return uuidRegex.test(clean) ? clean : null
 }
 
+function sanitizePortalModoAcesso(value = '') {
+  const clean = limparTexto(value).toLowerCase()
+  return MODOS_PORTAL_VALIDOS.includes(clean) ? clean : 'anuncios'
+}
+
 function resolveEmpresaIdForWrite(auth, providedEmpresaId = '') {
   const provided = sanitizeUuid(providedEmpresaId)
 
@@ -98,6 +104,8 @@ function sanitizarHotspotPayload(hotspot = {}, { forUpdate = false } = {}) {
     portal_cpf_obrigatorio: hotspot.portal_cpf_visivel === false ? false : hotspot.portal_cpf_obrigatorio !== false,
     portal_promocoes_optin_ativo: Boolean(hotspot.portal_promocoes_optin_ativo),
     portal_promocoes_texto: limparTexto(hotspot.portal_promocoes_texto) || 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.',
+    portal_modo_acesso: sanitizePortalModoAcesso(hotspot.portal_modo_acesso || hotspot.portalModoAcesso),
+    wifi_pix_ativo: Boolean(hotspot.wifi_pix_ativo || hotspot.wifiPixAtivo),
   }
 
   if (!forUpdate || hotspot.slug) {
@@ -300,6 +308,8 @@ export async function GET(request) {
         portal_cpf_obrigatorio,
         portal_promocoes_optin_ativo,
         portal_promocoes_texto,
+        portal_modo_acesso,
+        wifi_pix_ativo,
         created_at,
         updated_at
       `)
@@ -440,6 +450,8 @@ export async function GET(request) {
           allowedDomainsCount: allowedDomains.length,
           hasRouter: Boolean(router),
           hasPolicy: Boolean(policy?.active),
+          modoAcesso: hotspot.portal_modo_acesso || 'anuncios',
+          wifiPixAtivo: Boolean(hotspot.wifi_pix_ativo),
         },
       }
     })
@@ -629,7 +641,7 @@ export async function POST(request) {
 
       let hotspotAntesQuery = supabaseAdmin
         .from('hotspots')
-        .select('id, empresa_id, cliente_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id')
+        .select('id, empresa_id, cliente_id, nome, slug, status, cidade, estado, endereco, parceiro, router_id, portal_modo_acesso, wifi_pix_ativo')
         .eq('id', id)
 
       hotspotAntesQuery = auth.applyEmpresaScope(hotspotAntesQuery)
@@ -710,6 +722,10 @@ export async function POST(request) {
           parceiro_atual: data.parceiro,
           router_id_anterior: hotspotAntes?.router_id || '',
           router_id_atual: data.router_id || '',
+          portal_modo_acesso_anterior: hotspotAntes?.portal_modo_acesso || 'anuncios',
+          portal_modo_acesso_atual: data.portal_modo_acesso || 'anuncios',
+          wifi_pix_ativo_anterior: Boolean(hotspotAntes?.wifi_pix_ativo),
+          wifi_pix_ativo_atual: Boolean(data.wifi_pix_ativo),
         },
       })
 

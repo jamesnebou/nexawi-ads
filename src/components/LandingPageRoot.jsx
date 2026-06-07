@@ -6,7 +6,83 @@ import { ChevronDown } from 'lucide-react'; // Importe o ícone ChevronDown
 import { useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 
+const META_PIXEL_ID_PATTERN = /^\d{5,30}$/
+const GA4_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
+const GTM_ID_PATTERN = /^GTM-[A-Z0-9]{4,20}$/
+const GOOGLE_ADS_ID_PATTERN = /^AW-[A-Z0-9-]{5,30}$/
 
+function safeIdentifier(value, pattern) {
+  const normalized = String(value || '').trim().toUpperCase()
+  return pattern.test(normalized) ? normalized : ''
+}
+
+function loadScriptOnce({ id, src, inline }) {
+  if (typeof document === 'undefined') return
+  if (document.getElementById(id)) return
+
+  const script = document.createElement('script')
+  script.id = id
+
+  if (src) {
+    script.async = true
+    script.src = src
+  }
+
+  if (inline) {
+    script.text = inline
+  }
+
+  document.head.appendChild(script)
+}
+
+function ensureGtagLibrary(primaryId) {
+  if (!primaryId || typeof window === 'undefined') return
+
+  window.dataLayer = window.dataLayer || []
+  window.gtag = window.gtag || function gtag() {
+    window.dataLayer.push(arguments)
+  }
+
+  loadScriptOnce({
+    id: `nexawi-native-gtag-${primaryId}`,
+    src: `https://www.googletagmanager.com/gtag/js?id=${primaryId}`,
+  })
+
+  if (!window.__nexawiNativeGtagStarted) {
+    window.__nexawiNativeGtagStarted = true
+    window.gtag('js', new Date())
+  }
+}
+
+function trackNativeLandingClickConversion(integracoes = {}, payload = {}) {
+  if (typeof window === 'undefined') return
+
+  const metaPixelId = safeIdentifier(integracoes.metaPixelId, META_PIXEL_ID_PATTERN)
+  const ga4MeasurementId = safeIdentifier(integracoes.ga4MeasurementId, GA4_ID_PATTERN)
+  const googleAdsId = safeIdentifier(integracoes.googleAdsId, GOOGLE_ADS_ID_PATTERN)
+  const conversionLabel = String(integracoes.googleAdsConversionLabel || '').trim()
+
+  if (metaPixelId && typeof window.fbq === 'function') {
+    window.fbq('trackCustom', 'LandingNativeClick', {
+      target_label: payload.targetLabel || '',
+      target_url: payload.targetUrl || '',
+    })
+  }
+
+  if (ga4MeasurementId && typeof window.gtag === 'function') {
+    window.gtag('event', 'landing_native_click', {
+      event_category: 'native_landing',
+      event_label: payload.targetLabel || '',
+      link_url: payload.targetUrl || '',
+    })
+  }
+
+  if (googleAdsId && conversionLabel && typeof window.gtag === 'function') {
+    window.gtag('event', 'conversion', {
+      send_to: `${googleAdsId}/${conversionLabel}`,
+    })
+  }
+}
 
 function resolveSlugFromPathname(pathname = '/') {
   const cleaned = String(pathname || '/').split('?')[0].split('#')[0]
@@ -185,6 +261,13 @@ const [landingConfig, setLandingConfig] = useState({
   hero_subtitulo_linha_1: 'O cliente usa a internet, a sua marca aparece na tela dele.',
   hero_subtitulo_linha_2: 'Simples, inevitável e 100% local.',
   hero_titulo_linha_2_estilo: 'gradiente',
+  integracoes: {
+    metaPixelId: '',
+    ga4MeasurementId: '',
+    googleTagManagerId: '',
+    googleAdsId: '',
+    googleAdsConversionLabel: '',
+  },
 })
 
 const currentSlug = useMemo(() => resolveSlugFromPathname(pathname), [pathname])
@@ -262,6 +345,67 @@ useEffect(() => {
 }, [currentSlug])
 
 useEffect(() => {
+  const integracoes = landingConfig.integracoes || {}
+  const metaPixelId = safeIdentifier(integracoes.metaPixelId, META_PIXEL_ID_PATTERN)
+  const ga4MeasurementId = safeIdentifier(integracoes.ga4MeasurementId, GA4_ID_PATTERN)
+  const googleTagManagerId = safeIdentifier(integracoes.googleTagManagerId, GTM_ID_PATTERN)
+  const googleAdsId = safeIdentifier(integracoes.googleAdsId, GOOGLE_ADS_ID_PATTERN)
+  const primaryGtagId = ga4MeasurementId || googleAdsId
+
+  if (primaryGtagId) {
+    ensureGtagLibrary(primaryGtagId)
+
+    if (ga4MeasurementId) {
+      window.gtag('config', ga4MeasurementId)
+    }
+
+    if (googleAdsId) {
+      window.gtag('config', googleAdsId)
+    }
+  }
+
+  if (googleTagManagerId) {
+    loadScriptOnce({
+      id: `nexawi-native-gtm-${googleTagManagerId}`,
+      inline: `
+        (function(w,d,s,l,i){
+          w[l]=w[l]||[];
+          w[l].push({'gtm.start': new Date().getTime(),event:'gtm.js'});
+          var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';
+          j.async=true;
+          j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;
+          f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','${googleTagManagerId}');
+      `,
+    })
+  }
+
+  if (metaPixelId) {
+    loadScriptOnce({
+      id: 'nexawi-native-meta-pixel-library',
+      inline: `
+        !function(f,b,e,v,n,t,s){
+          if(f.fbq)return;
+          n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+          if(!f._fbq)f._fbq=n;
+          n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];
+          t=b.createElement(e);t.async=!0;t.src=v;
+          s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)
+        }(window, document,'script','https://connect.facebook.net/en_US/fbevents.js');
+      `,
+    })
+
+    window.__nexawiNativeMetaPixels = window.__nexawiNativeMetaPixels || new Set()
+
+    if (!window.__nexawiNativeMetaPixels.has(metaPixelId) && typeof window.fbq === 'function') {
+      window.__nexawiNativeMetaPixels.add(metaPixelId)
+      window.fbq('init', metaPixelId)
+      window.fbq('track', 'PageView')
+    }
+  }
+}, [landingConfig.integracoes])
+
+useEffect(() => {
   function registrarCliqueLandingNativa(event) {
     const target = event.target?.closest?.('a, button')
 
@@ -284,6 +428,8 @@ useEffect(() => {
           term: params.get('utm_term') || '',
         },
       }
+
+      trackNativeLandingClickConversion(landingConfig.integracoes || {}, payload)
 
       const body = JSON.stringify(payload)
 
@@ -312,7 +458,7 @@ useEffect(() => {
   return () => {
     document.removeEventListener('click', registrarCliqueLandingNativa, true)
   }
-}, [currentSlug])
+}, [currentSlug, landingConfig.integracoes])
 
 useEffect(() => {
   let ativo = true

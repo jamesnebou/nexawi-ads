@@ -82,6 +82,14 @@ hero_titulo_linha_3_padrao: '',
 hero_subtitulo_linha_1_padrao: '',
 hero_subtitulo_linha_2_padrao: '',
 hero_titulo_linha_2_estilo_padrao: 'gradiente',
+
+  lp_meta_pixel_id: '',
+  lp_ga4_measurement_id: '',
+  lp_google_tag_manager_id: '',
+  lp_google_ads_id: '',
+  lp_google_ads_conversion_label: '',
+  lp_meta_conversions_api_enabled: false,
+  lp_google_ads_enhanced_conversions_enabled: false,
 }
 
 function sanitizeIntegerInput(value) {
@@ -386,6 +394,13 @@ const canUpdate = Boolean(permissions.update)
           hero_subtitulo_linha_1_padrao: data.hero_subtitulo_linha_1_padrao || '',
           hero_subtitulo_linha_2_padrao: data.hero_subtitulo_linha_2_padrao || '',
           hero_titulo_linha_2_estilo_padrao: data.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+          lp_meta_pixel_id: data.lp_meta_pixel_id || '',
+          lp_ga4_measurement_id: data.lp_ga4_measurement_id || '',
+          lp_google_tag_manager_id: data.lp_google_tag_manager_id || '',
+          lp_google_ads_id: data.lp_google_ads_id || '',
+          lp_google_ads_conversion_label: data.lp_google_ads_conversion_label || '',
+          lp_meta_conversions_api_enabled: Boolean(data.lp_meta_conversions_api_enabled),
+          lp_google_ads_enhanced_conversions_enabled: Boolean(data.lp_google_ads_enhanced_conversions_enabled),
         })
       }
     } catch (error) {
@@ -461,6 +476,13 @@ const canUpdate = Boolean(permissions.update)
         hero_subtitulo_linha_1_padrao: form.hero_subtitulo_linha_1_padrao || null,
         hero_subtitulo_linha_2_padrao: form.hero_subtitulo_linha_2_padrao || null,
         hero_titulo_linha_2_estilo_padrao: form.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+        lp_meta_pixel_id: form.lp_meta_pixel_id || null,
+        lp_ga4_measurement_id: form.lp_ga4_measurement_id || null,
+        lp_google_tag_manager_id: form.lp_google_tag_manager_id || null,
+        lp_google_ads_id: form.lp_google_ads_id || null,
+        lp_google_ads_conversion_label: form.lp_google_ads_conversion_label || null,
+        lp_meta_conversions_api_enabled: form.lp_meta_conversions_api_enabled,
+        lp_google_ads_enhanced_conversions_enabled: form.lp_google_ads_enhanced_conversions_enabled,
       }
 
       // Salva pela API admin.
@@ -914,6 +936,111 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
     />
   </div>
 </div>
+
+
+              <div className="pt-4 border-t border-white/[0.05]">
+                <h3 className="text-lg font-bold text-white mb-2 tracking-tight">
+                  Integrações da LP nativa
+                </h3>
+                <p className="text-sm text-neutral-500 mb-6">
+                  IDs públicos usados em www.nexawi.com.br para campanhas de Meta, Google Ads, GA4 e GTM.
+                </p>
+
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+                      Meta Pixel ID
+                    </label>
+                    <input
+                      type="text"
+                      value={form.lp_meta_pixel_id}
+                      onChange={(e) => setForm({ ...form, lp_meta_pixel_id: e.target.value.replace(/\D/g, '') })}
+                      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+                      placeholder="Ex: 123456789012345"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+                      GA4 Measurement ID
+                    </label>
+                    <input
+                      type="text"
+                      value={form.lp_ga4_measurement_id}
+                      onChange={(e) => setForm({ ...form, lp_ga4_measurement_id: e.target.value.toUpperCase() })}
+                      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+                      placeholder="Ex: G-XXXXXXXXXX"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+                      Google Tag Manager ID
+                    </label>
+                    <input
+                      type="text"
+                      value={form.lp_google_tag_manager_id}
+                      onChange={(e) => setForm({ ...form, lp_google_tag_manager_id: e.target.value.toUpperCase() })}
+                      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+                      placeholder="Ex: GTM-XXXXXXX"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+                      Google Ads ID
+                    </label>
+                    <input
+                      type="text"
+                      value={form.lp_google_ads_id}
+                      onChange={(e) => setForm({ ...form, lp_google_ads_id: e.target.value.toUpperCase() })}
+                      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+                      placeholder="Ex: AW-123456789"
+                    />
+                  </div>
+
+                  <div className="xl:col-span-2">
+                    <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
+                      Google Ads Conversion Label
+                    </label>
+                    <input
+                      type="text"
+                      value={form.lp_google_ads_conversion_label}
+                      onChange={(e) => setForm({ ...form, lp_google_ads_conversion_label: e.target.value })}
+                      className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
+                      placeholder="Label da conversão de clique/lead"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 grid grid-cols-1 xl:grid-cols-2 gap-4">
+                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.05] bg-[#050505] p-5 cursor-pointer">
+                    <span>
+                      <span className="block text-sm font-bold text-white">Preparar Meta Conversions API</span>
+                      <span className="block text-xs text-neutral-500 mt-1">Flag operacional; token server-side será configurado em etapa segura.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={form.lp_meta_conversions_api_enabled}
+                      onChange={(e) => setForm({ ...form, lp_meta_conversions_api_enabled: e.target.checked })}
+                      className="h-4 w-4 accent-[#6be12f]"
+                    />
+                  </label>
+
+                  <label className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.05] bg-[#050505] p-5 cursor-pointer">
+                    <span>
+                      <span className="block text-sm font-bold text-white">Preparar Enhanced Conversions</span>
+                      <span className="block text-xs text-neutral-500 mt-1">Flag operacional para Google Ads server-side futuro.</span>
+                    </span>
+                    <input
+                      type="checkbox"
+                      checked={form.lp_google_ads_enhanced_conversions_enabled}
+                      onChange={(e) => setForm({ ...form, lp_google_ads_enhanced_conversions_enabled: e.target.checked })}
+                      className="h-4 w-4 accent-[#6be12f]"
+                    />
+                  </label>
+                </div>
+              </div>
 
 
               <div className="pt-4 border-t border-white/[0.05]">

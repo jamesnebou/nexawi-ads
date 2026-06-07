@@ -42,6 +42,8 @@ import {
   Settings2,
   Globe2,
   RadioTower,
+  QrCode,
+  CreditCard,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
@@ -71,6 +73,8 @@ const DEFAULT_FORM = {
   portal_cpf_obrigatorio: true,
   portal_promocoes_optin_ativo: false,
   portal_promocoes_texto: 'Quero receber ofertas, cupons e novidades dos anunciantes parceiros da NexaWi por WhatsApp, SMS ou e-mail.',
+  portal_modo_acesso: 'anuncios',
+  wifi_pix_ativo: false,
 }
 
 function corStatus(status) {
@@ -83,6 +87,42 @@ function corRouter(status) {
   if (status === 'Ativo') return 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
   if (!status) return 'bg-neutral-500/10 text-neutral-400 border border-neutral-500/20'
   return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
+}
+
+function getModoPortalInfo(modo = 'anuncios', wifiPixAtivo = false) {
+  if (modo === 'pix') {
+    return {
+      label: 'Somente Pix',
+      metric: 'Pix',
+      description: 'Usuário escolhe plano pago para liberar internet.',
+      icon: QrCode,
+      badge: 'bg-[#ff7a00]/10 text-[#ffb15c] border border-[#ff7a00]/25',
+      accent: 'text-[#ff9d2e]',
+      enabled: true,
+    }
+  }
+
+  if (modo === 'hibrido') {
+    return {
+      label: 'Híbrido',
+      metric: 'Híbrido',
+      description: 'Usuário escolhe anúncio grátis ou plano pago.',
+      icon: CreditCard,
+      badge: 'bg-blue-500/10 text-blue-300 border border-blue-500/20',
+      accent: 'text-blue-300',
+      enabled: wifiPixAtivo,
+    }
+  }
+
+  return {
+    label: 'Anúncios',
+    metric: 'Anúncios',
+    description: 'Fluxo principal com cadastro, anúncio obrigatório e CTA.',
+    icon: Megaphone,
+    badge: 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20',
+    accent: 'text-[#8cf059]',
+    enabled: true,
+  }
 }
 
 function slugify(value = '') {
@@ -347,6 +387,8 @@ export default function HotspotsPro() {
         portal_cpf_obrigatorio: hotspot.portal_cpf_obrigatorio !== false,
         portal_promocoes_optin_ativo: Boolean(hotspot.portal_promocoes_optin_ativo),
         portal_promocoes_texto: hotspot.portal_promocoes_texto || DEFAULT_FORM.portal_promocoes_texto,
+        portal_modo_acesso: hotspot.portal_modo_acesso || 'anuncios',
+        wifi_pix_ativo: Boolean(hotspot.wifi_pix_ativo),
       })
     } else {
       setHotspotSelecionado(null)
@@ -693,6 +735,11 @@ export default function HotspotsPro() {
               const policy = hotspot.policy
               const metrics = hotspot.metrics || {}
               const testing = testandoRouterId === hotspot.id
+              const modoPortalInfo = getModoPortalInfo(
+                hotspot.portal_modo_acesso || metrics.modoAcesso || 'anuncios',
+                hotspot.wifi_pix_ativo || metrics.wifiPixAtivo
+              )
+              const ModoPortalIcon = modoPortalInfo.icon
 
               return (
                 <article
@@ -758,11 +805,16 @@ export default function HotspotsPro() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
                       <MiniMetric
                         icon={Activity}
                         label="Online"
                         value={metrics.onlineNow ?? 0}
+                      />
+                      <MiniMetric
+                        icon={ModoPortalIcon}
+                        label="Modo"
+                        value={modoPortalInfo.metric}
                       />
                       <MiniMetric
                         icon={Megaphone}
@@ -781,7 +833,46 @@ export default function HotspotsPro() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
+                            <ModoPortalIcon size={18} className={modoPortalInfo.accent} />
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-black text-white">
+                              Modo do Portal
+                            </p>
+                            <p className="text-xs text-neutral-600">
+                              Experiência comercial
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3">
+                            <p className="text-sm font-bold text-neutral-300">
+                              {modoPortalInfo.label}
+                            </p>
+
+                            <StatusBadge className={modoPortalInfo.badge}>
+                              {hotspot.wifi_pix_ativo ? 'Pix ON' : 'Pix OFF'}
+                            </StatusBadge>
+                          </div>
+
+                          <p className="text-xs text-neutral-500 leading-relaxed">
+                            {modoPortalInfo.description}
+                          </p>
+
+                          {(hotspot.portal_modo_acesso === 'pix' || hotspot.portal_modo_acesso === 'hibrido') && !hotspot.wifi_pix_ativo ? (
+                            <p className="text-xs font-bold text-yellow-300">
+                              Ative o Wi-Fi no Pix para vender planos neste hotspot.
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+
                       <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
@@ -1142,6 +1233,49 @@ export default function HotspotsPro() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="block sm:col-span-2">
+                      <span className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
+                        Modo de acesso do portal
+                      </span>
+                      <select
+                        value={form.portal_modo_acesso}
+                        onChange={(e) => {
+                          const nextMode = e.target.value
+                          setForm({
+                            ...form,
+                            portal_modo_acesso: nextMode,
+                            wifi_pix_ativo: nextMode === 'anuncios' ? form.wifi_pix_ativo : true,
+                          })
+                        }}
+                        className="w-full bg-black/30 border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
+                      >
+                        <option value="anuncios" className="bg-[#050505]">
+                          Anúncios - cadastro, anúncio obrigatório e CTA
+                        </option>
+                        <option value="pix" className="bg-[#050505]">
+                          Somente Pix - venda de planos de internet
+                        </option>
+                        <option value="hibrido" className="bg-[#050505]">
+                          Híbrido - anúncio grátis ou plano pago
+                        </option>
+                      </select>
+                    </label>
+
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer sm:col-span-2">
+                      <span>
+                        <span className="block text-xs font-bold text-neutral-300">Wi-Fi no Pix ativo</span>
+                        <span className="block text-[11px] text-neutral-600 mt-1">
+                          Necessário para os modos Somente Pix e Híbrido venderem planos.
+                        </span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={form.wifi_pix_ativo}
+                        onChange={(e) => setForm({ ...form, wifi_pix_ativo: e.target.checked })}
+                        className="h-4 w-4 accent-[#6be12f]"
+                      />
+                    </label>
+
                     <label className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.05] bg-black/30 px-4 py-3 cursor-pointer">
                       <span className="text-xs font-bold text-neutral-300">E-mail obrigatório</span>
                       <input

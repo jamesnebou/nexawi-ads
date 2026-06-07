@@ -123,6 +123,14 @@ function sanitizarPayload(config = {}) {
       ['gradiente', 'faixa'].includes(config.hero_titulo_linha_2_estilo_padrao)
         ? config.hero_titulo_linha_2_estilo_padrao
         : 'gradiente',
+
+    lp_meta_pixel_id: nullableTexto(config.lp_meta_pixel_id),
+    lp_ga4_measurement_id: nullableTexto(config.lp_ga4_measurement_id),
+    lp_google_tag_manager_id: nullableTexto(config.lp_google_tag_manager_id),
+    lp_google_ads_id: nullableTexto(config.lp_google_ads_id),
+    lp_google_ads_conversion_label: nullableTexto(config.lp_google_ads_conversion_label),
+    lp_meta_conversions_api_enabled: booleano(config.lp_meta_conversions_api_enabled, false),
+    lp_google_ads_enhanced_conversions_enabled: booleano(config.lp_google_ads_enhanced_conversions_enabled, false),
   }
 }
 
@@ -225,6 +233,12 @@ export async function POST(request) {
         alterou_tempos_portal: true,
         alterou_precos_padrao: true,
         alterou_hero: Boolean(payload.hero_imagem_url_padrao),
+        alterou_tracking_lp: Boolean(
+          payload.lp_meta_pixel_id ||
+          payload.lp_ga4_measurement_id ||
+          payload.lp_google_tag_manager_id ||
+          payload.lp_google_ads_id
+        ),
       },
     })
 

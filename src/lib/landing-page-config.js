@@ -83,6 +83,16 @@ export async function getLandingPageConfig(slug = '') {
 
     hero_titulo_linha_2_estilo:
   globalConfig.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+
+    integracoes: {
+      metaPixelId: globalConfig.lp_meta_pixel_id || '',
+      ga4MeasurementId: globalConfig.lp_ga4_measurement_id || '',
+      googleTagManagerId: globalConfig.lp_google_tag_manager_id || '',
+      googleAdsId: globalConfig.lp_google_ads_id || '',
+      googleAdsConversionLabel: globalConfig.lp_google_ads_conversion_label || '',
+      metaConversionsApiEnabled: Boolean(globalConfig.lp_meta_conversions_api_enabled),
+      googleAdsEnhancedConversionsEnabled: Boolean(globalConfig.lp_google_ads_enhanced_conversions_enabled),
+    },
   }
 
   if (!cityRecord) {
@@ -126,6 +136,8 @@ export async function getLandingPageConfig(slug = '') {
 
     hero_titulo_linha_2_estilo:
   cityRecord.hero_titulo_linha_2_estilo || defaultConfig.hero_titulo_linha_2_estilo,
+
+    integracoes: defaultConfig.integracoes,
     
   }
 }

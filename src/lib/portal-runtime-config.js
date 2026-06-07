@@ -28,6 +28,14 @@ export const DEFAULT_PORTAL_RUNTIME_CONFIG = {
 
   hero_imagem_url_padrao: '/mockup-celular.png',
   hero_titulo_linha_2_estilo_padrao: 'gradiente',
+
+  lp_meta_pixel_id: '',
+  lp_ga4_measurement_id: '',
+  lp_google_tag_manager_id: '',
+  lp_google_ads_id: '',
+  lp_google_ads_conversion_label: '',
+  lp_meta_conversions_api_enabled: false,
+  lp_google_ads_enhanced_conversions_enabled: false,
 }
 
 function toNonNegativeInteger(value, fallback = 0) {
@@ -73,31 +81,7 @@ export function formatDurationLabel(totalSeconds = 0) {
 export async function getGlobalRuntimeConfig() {
   const { data, error } = await supabaseAdmin
     .from('configuracoes')
-    .select(`
-  portal_tempo_acesso_segundos,
-  portal_tempo_bloqueio_segundos,
-  portal_intervalo_anuncio_segundos,
-  preco_basico_mensal_padrao,
-  preco_basico_anual_padrao,
-  preco_comercial_mensal_padrao,
-  preco_comercial_anual_padrao,
-  preco_vip_mensal_padrao,
-  preco_vip_anual_padrao,
-  mostrar_preco_ancora_padrao,
-  preco_ancora_basico_mensal_padrao,
-  preco_ancora_basico_anual_padrao,
-  preco_ancora_comercial_mensal_padrao,
-  preco_ancora_comercial_anual_padrao,
-  preco_ancora_vip_mensal_padrao,
-  preco_ancora_vip_anual_padrao,
-  hero_imagem_url_padrao,
-  hero_titulo_linha_1_padrao,
-  hero_titulo_linha_2_padrao,
-  hero_titulo_linha_2_estilo_padrao,
-  hero_titulo_linha_3_padrao,
-  hero_subtitulo_linha_1_padrao,
-  hero_subtitulo_linha_2_padrao
-`)
+    .select('*')
     .order('created_at', { ascending: true })
     .limit(1)
     .maybeSingle()
@@ -166,5 +150,13 @@ hero_subtitulo_linha_1_padrao:  data?.hero_subtitulo_linha_1_padrao || DEFAULT_P
 hero_subtitulo_linha_2_padrao:   data?.hero_subtitulo_linha_2_padrao || DEFAULT_PORTAL_RUNTIME_CONFIG.hero_subtitulo_linha_2_padrao,
 
   hero_titulo_linha_2_estilo_padrao:  data?.hero_titulo_linha_2_estilo_padrao || DEFAULT_PORTAL_RUNTIME_CONFIG.hero_titulo_linha_2_estilo_padrao,
+
+  lp_meta_pixel_id: data?.lp_meta_pixel_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_meta_pixel_id,
+  lp_ga4_measurement_id: data?.lp_ga4_measurement_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_ga4_measurement_id,
+  lp_google_tag_manager_id: data?.lp_google_tag_manager_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_google_tag_manager_id,
+  lp_google_ads_id: data?.lp_google_ads_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_google_ads_id,
+  lp_google_ads_conversion_label: data?.lp_google_ads_conversion_label || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_google_ads_conversion_label,
+  lp_meta_conversions_api_enabled: Boolean(data?.lp_meta_conversions_api_enabled ?? DEFAULT_PORTAL_RUNTIME_CONFIG.lp_meta_conversions_api_enabled),
+  lp_google_ads_enhanced_conversions_enabled: Boolean(data?.lp_google_ads_enhanced_conversions_enabled ?? DEFAULT_PORTAL_RUNTIME_CONFIG.lp_google_ads_enhanced_conversions_enabled),
   }
 }
