@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimit } from '@/lib/rate-limit'
-import { normalizeMacAddress } from '@/lib/wifi-pix'
+import { normalizeMacAddress, refreshWifiPixEfiPaymentStatus } from '@/lib/wifi-pix'
 
 export const runtime = 'nodejs'
 
@@ -30,33 +30,46 @@ export async function POST(request) {
     const vendaId = clean(body.vendaId || body.venda_id)
     const macAddress = normalizeMacAddress(body.macAddress || body.mac_address)
 
-    if (!vendaId) throw new Error('vendaId é obrigatório.')
+    if (!vendaId) throw new Error('vendaId Ã© obrigatÃ³rio.')
 
     const { data: venda, error } = await supabaseAdmin
       .from('wifi_pix_vendas')
-      .select('id, status, valor, duracao_minutos, pago_em, autorizado_em, expira_em, asaas_invoice_url, erro_autorizacao, mac_address')
+      .select('*')
       .eq('id', vendaId)
       .maybeSingle()
 
     if (error) throw error
-    if (!venda) throw new Error('Venda não encontrada.')
+    if (!venda) throw new Error('Venda nÃ£o encontrada.')
 
     if (venda?.mac_address && macAddress && normalizeMacAddress(venda.mac_address) !== macAddress) {
       throw new Error('Este pagamento pertence a outro aparelho.')
     }
 
+    let vendaAtual = venda
+    let gatewayWarning = ''
+
+    if (!['pago', 'autorizado'].includes(venda.status)) {
+      try {
+        const refreshed = await refreshWifiPixEfiPaymentStatus(venda)
+        vendaAtual = refreshed.venda || venda
+      } catch (refreshError) {
+        gatewayWarning = refreshError.message || 'Nao foi possivel consultar o gateway de pagamento.'
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       venda: {
-        id: venda.id,
-        status: venda.status,
-        valor: Number(venda.valor || 0),
-        duracao_minutos: Number(venda.duracao_minutos || 0),
-        pago_em: venda.pago_em || null,
-        autorizado_em: venda.autorizado_em || null,
-        expira_em: venda.expira_em || null,
-        invoiceUrl: venda.asaas_invoice_url || '',
-        erro_autorizacao: venda.erro_autorizacao || '',
+        id: vendaAtual.id,
+        status: vendaAtual.status,
+        valor: Number(vendaAtual.valor || 0),
+        duracao_minutos: Number(vendaAtual.duracao_minutos || 0),
+        pago_em: vendaAtual.pago_em || null,
+        autorizado_em: vendaAtual.autorizado_em || null,
+        expira_em: vendaAtual.expira_em || null,
+        invoiceUrl: vendaAtual.asaas_invoice_url || '',
+        erro_autorizacao: vendaAtual.erro_autorizacao || '',
+        gatewayWarning,
       },
     })
   } catch (error) {
@@ -66,3 +79,4 @@ export async function POST(request) {
     )
   }
 }
+

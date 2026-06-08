@@ -1,10 +1,11 @@
-import {
+﻿import {
   createAsaasCustomer,
   createAsaasPayment,
   findAsaasCustomerByExternalReference,
   updateAsaasCustomer,
 } from '@/lib/asaas'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { createEfiPixCharge, getEfiPixCharge, isEfiPixPaidStatus } from '@/lib/efi-pix'
 
 export function cleanPhone(value = '') {
   return String(value || '').replace(/\D/g, '')
@@ -21,6 +22,10 @@ export function normalizeMacAddress(value = '') {
   if (hex.length !== 12) return ''
 
   return hex.match(/.{1,2}/g).join(':')
+}
+
+function getWifiPixGateway() {
+  return String(process.env.WIFI_PIX_GATEWAY || 'asaas').trim().toLowerCase()
 }
 
 function todayISO() {
@@ -149,6 +154,61 @@ export async function createWifiPixCheckout({
   if (vendaError) throw vendaError
 
   const externalReference = wifiPixExternalReference(venda.id)
+
+  if (billingType === 'PIX' && getWifiPixGateway() === 'efi') {
+    const efi = await createEfiPixCharge({
+      venda,
+      hotspot,
+      plano,
+      documento,
+      nome: vendaPayload.nome || `Cliente Wi-Fi ${telefoneLimpo}`,
+    })
+
+    const efiPayload = {
+      provider: 'efi',
+      txid: efi.txid,
+      locId: efi.locId,
+      charge: efi.charge,
+      qrcode: efi.qrcode,
+    }
+
+    const { data: updatedVenda, error: updateError } = await supabaseAdmin
+      .from('wifi_pix_vendas')
+      .update({
+        asaas_payment_id: efi.txid,
+        asaas_invoice_url: efi.invoiceUrl || null,
+        asaas_payload: efiPayload,
+        external_reference: externalReference,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', venda.id)
+      .select('*')
+      .single()
+
+    if (updateError) throw updateError
+
+    await persistEfiVendaFields(updatedVenda.id, {
+      gateway_pagamento: 'efi',
+      efi_txid: efi.txid,
+      efi_location_id: efi.locId ? String(efi.locId) : null,
+      efi_payload: efiPayload,
+    })
+
+    return {
+      venda: { ...updatedVenda, gateway_pagamento: 'efi', efi_txid: efi.txid },
+      payment: efi.charge,
+      checkout: {
+        vendaId: updatedVenda.id,
+        status: updatedVenda.status,
+        metodoPagamento: billingType,
+        invoiceUrl: efi.invoiceUrl || '',
+        bankSlipUrl: '',
+        pixQrCode: efi.pixQrCode || '',
+        pixCopyPaste: efi.pixCopyPaste || '',
+      },
+    }
+  }
+
   const customerExternalReference = `wifi_pix_cliente:${documento || telefoneLimpo}`
   let customer = await findAsaasCustomerByExternalReference(customerExternalReference)
 
@@ -264,3 +324,133 @@ export async function markWifiPixPaymentStatus(payment = {}) {
     cancelled,
   }
 }
+async function persistEfiVendaFields(vendaId, update = {}) {
+  if (!vendaId) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('wifi_pix_vendas')
+    .update({ ...update, updated_at: new Date().toISOString() })
+    .eq('id', vendaId)
+    .select('*')
+    .maybeSingle()
+
+  if (error) {
+    const message = String(error.message || '')
+    const missingColumn = /schema cache|column|efi_|gateway_pagamento/i.test(message)
+    if (missingColumn) return null
+    throw error
+  }
+
+  return data
+}
+
+export async function markWifiPixEfiPaymentStatus({ txid = '', endToEndId = '', payload = {} } = {}) {
+  const cleanTxid = String(txid || '').trim()
+  const cleanEndToEndId = String(endToEndId || '').trim()
+
+  if (!cleanTxid && !cleanEndToEndId) return { matched: false, reason: 'missing_efi_identifiers' }
+
+  let query = supabaseAdmin.from('wifi_pix_vendas').select('*')
+
+  if (cleanTxid) {
+    query = query.or(`asaas_payment_id.eq.${cleanTxid},efi_txid.eq.${cleanTxid}`)
+  } else {
+    query = query.eq('efi_end_to_end_id', cleanEndToEndId)
+  }
+
+  let venda = null
+  const { data, error } = await query.maybeSingle()
+
+  if (error) {
+    const message = String(error.message || '')
+    const missingColumn = /efi_|schema cache|column/i.test(message)
+    if (!missingColumn) throw error
+
+    const fallback = await supabaseAdmin
+      .from('wifi_pix_vendas')
+      .select('*')
+      .eq('asaas_payment_id', cleanTxid)
+      .maybeSingle()
+
+    if (fallback.error) throw fallback.error
+    venda = fallback.data
+  } else {
+    venda = data
+  }
+
+  if (!venda?.id) return { matched: false, reason: 'wifi_pix_venda_not_found', txid: cleanTxid, endToEndId: cleanEndToEndId }
+
+  const now = new Date()
+  const efiPayload = {
+    ...(venda.asaas_payload || {}),
+    provider: 'efi',
+    webhook: payload || {},
+    paidAt: now.toISOString(),
+  }
+  const update = {
+    asaas_payment_id: cleanTxid || venda.asaas_payment_id || null,
+    asaas_payload: efiPayload,
+    status: ['autorizado', 'pago'].includes(venda.status) ? venda.status : 'pago',
+    pago_em: venda.pago_em || now.toISOString(),
+    expira_em: venda.expira_em || addMinutes(now, venda.duracao_minutos).toISOString(),
+    updated_at: now.toISOString(),
+  }
+
+  const { data: updated, error: updateError } = await supabaseAdmin
+    .from('wifi_pix_vendas')
+    .update(update)
+    .eq('id', venda.id)
+    .select('*')
+    .single()
+
+  if (updateError) throw updateError
+
+  await persistEfiVendaFields(updated.id, {
+    gateway_pagamento: 'efi',
+    efi_txid: cleanTxid || updated.asaas_payment_id || null,
+    efi_end_to_end_id: cleanEndToEndId || null,
+    efi_payload: efiPayload,
+  })
+
+  return {
+    matched: true,
+    venda: updated,
+    paid: true,
+    txid: cleanTxid || updated.asaas_payment_id || null,
+    endToEndId: cleanEndToEndId || null,
+  }
+}
+
+export async function refreshWifiPixEfiPaymentStatus(venda = {}) {
+  const txid = venda.efi_txid || venda.asaas_payment_id || venda.asaas_payload?.txid || ''
+  const provider = venda.gateway_pagamento || venda.asaas_payload?.provider || ''
+
+  if (!txid || String(provider).toLowerCase() !== 'efi') {
+    return { venda, refreshed: false, paid: ['pago', 'autorizado'].includes(venda.status) }
+  }
+
+  const charge = await getEfiPixCharge(txid)
+  const paid = isEfiPixPaidStatus(charge?.status)
+
+  if (!paid) {
+    await persistEfiVendaFields(venda.id, {
+      gateway_pagamento: 'efi',
+      efi_txid: txid,
+      efi_payload: {
+        ...(venda.asaas_payload || {}),
+        provider: 'efi',
+        charge,
+      },
+    })
+
+    return { venda, refreshed: true, paid: false, charge }
+  }
+
+  const result = await markWifiPixEfiPaymentStatus({
+    txid,
+    payload: { charge },
+  })
+
+  return { venda: result.venda || venda, refreshed: true, paid: Boolean(result.paid), charge }
+}
+

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { requireAdmin } from '@/lib/admin-api-auth'
@@ -43,6 +43,22 @@ const ENV_GROUPS = [
     ],
   },
   {
+    id: 'efi',
+    title: 'Efi / Wi-Fi no Pix',
+    keys: [
+      'WIFI_PIX_GATEWAY',
+      'EFI_ENV',
+      'EFI_CLIENT_ID',
+      'EFI_CLIENT_SECRET',
+      'EFI_PIX_KEY',
+      {
+        key: 'EFI_CERT_BASE64',
+        fallbackKey: 'EFI_CERT_PATH',
+        fallbackLabel: 'fallback EFI_CERT_PATH',
+      },
+      'EFI_PIX_WEBHOOK_URL',
+    ],
+  },  {
     id: 'control',
     title: 'Control API e MikroTik',
     keys: [
@@ -386,3 +402,4 @@ export async function GET(request) {
     scripts,
   })
 }
+
