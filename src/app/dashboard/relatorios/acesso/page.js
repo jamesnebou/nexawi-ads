@@ -418,6 +418,11 @@ export default function RelatorioAcesso() {
           pending={resumo.landingNativa?.cliquesPendenteInstrumentacao}
         />
 
+        <CommercialMetricsBreakdown
+          anuncios={resumo.metricasAnuncios || []}
+          clientes={resumo.metricasClientes || []}
+        />
+
         {carregando ? (
           <div className="flex items-center justify-center py-32">
             <div className="relative w-16 h-16 flex items-center justify-center">
@@ -617,6 +622,90 @@ function ClickTargetBreakdown({ items = [], pending = false }) {
   )
 }
 
+function CommercialMetricsBreakdown({ anuncios = [], clientes = [] }) {
+  return (
+    <div className="grid gap-5 xl:grid-cols-2 mb-10">
+      <CommercialRankList
+        title="Anuncios por performance"
+        empty="Nenhum anuncio com metrica no periodo."
+        items={anuncios}
+        type="anuncio"
+      />
+      <CommercialRankList
+        title="Clientes por performance"
+        empty="Nenhum cliente com metrica no periodo."
+        items={clientes}
+        type="cliente"
+      />
+    </div>
+  )
+}
+
+function CommercialRankList({ title, empty, items = [], type }) {
+  return (
+    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+      <div className="flex items-center justify-between gap-3 mb-5">
+        <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
+          {title}
+        </p>
+        <p className="text-[11px] text-neutral-600 font-bold uppercase tracking-widest">
+          Top {Math.min(items.length, type === 'cliente' ? 10 : 12)}
+        </p>
+      </div>
+
+      {items.length ? (
+        <div className="grid gap-3">
+          {items.map((item, index) => {
+            const titleText = type === 'cliente' ? item.cliente_nome : item.titulo
+            const subtitle = type === 'cliente'
+              ? `${item.anuncios || 0} anuncio(s)`
+              : item.cliente_nome
+            const hotspots = Array.isArray(item.hotspots) ? item.hotspots : []
+
+            return (
+              <div
+                key={`${type}-${item.anuncio_id || item.cliente_id || index}`}
+                className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-[#8cf059]">#{index + 1}</span>
+                      <p className="text-sm font-bold text-white truncate">{titleText || 'Sem nome'}</p>
+                    </div>
+                    <p className="text-xs text-neutral-500 mt-1 truncate">{subtitle}</p>
+                    {type === 'anuncio' && hotspots.length ? (
+                      <p className="text-[11px] text-neutral-600 mt-1 truncate">
+                        {hotspots.join(', ')}{item.hotspots_extra ? ` +${item.hotspots_extra}` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 sm:min-w-[220px]">
+                    <SmallMetric label="Views" value={item.total_unique_views || 0} />
+                    <SmallMetric label="Cliques" value={item.total_unique_clicks || 0} />
+                    <SmallMetric label="CTR" value={`${item.taxa_clique || 0}%`} />
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : (
+        <p className="text-sm text-neutral-500">{empty}</p>
+      )}
+    </div>
+  )
+}
+
+function SmallMetric({ label, value }) {
+  return (
+    <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2 text-center">
+      <p className="text-[9px] text-neutral-600 font-bold uppercase tracking-widest">{label}</p>
+      <p className="text-sm text-white font-black mt-1">{value}</p>
+    </div>
+  )
+}
 function MetricBox({ label, value, icon: Icon, color }) {
   return (
     <div className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl p-5 flex items-center gap-4 shadow-inner group/metric hover:border-white/[0.1] transition-colors">

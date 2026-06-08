@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Building2,
+  CalendarDays,
   CheckCircle2,
   DollarSign,
   Download,
@@ -370,6 +371,7 @@ export default function CrmClientesPage() {
     { label: 'Landing', value: prospects.length, detail: 'captados em /anunciar', icon: Target, accent: 'text-blue-300' },
     { label: 'Novos leads', value: (resumo.novos || 0) + (resumoProspects.novos || 0), detail: 'entraram no CRM', icon: Target, accent: 'text-blue-300' },
     { label: 'Em contato', value: (resumo.emContato || 0) + (resumoProspects.emContato || 0), detail: 'conversa iniciada', icon: Phone, accent: 'text-cyan-300' },
+    { label: 'Follow-ups', value: (resumo.proximosContatos || 0) + (resumoProspects.proximosContatos || 0), detail: 'proximos 7 dias', icon: CalendarDays, accent: 'text-orange-300' },
     { label: 'Fechados', value: (resumo.fechados || 0) + (resumoProspects.fechados || 0), detail: 'viraram cliente', icon: CheckCircle2, accent: 'text-[#8cf059]' },
     { label: 'Valor potencial', value: formatCurrency((resumo.valorPotencial || 0) + (resumoProspects.valorPotencial || 0)), detail: 'pipeline estimado', icon: DollarSign, accent: 'text-purple-300', currency: true },
   ]

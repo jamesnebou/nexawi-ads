@@ -134,6 +134,113 @@ function resumirCliquesPorDestino(rows = []) {
   return [...totals.values()].sort((a, b) => b.total - a.total)
 }
 
+async function buscarAnunciosBasicos({ anuncioIds, auth }) {
+  if (!anuncioIds || anuncioIds.length === 0) return []
+
+  let query = supabaseAdmin
+    .from('anuncios')
+    .select('id, empresa_id, cliente_id, titulo, ativo, tipo_media, arquivado_em')
+    .in('id', anuncioIds)
+
+  query = auth.applyEmpresaScope(query)
+
+  const { data, error } = await query
+
+  if (error) throw error
+
+  return data || []
+}
+
+function resumirMetricasPorAnuncio({ anuncios = [], views = [], clicks = [], clientes = [], hotspots = [], vinculos = [] }) {
+  const clientePorId = new Map((clientes || []).map((cliente) => [cliente.id, cliente]))
+  const hotspotPorId = new Map((hotspots || []).map((hotspot) => [hotspot.id, hotspot]))
+  const vinculosPorAnuncio = new Map()
+
+  ;(vinculos || []).forEach((vinculo) => {
+    if (!vinculosPorAnuncio.has(vinculo.anuncio_id)) {
+      vinculosPorAnuncio.set(vinculo.anuncio_id, [])
+    }
+
+    vinculosPorAnuncio.get(vinculo.anuncio_id).push(vinculo.hotspot_id)
+  })
+
+  return (anuncios || [])
+    .map((anuncio) => {
+      const viewsDoAnuncio = views.filter((view) => view.anuncio_id === anuncio.id)
+      const clicksDoAnuncio = clicks.filter((click) => click.anuncio_id === anuncio.id)
+      const hotspotIds = new Set([
+        ...viewsDoAnuncio.map((view) => view.hotspot_id).filter(Boolean),
+        ...clicksDoAnuncio.map((click) => click.hotspot_id).filter(Boolean),
+      ])
+
+      if (hotspotIds.size === 0) {
+        ;(vinculosPorAnuncio.get(anuncio.id) || []).forEach((hotspotId) => hotspotIds.add(hotspotId))
+      }
+
+      const hotspotNomes = [...hotspotIds]
+        .map((hotspotId) => hotspotPorId.get(hotspotId)?.nome)
+        .filter(Boolean)
+
+      const totalViews = uniqueCount(viewsDoAnuncio)
+      const totalClicks = uniqueCount(clicksDoAnuncio)
+      const cliente = clientePorId.get(anuncio.cliente_id)
+
+      return {
+        anuncio_id: anuncio.id,
+        titulo: anuncio.titulo || 'Sem titulo',
+        cliente_id: anuncio.cliente_id || null,
+        cliente_nome: cliente?.nome || 'Sem cliente vinculado',
+        ativo: Boolean(anuncio.ativo),
+        arquivado: Boolean(anuncio.arquivado_em),
+        tipo_media: anuncio.tipo_media || '',
+        total_unique_views: totalViews,
+        total_unique_clicks: totalClicks,
+        taxa_clique: calcularTaxa(totalClicks, totalViews),
+        hotspots: hotspotNomes.slice(0, 3),
+        hotspots_extra: Math.max(0, hotspotNomes.length - 3),
+      }
+    })
+    .sort((a, b) => {
+      if (b.total_unique_views !== a.total_unique_views) {
+        return b.total_unique_views - a.total_unique_views
+      }
+
+      return b.total_unique_clicks - a.total_unique_clicks
+    })
+    .slice(0, 12)
+}
+
+function resumirMetricasPorCliente(metricasAnuncios = []) {
+  const totals = new Map()
+
+  ;(metricasAnuncios || []).forEach((anuncio) => {
+    const key = anuncio.cliente_id || 'sem-cliente'
+    const current = totals.get(key) || {
+      cliente_id: anuncio.cliente_id || null,
+      cliente_nome: anuncio.cliente_nome || 'Sem cliente vinculado',
+      anuncios: 0,
+      total_unique_views: 0,
+      total_unique_clicks: 0,
+      taxa_clique: 0,
+    }
+
+    current.anuncios += 1
+    current.total_unique_views += Number(anuncio.total_unique_views || 0)
+    current.total_unique_clicks += Number(anuncio.total_unique_clicks || 0)
+    current.taxa_clique = calcularTaxa(current.total_unique_clicks, current.total_unique_views)
+    totals.set(key, current)
+  })
+
+  return [...totals.values()]
+    .sort((a, b) => {
+      if (b.total_unique_views !== a.total_unique_views) {
+        return b.total_unique_views - a.total_unique_views
+      }
+
+      return b.total_unique_clicks - a.total_unique_clicks
+    })
+    .slice(0, 10)
+}
 async function buscarMetricasLandingNativa({ periodo }) {
   const dataInicio = getDataInicio(periodo)
 
@@ -266,7 +373,7 @@ export async function GET(request) {
       ...new Set((vinculos || []).map((v) => v.anuncio_id).filter(Boolean)),
     ]
 
-    const [views, clicks, landingNativa] = await Promise.all([
+    const [views, clicks, landingNativa, anunciosBasicos] = await Promise.all([
       buscarEventosComData({
         tabela: 'anuncio_views',
         anuncioIds,
@@ -283,9 +390,19 @@ export async function GET(request) {
       }),
 
       buscarMetricasLandingNativa({ periodo }),
+      buscarAnunciosBasicos({ anuncioIds, auth }),
     ])
 
     const clientePorId = new Map((clientes || []).map((cliente) => [cliente.id, cliente]))
+    const metricasAnuncios = resumirMetricasPorAnuncio({
+      anuncios: anunciosBasicos,
+      views,
+      clicks,
+      clientes: clientes || [],
+      hotspots: hotspots || [],
+      vinculos: vinculos || [],
+    })
+    const metricasClientes = resumirMetricasPorCliente(metricasAnuncios)
     const vinculosPorHotspot = new Map()
 
     ;(vinculos || []).forEach((vinculo) => {
@@ -362,6 +479,8 @@ export async function GET(request) {
       totalClicksComHotspotReal: relatorio.reduce((acc, item) => acc + item.clicks_com_hotspot_real, 0),
       taxaCliqueGeral: calcularTaxa(totalClicks, totalViews),
       landingNativa,
+      metricasAnuncios,
+      metricasClientes,
     }
 
     return NextResponse.json({

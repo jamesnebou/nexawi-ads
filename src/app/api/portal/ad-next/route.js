@@ -97,6 +97,7 @@ async function getActiveAdsForHotspot(hotspotId) {
     .select('id, titulo, descricao, url_destino, tipo_destino, lp_slug, tempo_liberacao_lp, duracao_segundos, ativo, media_url, tipo_media, empresa_id, cliente_id, created_at')
     .in('id', anuncioIds)
     .eq('ativo', true)
+    .is('arquivado_em', null)
     .order('created_at', { ascending: true })
 
   if (error) throw error

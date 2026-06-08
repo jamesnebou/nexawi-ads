@@ -296,6 +296,56 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
+function TrackingStatusCards({ form }) {
+  const items = [
+    {
+      label: 'Meta Pixel client-side',
+      status: form.lp_meta_pixel_id ? 'ativo' : 'pendente',
+      detail: form.lp_meta_pixel_id ? 'Pixel publico aplicado na LP nativa.' : 'Informe o Pixel ID para medir eventos no navegador.',
+    },
+    {
+      label: 'Meta Conversions API',
+      status: form.lp_meta_conversions_api_enabled ? 'preparado' : 'pendente',
+      detail: 'Depende de META_CONVERSIONS_ACCESS_TOKEN na VPS/Vercel. O painel nao exibe token.',
+    },
+    {
+      label: 'Google Ads client-side',
+      status: form.lp_google_ads_id && form.lp_google_ads_conversion_label ? 'ativo' : 'pendente',
+      detail: 'Exige Google Ads ID e Conversion Label para cliques/leads da LP.',
+    },
+    {
+      label: 'Google server-side',
+      status: form.lp_google_ads_enhanced_conversions_enabled ? 'preparado' : 'pendente',
+      detail: 'Depende das credenciais GOOGLE_ADS_* no ambiente seguro.',
+    },
+  ]
+
+  return (
+    <div className="mb-6 grid grid-cols-1 xl:grid-cols-4 gap-3">
+      {items.map((item) => {
+        const active = item.status === 'ativo'
+        const prepared = item.status === 'preparado'
+        const style = active
+          ? 'border-[#6be12f]/20 bg-[#6be12f]/10 text-[#8cf059]'
+          : prepared
+            ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300'
+            : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-300'
+
+        return (
+          <div key={item.label} className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-black text-white">{item.label}</p>
+              <span className={`rounded-lg border px-2.5 py-1 text-[9px] font-black uppercase tracking-widest ${style}`}>
+                {item.status}
+              </span>
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">{item.detail}</p>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 export default function Configuracoes() {
   const [abaAtiva, setAbaAtiva] = useState('empresa')
   const [carregando, setCarregando] = useState(true)
@@ -945,6 +995,8 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                 <p className="text-sm text-neutral-500 mb-6">
                   IDs públicos usados em www.nexawi.com.br para campanhas de Meta, Google Ads, GA4 e GTM.
                 </p>
+
+                <TrackingStatusCards form={form} />
 
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                   <div>

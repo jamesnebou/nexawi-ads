@@ -200,6 +200,7 @@ export async function POST(request) {
         `)
         .in('id', anuncioIds)
         .eq('ativo', true)
+        .is('arquivado_em', null)
 
       if (anunciosError) throw anunciosError
       anuncios = await filtrarAnunciosPorContaAtiva(anunciosData || [])

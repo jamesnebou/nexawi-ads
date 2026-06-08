@@ -59,6 +59,20 @@ const ENV_GROUPS = [
       'ROUTEROS_HOTSPOT_SERVER',
     ],
   },
+  {
+    id: 'conversions',
+    title: 'Conversoes server-side',
+    keys: [
+      { key: 'META_CONVERSIONS_PIXEL_ID', fallbackKey: 'LP_META_CONVERSIONS_PIXEL_ID', fallbackLabel: 'fallback LP_META_CONVERSIONS_PIXEL_ID' },
+      { key: 'META_CONVERSIONS_ACCESS_TOKEN', fallbackKey: 'LP_META_CONVERSIONS_ACCESS_TOKEN', fallbackLabel: 'fallback LP_META_CONVERSIONS_ACCESS_TOKEN' },
+      { key: 'META_CONVERSIONS_API_VERSION', fallback: 'v20.0', fallbackLabel: 'padrao v20.0' },
+      'GOOGLE_ADS_DEVELOPER_TOKEN',
+      'GOOGLE_ADS_OAUTH_ACCESS_TOKEN',
+      'GOOGLE_ADS_CUSTOMER_ID',
+      'GOOGLE_ADS_CONVERSION_ACTION_ID',
+      { key: 'GOOGLE_ADS_API_VERSION', fallback: 'v19', fallbackLabel: 'padrao v19' },
+    ],
+  },
 ]
 
 const SCRIPT_CHECKS = [
@@ -146,6 +160,129 @@ function summarize(items) {
   return 'ok'
 }
 
+function envValue(key) {
+  return String(process.env[key] || '').trim()
+}
+
+async function checkControlApi() {
+  const mode = envValue('CONTROL_API_MODE') || 'direct'
+  const baseUrl = envValue('CONTROL_API_BASE_URL').replace(/\/$/, '')
+  const secret = envValue('NEXAWI_CONTROL_SECRET') || envValue('NEXAWI_CRON_SECRET')
+
+  if (mode === 'proxy' && !baseUrl) {
+    return {
+      id: 'control_api_health',
+      title: 'Control API remota',
+      status: 'error',
+      detail: 'CONTROL_API_MODE=proxy exige CONTROL_API_BASE_URL configurada.',
+    }
+  }
+
+  if (!baseUrl) {
+    return {
+      id: 'control_api_health',
+      title: 'Control API remota',
+      status: 'warning',
+      detail: 'Sem CONTROL_API_BASE_URL. Ambiente em modo direto/local ou ainda nao configurado para VPS.',
+    }
+  }
+
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 4500)
+
+  try {
+    const response = await fetch(`${baseUrl}/api/health`, {
+      headers: secret ? { 'x-control-secret': secret } : {},
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    return {
+      id: 'control_api_health',
+      title: 'Control API remota',
+      status: 'ok',
+      detail: `Control API respondeu em ${baseUrl}.`,
+    }
+  } catch (error) {
+    return {
+      id: 'control_api_health',
+      title: 'Control API remota',
+      status: 'error',
+      detail: `Control API indisponivel em ${baseUrl}: ${error.message || 'falha de conexao'}.`,
+    }
+  } finally {
+    clearTimeout(timeout)
+  }
+}
+
+async function checkWifiPixPlanos(auth) {
+  try {
+    let hotspotsQuery = supabaseAdmin
+      .from('hotspots')
+      .select('id, nome, slug, status, portal_modo_acesso, wifi_pix_ativo')
+      .eq('status', 'Ativo')
+      .in('portal_modo_acesso', ['pix', 'hibrido'])
+
+    hotspotsQuery = auth.applyEmpresaScope(hotspotsQuery)
+
+    const { data: hotspots, error: hotspotsError } = await hotspotsQuery
+    if (hotspotsError) throw hotspotsError
+
+    const paidHotspots = hotspots || []
+
+    if (paidHotspots.length === 0) {
+      return {
+        id: 'wifi_pix_paid_plans',
+        title: 'Pix/Hibrido com planos ativos',
+        status: 'ok',
+        detail: 'Nenhum hotspot ativo esta em modo Pix ou Hibrido.',
+      }
+    }
+
+    const hotspotIds = paidHotspots.map((hotspot) => hotspot.id).filter(Boolean)
+    let planosQuery = supabaseAdmin
+      .from('wifi_pix_planos')
+      .select('id, hotspot_id')
+      .in('hotspot_id', hotspotIds)
+      .eq('ativo', true)
+
+    planosQuery = auth.applyEmpresaScope(planosQuery)
+
+    const { data: planos, error: planosError } = await planosQuery
+    if (planosError) throw planosError
+
+    const planosPorHotspot = new Set((planos || []).map((plano) => plano.hotspot_id))
+    const semPlano = paidHotspots.filter((hotspot) => !planosPorHotspot.has(hotspot.id))
+
+    if (semPlano.length > 0) {
+      return {
+        id: 'wifi_pix_paid_plans',
+        title: 'Pix/Hibrido com planos ativos',
+        status: 'error',
+        detail: `Hotspot pago sem plano ativo: ${semPlano.map((hotspot) => hotspot.nome || hotspot.slug).join(', ')}.`,
+      }
+    }
+
+    return {
+      id: 'wifi_pix_paid_plans',
+      title: 'Pix/Hibrido com planos ativos',
+      status: 'ok',
+      detail: `${paidHotspots.length} hotspot(s) em modo Pix/Hibrido possuem plano ativo.`,
+    }
+  } catch (error) {
+    const message = String(error?.message || '')
+    return {
+      id: 'wifi_pix_paid_plans',
+      title: 'Pix/Hibrido com planos ativos',
+      status: message.includes('wifi_pix_planos') || message.includes('schema cache') ? 'warning' : 'error',
+      detail: error.message || 'Nao foi possivel validar planos Wi-Fi no Pix.',
+    }
+  }
+}
 async function checkSupabase() {
   try {
     const { error } = await supabaseAdmin
@@ -204,10 +341,16 @@ export async function GET(request) {
     }
   })
 
-  const supabase = await checkSupabase()
+  const [supabase, controlApi, wifiPixPlanos] = await Promise.all([
+    checkSupabase(),
+    checkControlApi(),
+    checkWifiPixPlanos(auth),
+  ])
 
   const checks = [
     supabase,
+    controlApi,
+    wifiPixPlanos,
     ...envGroups.map((group) => ({
       id: `env_${group.id}`,
       title: group.title,
