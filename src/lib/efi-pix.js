@@ -165,6 +165,19 @@ function formatMoney(value) {
   return Number(value || 0).toFixed(2)
 }
 
+function normalizeEfiBrowserUrl(value = '') {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (/^qrcodespix\.sejaefi\.com\.br\//i.test(raw)) return `https://${raw}`
+  return ''
+}
+
+function normalizePixCopyPaste(value = '') {
+  const raw = String(value || '').trim()
+  return raw.startsWith('000201') ? raw : ''
+}
+
 export function createWifiPixTxid(vendaId = '') {
   const hex = String(vendaId || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 32)
   const txid = `NXW${hex}`.slice(0, 35)
@@ -234,3 +247,4 @@ export async function getEfiPixCharge(txid) {
 export function isEfiPixPaidStatus(status = '') {
   return String(status || '').toUpperCase() === 'CONCLUIDA'
 }
+

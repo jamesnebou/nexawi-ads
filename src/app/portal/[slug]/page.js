@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
@@ -137,8 +137,8 @@ function resolverDestinoAnuncio(anuncio = {}) {
 }
 
 
-// Chamada padrão para as APIs seguras do portal.
-// Assim o componente público não acessa mais tabelas sensíveis direto no Supabase.
+// Chamada padrÃ£o para as APIs seguras do portal.
+// Assim o componente pÃºblico nÃ£o acessa mais tabelas sensÃ­veis direto no Supabase.
 function formatWifiPixDuration(minutes = 0) {
   const total = Number(minutes || 0)
 
@@ -201,12 +201,12 @@ function AvisoAcessoPorInatividade() {
 
         <div className="flex-1">
           <p className="text-[11px] uppercase tracking-[0.22em] text-[#6be12f] font-bold mb-2">
-            Acesso liberado após o anúncio
+            Acesso liberado apÃ³s o anÃºncio
           </p>
 
           <p className="text-sm text-gray-300 leading-relaxed">
             <br />
-            Caso fique sem internet após um período parado, basta desligar e ligar o Wi-Fi e entrar novamente.
+            Caso fique sem internet apÃ³s um perÃ­odo parado, basta desligar e ligar o Wi-Fi e entrar novamente.
           </p>
         </div>
       </div>
@@ -245,7 +245,7 @@ export default function Portal() {
   const [telefoneRapido, setTelefoneRapido] = useState('')
   const [erroTelefoneRapido, setErroTelefoneRapido] = useState('')
   const [internetLiberadaNaCta, setInternetLiberadaNaCta] = useState(false)
-  const [loadingTexto, setLoadingTexto] = useState('Conectando à rede...')
+  const [loadingTexto, setLoadingTexto] = useState('Conectando Ã  rede...')
   const [erroDetalhe, setErroDetalhe] = useState('')
   const [salvandoTelefoneRapido, setSalvandoTelefoneRapido] = useState(false)
   const [videoAnuncioPronto, setVideoAnuncioPronto] = useState(false)
@@ -336,7 +336,7 @@ export default function Portal() {
     })
 
     if (!data.hotspot) {
-      falhar('Hotspot não encontrado', `slug recebido: ${slug}`)
+      falhar('Hotspot nÃ£o encontrado', `slug recebido: ${slug}`)
       return null
     }
 
@@ -371,7 +371,7 @@ export default function Portal() {
       telefoneMascarado: data.lead.telefoneMascarado || '',
     }
   } catch (error) {
-    console.error('Erro ao buscar lead rápido:', error)
+    console.error('Erro ao buscar lead rÃ¡pido:', error)
     return null
   }
 }
@@ -395,7 +395,7 @@ export default function Portal() {
       const data = await response.json()
 
       if (!response.ok) {
-        throw new Error(data.error || 'Falha ao consultar status da sessão')
+        throw new Error(data.error || 'Falha ao consultar status da sessÃ£o')
       }
 
       return data.status || { state: 'idle', remainingSeconds: 0 }
@@ -416,15 +416,15 @@ export default function Portal() {
       null
 
     if (!hotspotSlug) {
-      throw new Error('Hotspot não carregado')
+      throw new Error('Hotspot nÃ£o carregado')
     }
 
     if (!resolvedLeadId) {
-      throw new Error('leadId não encontrado para autorizar')
+      throw new Error('leadId nÃ£o encontrado para autorizar')
     }
 
     if (!resolvedMac) {
-      throw new Error('MAC do cliente não encontrado')
+      throw new Error('MAC do cliente nÃ£o encontrado')
     }
 
     if (!resolvedIp) {
@@ -456,7 +456,7 @@ export default function Portal() {
         return null
       }
 
-      throw new Error(data.error || 'Falha ao autorizar sessão')
+      throw new Error(data.error || 'Falha ao autorizar sessÃ£o')
     }
 
     return data
@@ -511,7 +511,7 @@ export default function Portal() {
         ipAddress: ip,
       })
     } catch (error) {
-      console.error('Erro ao registrar visualização:', error)
+      console.error('Erro ao registrar visualizaÃ§Ã£o:', error)
     }
   }
 
@@ -567,17 +567,17 @@ export default function Portal() {
     const novosErros = {}
     const cpfLimpo = String(form.cpf).replace(/\D/g, '')
 
-    if (!form.nome.trim()) novosErros.nome = 'Nome é obrigatório'
+    if (!form.nome.trim()) novosErros.nome = 'Nome Ã© obrigatÃ³rio'
     if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      novosErros.email = 'E-mail inválido'
+      novosErros.email = 'E-mail invÃ¡lido'
     }
-    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone inválido (11 dígitos)'
+    if (!validatePhoneNumber(form.telefone)) novosErros.telefone = 'Telefone invÃ¡lido (11 dÃ­gitos)'
     if (cpfObrigatorio && !validateCpf(cpfLimpo)) {
-      novosErros.cpf = 'CPF inválido'
+      novosErros.cpf = 'CPF invÃ¡lido'
     } else if (!cpfObrigatorio && cpfSolicitado && cpfLimpo && !validateCpf(cpfLimpo)) {
-      novosErros.cpf = 'CPF inválido'
+      novosErros.cpf = 'CPF invÃ¡lido'
     }
-    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'Você precisa aceitar os termos'
+    if (!form.aceite_lgpd) novosErros.aceite_lgpd = 'VocÃª precisa aceitar os termos'
 
     setErros(novosErros)
     return Object.keys(novosErros).length === 0
@@ -606,7 +606,7 @@ export default function Portal() {
         return result
       })
       .catch((error) => {
-        console.error('Erro ao autorizar sessão em background:', error)
+        console.error('Erro ao autorizar sessÃ£o em background:', error)
         throw error
       })
       .finally(() => {
@@ -644,14 +644,14 @@ export default function Portal() {
         null
 
       if (!resolvedLeadId) {
-        throw new Error('leadId ausente ao finalizar o anúncio')
+        throw new Error('leadId ausente ao finalizar o anÃºncio')
       }
 
       await concluirAnuncioNoServidor(resolvedLeadId)
       setInternetLiberadaNaCta(true)
       setEtapa(ETAPAS.CTA)
     } catch (error) {
-      falhar('Erro ao finalizar anúncio', error)
+      falhar('Erro ao finalizar anÃºncio', error)
     }
   }
 
@@ -668,7 +668,7 @@ export default function Portal() {
       const resolvedIp = getClientIp()
 
       // Salva o lead por API server-side.
-// Assim CPF, telefone, e-mail, MAC e IP não dependem mais de permissão pública na tabela leads.
+// Assim CPF, telefone, e-mail, MAC e IP nÃ£o dependem mais de permissÃ£o pÃºblica na tabela leads.
 const data = await portalApiFetch('/api/portal/lead', {
   hotspotId: hotspot.id,
   nome: form.nome,
@@ -874,7 +874,7 @@ leadIdRef.current = data.leadId
    try {
     if (!isMounted) return
 
-    setLoadingTexto('Conectando à rede...')
+    setLoadingTexto('Conectando Ã  rede...')
 
     const resolvedMac = getClientMac()
     const resolvedIp = getClientIp()
@@ -915,7 +915,7 @@ leadIdRef.current = data.leadId
         { state: 'idle', remainingSeconds: 0 }
       )
     } catch (error) {
-      console.warn('Falha ao consultar status da sessão na inicialização:', error)
+      console.warn('Falha ao consultar status da sessÃ£o na inicializaÃ§Ã£o:', error)
     }
 
     if (statusAtual.state === 'cooldown') {
@@ -951,10 +951,10 @@ leadIdRef.current = data.leadId
       return
     }
 
-    // Sem lead do mês, volta para cadastro.
+    // Sem lead do mÃªs, volta para cadastro.
     setEtapa(ETAPAS.CADASTRO)
   } catch (error) {
-    if (isMounted) falhar('Erro na inicialização do portal', error)
+    if (isMounted) falhar('Erro na inicializaÃ§Ã£o do portal', error)
   }
 }
 
@@ -980,8 +980,8 @@ leadIdRef.current = data.leadId
     if (etapa === ETAPAS.ANUNCIO && anuncioAtual) {
       if (anuncioAtual.tipo_media === 'video' && anuncioAtual.media_url && !videoAnuncioPronto) return
       // Android fecha automaticamente o captive portal quando detecta internet.
-      // Por isso não liberamos a sessão durante o anúncio.
-      // A liberação acontece somente após o clique no CTA ou ao recusar.
+      // Por isso nÃ£o liberamos a sessÃ£o durante o anÃºncio.
+      // A liberaÃ§Ã£o acontece somente apÃ³s o clique no CTA ou ao recusar.
       setContador(anuncioAtual.duracao_segundos || 15)
 
       intervaloAnuncioRef.current = setInterval(() => {
@@ -1038,11 +1038,11 @@ leadIdRef.current = data.leadId
       setWifiPixCheckout(data.checkout)
       setWifiPixMensagem(
         wifiPixMetodo === 'CREDIT_CARD'
-          ? 'Pagamento criado. Abra o link seguro para pagar com cartão.'
-          : 'Pix criado. Abra o link seguro ou copie o código Pix.'
+          ? 'Pagamento criado. Abra o link seguro para pagar com cartÃ£o.'
+          : 'Pix criado. Abra o link seguro ou copie o cÃ³digo Pix.'
       )
     } catch (error) {
-      setWifiPixMensagem(error.message || 'Não foi possível gerar o pagamento.')
+      setWifiPixMensagem(error.message || 'NÃ£o foi possÃ­vel gerar o pagamento.')
     } finally {
       setWifiPixProcessando(false)
     }
@@ -1062,7 +1062,7 @@ leadIdRef.current = data.leadId
       })
 
       if (!['pago', 'autorizado'].includes(status.venda?.status)) {
-        setWifiPixMensagem('Pagamento ainda não confirmado. Aguarde alguns segundos e toque novamente.')
+        setWifiPixMensagem('Pagamento ainda nÃ£o confirmado. Aguarde alguns segundos e toque novamente.')
         return
       }
 
@@ -1076,7 +1076,7 @@ leadIdRef.current = data.leadId
       setWifiPixMensagem('Pagamento confirmado. Internet liberada.')
       setEtapa(ETAPAS.ACESSO)
     } catch (error) {
-      setWifiPixMensagem(error.message || 'Não foi possível liberar o acesso.')
+      setWifiPixMensagem(error.message || 'NÃ£o foi possÃ­vel liberar o acesso.')
     } finally {
       setWifiPixProcessando(false)
     }
@@ -1135,12 +1135,12 @@ leadIdRef.current = data.leadId
             </div>
             <h1 className="text-2xl font-bold text-white mb-3 tracking-tight">Acesso pausado</h1>
             <p className="text-gray-400 text-sm mb-8 leading-relaxed">
-              Sua conexão precisa ser renovada. Desligue e ligue seu Wi-Fi, acesse a rede novamente e siga o fluxo do portal.
+              Sua conexÃ£o precisa ser renovada. Desligue e ligue seu Wi-Fi, acesse a rede novamente e siga o fluxo do portal.
             </p>
             <div className="bg-[#0a0a0a] rounded-2xl p-4 border border-white/[0.05]">
-              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">Orientação</p>
+              <p className="text-xs text-gray-500 uppercase tracking-widest font-bold mb-1">OrientaÃ§Ã£o</p>
               <p className="text-sm font-medium text-white leading-relaxed">
-                Volte para o Wi-Fi NexaWi para liberar uma nova conexão.
+                Volte para o Wi-Fi NexaWi para liberar uma nova conexÃ£o.
               </p>
             </div>
           </div>
@@ -1152,13 +1152,13 @@ leadIdRef.current = data.leadId
           <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
             <ShieldCheck className="text-red-500" size={24} />
           </div>
-          <h2 className="text-xl font-bold text-white mb-2">Rede Indisponível</h2>
-          <p className="text-gray-500 mb-3">Não foi possível carregar as configurações deste ponto de acesso.</p>
+          <h2 className="text-xl font-bold text-white mb-2">Rede IndisponÃ­vel</h2>
+          <p className="text-gray-500 mb-3">NÃ£o foi possÃ­vel carregar as configuraÃ§Ãµes deste ponto de acesso.</p>
 
           {erroDetalhe ? (
             <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-left">
               <p className="text-[11px] uppercase tracking-[0.2em] text-red-400 font-bold mb-2">
-                Detalhe técnico
+                Detalhe tÃ©cnico
               </p>
               <p className="text-sm text-red-200 break-words">
                 {erroDetalhe}
@@ -1206,7 +1206,7 @@ leadIdRef.current = data.leadId
                     <Wifi size={22} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-lg font-black text-white">Veja o anúncio e ganhe 30 minutos grátis</p>
+                    <p className="text-lg font-black text-white">Veja o anÃºncio e ganhe 30 minutos grÃ¡tis</p>
                     <p className="mt-1 text-sm leading-relaxed text-gray-500">
                       Depois desse tempo, a internet deste aparelho sera encerrada automaticamente.
                     </p>
@@ -1276,7 +1276,7 @@ leadIdRef.current = data.leadId
               </p>
               <h1 className="text-4xl font-black text-white mb-3 tracking-tight leading-none">Internet no Pix</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Pague com Pix ou cartão e libere a internet neste aparelho sem esperar atendimento.
+                Pague com Pix ou cartÃ£o e libere a internet neste aparelho sem esperar atendimento.
               </p>
             </div>
 
@@ -1368,7 +1368,7 @@ leadIdRef.current = data.leadId
                         : 'border-white/[0.06] bg-[#0a0a0a] text-gray-300'
                     }`}
                   >
-                    <CreditCard size={17} /> Cartão
+                    <CreditCard size={17} /> CartÃ£o
                   </button>
                 </div>
 
@@ -1427,10 +1427,17 @@ leadIdRef.current = data.leadId
                 {wifiPixCheckout.pixCopyPaste ? (
                   <button
                     type="button"
-                    onClick={() => navigator.clipboard?.writeText(wifiPixCheckout.pixCopyPaste)}
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard?.writeText(wifiPixCheckout.pixCopyPaste)
+                        setWifiPixMensagem('Código Pix copiado. Abra o app do banco e cole no Pix copia e cola.')
+                      } catch {
+                        setWifiPixMensagem('Não foi possível copiar automaticamente. Toque e segure para selecionar o código.')
+                      }
+                    }}
                     className="w-full border border-white/[0.08] bg-[#0a0a0a] text-gray-200 font-bold py-4 rounded-2xl transition-all duration-300"
                   >
-                    Copiar código Pix
+                    Copiar cÃ³digo Pix
                   </button>
                 ) : null}
 
@@ -1440,7 +1447,7 @@ leadIdRef.current = data.leadId
                   disabled={wifiPixProcessando}
                   className="w-full border border-[#ff7a00]/35 bg-[#ff7a00]/10 text-[#ff9d2e] font-bold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
                 >
-                  {wifiPixProcessando ? <Loader2 size={20} className="animate-spin" /> : <>Já paguei, liberar Wi-Fi <CheckCircle2 size={18} /></>}
+                  {wifiPixProcessando ? <Loader2 size={20} className="animate-spin" /> : <>JÃ¡ paguei, liberar Wi-Fi <CheckCircle2 size={18} /></>}
                 </button>
 
                 <button
@@ -1481,7 +1488,7 @@ leadIdRef.current = data.leadId
             </div>
 
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bom ter você novamente...</h1>
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Bom ter vocÃª novamente...</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Identificamos este dispositivo em <strong className="text-gray-300">{hotspot?.nome}</strong>.
                 Digite seu celular para continuar
@@ -1534,9 +1541,9 @@ leadIdRef.current = data.leadId
             </div>
 
             <div className="text-center mb-10">
-              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Wi-Fi Grátis</h1>
+              <h1 className="text-2xl font-bold text-white mb-2 tracking-tight">Wi-Fi GrÃ¡tis</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Preencha os dados abaixo para liberar seu acesso à internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+                Preencha os dados abaixo para liberar seu acesso Ã  internet em <strong className="text-gray-300">{hotspot?.nome}</strong>.
               </p>
 
               <AvisoAcessoPorInatividade />
@@ -1642,7 +1649,7 @@ leadIdRef.current = data.leadId
                     </button>{' '}
                     e{' '}
                     <button type="button" onClick={() => setModalAberto('privacidade')} className="text-[#6be12f] hover:underline">
-                      Política de Privacidade
+                      PolÃ­tica de Privacidade
                     </button>.
                   </span>
                 </label>
@@ -1696,7 +1703,7 @@ leadIdRef.current = data.leadId
 
                       <p className="text-xl font-bold text-white tracking-tight">Toque para seguir</p>
                       <p className="mx-auto mt-2 max-w-xs text-sm text-gray-200 leading-relaxed">
-                        A internet será liberada após o anúcio breve.
+                        A internet serÃ¡ liberada apÃ³s o anÃºcio breve.
                       </p>
 
                       {erroVideoAnuncio ? (
@@ -1707,9 +1714,9 @@ leadIdRef.current = data.leadId
                 )}
               </>
             ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
-              <img src={anuncioAtual.media_url} alt="Anúncio" className="w-full h-full object-cover" />
+              <img src={anuncioAtual.media_url} alt="AnÃºncio" className="w-full h-full object-cover" />
             ) : (
-              <div className="text-gray-600 text-sm">Mídia não disponível</div>
+              <div className="text-gray-600 text-sm">MÃ­dia nÃ£o disponÃ­vel</div>
             )}
           </div>
 
@@ -1730,7 +1737,7 @@ leadIdRef.current = data.leadId
             {anuncioAtual.media_url && anuncioAtual.tipo_media === 'video' ? (
               <video src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" autoPlay loop playsInline />
             ) : anuncioAtual.media_url && anuncioAtual.tipo_media === 'imagem' ? (
-              <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" alt="Fundo anúncio" />
+              <img src={anuncioAtual.media_url} className="w-full h-full object-cover blur-3xl" alt="Fundo anÃºncio" />
             ) : null}
           </div>
 
@@ -1753,7 +1760,7 @@ leadIdRef.current = data.leadId
               </h2>
 
               <p className="text-gray-400 text-sm mb-10 leading-relaxed">
-                {anuncioAtual.descricao || 'Toque no botão abaixo para abrir a oferta do anunciante.'}
+                {anuncioAtual.descricao || 'Toque no botÃ£o abaixo para abrir a oferta do anunciante.'}
               </p>
 
               <div className="flex flex-col gap-4">
@@ -1774,7 +1781,7 @@ leadIdRef.current = data.leadId
                   onClick={() => handleCtaClick(false)}
                   className="w-full py-4 rounded-2xl font-medium text-sm text-gray-500 hover:text-white hover:bg-white/[0.02] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Não, obrigado. Ir para o Wi-Fi
+                  NÃ£o, obrigado. Ir para o Wi-Fi
                 </button>
               </div>
             </div>
@@ -1806,7 +1813,7 @@ leadIdRef.current = data.leadId
 
             <h1 className="text-3xl font-bold text-white mb-3 tracking-tight">Conectado!</h1>
             <p className="text-gray-500 text-sm mb-6 leading-relaxed">
-              Sua internet foi liberada com sucesso. Aproveite a conexão em <strong className="text-gray-300">{hotspot?.nome}</strong>.
+              Sua internet foi liberada com sucesso. Aproveite a conexÃ£o em <strong className="text-gray-300">{hotspot?.nome}</strong>.
             </p>
 
             <div className="relative overflow-hidden rounded-2xl border border-[#6be12f]/25 bg-[#6be12f]/[0.06] px-4 py-4 mb-8 text-left">
@@ -1818,10 +1825,10 @@ leadIdRef.current = data.leadId
 
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.22em] text-[#6be12f] font-bold mb-2">
-                    Observação importante
+                    ObservaÃ§Ã£o importante
                   </p>
                   <p className="text-sm text-white leading-relaxed font-medium">
-                    Se ficar sem internet, é porque ficou inativo. Desligue e ligue seu Wi-Fi e entre novamente.
+                    Se ficar sem internet, Ã© porque ficou inativo. Desligue e ligue seu Wi-Fi e entre novamente.
                   </p>
                 </div>
               </div>
@@ -1842,7 +1849,7 @@ leadIdRef.current = data.leadId
               <div className="flex items-center gap-3">
                 {modalAberto === 'termos' ? <FileText className="text-[#6be12f]" size={24} /> : <Shield className="text-[#6be12f]" size={24} />}
                 <h2 className="text-xl font-bold text-white">
-                  {modalAberto === 'termos' ? 'Termos de Uso' : 'Política de Privacidade'}
+                  {modalAberto === 'termos' ? 'Termos de Uso' : 'PolÃ­tica de Privacidade'}
                 </h2>
               </div>
 
@@ -1857,19 +1864,19 @@ leadIdRef.current = data.leadId
             <div className="p-6 overflow-y-auto text-sm text-gray-400 space-y-4 custom-scrollbar">
               {modalAberto === 'termos' ? (
                 <>
-                  <p><strong>1. Aceitação dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, você concorda com estes termos. O acesso é fornecido de forma gratuita mediante a visualização de anúncios publicitários.</p>
-                  <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lícitos. É estritamente proibido o uso para download de conteúdo ilegal, pirataria, ataques cibernéticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
-                  <p><strong>3. Exibição de Anúncios:</strong> O acesso gratuito à internet pode ser condicionado à visualização de anúncios no momento de entrada ou retorno à rede. A NexaWi ADS não interrompe intencionalmente a navegação ativa para exibir campanhas no meio do uso.</p>
-                  <p><strong>4. Renovação de Acesso:</strong> Para garantir a qualidade da rede para todos os usuários, a sessão poderá ser encerrada em casos de inatividade, perda de alcance do sinal ou necessidade técnica do ponto de acesso. Nesses casos, uma nova autenticação poderá ser exigida.</p>
-                  <p><strong>5. Isenção de Responsabilidade:</strong> A NexaWi ADS e o estabelecimento parceiro não se responsabilizam por falhas na conexão, perda de dados ou danos causados por malwares durante o uso da rede aberta. Recomendamos o uso de conexões seguras (HTTPS) para transações sensíveis.</p>
+                  <p><strong>1. AceitaÃ§Ã£o dos Termos:</strong> Ao acessar a rede Wi-Fi patrocinada pela NexaWi ADS, vocÃª concorda com estes termos. O acesso Ã© fornecido de forma gratuita mediante a visualizaÃ§Ã£o de anÃºncios publicitÃ¡rios.</p>
+                  <p><strong>2. Uso da Rede:</strong> A rede deve ser utilizada para fins lÃ­citos. Ã‰ estritamente proibido o uso para download de conteÃºdo ilegal, pirataria, ataques cibernÃ©ticos, spam ou qualquer atividade que viole as leis brasileiras.</p>
+                  <p><strong>3. ExibiÃ§Ã£o de AnÃºncios:</strong> O acesso gratuito Ã  internet pode ser condicionado Ã  visualizaÃ§Ã£o de anÃºncios no momento de entrada ou retorno Ã  rede. A NexaWi ADS nÃ£o interrompe intencionalmente a navegaÃ§Ã£o ativa para exibir campanhas no meio do uso.</p>
+                  <p><strong>4. RenovaÃ§Ã£o de Acesso:</strong> Para garantir a qualidade da rede para todos os usuÃ¡rios, a sessÃ£o poderÃ¡ ser encerrada em casos de inatividade, perda de alcance do sinal ou necessidade tÃ©cnica do ponto de acesso. Nesses casos, uma nova autenticaÃ§Ã£o poderÃ¡ ser exigida.</p>
+                  <p><strong>5. IsenÃ§Ã£o de Responsabilidade:</strong> A NexaWi ADS e o estabelecimento parceiro nÃ£o se responsabilizam por falhas na conexÃ£o, perda de dados ou danos causados por malwares durante o uso da rede aberta. Recomendamos o uso de conexÃµes seguras (HTTPS) para transaÃ§Ãµes sensÃ­veis.</p>
                 </>
               ) : (
                 <>
-                  <p><strong>1. Coleta de Dados:</strong> A NexaWi ADS coleta os dados fornecidos no momento do cadastro (Nome, E-mail, Telefone e, quando solicitado, CPF), bem como dados técnicos de conexão (Endereço IP, MAC Address e tempo de sessão) para fins de autenticação e segurança.</p>
-                  <p><strong>2. Finalidade do Uso (LGPD):</strong> Os dados coletados são utilizados para: (a) Liberar o acesso à rede Wi-Fi; (b) Cumprir obrigações legais do Marco Civil da Internet (registro de logs); (c) Direcionar campanhas publicitárias relevantes durante a sua navegação; (d) Comunicações de marketing do estabelecimento parceiro.</p>
-                  <p><strong>3. Compartilhamento:</strong> Seus dados não são vendidos a terceiros. Eles podem ser compartilhados exclusivamente com o estabelecimento onde você está acessando a rede e com autoridades competentes mediante ordem judicial.</p>
-                  <p><strong>4. Segurança:</strong> Adotamos medidas técnicas e administrativas para proteger seus dados pessoais contra acessos não autorizados, destruição ou alteração, armazenando-os em servidores seguros.</p>
-                  <p><strong>5. Seus Direitos:</strong> Conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018), você tem o direito de solicitar a exclusão, alteração ou visualização dos seus dados a qualquer momento, entrando em contato com o suporte da NexaWi ADS.</p>
+                  <p><strong>1. Coleta de Dados:</strong> A NexaWi ADS coleta os dados fornecidos no momento do cadastro (Nome, E-mail, Telefone e, quando solicitado, CPF), bem como dados tÃ©cnicos de conexÃ£o (EndereÃ§o IP, MAC Address e tempo de sessÃ£o) para fins de autenticaÃ§Ã£o e seguranÃ§a.</p>
+                  <p><strong>2. Finalidade do Uso (LGPD):</strong> Os dados coletados sÃ£o utilizados para: (a) Liberar o acesso Ã  rede Wi-Fi; (b) Cumprir obrigaÃ§Ãµes legais do Marco Civil da Internet (registro de logs); (c) Direcionar campanhas publicitÃ¡rias relevantes durante a sua navegaÃ§Ã£o; (d) ComunicaÃ§Ãµes de marketing do estabelecimento parceiro.</p>
+                  <p><strong>3. Compartilhamento:</strong> Seus dados nÃ£o sÃ£o vendidos a terceiros. Eles podem ser compartilhados exclusivamente com o estabelecimento onde vocÃª estÃ¡ acessando a rede e com autoridades competentes mediante ordem judicial.</p>
+                  <p><strong>4. SeguranÃ§a:</strong> Adotamos medidas tÃ©cnicas e administrativas para proteger seus dados pessoais contra acessos nÃ£o autorizados, destruiÃ§Ã£o ou alteraÃ§Ã£o, armazenando-os em servidores seguros.</p>
+                  <p><strong>5. Seus Direitos:</strong> Conforme a Lei Geral de ProteÃ§Ã£o de Dados (Lei nÂº 13.709/2018), vocÃª tem o direito de solicitar a exclusÃ£o, alteraÃ§Ã£o ou visualizaÃ§Ã£o dos seus dados a qualquer momento, entrando em contato com o suporte da NexaWi ADS.</p>
                 </>
               )}
             </div>
@@ -1916,3 +1923,4 @@ leadIdRef.current = data.leadId
     </div>
   )
 }
+
