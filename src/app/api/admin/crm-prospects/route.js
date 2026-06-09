@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -225,6 +226,16 @@ export async function POST(request) {
 
     if (error) throw error
 
+    await logAdminAction({
+      request,
+      adminUser: auth.adminUser,
+      action: 'crm_prospect_criado',
+      entity: 'crm_prospects',
+      entityId: data.id,
+      description: `Prospect ${data.empresa || data.id} criado no CRM.`,
+      metadata: { after: data },
+    })
+
     return NextResponse.json({
       ok: true,
       prospect: data,
@@ -257,6 +268,21 @@ export async function PATCH(request) {
       )
     }
 
+    const { data: prospectAtual, error: findError } = await supabaseAdmin
+      .from('crm_prospects')
+      .select('*')
+      .eq('id', id)
+      .maybeSingle()
+
+    if (findError) throw findError
+
+    if (!prospectAtual) {
+      return NextResponse.json(
+        { ok: false, error: 'Prospect nao encontrado.' },
+        { status: 404 }
+      )
+    }
+
     const payload = montarPayload(body)
     const erro = validarPayload(payload)
 
@@ -272,6 +298,16 @@ export async function PATCH(request) {
       .single()
 
     if (error) throw error
+
+    await logAdminAction({
+      request,
+      adminUser: auth.adminUser,
+      action: 'crm_prospect_atualizado',
+      entity: 'crm_prospects',
+      entityId: id,
+      description: `Prospect ${data.empresa || id} atualizado no CRM.`,
+      metadata: { before: prospectAtual, after: data },
+    })
 
     return NextResponse.json({
       ok: true,

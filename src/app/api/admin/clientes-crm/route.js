@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -221,7 +222,7 @@ export async function PATCH(request) {
 
     let checkQuery = supabaseAdmin
       .from('clientes')
-      .select('id, empresa_id')
+      .select('id, empresa_id, crm_etapa, crm_origem, crm_temperatura, crm_proximo_contato, crm_valor_potencial, crm_observacoes, crm_responsavel')
       .eq('id', id)
       .limit(1)
 
@@ -259,6 +260,27 @@ export async function PATCH(request) {
       .single()
 
     if (error) throw error
+
+    await logAdminAction({
+      request,
+      adminUser: auth.adminUser,
+      action: 'crm_cliente_atualizado',
+      entity: 'clientes',
+      entityId: id,
+      description: `CRM do cliente ${data.nome_empresa || data.nome || id} atualizado.`,
+      metadata: {
+        before: {
+          crm_etapa: clientePermitido.crm_etapa || null,
+          crm_origem: clientePermitido.crm_origem || null,
+          crm_temperatura: clientePermitido.crm_temperatura || null,
+          crm_proximo_contato: clientePermitido.crm_proximo_contato || null,
+          crm_valor_potencial: clientePermitido.crm_valor_potencial ?? null,
+          crm_observacoes: clientePermitido.crm_observacoes || null,
+          crm_responsavel: clientePermitido.crm_responsavel || null,
+        },
+        after: updatePayload,
+      },
+    })
 
     return NextResponse.json({
       ok: true,

@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Award, Crown, Eye, EyeOff, Flame, Minus, Plus, RotateCcw, Sparkles, Trophy } from 'lucide-react'
+import { Award, Check, Crown, Eye, EyeOff, Flame, Minus, Plus, RotateCcw, Sparkles, Trophy, Users } from 'lucide-react'
 
-const STORAGE_KEY = 'nexawi-pontuacao-dan-v1'
+const STORAGE_KEY = 'nexawi-pontuação-dan-v1'
 
 const initialTeams = [
   { id: 'se-vira', number: 1, name: 'Se Vira', score: 0 },
   { id: 'meta-dada-meta-batida', number: 2, name: 'Meta dada Meta Batida', score: 0 },
   { id: 'sobe-a-barra', number: 3, name: 'Sobe a Barra', score: 0 },
   { id: 'gestao-sem-mimimi', number: 4, name: 'Gestão sem MIMIMI', score: 0 },
-  { id: 'nao-nada-passa-nada', number: 5, name: 'Não Passa Nada', score: 0 },
+  { id: 'nao-nada-eu-quero-e-venda', number: 5, name: 'Não Nada eu Quero é Venda', score: 0 },
 ]
 
 function sortTeams(teams) {
@@ -24,8 +24,8 @@ function formatNumber(value) {
   return new Intl.NumberFormat('pt-BR').format(Number(value || 0))
 }
 
-function getRevealPosition(index) {
-  return `${5 - index}º colocado`
+function getRevealPosition(index, totalTeams) {
+  return `${totalTeams - index}º colocado`
 }
 
 function getProgress(score, maxScore) {
@@ -34,6 +34,8 @@ function getProgress(score, maxScore) {
 
 export default function PontuacaoDanPage() {
   const [teams, setTeams] = useState(initialTeams)
+  const [selectedTeamIds, setSelectedTeamIds] = useState(initialTeams.map((team) => team.id))
+  const [setupMode, setSetupMode] = useState(true)
   const [customPoints, setCustomPoints] = useState(10)
   const [showControls, setShowControls] = useState(true)
   const [finalMode, setFinalMode] = useState(false)
@@ -52,6 +54,14 @@ export default function PontuacaoDanPage() {
           })
           setTeams(merged)
         }
+
+        if (Array.isArray(parsed?.selectedTeamIds)) {
+          const validSelectedIds = parsed.selectedTeamIds.filter((id) => initialTeams.some((team) => team.id === id))
+          if (validSelectedIds.length >= 2) {
+            setSelectedTeamIds(validSelectedIds.slice(0, 5))
+            setSetupMode(parsed.started !== true)
+          }
+        }
       }
     } catch (error) {
       console.error('Erro ao carregar placar:', error)
@@ -62,19 +72,45 @@ export default function PontuacaoDanPage() {
 
   useEffect(() => {
     if (!hydrated) return
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ teams }))
-  }, [teams, hydrated])
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      teams,
+      selectedTeamIds,
+      started: !setupMode,
+    }))
+  }, [teams, selectedTeamIds, setupMode, hydrated])
 
-  const ranking = useMemo(() => sortTeams(teams), [teams])
+  const selectedTeams = useMemo(() => teams.filter((team) => selectedTeamIds.includes(team.id)), [teams, selectedTeamIds])
+  const canStart = selectedTeamIds.length >= 2 && selectedTeamIds.length <= 5
+  const ranking = useMemo(() => sortTeams(selectedTeams), [selectedTeams])
   const finalRanking = useMemo(() => [...ranking].reverse(), [ranking])
-  const maxScore = Math.max(...teams.map((team) => team.score), 1)
+  const maxScore = Math.max(...selectedTeams.map((team) => team.score), 1)
   const leader = ranking[0]
   const otherTeams = ranking.slice(1)
-  const totalScore = teams.reduce((sum, team) => sum + Number(team.score || 0), 0)
+  const totalScore = selectedTeams.reduce((sum, team) => sum + Number(team.score || 0), 0)
   const revealedTeam = finalRanking[revealIndex]
   const winnerIsShowing = revealIndex === finalRanking.length - 1
 
+  function toggleTeam(teamId) {
+    setSelectedTeamIds((current) => {
+      if (current.includes(teamId)) {
+        return current.filter((id) => id !== teamId)
+      }
+
+      if (current.length >= 5) return current
+      return [...current, teamId]
+    })
+  }
+
+  function startScoreboard() {
+    if (!canStart) return
+    setFinalMode(false)
+    setRevealIndex(0)
+    setSetupMode(false)
+  }
+
   function updateScore(teamId, delta) {
+    if (!selectedTeamIds.includes(teamId)) return
+
     setTeams((current) => current.map((team) => {
       if (team.id !== teamId) return team
       return { ...team, score: Number(team.score || 0) + Number(delta || 0) }
@@ -82,13 +118,16 @@ export default function PontuacaoDanPage() {
   }
 
   function resetScores() {
-    if (!window.confirm('Tem certeza que deseja zerar todas as pontuações?')) return
-    setTeams(initialTeams)
+    if (!window.confirm('Tem certeza que deseja zerar as pontuações das equipes selecionadas?')) return
+    setTeams((current) => current.map((team) => (
+      selectedTeamIds.includes(team.id) ? { ...team, score: 0 } : team
+    )))
     setFinalMode(false)
     setRevealIndex(0)
   }
 
   function startFinal() {
+    if (ranking.length < 2) return
     setRevealIndex(0)
     setFinalMode(true)
   }
@@ -102,6 +141,53 @@ export default function PontuacaoDanPage() {
     setRevealIndex((current) => current + 1)
   }
 
+  if (setupMode) {
+    return (
+      <main className="min-h-screen overflow-hidden bg-[#050505] text-white selection:bg-orange-500/30">
+        <div className="fixed inset-0 pointer-events-none">
+          <div className="absolute left-1/2 top-[-220px] h-[560px] w-[980px] -translate-x-1/2 rounded-full bg-orange-700/12 blur-[130px]" />
+          <div className="absolute bottom-[-220px] right-[-160px] h-[560px] w-[560px] rounded-full bg-orange-500/10 blur-[130px]" />
+          <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(to_right,#ffffff_1px,transparent_1px),linear-gradient(to_bottom,#ffffff_1px,transparent_1px)] bg-[size:92px_92px]" />
+        </div>
+        <section className="relative z-10 mx-auto flex min-h-screen w-full max-w-7xl flex-col justify-center px-5 py-8 sm:px-8">
+          <div className="mb-8 inline-flex w-fit items-center gap-3 rounded-full border border-orange-500/20 bg-orange-500/10 px-5 py-3 text-sm font-black uppercase tracking-[0.22em] text-orange-300 shadow-[0_0_30px_rgba(249,115,22,0.08)]">
+            <Users size={20} />
+            Configuração da pontuação
+          </div>
+          <div className="mb-8 max-w-4xl">
+            <h1 className="text-5xl font-black tracking-[-0.07em] text-white sm:text-7xl lg:text-8xl">
+              Escolha as equipes <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-300 via-orange-500 to-orange-900">participantes</span>
+            </h1>
+            <p className="mt-5 text-xl font-semibold leading-relaxed text-neutral-400">
+              Selecione de 2 a 5 equipes. Somente as equipes escolhidas entram no ranking, controles e resultado final.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            {initialTeams.map((team) => {
+              const selected = selectedTeamIds.includes(team.id)
+              return (
+                <button key={team.id} type="button" onClick={() => toggleTeam(team.id)} className={selected ? 'group min-h-[220px] rounded-[2rem] border border-orange-500/55 bg-gradient-to-br from-orange-500/20 via-[#17110c] to-black p-5 text-left shadow-2xl shadow-black/30 transition-all duration-300' : 'group min-h-[220px] rounded-[2rem] border border-white/[0.07] bg-white/[0.025] p-5 text-left shadow-2xl shadow-black/30 transition-all duration-300 hover:border-orange-500/25 hover:bg-orange-500/10'}>
+                  <div className="mb-8 flex items-center justify-between gap-4">
+                    <div className={selected ? 'flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500 text-2xl font-black text-black transition' : 'flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.08] bg-black/40 text-2xl font-black text-orange-300 transition'}>{team.number}</div>
+                    <div className={selected ? 'flex h-10 w-10 items-center justify-center rounded-xl border border-orange-400 bg-orange-500 text-black transition' : 'flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.1] bg-black/40 text-transparent transition'}><Check size={22} /></div>
+                  </div>
+                  <h2 className="text-3xl font-black leading-tight tracking-[-0.06em] text-white">{team.name}</h2>
+                  <p className="mt-4 text-sm font-black uppercase tracking-[0.22em] text-neutral-600">{selected ? 'Selecionada' : 'Disponível'}</p>
+                </button>
+              )
+            })}
+          </div>
+          <div className="mt-8 flex flex-col gap-4 rounded-[2rem] border border-white/[0.07] bg-[#0a0a0a]/80 p-5 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-black uppercase tracking-[0.22em] text-neutral-600">Selecionadas</p>
+              <p className="text-4xl font-black tracking-[-0.08em] text-white">{selectedTeamIds.length}/5</p>
+            </div>
+            <button type="button" onClick={startScoreboard} disabled={!canStart} className="rounded-2xl bg-orange-500 px-8 py-5 text-xl font-black text-black transition hover:bg-orange-400 disabled:cursor-not-allowed disabled:bg-neutral-800 disabled:text-neutral-500">Iniciar pontuação</button>
+          </div>
+        </section>
+      </main>
+    )
+  }
   return (
     <main className="min-h-screen overflow-hidden bg-[#050505] text-white selection:bg-orange-500/30">
       <div className="fixed inset-0 pointer-events-none">
@@ -124,7 +210,11 @@ export default function PontuacaoDanPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <BigStat label="Total" value={formatNumber(totalScore)} />
-            <BigStat label="Equipes" value="5" />
+            <BigStat label="Equipes" value={String(selectedTeams.length)} />
+            <button onClick={() => setSetupMode(true)} className="inline-flex items-center gap-2 rounded-2xl border border-orange-500/20 bg-orange-500/10 px-5 py-4 text-base font-black text-orange-300 transition hover:bg-orange-500/20">
+              <Users size={20} />
+              Alterar equipes
+            </button>
             <button onClick={() => setShowControls((value) => !value)} className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-5 py-4 text-base font-black text-neutral-300 transition hover:bg-white/[0.08] hover:text-white">
               {showControls ? <EyeOff size={20} /> : <Eye size={20} />}
               {showControls ? 'Ocultar controles' : 'Controles'}
@@ -196,7 +286,7 @@ export default function PontuacaoDanPage() {
                 </label>
 
                 <div className="grid gap-3">
-                  {teams.map((team) => (
+                  {selectedTeams.map((team) => (
                     <div key={team.id} className="rounded-2xl border border-white/[0.06] bg-white/[0.025] p-3">
                       <p className="mb-3 text-lg font-black text-white">{team.number}. {team.name}</p>
                       <div className="grid grid-cols-4 gap-2">
