@@ -7,10 +7,10 @@ const STORAGE_KEY = 'nexawi-pontuação-dan-v1'
 
 const initialTeams = [
   { id: 'se-vira', number: 1, name: 'Se Vira', score: 0 },
-  { id: 'meta-dada-meta-batida', number: 2, name: 'Meta dada Meta Batida', score: 0 },
+  { id: 'meta-dada-meta-batida', number: 2, name: 'Meta Dada Meta Batida', score: 0 },
   { id: 'sobe-a-barra', number: 3, name: 'Sobe a Barra', score: 0 },
   { id: 'gestao-sem-mimimi', number: 4, name: 'Gestão sem MIMIMI', score: 0 },
-  { id: 'nao-nada-eu-quero-e-venda', number: 5, name: 'Não Nada eu Quero é Venda', score: 0 },
+  { id: 'nao-passa-nada', number: 5, name: 'Não Passa Nada', score: 0 },
 ]
 
 function sortTeams(teams) {
