@@ -306,6 +306,55 @@ async function montarAssinaturas(clientes = []) {
   )
 }
 
+async function carregarResumoWifiPix(auth) {
+  const configured = Boolean(
+    process.env.WIFI_PIX_GATEWAY === 'efi' ||
+    process.env.EFI_CLIENT_ID ||
+    process.env.EFI_CLIENT_SECRET ||
+    process.env.EFI_PIX_KEY
+  )
+
+  try {
+    let query = supabaseAdmin
+      .from('wifi_pix_vendas')
+      .select('id, empresa_id, valor, status, gateway_pagamento, metodo_pagamento, created_at')
+      .order('created_at', { ascending: false })
+      .limit(1000)
+
+    if (auth?.applyEmpresaScope) {
+      query = auth.applyEmpresaScope(query)
+    }
+
+    const { data, error } = await query
+
+    if (error) throw error
+
+    const vendas = data || []
+    const statusPagos = new Set(['pago', 'autorizado'])
+    const confirmadas = vendas.filter((venda) => statusPagos.has(venda.status))
+
+    return {
+      configured,
+      gateway: process.env.WIFI_PIX_GATEWAY || 'asaas',
+      totalVendas: vendas.length,
+      vendasConfirmadas: confirmadas.length,
+      vendasPendentes: vendas.filter((venda) => venda.status === 'pendente').length,
+      receitaConfirmada: confirmadas.reduce((total, venda) => total + Number(venda.valor || 0), 0),
+      ultimaVendaEm: vendas[0]?.created_at || null,
+    }
+  } catch (error) {
+    return {
+      configured,
+      gateway: process.env.WIFI_PIX_GATEWAY || 'asaas',
+      totalVendas: 0,
+      vendasConfirmadas: 0,
+      vendasPendentes: 0,
+      receitaConfirmada: 0,
+      error: error.message || 'Erro ao carregar resumo Wi-Fi no Pix',
+    }
+  }
+}
+
 async function buscarPagamentoBasico(pagamentoId) {
   const { data, error } = await supabaseAdmin
     .from('pagamentos')
@@ -370,6 +419,7 @@ export async function GET(request) {
       clientes: clientes || [],
     })
     const assinaturas = await montarAssinaturas(clientes || [])
+    const wifiPixResumo = await carregarResumoWifiPix(auth)
 
     let filtrados = aplicarFiltroPeriodo(pagamentosComStatus, periodo)
 
@@ -402,6 +452,7 @@ export async function GET(request) {
       planos: planos || [],
       assinaturas,
       metricas,
+      wifiPixResumo,
       permissions: auth.permissions?.financeiro || {},
     })
   } catch (error) {

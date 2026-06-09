@@ -366,6 +366,39 @@ export default function CrmClientesPage() {
     URL.revokeObjectURL(url)
   }
 
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const followUps = [
+    ...prospects.map((prospect) => ({
+      id: 'prospect:' + prospect.id,
+      nome: prospect.empresa || 'Prospect sem empresa',
+      responsavel: prospect.responsavel || '',
+      telefone: prospect.telefone || '',
+      etapa: prospect.etapa,
+      temperatura: prospect.temperatura,
+      proximoContato: prospect.proximo_contato,
+      tipo: 'Prospect',
+    })),
+    ...clientes.map((cliente) => ({
+      id: 'cliente:' + cliente.id,
+      nome: cliente.nome_empresa || cliente.nome || 'Cliente sem nome',
+      responsavel: cliente.nome_responsavel || '',
+      telefone: cliente.telefone || '',
+      etapa: cliente.crm_etapa,
+      temperatura: cliente.crm_temperatura,
+      proximoContato: cliente.crm_proximo_contato,
+      tipo: 'Cliente',
+    })),
+  ]
+    .filter((item) => item.proximoContato)
+    .map((item) => {
+      const date = new Date(item.proximoContato + 'T00:00:00')
+      return { ...item, date, atrasado: date < today }
+    })
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 6)
+
   const cards = [
     { label: 'CRM total', value: totalRegistros, detail: 'clientes e leads', icon: Users, accent: 'text-[#8cf059]' },
     { label: 'Landing', value: prospects.length, detail: 'captados em /anunciar', icon: Target, accent: 'text-blue-300' },
@@ -421,7 +454,7 @@ export default function CrmClientesPage() {
           </div>
         </header>
 
-        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8">
+        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-5 mb-8">
           {cards.map((card) => (
             <div key={card.label} className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
               <div className="flex items-center justify-between mb-6">
@@ -521,6 +554,49 @@ export default function CrmClientesPage() {
           ]}
           onSelectEtapa={setEtapa}
         />
+
+        <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-5">
+            <div>
+              <h2 className="text-xl font-black text-white tracking-tight">
+                Agenda de follow-up
+              </h2>
+              <p className="text-sm text-neutral-500 mt-1">
+                Proximas acoes comerciais ordenadas por data.
+              </p>
+            </div>
+            <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059]">
+              {formatNumber(followUps.length)} contato(s)
+            </span>
+          </div>
+
+          {followUps.length === 0 ? (
+            <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-8 text-center text-sm text-neutral-500">
+              Nenhum proximo contato definido nos filtros atuais.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {followUps.map((item) => (
+                <div key={item.id} className={`rounded-3xl border p-5 ${item.atrasado ? 'border-red-500/20 bg-red-500/10' : 'border-white/[0.05] bg-[#050505]'}`}>
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <p className="text-sm font-black text-white">{item.nome}</p>
+                      <p className="text-xs text-neutral-500 mt-1">{item.tipo} / {getEtapaLabel(item.etapa)}</p>
+                    </div>
+                    <CalendarDays size={18} className={item.atrasado ? 'text-red-300' : 'text-[#8cf059]'} />
+                  </div>
+
+                  <p className="text-xs font-bold text-neutral-300">
+                    {item.atrasado ? 'Atrasado' : 'Proximo contato'}: {formatDate(item.proximoContato)}
+                  </p>
+                  <p className="text-xs text-neutral-500 mt-2">
+                    {item.responsavel || item.telefone || 'Sem responsavel informado'}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="relative z-10 rounded-[2rem] border border-[#6be12f]/10 bg-[#6be12f]/[0.03] p-5 sm:p-6 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
@@ -649,7 +725,7 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7 gap-4">
         {columns.map((column) => (
           <div
             key={column.value}

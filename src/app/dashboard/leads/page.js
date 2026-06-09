@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -77,12 +77,12 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 }
 
 function formatDate(value) {
-  if (!value) return 'â€”'
+  if (!value) return '-'
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
 function formatDateTime(value) {
-  if (!value) return 'â€”'
+  if (!value) return '-'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -150,6 +150,35 @@ export default function AdminLeadsPage() {
   const anuncioSelecionado = useMemo(() => {
     return anuncios.find((item) => item.id === anuncioId)
   }, [anuncios, anuncioId])
+
+  const leadsPorHotspot = useMemo(() => {
+    const totals = new Map()
+
+    leads.forEach((lead) => {
+      const hotspot = lead.hotspots || {}
+      const key = hotspot.id || 'sem-hotspot'
+      const current = totals.get(key) || {
+        id: key,
+        nome: hotspot.nome || 'Hotspot nao identificado',
+        cidade: hotspot.cidade || '',
+        estado: hotspot.estado || '',
+        total: 0,
+        convertidos: 0,
+        contatados: 0,
+        promocoes: 0,
+      }
+
+      current.total += 1
+      if (normalizeStatus(lead.crm_status) === 'Convertido') current.convertidos += 1
+      if (normalizeStatus(lead.crm_status) === 'Contatado') current.contatados += 1
+      if (lead.aceitou_promocoes) current.promocoes += 1
+      totals.set(key, current)
+    })
+
+    return [...totals.values()]
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 6)
+  }, [leads])
 
   const temFiltros =
     periodo !== 'todos' ||
@@ -391,7 +420,7 @@ export default function AdminLeadsPage() {
       />
 
       <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[min(720px,90vw)] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
 
         <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <div>
@@ -433,7 +462,7 @@ export default function AdminLeadsPage() {
           </div>
         </header>
 
-        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8">
+        <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-5 mb-8">
           {cards.map((card) => (
             <div key={card.label} className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
               <div className="flex items-center justify-between mb-6">
@@ -456,6 +485,44 @@ export default function AdminLeadsPage() {
             </div>
           ))}
         </section>
+
+        {leadsPorHotspot.length > 0 && (
+          <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <div>
+                <h2 className="text-xl font-black text-white tracking-tight">
+                  Leads por hotspot
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1">
+                  Pontos que mais capturaram contatos no filtro atual.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              {leadsPorHotspot.map((item) => (
+                <div key={item.id} className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5">
+                  <div className="flex items-start justify-between gap-4 mb-4">
+                    <div>
+                      <p className="text-base font-black text-white">{item.nome}</p>
+                      <p className="text-xs text-neutral-500 mt-1">
+                        {[item.cidade, item.estado].filter(Boolean).join(' / ') || 'Local nao informado'}
+                      </p>
+                    </div>
+                    <MapPin size={18} className="text-[#8cf059]" />
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <MiniMetric label="Leads" value={item.total} />
+                    <MiniMetric label="Contat." value={item.contatados} />
+                    <MiniMetric label="Conv." value={item.convertidos} />
+                    <MiniMetric label="Opt-in" value={item.promocoes} />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 mb-8">
           <div className="grid grid-cols-1 xl:grid-cols-[1fr_1fr_1fr_1fr_1.4fr_auto] gap-4 items-end">
@@ -631,6 +698,15 @@ export default function AdminLeadsPage() {
   )
 }
 
+function MiniMetric({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3">
+      <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600">{label}</p>
+      <p className="text-lg font-black text-white mt-1">{formatNumber(value)}</p>
+    </div>
+  )
+}
+
 function FilterSelect({ label, icon: Icon, value, onChange, options }) {
   return (
     <label>
@@ -708,8 +784,8 @@ function LeadCard({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <ContactPill icon={Phone} label="Telefone" value={lead.telefone || 'â€”'} />
-          <ContactPill icon={Mail} label="E-mail" value={lead.email || 'â€”'} />
+          <ContactPill icon={Phone} label="Telefone" value={lead.telefone || '-'} />
+          <ContactPill icon={Mail} label="E-mail" value={lead.email || '-'} />
         </div>
 
         <div className="grid gap-2">

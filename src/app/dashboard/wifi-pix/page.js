@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -15,6 +15,12 @@ import {
   Trash2,
   Wifi,
   Star,
+  Search,
+  RefreshCw,
+  ShieldCheck,
+  XCircle,
+  Clock3,
+  ListFilter,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -40,13 +46,27 @@ const periodosRelatorio = [
   { value: 'todos', label: 'Todo periodo' },
 ]
 
+const statusRelatorioOptions = [
+  { value: '', label: 'Todos os status' },
+  { value: 'pendente', label: 'Pendente' },
+  { value: 'pago', label: 'Pago' },
+  { value: 'autorizado', label: 'Autorizado' },
+  { value: 'expirado', label: 'Expirado' },
+  { value: 'cancelado', label: 'Cancelado' },
+  { value: 'erro', label: 'Erro' },
+]
+
 const relatorioInicial = {
   resumo: {
     totalVendas: 0,
     vendasConfirmadas: 0,
     pendentes: 0,
+    pagas: 0,
     autorizadas: 0,
+    expiradas: 0,
+    canceladas: 0,
     erros: 0,
+    planoMaisVendido: null,
     receitaConfirmada: 0,
     ticketMedio: 0,
     porStatus: [],
@@ -60,7 +80,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessao administrativa nao encontrada.')
+    throw new Error('Sessão administrativa não encontrada.')
   }
 
   const response = await fetch(path, {
@@ -94,8 +114,33 @@ function statusClass(status = '') {
   if (status === 'autorizado') return 'bg-[#6be12f]/15 text-[#6be12f]'
   if (status === 'pago') return 'bg-blue-500/15 text-blue-300'
   if (status === 'pendente') return 'bg-yellow-500/15 text-yellow-300'
+  if (status === 'expirado') return 'bg-orange-500/15 text-orange-300'
+  if (status === 'cancelado') return 'bg-gray-500/15 text-gray-300'
   if (status === 'erro') return 'bg-red-500/15 text-red-300'
   return 'bg-white/[0.06] text-gray-400'
+}
+
+function statusLabel(status = '') {
+  const option = statusRelatorioOptions.find((item) => item.value === status)
+  return option?.label || status || 'Pendente'
+}
+
+function formatDateTime(value = '') {
+  if (!value) return '-'
+
+  return new Date(value).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
+function formatPhone(value = '') {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (digits.length === 11) return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 7) + '-' + digits.slice(7)
+  if (digits.length === 10) return '(' + digits.slice(0, 2) + ') ' + digits.slice(2, 6) + '-' + digits.slice(6)
+  return value || '-'
 }
 
 function formatDuration(minutes = 0) {
@@ -118,6 +163,10 @@ export default function WifiPixPage() {
   const [formPlano, setFormPlano] = useState(planoInicial)
   const [mensagem, setMensagem] = useState('')
   const [periodoRelatorio, setPeriodoRelatorio] = useState('ultimos_30')
+  const [statusRelatorio, setStatusRelatorio] = useState('')
+  const [hotspotRelatorioId, setHotspotRelatorioId] = useState('')
+  const [buscaRelatorio, setBuscaRelatorio] = useState('')
+  const [operacaoVendaId, setOperacaoVendaId] = useState('')
   const [relatorioPix, setRelatorioPix] = useState(relatorioInicial)
 
   const hotspotSelecionado = useMemo(
@@ -142,6 +191,9 @@ export default function WifiPixPage() {
     try {
       const params = new URLSearchParams()
       params.set('periodo', periodoRelatorio)
+      if (statusRelatorio) params.set('status', statusRelatorio)
+      if (hotspotRelatorioId) params.set('hotspotId', hotspotRelatorioId)
+      if (buscaRelatorio.trim()) params.set('search', buscaRelatorio.trim())
 
       const data = await adminApiFetch(`/api/admin/wifi-pix?${params.toString()}`)
       const loadedHotspots = data.hotspots || []
@@ -166,7 +218,7 @@ export default function WifiPixPage() {
   useEffect(() => {
     carregar()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [periodoRelatorio])
+  }, [periodoRelatorio, statusRelatorio, hotspotRelatorioId])
 
   useEffect(() => {
     if (!hotspotSelecionado) return
@@ -250,6 +302,64 @@ export default function WifiPixPage() {
       setSaving(false)
     }
   }
+  async function executarAcaoVenda(action, venda) {
+    if (!venda?.id || operacaoVendaId) return
+
+    let payload = { action, vendaId: venda.id }
+
+    if (action === 'liberar_venda') {
+      const macAtual = venda.mac_address || ''
+      const ipAtual = venda.ip_address || ''
+      const macAddress = macAtual || window.prompt('Informe o MAC do aparelho para liberar no MikroTik:') || ''
+      const ipAddress = ipAtual || window.prompt('Informe o IP do aparelho, se souber. Pode deixar vazio:') || ''
+
+      if (!macAddress.trim()) {
+        setMensagem('Liberação cancelada: MAC do aparelho é obrigatório.')
+        return
+      }
+
+      payload = {
+        ...payload,
+        hotspotSlug: venda.hotspot_slug,
+        macAddress,
+        ipAddress,
+      }
+    }
+
+    if (action === 'cancelar_venda') {
+      const ok = window.confirm('Cancelar esta venda pendente? Essa ação não apaga o histórico.')
+      if (!ok) return
+    }
+
+    if (action === 'expirar_venda') {
+      const ok = window.confirm('Marcar esta venda como expirada? Essa ação não remove acesso ativo no roteador.')
+      if (!ok) return
+    }
+
+    setOperacaoVendaId(venda.id + ':' + action)
+    setMensagem('')
+
+    try {
+      await adminApiFetch('/api/admin/wifi-pix', {
+        method: 'POST',
+        body: payload,
+      })
+
+      const labels = {
+        verificar_venda: 'Pagamento verificado.',
+        liberar_venda: 'Liberação solicitada ao MikroTik.',
+        cancelar_venda: 'Venda cancelada.',
+        expirar_venda: 'Venda expirada.',
+      }
+
+      setMensagem(labels[action] || 'Venda atualizada.')
+      await carregar()
+    } catch (error) {
+      setMensagem(error.message || 'Erro ao operar venda Wi-Fi no Pix.')
+    } finally {
+      setOperacaoVendaId('')
+    }
+  }
 
   function editarPlano(plano) {
     setFormPlano({
@@ -268,6 +378,7 @@ export default function WifiPixPage() {
 
   const resumoPix = relatorioPix?.resumo || relatorioInicial.resumo
   const vendasPix = relatorioPix?.vendas || []
+  const alertasPix = relatorioPix?.alertas || []
   const hotspotsMaisRentaveis = resumoPix.porHotspot || []
 
   return (
@@ -280,7 +391,7 @@ export default function WifiPixPage() {
             </div>
             <h1 className="text-4xl font-black tracking-tight">Wi-Fi no Pix</h1>
             <p className="text-gray-500 mt-2 max-w-2xl">
-              Configure venda de acesso onde anúncio não faz sentido. O pagamento é feito no Asaas e a liberação passa pelo MikroTik.
+              Configure venda de acesso onde anúncio não faz sentido. O Pix passa pela Efí, o cartão continua no Asaas e a liberação passa pelo MikroTik.
             </p>
           </div>
 
@@ -300,42 +411,149 @@ export default function WifiPixPage() {
           </div>
         ) : null}
 
+        {alertasPix.length ? (
+          <div className="grid gap-3">
+            {alertasPix.map((alerta) => (
+              <div
+                key={alerta.type + (alerta.hotspotId || '')}
+                className={
+                  alerta.severity === 'critical'
+                    ? 'rounded-2xl border border-red-500/25 bg-red-500/10 px-5 py-4 text-sm text-red-100'
+                    : 'rounded-2xl border border-yellow-500/25 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-100'
+                }
+              >
+                <div className="flex items-start gap-3">
+                  <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-black">{alerta.title}</p>
+                    <p className="mt-1 text-white/70">{alerta.message}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-xl font-black flex items-center gap-2">
-                <BarChart3 size={20} className="text-[#ff9d2e]" /> Relatorio Wi-Fi no Pix
+                <BarChart3 size={20} className="text-[#ff9d2e]" /> Relatório e gestão Wi-Fi no Pix
               </h2>
               <p className="text-sm text-gray-500 mt-1">
-                Vendas, receita, status, planos e hotspots no periodo selecionado.
+                Vendas por período, receita, plano mais vendido, hotspot, cliente, telefone e status operacional.
               </p>
             </div>
 
-            <label className="relative block">
-              <select
-                value={periodoRelatorio}
-                onChange={(event) => setPeriodoRelatorio(event.target.value)}
-                className="w-full lg:w-56 rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pr-11 text-sm font-bold text-white outline-none"
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              <label className="relative block">
+                <select
+                  value={periodoRelatorio}
+                  onChange={(event) => setPeriodoRelatorio(event.target.value)}
+                  className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pr-10 text-sm font-bold text-white outline-none"
+                >
+                  {periodosRelatorio.map((periodo) => (
+                    <option key={periodo.value} value={periodo.value}>{periodo.label}</option>
+                  ))}
+                </select>
+                <CalendarDays size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              </label>
+
+              <label className="relative block">
+                <select
+                  value={hotspotRelatorioId}
+                  onChange={(event) => setHotspotRelatorioId(event.target.value)}
+                  className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pr-10 text-sm font-bold text-white outline-none"
+                >
+                  <option value="">Todos hotspots</option>
+                  {hotspots.map((hotspot) => (
+                    <option key={hotspot.id} value={hotspot.id}>{hotspot.nome}</option>
+                  ))}
+                </select>
+                <Wifi size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              </label>
+
+              <label className="relative block">
+                <select
+                  value={statusRelatorio}
+                  onChange={(event) => setStatusRelatorio(event.target.value)}
+                  className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pr-10 text-sm font-bold text-white outline-none"
+                >
+                  {statusRelatorioOptions.map((statusItem) => (
+                    <option key={statusItem.value || 'todos'} value={statusItem.value}>{statusItem.label}</option>
+                  ))}
+                </select>
+                <ListFilter size={16} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              </label>
+
+              <button
+                type="button"
+                onClick={carregar}
+                disabled={loading}
+                className="rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-black text-gray-200 disabled:opacity-70"
               >
-                {periodosRelatorio.map((periodo) => (
-                  <option key={periodo.value} value={periodo.value}>
-                    {periodo.label}
-                  </option>
-                ))}
-              </select>
-              <CalendarDays size={17} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                {loading ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
+            <label className="relative block">
+              <input
+                value={buscaRelatorio}
+                onChange={(event) => setBuscaRelatorio(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') carregar()
+                }}
+                className="w-full rounded-2xl border border-white/[0.08] bg-[#0a0a0a] px-4 py-3 pl-11 text-sm font-bold text-white outline-none"
+                placeholder="Buscar por cliente, telefone, CPF/CNPJ, MAC, IP ou TXID"
+              />
+              <Search size={17} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
             </label>
+            <button
+              type="button"
+              onClick={carregar}
+              className="rounded-2xl bg-[#ff7a00] px-5 py-3 text-sm font-black text-black"
+            >
+              Filtrar vendas
+            </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <PixMetricCard label="Receita confirmada" value={money(resumoPix.receitaConfirmada)} detail={`${resumoPix.vendasConfirmadas || 0} venda(s) confirmadas`} icon={CreditCard} />
-            <PixMetricCard label="Total de vendas" value={resumoPix.totalVendas || 0} detail={`${resumoPix.pendentes || 0} pendente(s)`} icon={QrCode} />
-            <PixMetricCard label="Autorizadas" value={resumoPix.autorizadas || 0} detail="Internet liberada no MikroTik" icon={CheckCircle2} />
-            <PixMetricCard label="Ticket medio" value={money(resumoPix.ticketMedio)} detail="Sobre vendas confirmadas" icon={BarChart3} />
-            <PixMetricCard label="Erros" value={resumoPix.erros || 0} detail="Exigem verificacao manual" icon={AlertTriangle} />
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <PixMetricCard label="Receita" value={money(resumoPix.receitaConfirmada)} detail={(resumoPix.vendasConfirmadas || 0) + ' confirmada(s)'} icon={CreditCard} />
+            <PixMetricCard label="Vendas" value={resumoPix.totalVendas || 0} detail={(resumoPix.pendentes || 0) + ' pendente(s)'} icon={QrCode} />
+            <PixMetricCard label="Pagas" value={resumoPix.pagas || 0} detail="Aguardando liberação" icon={CheckCircle2} />
+            <PixMetricCard label="Autorizadas" value={resumoPix.autorizadas || 0} detail="Liberadas no MikroTik" icon={ShieldCheck} />
+            <PixMetricCard label="Ticket medio" value={money(resumoPix.ticketMedio)} detail="Pagas/autorizadas" icon={BarChart3} />
+            <PixMetricCard label="Erros" value={resumoPix.erros || 0} detail="Exigem suporte" icon={AlertTriangle} />
           </div>
 
-          <div className="mt-6 grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+          <div className="mt-6 grid gap-4 xl:grid-cols-[0.9fr_0.9fr_1.4fr]">
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Plano mais vendido</p>
+              {resumoPix.planoMaisVendido ? (
+                <div className="rounded-xl border border-[#ff7a00]/25 bg-[#ff7a00]/10 px-4 py-4">
+                  <p className="text-lg font-black text-white">{resumoPix.planoMaisVendido.plano_nome}</p>
+                  <p className="mt-1 text-sm text-gray-400">{resumoPix.planoMaisVendido.total_vendas} venda(s)</p>
+                  <p className="mt-3 text-xl font-black text-[#ff9d2e]">{money(resumoPix.planoMaisVendido.receita_confirmada)}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">Sem vendas no periodo.</p>
+              )}
+            </div>
+
+            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Status</p>
+              <div className="grid gap-2">
+                {(resumoPix.porStatus || []).length ? resumoPix.porStatus.map((item) => (
+                  <div key={item.status} className="flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
+                    <span className={'rounded-full px-2 py-1 text-[10px] font-black uppercase ' + statusClass(item.status)}>{statusLabel(item.status)}</span>
+                    <span className="text-sm font-black text-white">{item.total}</span>
+                  </div>
+                )) : <p className="text-sm text-gray-500">Sem status no periodo.</p>}
+              </div>
+            </div>
+
             <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Hotspots por receita</p>
               {hotspotsMaisRentaveis.length ? (
@@ -354,43 +572,83 @@ export default function WifiPixPage() {
                 <p className="text-sm text-gray-500">Sem vendas no periodo.</p>
               )}
             </div>
-
-            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Vendas recentes</p>
-              {vendasPix.length ? (
-                <div className="max-h-80 overflow-auto pr-1">
-                  <div className="grid gap-3">
-                    {vendasPix.slice(0, 12).map((venda) => (
-                      <div key={venda.id} className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-white">{venda.nome || 'Cliente sem nome'}</p>
-                            <p className="truncate text-xs text-gray-500">
-                              {venda.hotspot_nome || 'Sem hotspot'} / {venda.plano_nome || 'Sem plano'}
-                            </p>
-                            <p className="text-xs text-gray-600">
-                              {venda.cliente_nome || 'Sem cliente vinculado'} - {venda.metodo_pagamento || 'PIX'}
-                            </p>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-sm font-black text-[#ff9d2e]">{money(venda.valor)}</p>
-                            <span className={`mt-1 inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ${statusClass(venda.status)}`}>
-                              {venda.status || 'pendente'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500">Nenhuma venda registrada no periodo.</p>
-              )}
-            </div>
           </div>
-        </section>
 
-        <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <div className="mt-6 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+            <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black">Gestão de vendas Pix</p>
+                <p className="mt-1 text-sm text-gray-500">Verifique pagamento, libere suporte e encerre vendas pendentes sem apagar histórico.</p>
+              </div>
+              <span className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs font-bold text-gray-400">
+                {vendasPix.length} registro(s)
+              </span>
+            </div>
+
+            {vendasPix.length ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-[980px] w-full text-left text-sm">
+                  <thead className="text-[10px] uppercase tracking-[0.16em] text-gray-600">
+                    <tr className="border-b border-white/[0.06]">
+                      <th className="py-3 pr-3">Cliente</th>
+                      <th className="py-3 pr-3">Plano / Hotspot</th>
+                      <th className="py-3 pr-3">Valor</th>
+                      <th className="py-3 pr-3">Status</th>
+                      <th className="py-3 pr-3">Datas</th>
+                      <th className="py-3 pr-3">Aparelho</th>
+                      <th className="py-3 text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vendasPix.map((venda) => {
+                      const busy = operacaoVendaId.startsWith(venda.id + ':')
+                      return (
+                        <tr key={venda.id} className="border-b border-white/[0.04] align-top">
+                          <td className="py-4 pr-3">
+                            <p className="font-black text-white">{venda.nome || 'Cliente sem nome'}</p>
+                            <p className="text-xs text-gray-500">{formatPhone(venda.telefone)}</p>
+                            <p className="text-[11px] text-gray-700">{venda.cliente_nome || 'Sem cliente vinculado'}</p>
+                          </td>
+                          <td className="py-4 pr-3">
+                            <p className="font-bold text-white">{venda.plano_nome || 'Sem plano'}</p>
+                            <p className="text-xs text-gray-500">{venda.hotspot_nome || 'Sem hotspot'}</p>
+                            <p className="text-[11px] text-gray-700">{venda.metodo_pagamento || 'PIX'} / {venda.gateway_pagamento || venda.asaas_payload?.provider || 'asaas'}</p>
+                          </td>
+                          <td className="py-4 pr-3 font-black text-[#ff9d2e]">{money(venda.valor)}</td>
+                          <td className="py-4 pr-3">
+                            <span className={'inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ' + statusClass(venda.status)}>{statusLabel(venda.status)}</span>
+                            {venda.erro_autorizacao ? <p className="mt-2 max-w-44 text-[11px] text-red-300">{venda.erro_autorizacao}</p> : null}
+                          </td>
+                          <td className="py-4 pr-3 text-xs text-gray-500">
+                            <p>Criada: {formatDateTime(venda.created_at)}</p>
+                            <p>Paga: {formatDateTime(venda.pago_em)}</p>
+                            <p>Expira: {formatDateTime(venda.expira_em)}</p>
+                          </td>
+                          <td className="py-4 pr-3 text-xs text-gray-500">
+                            <p>MAC: {venda.mac_address || '-'}</p>
+                            <p>IP: {venda.ip_address || '-'}</p>
+                          </td>
+                          <td className="py-4 text-right">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <VendaActionButton busy={busy} onClick={() => executarAcaoVenda('verificar_venda', venda)} icon={RefreshCw} label="Verificar" />
+                              <VendaActionButton busy={busy} disabled={!['pago', 'autorizado'].includes(venda.status)} onClick={() => executarAcaoVenda('liberar_venda', venda)} icon={ShieldCheck} label="Liberar" strong />
+                              <VendaActionButton busy={busy} disabled={venda.status === 'autorizado'} onClick={() => executarAcaoVenda('cancelar_venda', venda)} icon={XCircle} label="Cancelar" danger />
+                              <VendaActionButton busy={busy} disabled={venda.status === 'expirado'} onClick={() => executarAcaoVenda('expirar_venda', venda)} icon={Clock3} label="Expirar" />
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/[0.06] bg-black/20 px-5 py-10 text-center text-gray-500">
+                Nenhuma venda encontrada com os filtros atuais.
+              </div>
+            )}
+          </div>
+        </section>        <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
             <label className="block">
               <span className="text-xs uppercase tracking-[0.18em] text-gray-500 font-bold">Hotspot</span>
@@ -446,7 +704,7 @@ export default function WifiPixPage() {
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 text-yellow-300" size={18} />
               <p>
-                Este hotspot esta em modo pago, mas ainda nao tem plano ativo. Cadastre e ative pelo menos um plano antes de publicar o modo Pix ou Hibrido.
+                Este hotspot está em modo pago, mas ainda não tem plano ativo. Cadastre e ative pelo menos um plano antes de publicar o modo Pix ou Híbrido.
               </p>
             </div>
           </div>
@@ -462,7 +720,7 @@ export default function WifiPixPage() {
               <div className="rounded-2xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-[#ffb15c] font-black">Oferta no portal</p>
                 <p className="text-sm text-gray-300 mt-2">
-                  Use nome curto, descricao direta, duracao clara e marque um plano como recomendado para aumentar conversao.
+                  Use nome curto, descrição direta, duração clara e marque um plano como recomendado para aumentar conversão.
                 </p>
               </div>
 
@@ -481,7 +739,7 @@ export default function WifiPixPage() {
 
               <div className="grid grid-cols-3 gap-3">
                 <label className="block">
-                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Preco</span>
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Preço</span>
                   <input
                     type="number"
                     step="0.01"
@@ -493,7 +751,7 @@ export default function WifiPixPage() {
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Duracao</span>
+                  <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.16em] text-gray-600">Duração</span>
                   <input
                     type="number"
                     min="1"
@@ -603,7 +861,7 @@ export default function WifiPixPage() {
                         </div>
                         <p className="text-sm text-gray-500 mt-1">{plano.descricao || 'Sem descrição'}</p>
                         <div className="mt-3 grid grid-cols-3 gap-2">
-                          <SmallPlanInfo label="Duracao" value={formatDuration(plano.duracao_minutos)} />
+                          <SmallPlanInfo label="Duração" value={formatDuration(plano.duracao_minutos)} />
                           <SmallPlanInfo label="Download" value={plano.velocidade_download || '15M'} />
                           <SmallPlanInfo label="Upload" value={plano.velocidade_upload || '15M'} />
                         </div>
@@ -645,8 +903,8 @@ export default function WifiPixPage() {
               <div className="flex items-start gap-3">
                 <CreditCard className="text-[#6be12f] mt-0.5" size={18} />
                 <p>
-                  Pix e cartão usam link seguro do Asaas. Para funcionar dentro do hotspot bloqueado,
-                  libere os domínios do Asaas no walled garden do MikroTik.
+                  Pix usa Efí e cartão usa link seguro do Asaas. Para funcionar dentro do hotspot bloqueado,
+                  libere os domínios da Efí, Asaas e NexaWi no walled garden do MikroTik.
                 </p>
               </div>
             </div>
@@ -672,6 +930,25 @@ function SmallPlanInfo({ label, value }) {
   )
 }
 
+function VendaActionButton({ label, icon: Icon, onClick, disabled = false, busy = false, strong = false, danger = false }) {
+  const color = danger
+    ? 'border-red-500/20 text-red-300 hover:bg-red-500/10'
+    : strong
+      ? 'border-[#6be12f]/25 text-[#6be12f] hover:bg-[#6be12f]/10'
+      : 'border-white/[0.08] text-gray-300 hover:bg-white/[0.04]'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || busy}
+      className={'inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-black disabled:cursor-not-allowed disabled:opacity-40 ' + color}
+    >
+      {busy ? <Loader2 size={13} className="animate-spin" /> : <Icon size={13} />}
+      {label}
+    </button>
+  )
+}
 function PixMetricCard({ label, value, detail, icon: Icon }) {
   return (
     <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-5">

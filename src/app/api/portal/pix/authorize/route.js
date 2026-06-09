@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { cleanPhone, normalizeMacAddress } from '@/lib/wifi-pix'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -177,7 +178,17 @@ export async function POST(request) {
         .update({ status: 'expirado', updated_at: new Date().toISOString() })
         .eq('id', venda.id)
 
-      throw new Error('O tempo deste acesso ja expirou.')
+      await logAdminAction({
+        request,
+        adminUser: { id: null, email: 'wifi-pix-authorize@nexawi.system' },
+        action: 'wifi_pix_venda_expirada',
+        entity: 'wifi_pix_vendas',
+        entityId: venda.id,
+        description: 'Venda Wi-Fi no Pix expirada ao tentar liberar acesso.',
+        metadata: { hotspotSlug, macAddress, ipAddress },
+      })
+
+      throw new Error('O tempo deste acesso j? expirou.')
     }
 
     if (!['pago', 'autorizado'].includes(venda.status)) {
@@ -249,6 +260,24 @@ export async function POST(request) {
           alreadyAuthorized: Boolean(authorization?.alreadyAuthorized),
         },
       }])
+
+    await logAdminAction({
+      request,
+      adminUser: { id: null, email: 'wifi-pix-authorize@nexawi.system' },
+      action: 'wifi_pix_venda_liberada',
+      entity: 'wifi_pix_vendas',
+      entityId: venda.id,
+      description: 'Venda Wi-Fi no Pix liberada no MikroTik.',
+      metadata: {
+        hotspotSlug,
+        macAddress,
+        ipAddress,
+        leadId,
+        sessionId: authorization?.session?.id || null,
+        alreadyAuthorized: Boolean(authorization?.alreadyAuthorized),
+        expiraEm,
+      },
+    })
 
     return NextResponse.json({
       ok: true,

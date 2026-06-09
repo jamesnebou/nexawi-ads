@@ -107,6 +107,17 @@ export default function DashboardAnunciantePage() {
   const resumo = data?.resumo || {}
   const empresa = data?.empresa || {}
   const semEmpresaAtiva = Boolean(data?.semEmpresaAtiva)
+  const taxaLead = Number(resumo.visualizacoes || 0) > 0
+    ? (Number(resumo.leads || 0) / Number(resumo.visualizacoes || 0)) * 100
+    : 0
+  const cliquePorLead = Number(resumo.leads || 0) > 0
+    ? Number(resumo.cliques || 0) / Number(resumo.leads || 0)
+    : 0
+  const leituraComercial = [
+    { label: 'Conversão em leads', value: formatPercent(taxaLead), detail: 'leads divididos por visualizações' },
+    { label: 'Cliques por lead', value: cliquePorLead.toLocaleString('pt-BR', { maximumFractionDigits: 2 }), detail: 'interesse após captura' },
+    { label: 'Campanhas ativas', value: formatNumber(resumo.campanhasAtivas), detail: `${formatNumber(resumo.campanhas)} campanha(s) no total` },
+  ]
 
   return (
     <>
@@ -130,7 +141,7 @@ export default function DashboardAnunciantePage() {
 
           <div className="flex flex-col md:flex-row gap-3 md:items-end">
             {empresaOptions.length > 0 && (
-              <label className="min-w-[240px]">
+              <label className="w-full md:min-w-[240px]">
                 <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 flex items-center gap-2">
                   <Building2 size={13} className="text-[#6be12f]" />
                   Empresa
@@ -147,7 +158,7 @@ export default function DashboardAnunciantePage() {
               </label>
             )}
 
-            <label className="min-w-[190px]">
+            <label className="w-full md:min-w-[190px]">
               <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 flex items-center gap-2">
                 <CalendarDays size={13} className="text-[#6be12f]" />
                 Período
@@ -163,7 +174,7 @@ export default function DashboardAnunciantePage() {
               </select>
             </label>
 
-            <button onClick={() => carregar()} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-extrabold text-black hover:bg-[#8cf059]">
+            <button onClick={() => carregar()} className="inline-flex w-full md:w-auto items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-extrabold text-black hover:bg-[#8cf059]">
               <RefreshCw size={17} />
               Atualizar
             </button>
@@ -185,7 +196,7 @@ export default function DashboardAnunciantePage() {
           </div>
         ) : (
           <>
-            <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-7 gap-5 mb-8">
+            <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7 gap-5 mb-8">
               <KpiCard icon={Megaphone} label="Campanhas" value={resumo.campanhas} detail={`${formatNumber(resumo.campanhasAtivas)} ativa(s)`} />
               <KpiCard icon={Wifi} label="Hotspots" value={resumo.hotspots} detail="pontos vinculados" />
               <KpiCard icon={UserPlus} label="Leads" value={resumo.leads} detail="capturados" />
@@ -193,6 +204,17 @@ export default function DashboardAnunciantePage() {
               <KpiCard icon={MousePointerClick} label="Cliques" value={resumo.cliques} detail="ações no CTA" />
               <KpiCard icon={UserPlus} label="Usuários únicos" value={resumo.usuariosUnicos} detail="por IP/sessão" />
               <KpiCard icon={BarChart2} label="CTR" value={formatPercent(resumo.ctr)} detail="cliques/views" isText />
+            </section>
+
+            <section className="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-8">
+              {leituraComercial.map((item) => (
+                <div key={item.label} className="rounded-3xl border border-[#6be12f]/10 bg-[#6be12f]/[0.03] p-6">
+                  <p className="text-[11px] uppercase tracking-widest font-extrabold text-[#8cf059]">Leitura comercial</p>
+                  <p className="text-3xl font-black text-white mt-4">{item.value}</p>
+                  <p className="text-sm font-bold text-neutral-300 mt-2">{item.label}</p>
+                  <p className="text-xs text-neutral-500 mt-1">{item.detail}</p>
+                </div>
+              ))}
             </section>
 
             {data?.qualidadeDados?.usaFallbackHistorico && (
@@ -252,7 +274,7 @@ export default function DashboardAnunciantePage() {
                       <p className="text-sm font-black text-white">{lead.nome || 'Sem nome'}</p>
                       <p className="text-xs text-neutral-500">{lead.email || 'Sem e-mail'}</p>
                       <p className="text-xs text-neutral-500">{lead.telefone || 'Sem telefone'}</p>
-                      <p className="text-xs text-neutral-600">{lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '—'}</p>
+                      <p className="text-xs text-neutral-600">{lead.created_at ? new Date(lead.created_at).toLocaleString('pt-BR') : '-'}</p>
                     </div>
                   ))}
                 </div>
@@ -292,7 +314,7 @@ function Panel({ title, subtitle, children }) {
 
 function MetricGrid({ metricas = {} }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
       <SmallMetric label="Views" value={metricas.visualizacoes} />
       <SmallMetric label="Cliques" value={metricas.cliques} />
       <SmallMetric label="Leads" value={metricas.leads} />

@@ -1,15 +1,18 @@
-import { NextResponse } from 'next/server'
+﻿import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createWifiPixCheckout } from '@/lib/wifi-pix'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
 const RATE_LIMIT = {
   keyPrefix: 'portal:pix:checkout',
-  limit: 20,
+  limit: 15,
   windowMs: 60_000,
 }
+
+const MAX_CHECKOUT_BODY_BYTES = 64 * 1024
 
 function clean(value = '') {
   return String(value || '').trim()
@@ -26,6 +29,9 @@ export async function POST(request) {
   }
 
   try {
+    const contentLength = Number(request.headers.get('content-length') || 0)
+    if (contentLength > MAX_CHECKOUT_BODY_BYTES) throw new Error('Payload do checkout Pix muito grande.')
+
     const body = await request.json()
     const hotspotId = clean(body.hotspotId || body.hotspot_id)
     const planoId = clean(body.planoId || body.plano_id)
@@ -73,6 +79,23 @@ export async function POST(request) {
       macAddress,
       ipAddress,
       metodoPagamento,
+    })
+
+    await logAdminAction({
+      request,
+      adminUser: { id: null, email: 'wifi-pix-checkout@nexawi.system' },
+      action: 'wifi_pix_venda_criada',
+      entity: 'wifi_pix_vendas',
+      entityId: result.venda.id,
+      description: 'Venda Wi-Fi no Pix criada pelo portal.',
+      metadata: {
+        hotspotId: hotspot.id,
+        hotspotSlug: hotspot.slug,
+        planoId: plano.id,
+        metodoPagamento: result.venda.metodo_pagamento,
+        valor: Number(result.venda.valor || 0),
+        gateway: result.venda.gateway_pagamento || result.venda.asaas_payload?.provider || 'asaas',
+      },
     })
 
     return NextResponse.json({

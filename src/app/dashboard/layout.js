@@ -88,10 +88,22 @@ const rotasProtegidas = [
     label: 'Leads',
   },
   {
+    path: '/dashboard/relatorio-de-acesso',
+    module: 'relatorios',
+    action: 'view',
+    label: 'Relatório de Acesso',
+  },
+  {
     path: '/dashboard/relatorios/acesso',
     module: 'relatorios',
     action: 'view',
     label: 'Relatório de Acesso',
+  },
+  {
+    path: '/dashboard/relatorio-comercial',
+    module: 'relatorios',
+    action: 'view',
+    label: 'Relatório Comercial',
   },
   {
     path: '/dashboard/relatorios/comercial',

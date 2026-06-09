@@ -5,6 +5,7 @@ import {
   listHotspotHosts,
 } from '@/lib/routeros-rest'
 import { markSessionExpired, logRouterAction } from '@/lib/session-control'
+import { logAdminAction } from '@/lib/admin-audit-log'
 
 export const runtime = 'nodejs'
 
@@ -72,6 +73,7 @@ export async function POST(request) {
 
     const cleaned = []
     const kept = []
+    const expiredWifiPix = []
 
     for (const session of authorizedSessions || []) {
       const mac = normalizeMacLocal(session.client_mac)
@@ -130,6 +132,73 @@ export async function POST(request) {
       })
     }
 
+
+    const { data: expiredPixAccesses, error: expiredPixError } = await supabaseAdmin
+      .from('wifi_pix_acessos')
+      .select('id, venda_id, hotspot_id, mac_address, ip_address, expira_em, status')
+      .eq('status', 'ativo')
+      .lte('expira_em', nowIso)
+      .limit(200)
+
+    if (expiredPixError) throw expiredPixError
+
+    for (const acesso of expiredPixAccesses || []) {
+      const mac = normalizeMacLocal(acesso.mac_address)
+      let cleanup = null
+
+      if (mac) {
+        cleanup = await cleanupClientAccess({ macAddress: mac })
+      }
+
+      await supabaseAdmin
+        .from('wifi_pix_acessos')
+        .update({
+          status: 'expirado',
+          revogado_em: nowIso,
+          updated_at: nowIso,
+          metadata: {
+            expiredByReconcile: true,
+            previousExpiraEm: acesso.expira_em,
+            cleanup,
+          },
+        })
+        .eq('id', acesso.id)
+
+      if (acesso.venda_id) {
+        await supabaseAdmin
+          .from('wifi_pix_vendas')
+          .update({
+            status: 'expirado',
+            expira_em: acesso.expira_em || nowIso,
+            updated_at: nowIso,
+          })
+          .eq('id', acesso.venda_id)
+      }
+
+      await logAdminAction({
+        request,
+        adminUser: { id: null, email: 'reconcile@nexawi.system' },
+        action: 'wifi_pix_venda_expirada_reconcile',
+        entity: 'wifi_pix_vendas',
+        entityId: acesso.venda_id || '',
+        description: 'Venda/acesso Wi-Fi no Pix expirado automaticamente pelo reconcile.',
+        metadata: {
+          acessoId: acesso.id,
+          hotspotId: acesso.hotspot_id,
+          mac,
+          ipAddress: acesso.ip_address || null,
+          expiraEm: acesso.expira_em,
+          cleanup,
+        },
+      })
+
+      expiredWifiPix.push({
+        acessoId: acesso.id,
+        vendaId: acesso.venda_id || null,
+        mac,
+      })
+    }
+
     return NextResponse.json({
       ok: true,
       checkedAt: nowIso,
@@ -137,8 +206,10 @@ export async function POST(request) {
       hostsCount: hosts.length,
       keptCount: kept.length,
       cleanedCount: cleaned.length,
+      expiredWifiPixCount: expiredWifiPix.length,
       kept,
       cleaned,
+      expiredWifiPix,
     })
   } catch (error) {
     return NextResponse.json(

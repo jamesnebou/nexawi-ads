@@ -19,6 +19,7 @@
 // ============================================================
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   DollarSign,
@@ -116,6 +117,15 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   return data
 }
 
+function FinanceMini({ label, value, isText = false }) {
+  return (
+    <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
+      <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600">{label}</p>
+      <p className="text-base font-black text-white mt-1">{isText ? value : new Intl.NumberFormat('pt-BR').format(Number(value || 0))}</p>
+    </div>
+  )
+}
+
 export default function Pagamentos() {
   const [pagamentos, setPagamentos] = useState([])
   const [clientes, setClientes] = useState([])
@@ -145,6 +155,7 @@ export default function Pagamentos() {
   const [salvando, setSalvando] = useState(false)
   const [asaasStatus, setAsaasStatus] = useState(null)
   const [asaasLoadingId, setAsaasLoadingId] = useState('')
+  const [wifiPixResumo, setWifiPixResumo] = useState(null)
 
   const [form, setForm] = useState({
     cliente_id: '',
@@ -201,6 +212,7 @@ export default function Pagamentos() {
       setPlanos(data.planos || [])
       setAssinaturas(data.assinaturas || [])
       setMetricas(data.metricas || {})
+      setWifiPixResumo(data.wifiPixResumo || null)
       setPermissions({
         ...permissoesIniciais,
         ...(data.permissions || {}),
@@ -706,6 +718,46 @@ export default function Pagamentos() {
               </span>
             </div>
           </div>
+        </div>
+
+        <div className="bg-white/[0.02] border border-orange-500/15 rounded-3xl p-5 sm:p-6 mb-10 shadow-2xl backdrop-blur-xl">
+          <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-5">
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-300">
+                <Repeat size={22} />
+              </div>
+
+              <div>
+                <h2 className="text-lg font-extrabold text-white tracking-tight">
+                  Wi-Fi no Pix / Efi
+                </h2>
+                <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
+                  Receita avulsa de acesso pago por hotspot, separada das mensalidades SaaS.
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 w-full xl:w-auto">
+              <FinanceMini label="Status" value={wifiPixResumo?.configured ? 'Configurado' : 'Pendente'} isText />
+              <FinanceMini label="Vendas" value={wifiPixResumo?.totalVendas || 0} />
+              <FinanceMini label="Pagas" value={wifiPixResumo?.vendasConfirmadas || 0} />
+              <FinanceMini label="Receita" value={fmt(wifiPixResumo?.receitaConfirmada || 0)} isText />
+            </div>
+
+            <Link
+              href="/dashboard/wifi-pix"
+              className="inline-flex w-full xl:w-auto items-center justify-center gap-2 rounded-2xl border border-orange-500/20 bg-orange-500/10 px-5 py-3.5 text-sm font-black text-orange-200 hover:bg-orange-500/15 transition-colors"
+            >
+              Abrir Wi-Fi no Pix
+              <ExternalLink size={16} />
+            </Link>
+          </div>
+
+          {wifiPixResumo?.error && (
+            <p className="mt-4 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-4 py-3 text-xs font-bold text-yellow-200">
+              Resumo Pix indisponivel: {wifiPixResumo.error}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-5 mb-10">
