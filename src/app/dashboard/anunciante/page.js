@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -9,17 +9,17 @@ const supabase = createBrowserSupabaseClient()
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
-  { value: 'ultimos_7', label: 'Últimos 7 dias' },
-  { value: 'ultimos_30', label: 'Últimos 30 dias' },
-  { value: 'mes_atual', label: 'Mês atual' },
-  { value: 'todos', label: 'Todo o período' },
+  { value: 'ultimos_7', label: 'Ãšltimos 7 dias' },
+  { value: 'ultimos_30', label: 'Ãšltimos 30 dias' },
+  { value: 'mes_atual', label: 'MÃªs atual' },
+  { value: 'todos', label: 'Todo o perÃ­odo' },
 ]
 
 async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -114,16 +114,16 @@ export default function DashboardAnunciantePage() {
     ? Number(resumo.cliques || 0) / Number(resumo.leads || 0)
     : 0
   const leituraComercial = [
-    { label: 'Conversão em leads', value: formatPercent(taxaLead), detail: 'leads divididos por visualizações' },
-    { label: 'Cliques por lead', value: cliquePorLead.toLocaleString('pt-BR', { maximumFractionDigits: 2 }), detail: 'interesse após captura' },
+    { label: 'ConversÃ£o em leads', value: formatPercent(taxaLead), detail: 'leads divididos por visualizaÃ§Ãµes' },
+    { label: 'Cliques por lead', value: cliquePorLead.toLocaleString('pt-BR', { maximumFractionDigits: 2 }), detail: 'interesse apÃ³s captura' },
     { label: 'Campanhas ativas', value: formatNumber(resumo.campanhasAtivas), detail: `${formatNumber(resumo.campanhas)} campanha(s) no total` },
   ]
 
   return (
     <>
       <Toaster position="top-right" />
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
-        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
+      <div className="relative z-10 px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
+        <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8 text-center xl:text-left">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
               <Building2 size={13} />
@@ -135,7 +135,7 @@ export default function DashboardAnunciantePage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Acompanhe campanhas, hotspots, leads, visualizações, cliques e CTR da empresa selecionada.
+              Acompanhe campanhas, hotspots, leads, visualizaÃ§Ãµes, cliques e CTR da empresa selecionada.
             </p>
           </div>
 
@@ -161,7 +161,7 @@ export default function DashboardAnunciantePage() {
             <label className="w-full md:min-w-[190px]">
               <span className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500 mb-2 flex items-center gap-2">
                 <CalendarDays size={13} className="text-[#6be12f]" />
-                Período
+                PerÃ­odo
               </span>
               <select
                 value={periodo}
@@ -185,14 +185,14 @@ export default function DashboardAnunciantePage() {
           <div className="py-24 flex items-center justify-center"><div className="w-14 h-14 rounded-full border-t-2 border-[#6be12f]/60 animate-spin" /></div>
         ) : !data ? (
           <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-12 text-center">
-            <h3 className="text-lg font-bold text-white">Não foi possível carregar o dashboard</h3>
-            <p className="text-sm text-neutral-500 mt-2">Verifique se este usuário está vinculado a uma empresa.</p>
+            <h3 className="text-lg font-bold text-white">NÃ£o foi possÃ­vel carregar o dashboard</h3>
+            <p className="text-sm text-neutral-500 mt-2">Verifique se este usuÃ¡rio estÃ¡ vinculado a uma empresa.</p>
           </div>
         ) : semEmpresaAtiva ? (
           <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-12 text-center">
             <Building2 size={34} className="mx-auto text-neutral-600 mb-4" />
             <h3 className="text-lg font-bold text-white">Nenhuma empresa ativa encontrada</h3>
-            <p className="text-sm text-neutral-500 mt-2">Vincule este usuário a uma empresa ou crie uma empresa em /dashboard/empresas.</p>
+            <p className="text-sm text-neutral-500 mt-2">Vincule este usuÃ¡rio a uma empresa ou crie uma empresa em /dashboard/empresas.</p>
           </div>
         ) : (
           <>
@@ -200,9 +200,9 @@ export default function DashboardAnunciantePage() {
               <KpiCard icon={Megaphone} label="Campanhas" value={resumo.campanhas} detail={`${formatNumber(resumo.campanhasAtivas)} ativa(s)`} />
               <KpiCard icon={Wifi} label="Hotspots" value={resumo.hotspots} detail="pontos vinculados" />
               <KpiCard icon={UserPlus} label="Leads" value={resumo.leads} detail="capturados" />
-              <KpiCard icon={Eye} label="Visualizações" value={resumo.visualizacoes} detail="impressões" />
-              <KpiCard icon={MousePointerClick} label="Cliques" value={resumo.cliques} detail="ações no CTA" />
-              <KpiCard icon={UserPlus} label="Usuários únicos" value={resumo.usuariosUnicos} detail="por IP/sessão" />
+              <KpiCard icon={Eye} label="VisualizaÃ§Ãµes" value={resumo.visualizacoes} detail="impressÃµes" />
+              <KpiCard icon={MousePointerClick} label="Cliques" value={resumo.cliques} detail="aÃ§Ãµes no CTA" />
+              <KpiCard icon={UserPlus} label="UsuÃ¡rios Ãºnicos" value={resumo.usuariosUnicos} detail="por IP/sessÃ£o" />
               <KpiCard icon={BarChart2} label="CTR" value={formatPercent(resumo.ctr)} detail="cliques/views" isText />
             </section>
 
@@ -219,12 +219,12 @@ export default function DashboardAnunciantePage() {
 
             {data?.qualidadeDados?.usaFallbackHistorico && (
               <div className="mb-8 rounded-3xl border border-yellow-500/20 bg-yellow-500/10 p-5 text-sm text-yellow-100">
-                Parte dos dados antigos foi estimada por vínculo histórico. Os novos eventos já usam hotspot_id e empresa_id reais.
+                Parte dos dados antigos foi estimada por vÃ­nculo histÃ³rico. Os novos eventos jÃ¡ usam hotspot_id e empresa_id reais.
               </div>
             )}
 
             <section className="grid grid-cols-1 xl:grid-cols-2 gap-6 mb-8">
-              <Panel title="Campanhas" subtitle="Performance por anúncio">
+              <Panel title="Campanhas" subtitle="Performance por anÃºncio">
                 {(data.campanhas || []).length === 0 ? (
                   <Empty text="Nenhuma campanha vinculada a esta empresa." />
                 ) : (
@@ -234,7 +234,7 @@ export default function DashboardAnunciantePage() {
                         <div className="flex items-start justify-between gap-4 mb-4">
                           <div>
                             <h3 className="text-base font-black text-white">{campanha.titulo}</h3>
-                            <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{campanha.descricao || 'Sem descrição'}</p>
+                            <p className="text-xs text-neutral-500 mt-1 line-clamp-2">{campanha.descricao || 'Sem descriÃ§Ã£o'}</p>
                           </div>
                           <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest ${campanha.ativo !== false ? 'bg-[#6be12f]/10 text-[#8cf059]' : 'bg-red-500/10 text-red-300'}`}>
                             {campanha.ativo !== false ? 'Ativa' : 'Pausada'}
@@ -255,7 +255,7 @@ export default function DashboardAnunciantePage() {
                     {data.hotspots.map((hotspot) => (
                       <div key={hotspot.id} className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5">
                         <h3 className="text-base font-black text-white">{hotspot.nome}</h3>
-                        <p className="text-xs text-neutral-500 mt-1">{hotspot.cidade || 'Cidade não informada'} {hotspot.estado ? `/${hotspot.estado}` : ''}</p>
+                        <p className="text-xs text-neutral-500 mt-1">{hotspot.cidade || 'Cidade nÃ£o informada'} {hotspot.estado ? `/${hotspot.estado}` : ''}</p>
                         <div className="mt-4"><MetricGrid metricas={hotspot.metricas} /></div>
                       </div>
                     ))}
@@ -264,7 +264,7 @@ export default function DashboardAnunciantePage() {
               </Panel>
             </section>
 
-            <Panel title="Leads recentes" subtitle="Últimos cadastros capturados no portal">
+            <Panel title="Leads recentes" subtitle="Ãšltimos cadastros capturados no portal">
               {(data.leadsRecentes || []).length === 0 ? (
                 <Empty text="Nenhum lead capturado ainda." />
               ) : (
@@ -289,7 +289,7 @@ export default function DashboardAnunciantePage() {
 
 function KpiCard({ icon: Icon, label, value, detail, isText = false }) {
   return (
-    <div className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
+    <div className="mobile-tight-card rounded-3xl border border-white/[0.05] bg-white/[0.02] p-4 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500">{label}</p>
         <Icon size={18} className="text-[#8cf059]" />
@@ -302,8 +302,8 @@ function KpiCard({ icon: Icon, label, value, detail, isText = false }) {
 
 function Panel({ title, subtitle, children }) {
   return (
-    <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
-      <div className="mb-5">
+    <section className="mobile-tight-card rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
+      <div className="mb-5 text-center">
         <h2 className="text-xl font-black text-white tracking-tight">{title}</h2>
         <p className="text-sm text-neutral-500 mt-1">{subtitle}</p>
       </div>
@@ -318,7 +318,7 @@ function MetricGrid({ metricas = {} }) {
       <SmallMetric label="Views" value={metricas.visualizacoes} />
       <SmallMetric label="Cliques" value={metricas.cliques} />
       <SmallMetric label="Leads" value={metricas.leads} />
-      <SmallMetric label="Únicos" value={metricas.usuarios_unicos} />
+      <SmallMetric label="Ãšnicos" value={metricas.usuarios_unicos} />
       <SmallMetric label="CTR" value={formatPercent(metricas.ctr)} isText />
     </div>
   )
@@ -326,7 +326,7 @@ function MetricGrid({ metricas = {} }) {
 
 function SmallMetric({ label, value, isText = false }) {
   return (
-    <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3">
+    <div className="rounded-2xl border border-white/[0.05] bg-black/20 p-3 text-center">
       <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600">{label}</p>
       <p className="text-lg font-black text-white mt-1">{isText ? value : formatNumber(value)}</p>
     </div>
@@ -334,5 +334,5 @@ function SmallMetric({ label, value, isText = false }) {
 }
 
 function Empty({ text }) {
-  return <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-8 text-center text-sm text-neutral-500">{text}</div>
+  return <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 sm:p-8 text-center text-sm text-neutral-500">{text}</div>
 }

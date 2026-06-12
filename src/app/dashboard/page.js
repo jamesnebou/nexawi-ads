@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState, useCallback } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -59,7 +59,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -111,7 +111,7 @@ function corAlerta(severidade) {
 }
 
 function formatarDataHora(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -253,7 +253,7 @@ export default function Dashboard() {
       bg: 'bg-orange-500/20',
     },
     {
-      label: 'Acessos no Mês',
+      label: 'Acessos no MÃªs',
       valor: metricas.leadsMes,
       sub: selectedHotspotName,
       icon: Eye,
@@ -263,13 +263,13 @@ export default function Dashboard() {
     {
       label: 'Pessoas Online',
       valor: metricas.pessoasOnline,
-      sub: metricas.pessoasOnlineConfiavel ? 'Agora no MikroTik' : 'MikroTik indisponível',
+      sub: metricas.pessoasOnlineConfiavel ? 'Agora no MikroTik' : 'MikroTik indisponÃ­vel',
       icon: Activity,
       text: 'text-cyan-400',
       bg: 'bg-cyan-500/20',
     },
     {
-      label: 'Recebido no Mês',
+      label: 'Recebido no MÃªs',
       valor: fmt(metricas.recebidoMes),
       icon: DollarSign,
       text: 'text-purple-400',
@@ -281,7 +281,7 @@ export default function Dashboard() {
     {
       label: 'Em setup',
       valor: resumoOperacional.emSetup,
-      sub: 'clientes em implantação',
+      sub: 'clientes em implantaÃ§Ã£o',
       icon: Rocket,
       text: 'text-purple-400',
       bg: 'bg-purple-500/20',
@@ -289,7 +289,7 @@ export default function Dashboard() {
     {
       label: 'Travados',
       valor: resumoOperacional.travados,
-      sub: 'precisam de ação',
+      sub: 'precisam de aÃ§Ã£o',
       icon: AlertTriangle,
       text: 'text-red-400',
       bg: 'bg-red-500/20',
@@ -313,7 +313,7 @@ export default function Dashboard() {
     {
       label: 'Implantados',
       valor: resumoOperacional.implantacoesConcluidas,
-      sub: 'operação concluída',
+      sub: 'operaÃ§Ã£o concluÃ­da',
       icon: CheckCircle2,
       text: 'text-[#8cf059]',
       bg: 'bg-[#6be12f]/20',
@@ -333,7 +333,7 @@ export default function Dashboard() {
           </h1>
 
           <p className="text-sm text-gray-500 mt-1 font-medium">
-            Visão geral, métricas e operação da NexaWi ADS
+            VisÃ£o geral, mÃ©tricas e operaÃ§Ã£o da NexaWi ADS
           </p>
         </div>
 
@@ -387,11 +387,11 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
                     <ClipboardCheck size={22} className="text-[#6be12f]" />
-                    Operação e Onboarding
+                    OperaÃ§Ã£o e Onboarding
                   </h2>
 
                   <p className="text-sm text-gray-500 mt-1">
-                    Acompanhe implantação, gargalos e clientes que precisam de ação.
+                    Acompanhe implantaÃ§Ã£o, gargalos e clientes que precisam de aÃ§Ã£o.
                   </p>
                 </div>
               </div>
@@ -407,11 +407,11 @@ export default function Dashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
                       <h2 className="text-lg font-semibold text-white tracking-tight">
-                        Operação em andamento
+                        OperaÃ§Ã£o em andamento
                       </h2>
 
                       <p className="text-sm text-gray-500 mt-1">
-                        Clientes em setup, travados ou aguardando próximos passos
+                        Clientes em setup, travados ou aguardando prÃ³ximos passos
                       </p>
                     </div>
 
@@ -424,8 +424,8 @@ export default function Dashboard() {
                   {clientesOperacao.length === 0 ? (
                     <EmptyState
                       icon={CheckCircle2}
-                      title="Nenhuma implantação pendente"
-                      description="Quando houver clientes em setup ou travados, eles aparecerão aqui."
+                      title="Nenhuma implantaÃ§Ã£o pendente"
+                      description="Quando houver clientes em setup ou travados, eles aparecerÃ£o aqui."
                     />
                   ) : (
                     <div className="space-y-3">
@@ -465,7 +465,7 @@ export default function Dashboard() {
                               </p>
 
                               <p className="text-xs text-neutral-500 mt-1 truncate">
-                                {cliente.email || 'Sem e-mail'} · {cliente.plano_nome || 'Sem plano'}
+                                {cliente.email || 'Sem e-mail'} Â· {cliente.plano_nome || 'Sem plano'}
                               </p>
 
                               {cliente.onboarding_travado && cliente.onboarding_motivo_trava && (
@@ -491,7 +491,7 @@ export default function Dashboard() {
                               </div>
 
                               <p className="text-[11px] text-neutral-600 mt-2">
-                                {cliente.progresso?.feitos || 0}/{cliente.progresso?.total || 0} etapas concluídas
+                                {cliente.progresso?.feitos || 0}/{cliente.progresso?.total || 0} etapas concluÃ­das
                               </p>
                             </div>
                           </div>
@@ -508,7 +508,7 @@ export default function Dashboard() {
                     </h2>
 
                     <p className="text-sm text-gray-500 mt-1">
-                      Pendências críticas que podem travar a operação
+                      PendÃªncias crÃ­ticas que podem travar a operaÃ§Ã£o
                     </p>
                   </div>
 
@@ -516,7 +516,7 @@ export default function Dashboard() {
                     <EmptyState
                       icon={CheckCircle2}
                       title="Sem alertas no momento"
-                      description="Tudo certo por enquanto. Nenhum cliente travado ou cobrança pendente apareceu."
+                      description="Tudo certo por enquanto. Nenhum cliente travado ou cobranÃ§a pendente apareceu."
                     />
                   ) : (
                     <div className="space-y-3">
@@ -546,7 +546,7 @@ export default function Dashboard() {
 
                                 {alerta.responsavel && (
                                   <p className="text-[11px] text-neutral-600 mt-2">
-                                    Responsável: {alerta.responsavel}
+                                    ResponsÃ¡vel: {alerta.responsavel}
                                   </p>
                                 )}
                               </div>
@@ -564,7 +564,7 @@ export default function Dashboard() {
     <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up">
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-white tracking-tight">
-          Distribuição por etapa de implantação
+          DistribuiÃ§Ã£o por etapa de implantaÃ§Ã£o
         </h2>
 
         <p className="text-sm text-gray-500 mt-1">
@@ -575,8 +575,8 @@ export default function Dashboard() {
       {onboardingPorStatus.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="Sem dados de implantação"
-          description="Quando houver clientes com etapa definida, o gráfico aparecerá aqui."
+          title="Sem dados de implantaÃ§Ã£o"
+          description="Quando houver clientes com etapa definida, o grÃ¡fico aparecerÃ¡ aqui."
         />
       ) : (
         <ResponsiveContainer width="100%" height={260}>
@@ -596,29 +596,27 @@ export default function Dashboard() {
     </div>
 
     <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up">
-      <div className="flex items-start justify-between gap-4 mb-7">
-        <div>
-          <h2 className="text-lg font-semibold text-white tracking-tight flex items-center gap-2">
-            <LogIn size={20} className="text-[#6be12f]" />
-            Últimos acessos ao portal
-          </h2>
-
-          <p className="text-sm text-gray-500 mt-1">
-            Clientes que entraram recentemente na área do cliente
-          </p>
-        </div>
-
-        <span className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
+            <div className="mb-7 text-center">
+        <span className="mx-auto mb-4 inline-flex items-center gap-2 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-4 py-2 text-xs font-bold text-neutral-400">
           <CalendarClock size={14} className="text-[#6be12f]" />
           Portal
         </span>
+
+        <h2 className="flex items-center justify-center gap-2 text-lg font-semibold text-white tracking-tight">
+          <LogIn size={20} className="text-[#6be12f]" />
+          Últimos acessos ao portal
+        </h2>
+
+        <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">
+          Clientes que entraram recentemente na área do cliente
+        </p>
       </div>
 
       {clientesUltimosAcessos.length === 0 ? (
         <EmptyState
           icon={LogIn}
           title="Nenhum acesso registrado"
-          description="Quando clientes entrarem no portal, os acessos aparecerão aqui."
+          description="Quando clientes entrarem no portal, os acessos aparecerÃ£o aqui."
         />
       ) : (
         <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
@@ -671,7 +669,7 @@ export default function Dashboard() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <ChartCard title="Leads Capturados (Geral)" subtitle="Evolução nos últimos 14 dias" delay="0.2s">
+            <ChartCard title="Leads Capturados (Geral)" subtitle="EvoluÃ§Ã£o nos Ãºltimos 14 dias" delay="0.2s">
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={leadsPorDiaGeral} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
@@ -689,7 +687,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title={`Leads Capturados (${selectedHotspotName})`} subtitle="Evolução nos últimos 14 dias" delay="0.3s">
+            <ChartCard title={`Leads Capturados (${selectedHotspotName})`} subtitle="EvoluÃ§Ã£o nos Ãºltimos 14 dias" delay="0.3s">
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={leadsUnicosPorDiaHotspot} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
@@ -707,7 +705,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Receita por Mês" subtitle="Comparativo dos últimos 6 meses" delay="0.4s">
+            <ChartCard title="Receita por MÃªs" subtitle="Comparativo dos Ãºltimos 6 meses" delay="0.4s">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={receitaPorMes} margin={{ top: 10, right: 0, left: -10, bottom: 0 }} barSize={20}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -724,7 +722,7 @@ export default function Dashboard() {
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 flex flex-col animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-white tracking-tight">Clientes por Status</h2>
-                <p className="text-sm text-gray-500 mt-1">Distribuição atual da base</p>
+                <p className="text-sm text-gray-500 mt-1">DistribuiÃ§Ã£o atual da base</p>
               </div>
 
               <div className="flex-1 flex flex-col justify-center">
@@ -769,8 +767,8 @@ export default function Dashboard() {
 
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-white tracking-tight">Últimos Pagamentos</h2>
-                <p className="text-sm text-gray-500 mt-1">Movimentações recentes</p>
+                <h2 className="text-lg font-semibold text-white tracking-tight">Ãšltimos Pagamentos</h2>
+                <p className="text-sm text-gray-500 mt-1">MovimentaÃ§Ãµes recentes</p>
               </div>
 
               <div className="space-y-3">
@@ -778,7 +776,7 @@ export default function Dashboard() {
                   <EmptyState
                     icon={DollarSign}
                     title="Sem pagamentos recentes"
-                    description="Quando houver pagamentos, eles aparecerão aqui."
+                    description="Quando houver pagamentos, eles aparecerÃ£o aqui."
                   />
                 ) : (
                   pagamentosRecentes.map((p) => (
@@ -789,7 +787,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">{p.clientes?.nome || '—'}</p>
+                          <p className="text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">{p.clientes?.nome || 'â€”'}</p>
                           <p className="text-xs text-gray-600 mt-0.5">{new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
                         </div>
                       </div>
@@ -806,7 +804,7 @@ export default function Dashboard() {
 
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.75s' }}>
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-white tracking-tight">Interações dos Anúncios</h2>
+                <h2 className="text-lg font-semibold text-white tracking-tight">InteraÃ§Ãµes dos AnÃºncios</h2>
                 <p className="text-sm text-gray-500 mt-1">Cliques do CTA em {selectedHotspotName}</p>
               </div>
 
@@ -832,19 +830,19 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
-            <div className="mb-8">
+          <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
+            <div className="mb-8 text-center">
               <h2 className="text-lg font-semibold text-white tracking-tight">Últimos Leads Capturados</h2>
-              <p className="text-sm text-gray-500 mt-1">Novos contatos registrados na base</p>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">Novos contatos registrados na base</p>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+            <div className="dashboard-scroll-x">
+              <table className="w-full min-w-[760px] text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.05]">
-                    <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pl-2">Lead</th>
-                    <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Hotspot</th>
-                    <th className="text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pr-2 text-right">Data e Hora</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pl-2">Lead</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Hotspot</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pr-2 text-right">Data e Hora</th>
                   </tr>
                 </thead>
 
@@ -858,26 +856,26 @@ export default function Dashboard() {
                   ) : (
                     leadsRecentes.map((l) => (
                       <tr key={l.id} className="hover:bg-white/[0.01] transition-colors group">
-                        <td className="py-4 pl-2">
+                        <td className="whitespace-nowrap py-4 pl-2">
                           <div className="flex items-center gap-4">
                             <div className="w-10 h-10 rounded-full bg-[#0a0a0a] border border-white/[0.05] flex items-center justify-center text-gray-400 font-bold text-sm shadow-inner group-hover:text-white group-hover:border-white/[0.1] transition-colors">
                               {l.nome?.charAt(0).toUpperCase() || '?'}
                             </div>
 
                             <div>
-                              <p className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{l.nome || '—'}</p>
-                              <p className="text-xs text-gray-600 mt-0.5">{l.email || '—'}</p>
+                              <p className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{l.nome || 'â€”'}</p>
+                              <p className="text-xs text-gray-600 mt-0.5">{l.email || 'â€”'}</p>
                             </div>
                           </div>
                         </td>
 
-                        <td className="py-4 text-sm text-gray-400">
+                        <td className="whitespace-nowrap py-4 text-sm text-gray-400">
                           <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#0a0a0a] border border-white/[0.05] text-xs font-medium shadow-inner">
-                            {l.hotspots?.nome || '—'}
+                            {l.hotspots?.nome || 'â€”'}
                           </span>
                         </td>
 
-                        <td className="py-4 pr-2 text-sm text-gray-500 text-right font-medium">
+                        <td className="whitespace-nowrap py-4 pr-2 text-sm text-gray-500 text-right font-medium">
                           {new Date(l.created_at).toLocaleString('pt-BR', {
                             day: '2-digit',
                             month: '2-digit',

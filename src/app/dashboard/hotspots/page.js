@@ -24,7 +24,6 @@ import {
   Trash2,
   X,
   Check,
-  MapPin,
   Lock,
   Network,
   Router,
@@ -177,7 +176,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 function StatCard({ icon: Icon, label, value, description, accent = false }) {
   return (
     <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0a0a] p-5 shadow-[0_20px_40px_rgba(0,0,0,0.25)]">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
             {label}
@@ -225,7 +224,7 @@ function StatusBadge({ children, className = '' }) {
 }
 
 function formatarLimitePlano(uso = 0, limite = 0) {
-  return limite && limite > 0 ?`${uso}/${limite}` : `${uso}/∞`
+  return limite && limite > 0 ?`${uso}/${limite}` : `${uso}/8`
 }
 
 function percentualLimitePlano(uso = 0, limite = 0) {
@@ -582,7 +581,7 @@ export default function HotspotsPro() {
         }}
       />
 
-      <main className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <main className="relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
         <header className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
@@ -744,20 +743,20 @@ export default function HotspotsPro() {
               return (
                 <article
                   key={hotspot.id}
-                  className="group relative overflow-hidden rounded-[2.25rem] border border-white/[0.06] bg-[#0a0a0a] p-6 shadow-[0_20px_40px_rgba(0,0,0,0.35)] hover:border-white/[0.1] transition-all duration-300"
+                  className="mobile-tight-card group relative max-w-full overflow-hidden rounded-[2.25rem] border border-white/[0.06] bg-[#0a0a0a] p-6 shadow-[0_20px_40px_rgba(0,0,0,0.35)] hover:border-white/[0.1] transition-all duration-300"
                 >
                   <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-[#6be12f]/5 blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 flex flex-col gap-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
                         <div className="w-12 h-12 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0">
                           <Wifi size={22} className="text-[#6be12f]" />
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h2 className="text-lg font-black text-white truncate">
+                          <div className="flex flex-col-reverse items-center gap-2 mb-2 sm:flex-row sm:flex-wrap sm:items-center">
+                            <h2 className="text-lg font-black text-white">
                               {hotspot.nome}
                             </h2>
 
@@ -766,13 +765,12 @@ export default function HotspotsPro() {
                             </StatusBadge>
                           </div>
 
-                          <p className="text-xs text-neutral-500 font-bold flex items-center gap-1.5 truncate">
+                          <p className="text-xs text-neutral-500 font-bold flex items-center justify-center gap-1.5 break-all sm:justify-start">
                             <Globe2 size={12} className="text-neutral-600 flex-shrink-0" />
                             /portal/{hotspot.slug || 'sem-slug'}
                           </p>
 
-                          <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 truncate font-medium">
-                            <MapPin size={12} className="flex-shrink-0 text-neutral-600" />
+                          <p className="text-xs text-neutral-500 mt-1 font-medium">
                             {hotspot.cidade || 'Cidade não informada'}
                             {hotspot.estado ?`/${hotspot.estado}` : ''}
                             {hotspot.endereco ?` · ${hotspot.endereco}` : ''}
@@ -805,7 +803,7 @@ export default function HotspotsPro() {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                       <MiniMetric
                         icon={Activity}
                         label="Online"
@@ -834,7 +832,7 @@ export default function HotspotsPro() {
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                      <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
+                      <div className="mobile-tight-card rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
                             <ModoPortalIcon size={18} className={modoPortalInfo.accent} />
@@ -873,7 +871,7 @@ export default function HotspotsPro() {
                         </div>
                       </div>
 
-                      <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
+                      <div className="mobile-tight-card rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
                             <Router size={18} className="text-[#6be12f]" />
@@ -892,7 +890,7 @@ export default function HotspotsPro() {
                         {routerInfo ?(
                           <div className="space-y-2">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="text-sm font-bold text-neutral-300 truncate">
+                              <p className="text-sm font-bold text-neutral-300">
                                 {routerInfo.nome}
                               </p>
 
@@ -901,7 +899,7 @@ export default function HotspotsPro() {
                               </StatusBadge>
                             </div>
 
-                            <p className="text-xs text-neutral-500 truncate">
+                            <p className="text-xs text-neutral-500 break-all">
                               {routerInfo.base_url || 'URL não informada'}
                             </p>
 
@@ -919,7 +917,7 @@ export default function HotspotsPro() {
                         )}
                       </div>
 
-                      <div className="rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
+                      <div className="mobile-tight-card rounded-[1.5rem] border border-white/[0.05] bg-[#050505] p-5">
                         <div className="flex items-center gap-3 mb-4">
                           <div className="w-10 h-10 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center">
                             {policy?.active ?(

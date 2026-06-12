@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -43,7 +43,7 @@ const QUICK_PRESETS = [
   {
     id: 'meta',
     title: 'Facebook / Meta',
-    description: 'Bloqueia Facebook, Messenger e domínios essenciais da Meta com DNS, TLS, IP e DoH.',
+    description: 'Bloqueia Facebook, Messenger e domÃ­nios essenciais da Meta com DNS, TLS, IP e DoH.',
     domains: ['facebook.com'],
     badge: 'Forte',
   },
@@ -57,21 +57,21 @@ const QUICK_PRESETS = [
   {
     id: 'tiktok',
     title: 'TikTok',
-    description: 'Bloqueia domínios principais do TikTok com DNS, TLS, DoH e QUIC.',
+    description: 'Bloqueia domÃ­nios principais do TikTok com DNS, TLS, DoH e QUIC.',
     domains: ['tiktok.com'],
     badge: 'Forte',
   },
   {
     id: 'youtube',
     title: 'YouTube',
-    description: 'Bloqueia YouTube, imagens, player e entrega de vídeo.',
+    description: 'Bloqueia YouTube, imagens, player e entrega de vÃ­deo.',
     domains: ['youtube.com'],
     badge: 'Forte',
   },
   {
     id: 'streaming',
     title: 'Netflix / Streaming',
-    description: 'Bloqueia domínios principais de entrega da Netflix para reduzir consumo de banda.',
+    description: 'Bloqueia domÃ­nios principais de entrega da Netflix para reduzir consumo de banda.',
     domains: ['netflix.com'],
     badge: 'Forte',
   },
@@ -92,7 +92,7 @@ const QUICK_PRESETS = [
   {
     id: 'heavy_games',
     title: 'Jogos pesados',
-    description: 'Reforça bloqueio de plataformas de jogos, CDNs e launchers comuns.',
+    description: 'ReforÃ§a bloqueio de plataformas de jogos, CDNs e launchers comuns.',
     domains: ['roblox.com', 'epicgames.com', 'steampowered.com', 'riotgames.com'],
     badge: 'Forte',
   },
@@ -118,7 +118,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -138,7 +138,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -214,7 +214,7 @@ function InfoCard({ icon: Icon, label, value, description }) {
       </div>
 
       <p className="text-sm font-black text-white break-all">
-        {value || '—'}
+        {value || 'â€”'}
       </p>
 
       {description && (
@@ -234,10 +234,10 @@ function RuleRow({ rule }) {
     <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr_1fr_0.8fr] gap-3 rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
       <div>
         <p className="text-sm font-extrabold text-white break-all">
-          {rule.comment || 'Regra sem comentário'}
+          {rule.comment || 'Regra sem comentÃ¡rio'}
         </p>
         <p className="text-xs text-neutral-500 mt-1">
-          {rule.chain || '-'} · {rule.action || '-'} · {rule.protocol || '-'}
+          {rule.chain || '-'} Â· {rule.action || '-'} Â· {rule.protocol || '-'}
         </p>
       </div>
 
@@ -262,7 +262,7 @@ function RuleRow({ rule }) {
       <div className="flex lg:justify-end items-center">
         {invalid ? (
           <span className="inline-flex items-center gap-2 rounded-full bg-yellow-500/10 border border-yellow-500/20 px-3 py-1.5 text-xs font-bold text-yellow-400">
-            <AlertTriangle size={13} /> Inválida
+            <AlertTriangle size={13} /> InvÃ¡lida
           </span>
         ) : disabled ? (
           <span className="inline-flex items-center gap-2 rounded-full bg-neutral-500/10 border border-neutral-500/20 px-3 py-1.5 text-xs font-bold text-neutral-400">
@@ -320,7 +320,7 @@ function DomainManager({
           disabled={disabled}
           onClick={onAdd}
           className="inline-flex items-center justify-center rounded-2xl bg-[#6be12f] px-4 py-3 text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all"
-          title="Adicionar domínio"
+          title="Adicionar domÃ­nio"
         >
           <Plus size={18} />
         </button>
@@ -330,7 +330,7 @@ function DomainManager({
         {value.length === 0 ? (
           <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] px-4 py-3">
             <p className="text-xs font-bold text-neutral-500">
-              Nenhum domínio cadastrado.
+              Nenhum domÃ­nio cadastrado.
             </p>
           </div>
         ) : (
@@ -352,7 +352,7 @@ function DomainManager({
                 disabled={disabled}
                 onClick={() => onRemove(domain)}
                 className="p-2 rounded-xl text-neutral-500 hover:text-red-400 hover:bg-red-500/10 disabled:opacity-50 transition-all"
-                title="Remover domínio"
+                title="Remover domÃ­nio"
               >
                 <Trash2 size={15} />
               </button>
@@ -525,7 +525,7 @@ function togglePreset(preset) {
     const domain = normalizeDomain(blockedInput)
 
     if (!isValidDomain(domain)) {
-      setError('Informe um domínio válido para bloquear. Exemplo: tiktok.com')
+      setError('Informe um domÃ­nio vÃ¡lido para bloquear. Exemplo: tiktok.com')
       return
     }
 
@@ -552,7 +552,7 @@ function togglePreset(preset) {
     const domain = normalizeDomain(allowedInput)
 
     if (!isValidDomain(domain)) {
-      setError('Informe um domínio válido para liberar. Exemplo: gov.br')
+      setError('Informe um domÃ­nio vÃ¡lido para liberar. Exemplo: gov.br')
       return
     }
 
@@ -642,7 +642,7 @@ function togglePreset(preset) {
     setPolicyNotice(null)
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
-      setError('Selecione um hotspot antes de aplicar a política.')
+      setError('Selecione um hotspot antes de aplicar a polÃ­tica.')
       return
     }
 
@@ -712,7 +712,7 @@ function togglePreset(preset) {
 
       if (sanitizedPolicy.removedBlockedByAllowed.length > 0) {
         notices.push(
-          `A dashboard removeu automaticamente dos bloqueados: ${sanitizedPolicy.removedBlockedByAllowed.join(', ')}. Sites Permitidos têm prioridade.`
+          `A dashboard removeu automaticamente dos bloqueados: ${sanitizedPolicy.removedBlockedByAllowed.join(', ')}. Sites Permitidos tÃªm prioridade.`
         )
       }
 
@@ -730,7 +730,7 @@ function togglePreset(preset) {
 
       if (allowedUsesMetaInfrastructure && !applyMetaPreset) {
         notices.push(
-          'Bloqueio forte de Meta/IP não foi aplicado porque existe domínio permitido usando infraestrutura compartilhada, como Instagram/WhatsApp.'
+          'Bloqueio forte de Meta/IP nÃ£o foi aplicado porque existe domÃ­nio permitido usando infraestrutura compartilhada, como Instagram/WhatsApp.'
         )
       }
 
@@ -741,11 +741,11 @@ function togglePreset(preset) {
         })
       }
 
-      setMessage('Política de rede aplicada com sucesso neste hotspot.')
+      setMessage('PolÃ­tica de rede aplicada com sucesso neste hotspot.')
       await carregarStatus()
     } catch (err) {
-      console.error('Erro ao aplicar política:', err)
-      setError(err.message || 'Erro ao aplicar política')
+      console.error('Erro ao aplicar polÃ­tica:', err)
+      setError(err.message || 'Erro ao aplicar polÃ­tica')
     } finally {
       setProcessing(false)
     }
@@ -789,7 +789,7 @@ function togglePreset(preset) {
 
   async function resetarPolitica() {
     const confirmar = window.confirm(
-      'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenção.'
+      'Tem certeza que deseja remover todas as regras NexaWi deste hotspot? Use apenas para manutenÃ§Ã£o.'
     )
 
     if (!confirmar) return
@@ -799,7 +799,7 @@ function togglePreset(preset) {
     setPolicyNotice(null)
 
     if (!hotspotIdFromUrl && !hotspotSlugFromUrl) {
-      setError('Selecione um hotspot antes de resetar a política.')
+      setError('Selecione um hotspot antes de resetar a polÃ­tica.')
       return
     }
 
@@ -814,11 +814,11 @@ function togglePreset(preset) {
         },
       })
 
-      setMessage('Política removida com sucesso deste hotspot.')
+      setMessage('PolÃ­tica removida com sucesso deste hotspot.')
       await carregarStatus()
     } catch (err) {
-      console.error('Erro ao resetar política:', err)
-      setError(err.message || 'Erro ao resetar política')
+      console.error('Erro ao resetar polÃ­tica:', err)
+      setError(err.message || 'Erro ao resetar polÃ­tica')
     } finally {
       setProcessing(false)
     }
@@ -868,7 +868,7 @@ function togglePreset(preset) {
           </h1>
 
           <p className="text-sm text-neutral-500 mt-2 max-w-2xl leading-relaxed">
-            Configure bloqueios, velocidade, DNS e domínios diretamente no MikroTik vinculado ao hotspot selecionado.
+            Configure bloqueios, velocidade, DNS e domÃ­nios diretamente no MikroTik vinculado ao hotspot selecionado.
           </p>
         </div>
 
@@ -900,7 +900,7 @@ function togglePreset(preset) {
               className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all shadow-[0_0_30px_rgba(107,225,47,0.18)]"
             >
               {processing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-              Aplicar Política
+              Aplicar PolÃ­tica
             </button>
           )}
         </div>
@@ -952,7 +952,7 @@ function togglePreset(preset) {
 
       {!canUpdate && (
         <div className="relative z-10 mb-6 rounded-2xl border border-white/[0.06] bg-white/[0.03] px-5 py-4 text-sm font-bold text-neutral-400">
-          Modo leitura: você pode visualizar a política, mas não pode aplicar ou resetar regras.
+          Modo leitura: vocÃª pode visualizar a polÃ­tica, mas nÃ£o pode aplicar ou resetar regras.
         </div>
       )}
 
@@ -975,7 +975,7 @@ function togglePreset(preset) {
         />
         <StatCard
           icon={AlertTriangle}
-          label="Inválidas"
+          label="InvÃ¡lidas"
           value={statusUnavailable ? '-' : invalidRules.length}
           accent={!statusUnavailable && invalidRules.length === 0}
         />
@@ -992,7 +992,7 @@ function togglePreset(preset) {
               <div>
                 <h2 className="text-lg font-black text-white">Hotspot selecionado</h2>
                 <p className="text-xs text-neutral-500 font-medium">
-                  Política aplicada somente neste ponto
+                  PolÃ­tica aplicada somente neste ponto
                 </p>
               </div>
             </div>
@@ -1001,13 +1001,13 @@ function togglePreset(preset) {
               <InfoCard
                 icon={Wifi}
                 label="Hotspot"
-                value={hotspot?.nome || hotspot?.slug || 'Não identificado'}
+                value={hotspot?.nome || hotspot?.slug || 'NÃ£o identificado'}
                 description={hotspot?.slug ? `/portal/${hotspot.slug}` : ''}
               />
               <InfoCard
                 icon={MapPin}
                 label="Status"
-                value={hotspot?.status || '—'}
+                value={hotspot?.status || 'â€”'}
                 description="Status cadastral do hotspot"
               />
               <InfoCard
@@ -1043,9 +1043,9 @@ function togglePreset(preset) {
               </div>
 
               <div>
-                <h2 className="text-lg font-black text-white">Política NexaWi</h2>
+                <h2 className="text-lg font-black text-white">PolÃ­tica NexaWi</h2>
                 <p className="text-xs text-neutral-500 font-medium">
-                  Configuração enviada para o MikroTik
+                  ConfiguraÃ§Ã£o enviada para o MikroTik
                 </p>
               </div>
             </div>
@@ -1092,7 +1092,7 @@ function togglePreset(preset) {
               </div>
 
               <ToggleCard
-                title="Forçar DNS pelo MikroTik"
+                title="ForÃ§ar DNS pelo MikroTik"
                 description="Redireciona consultas DNS dos clientes para o roteador."
                 checked={policy.forceDns}
                 disabled={!canUpdate || processing}
@@ -1124,7 +1124,7 @@ function togglePreset(preset) {
               />
 
               <ToggleCard
-                title="Bloquear domínios de jogos"
+                title="Bloquear domÃ­nios de jogos"
                 description="Adiciona regras TLS Host para plataformas conhecidas."
                 checked={policy.blockTlsGames}
                 disabled={!canUpdate || processing}
@@ -1139,7 +1139,7 @@ function togglePreset(preset) {
                 className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-black text-red-300 hover:bg-red-500/15 disabled:opacity-50 transition-all"
               >
                 <ShieldOff size={16} />
-                Resetar Política
+                Resetar PolÃ­tica
               </button>
             )}
           </div>
@@ -1150,16 +1150,16 @@ function togglePreset(preset) {
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
     <div>
       <h2 className="text-lg font-black text-white">
-        Presets rápidos
+        Presets rÃ¡pidos
       </h2>
       <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-        Bloqueios inteligentes para apps grandes. O painel adiciona um domínio simples e a Control API expande para regras avançadas no MikroTik.
+        Bloqueios inteligentes para apps grandes. O painel adiciona um domÃ­nio simples e a Control API expande para regras avanÃ§adas no MikroTik.
       </p>
     </div>
 
     <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-bold text-[#8cf059]">
       <ShieldCheck size={14} />
-      Automático
+      AutomÃ¡tico
     </div>
   </div>
 
@@ -1220,7 +1220,7 @@ function togglePreset(preset) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DomainManager
               title="Sites bloqueados"
-              description="Domínios que devem ser bloqueados neste hotspot. Ex: tiktok.com, bet365.com, netflix.com"
+              description="DomÃ­nios que devem ser bloqueados neste hotspot. Ex: tiktok.com, bet365.com, netflix.com"
               value={policy.customBlockedDomains || []}
               inputValue={blockedInput}
               setInputValue={setBlockedInput}
@@ -1232,7 +1232,7 @@ function togglePreset(preset) {
 
             <DomainManager
               title="Sites liberados"
-              description="Domínios que devem ser priorizados/liberados antes das regras de bloqueio. Ex: gov.br, banco.com.br"
+              description="DomÃ­nios que devem ser priorizados/liberados antes das regras de bloqueio. Ex: gov.br, banco.com.br"
               value={policy.customAllowedDomains || []}
               inputValue={allowedInput}
               setInputValue={setAllowedInput}
@@ -1259,7 +1259,7 @@ function togglePreset(preset) {
             </div>
 
             {statusUnavailable ? (
-              <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-8 text-center">
+              <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-5 sm:p-8 text-center">
                 <AlertTriangle className="mx-auto text-yellow-300 mb-3" size={32} />
                 <p className="text-sm font-bold text-yellow-100">
                   Nao foi possivel ler as regras ativas do MikroTik.
@@ -1274,13 +1274,13 @@ function togglePreset(preset) {
                 )}
               </div>
             ) : allRules.length === 0 ? (
-              <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-8 text-center">
+              <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-5 sm:p-8 text-center">
                 <Wifi className="mx-auto text-neutral-600 mb-3" size={32} />
                 <p className="text-sm font-bold text-neutral-400">
                   Nenhuma regra NexaWi ativa no MikroTik.
                 </p>
                 <p className="text-xs text-neutral-600 mt-1">
-                  Clique em “Aplicar Política” para ativar o controle de rede.
+                  Clique em â€œAplicar PolÃ­ticaâ€ para ativar o controle de rede.
                 </p>
               </div>
             ) : (

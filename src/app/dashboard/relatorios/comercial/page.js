@@ -1,8 +1,8 @@
-'use client'
+﻿'use client'
 
 // src/app/dashboard/relatorios/comercial/page.js
 // ============================================================
-// Relatório Comercial Premium Admin NexaWi ADS.
+// RelatÃ³rio Comercial Premium Admin NexaWi ADS.
 // Usa /api/admin/relatorios/comercial.
 // ============================================================
 
@@ -34,10 +34,10 @@ const supabase = createBrowserSupabaseClient()
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
-  { value: 'ultimos_7', label: 'Últimos 7 dias' },
-  { value: 'ultimos_30', label: 'Últimos 30 dias' },
-  { value: 'mes_atual', label: 'Mês atual' },
-  { value: 'todos', label: 'Todo período' },
+  { value: 'ultimos_7', label: 'Ãšltimos 7 dias' },
+  { value: 'ultimos_30', label: 'Ãšltimos 30 dias' },
+  { value: 'mes_atual', label: 'MÃªs atual' },
+  { value: 'todos', label: 'Todo perÃ­odo' },
 ]
 
 const permissoesIniciais = {
@@ -49,7 +49,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -69,7 +69,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -84,7 +84,7 @@ function formatNumber(value) {
 }
 
 function formatDate(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
   return new Date(value).toLocaleDateString('pt-BR')
 }
 
@@ -103,7 +103,7 @@ function getClienteLabel(cliente = {}) {
 }
 
 function getHotspotLabel(hotspot = {}) {
-  const cidade = hotspot.cidade ? ` · ${hotspot.cidade}` : ''
+  const cidade = hotspot.cidade ? ` Â· ${hotspot.cidade}` : ''
   return `${hotspot.nome || 'Hotspot sem nome'}${cidade}`
 }
 
@@ -153,7 +153,7 @@ export default function RelatorioComercialAdmin() {
       setClientes(clientesList)
       setHotspots(hotspotsList)
     } catch (error) {
-      console.error('Erro ao carregar filtros do relatório comercial:', error)
+      console.error('Erro ao carregar filtros do relatÃ³rio comercial:', error)
       toast.error(error.message || 'Erro ao carregar filtros.')
     } finally {
       setCarregandoFiltros(false)
@@ -189,8 +189,8 @@ export default function RelatorioComercialAdmin() {
         ...(data.permissions || {}),
       })
     } catch (error) {
-      console.error('Erro ao buscar relatório comercial:', error)
-      toast.error(error.message || 'Erro ao carregar relatório comercial.')
+      console.error('Erro ao buscar relatÃ³rio comercial:', error)
+      toast.error(error.message || 'Erro ao carregar relatÃ³rio comercial.')
     } finally {
       setCarregando(false)
     }
@@ -198,7 +198,7 @@ export default function RelatorioComercialAdmin() {
 
   function gerarPDF() {
     if (!report) {
-      toast.error('Carregue o relatório antes de gerar o PDF.')
+      toast.error('Carregue o relatÃ³rio antes de gerar o PDF.')
       return
     }
 
@@ -207,7 +207,7 @@ export default function RelatorioComercialAdmin() {
 
   async function exportarCSV() {
     if (!canExport) {
-      toast.error('Você não tem permissão para exportar relatórios.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar relatÃ³rios.')
       return
     }
 
@@ -312,7 +312,7 @@ export default function RelatorioComercialAdmin() {
 
   const cards = [
     {
-      label: 'Visualizações',
+      label: 'VisualizaÃ§Ãµes',
       valor: resumo.totalVisualizacoes || 0,
       sub: 'impactos registrados',
       icon: Eye,
@@ -322,7 +322,7 @@ export default function RelatorioComercialAdmin() {
     {
       label: 'Cliques',
       valor: resumo.totalCliques || 0,
-      sub: 'ações no CTA',
+      sub: 'aÃ§Ãµes no CTA',
       icon: MousePointerClick,
       text: 'text-purple-400',
       bg: 'bg-purple-500/20',
@@ -344,7 +344,7 @@ export default function RelatorioComercialAdmin() {
       bg: 'bg-cyan-500/20',
     },
     {
-      label: 'Usuários únicos',
+      label: 'UsuÃ¡rios Ãºnicos',
       valor: resumo.usuariosUnicos || 0,
       sub: 'alcance estimado',
       icon: Activity,
@@ -382,24 +382,24 @@ export default function RelatorioComercialAdmin() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
               <ShieldCheck size={13} />
-              Inteligência comercial
+              InteligÃªncia comercial
             </div>
 
             <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
               <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
                 <BarChart3 className="text-[#6be12f]" size={24} />
               </div>
-              Relatório Comercial
+              RelatÃ³rio Comercial
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium max-w-2xl">
-              Visão premium de performance por anúncios, hotspots, leads, CTR e qualidade dos dados.
+              VisÃ£o premium de performance por anÃºncios, hotspots, leads, CTR e qualidade dos dados.
             </p>
 
             {!canExport && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: você pode visualizar, mas não exportar relatórios.
+                Modo leitura: vocÃª pode visualizar, mas nÃ£o exportar relatÃ³rios.
               </div>
             )}
           </div>
@@ -512,7 +512,7 @@ export default function RelatorioComercialAdmin() {
           <div className="relative z-10 space-y-8">
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
               <RankingPanel
-                title="Ranking de anúncios"
+                title="Ranking de anÃºncios"
                 subtitle="Campanhas com maior entrega"
                 icon={Megaphone}
                 items={rankingAnuncios}
@@ -941,9 +941,9 @@ function PrintReportHeader({ periodo, cliente, hotspot, generatedAt, resumo }) {
       <div className="print-brand-row">
         <div>
           <p className="print-kicker">NexaWi ADS</p>
-          <h1>Relatório Comercial Premium</h1>
+          <h1>RelatÃ³rio Comercial Premium</h1>
           <p className="print-subtitle">
-            Performance consolidada de anúncios, hotspots, leads e interações comerciais.
+            Performance consolidada de anÃºncios, hotspots, leads e interaÃ§Ãµes comerciais.
           </p>
         </div>
 
@@ -954,7 +954,7 @@ function PrintReportHeader({ periodo, cliente, hotspot, generatedAt, resumo }) {
 
       <div className="print-meta-grid">
         <div>
-          <strong>Período</strong>
+          <strong>PerÃ­odo</strong>
           <span>{periodo}</span>
         </div>
         <div>
@@ -974,7 +974,7 @@ function PrintReportHeader({ periodo, cliente, hotspot, generatedAt, resumo }) {
       <div className="print-summary-grid">
         <div>
           <strong>{formatNumber(resumo?.totalVisualizacoes || 0)}</strong>
-          <span>Visualizações</span>
+          <span>VisualizaÃ§Ãµes</span>
         </div>
         <div>
           <strong>{formatNumber(resumo?.totalCliques || 0)}</strong>
@@ -1022,7 +1022,7 @@ function PremiumFiltersPanel({
           </h2>
 
           <p className="text-sm text-neutral-500 mt-1 max-w-2xl">
-            Analise o desempenho por período, cliente ou hotspot específico.
+            Analise o desempenho por perÃ­odo, cliente ou hotspot especÃ­fico.
           </p>
         </div>
 
@@ -1040,7 +1040,7 @@ function PremiumFiltersPanel({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-6">
         <FilterSelect
-          label="Período"
+          label="PerÃ­odo"
           icon={CalendarDays}
           value={periodo}
           onChange={setPeriodo}
@@ -1085,7 +1085,7 @@ function PremiumFiltersPanel({
       {temFiltrosAtivos && (
         <div className="mt-5 flex flex-wrap gap-2">
           {periodo !== 'ultimos_30' && (
-            <FilterBadge label="Período" value={periodos.find((item) => item.value === periodo)?.label || periodo} />
+            <FilterBadge label="PerÃ­odo" value={periodos.find((item) => item.value === periodo)?.label || periodo} />
           )}
 
           {clienteSelecionado && (
@@ -1183,7 +1183,7 @@ function RankingPanel({ title, subtitle, icon: Icon, items, type }) {
           <BarChart3 size={28} className="text-neutral-600 mx-auto mb-4" />
           <h3 className="text-lg font-bold text-white mb-2">Sem dados ainda</h3>
           <p className="text-sm text-neutral-500">
-            Assim que houver eventos no portal, o ranking será atualizado.
+            Assim que houver eventos no portal, o ranking serÃ¡ atualizado.
           </p>
         </div>
       ) : (
@@ -1229,7 +1229,7 @@ function RankingRow({ item, index, type }) {
         <MiniMetric icon={Eye} label="Views" value={item.visualizacoes} />
         <MiniMetric icon={MousePointerClick} label="Cliques" value={item.cliques} />
         <MiniMetric icon={Users} label="Leads" value={item.leads} />
-        <MiniMetric icon={Activity} label="Únicos" value={item.usuarios_unicos} />
+        <MiniMetric icon={Activity} label="Ãšnicos" value={item.usuarios_unicos} />
       </div>
     </div>
   )
@@ -1248,12 +1248,12 @@ function OnlineHourPanel({ items = [], resumo = {} }) {
             Online por hora
           </h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Sessões autorizadas no portal durante o período selecionado.
+            SessÃµes autorizadas no portal durante o perÃ­odo selecionado.
           </p>
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <Badge label="Sessões" value={resumo.sessoesAutorizadas || 0} />
+          <Badge label="SessÃµes" value={resumo.sessoesAutorizadas || 0} />
           <Badge label="Pico/hora" value={resumo.picoOnlineHora || 0} />
         </div>
       </div>
@@ -1261,9 +1261,9 @@ function OnlineHourPanel({ items = [], resumo = {} }) {
       {horasComDados.length === 0 ? (
         <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-10 text-center">
           <Activity size={28} className="text-neutral-600 mx-auto mb-4" />
-          <h3 className="text-lg font-bold text-white mb-2">Sem sessões no período</h3>
+          <h3 className="text-lg font-bold text-white mb-2">Sem sessÃµes no perÃ­odo</h3>
           <p className="text-sm text-neutral-500">
-            Quando usuários forem liberados pelo portal, a distribuição por hora aparecerá aqui.
+            Quando usuÃ¡rios forem liberados pelo portal, a distribuiÃ§Ã£o por hora aparecerÃ¡ aqui.
           </p>
         </div>
       ) : (
@@ -1316,8 +1316,8 @@ function QualityBox({ qualidade, generatedAt }) {
 
       <p className="text-sm text-neutral-500 max-w-3xl leading-relaxed">
         {qualidade?.usaFallbackHistorico
-          ? 'Parte dos dados antigos foi calculada por vínculo histórico entre anúncio e hotspot. Os novos eventos já usam hotspot_id real.'
-          : 'Os eventos recentes estão usando hotspot_id real para cálculo de performance.'}
+          ? 'Parte dos dados antigos foi calculada por vÃ­nculo histÃ³rico entre anÃºncio e hotspot. Os novos eventos jÃ¡ usam hotspot_id real.'
+          : 'Os eventos recentes estÃ£o usando hotspot_id real para cÃ¡lculo de performance.'}
       </p>
 
       <div className="flex flex-wrap gap-3 mt-5">
@@ -1344,10 +1344,10 @@ function EmptyReport() {
         <BarChart3 size={32} className="text-neutral-600" />
       </div>
       <h3 className="text-xl font-semibold text-white mb-2 tracking-tight">
-        Nenhum relatório encontrado
+        Nenhum relatÃ³rio encontrado
       </h3>
       <p className="text-sm text-neutral-500 mb-8 max-w-md mx-auto">
-        Assim que houver visualizações, cliques ou leads, os dados aparecerão aqui.
+        Assim que houver visualizaÃ§Ãµes, cliques ou leads, os dados aparecerÃ£o aqui.
       </p>
     </div>
   )

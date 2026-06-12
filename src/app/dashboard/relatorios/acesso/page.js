@@ -1,16 +1,16 @@
-'use client'
+﻿'use client'
 
 // src/app/dashboard/relatorios/acesso/page.js
 // ============================================================
-// Relatório de Acesso da dashboard NexaWi ADS.
+// RelatÃ³rio de Acesso da dashboard NexaWi ADS.
 //
-// Agora esta tela respeita as permissões retornadas pela API:
-// - relatorios.view: permite visualizar o relatório
+// Agora esta tela respeita as permissÃµes retornadas pela API:
+// - relatorios.view: permite visualizar o relatÃ³rio
 // - relatorios.export: mostra Exportar CSV
 //
 // Importante:
-// - A segurança real fica na API /api/admin/relatorios/acesso.
-// - Esta tela apenas melhora a experiência visual.
+// - A seguranÃ§a real fica na API /api/admin/relatorios/acesso.
+// - Esta tela apenas melhora a experiÃªncia visual.
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -37,10 +37,10 @@ const supabase = createBrowserSupabaseClient()
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
-  { value: 'ultimos_7', label: 'Últimos 7 dias' },
-  { value: 'ultimos_30', label: 'Últimos 30 dias' },
-  { value: 'mes_atual', label: 'Mês atual' },
-  { value: 'todos', label: 'Todo período' },
+  { value: 'ultimos_7', label: 'Ãšltimos 7 dias' },
+  { value: 'ultimos_30', label: 'Ãšltimos 30 dias' },
+  { value: 'mes_atual', label: 'MÃªs atual' },
+  { value: 'todos', label: 'Todo perÃ­odo' },
 ]
 
 const permissoesIniciais = {
@@ -52,7 +52,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -72,7 +72,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -147,8 +147,8 @@ export default function RelatorioAcesso() {
         ...(data.permissions || {}),
       })
     } catch (error) {
-      console.error('Erro ao buscar relatório de acesso:', error)
-      toast.error(error.message || 'Erro ao carregar o relatório.')
+      console.error('Erro ao buscar relatÃ³rio de acesso:', error)
+      toast.error(error.message || 'Erro ao carregar o relatÃ³rio.')
     } finally {
       setCarregando(false)
     }
@@ -156,7 +156,7 @@ export default function RelatorioAcesso() {
 
   function exportarCSV() {
     if (!canExport) {
-      toast.error('Você não tem permissão para exportar relatórios.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar relatÃ³rios.')
       return
     }
 
@@ -171,7 +171,7 @@ export default function RelatorioAcesso() {
         'Cliente',
         'Cidade',
         'Status',
-        'Visualizações',
+        'VisualizaÃ§Ãµes',
         'Cliques',
         'Links copiados',
         'Tentativas de abrir CTA',
@@ -228,7 +228,7 @@ export default function RelatorioAcesso() {
       bg: 'bg-emerald-500/20',
     },
     {
-      label: 'Visualizações',
+      label: 'VisualizaÃ§Ãµes',
       valor: resumo.totalViews,
       sub: 'Visitantes impactados',
       icon: Eye,
@@ -246,7 +246,7 @@ export default function RelatorioAcesso() {
     {
       label: 'Copiaram link',
       valor: resumo.totalCopias,
-      sub: 'Ação segura no portal',
+      sub: 'AÃ§Ã£o segura no portal',
       icon: Copy,
       text: 'text-orange-400',
       bg: 'bg-orange-500/20',
@@ -290,17 +290,17 @@ export default function RelatorioAcesso() {
               <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
                 <BarChart3 className="text-[#6be12f]" size={24} />
               </div>
-              Relatório de Acesso
+              RelatÃ³rio de Acesso
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              Métricas agregadas de visualizações, cliques, cópias e CTAs por hotspot
+              MÃ©tricas agregadas de visualizaÃ§Ãµes, cliques, cÃ³pias e CTAs por hotspot
             </p>
 
             {!canExport && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: você pode visualizar, mas não exportar relatórios.
+                Modo leitura: vocÃª pode visualizar, mas nÃ£o exportar relatÃ³rios.
               </div>
             )}
           </div>
@@ -377,7 +377,7 @@ export default function RelatorioAcesso() {
         </div>
 
         <div className="grid gap-5 lg:grid-cols-4 mb-5">
-          <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+          <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 sm:p-6">
             <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase mb-4">
               LP nativa
             </p>
@@ -439,7 +439,7 @@ export default function RelatorioAcesso() {
               Nenhum dado de acesso encontrado
             </h3>
             <p className="text-sm text-neutral-500 mb-8 max-w-md mx-auto">
-              Assim que usuários visualizarem anúncios no portal, os dados aparecerão aqui.
+              Assim que usuÃ¡rios visualizarem anÃºncios no portal, os dados aparecerÃ£o aqui.
             </p>
           </div>
         ) : (
@@ -479,7 +479,7 @@ export default function RelatorioAcesso() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full xl:flex-1 relative z-10">
                   <MetricBox
-                    label="Visualizações"
+                    label="VisualizaÃ§Ãµes"
                     value={item.total_unique_views}
                     icon={Eye}
                     color="text-white"
@@ -547,7 +547,7 @@ function SourceBreakdown({ title, items = [] }) {
   const total = items.reduce((acc, item) => acc + Number(item.total || 0), 0)
 
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+    <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 sm:p-6">
       <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase mb-4">
         {title}
       </p>
@@ -579,7 +579,7 @@ function SourceBreakdown({ title, items = [] }) {
 
 function ClickTargetBreakdown({ items = [], pending = false }) {
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 mb-10">
+    <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 sm:p-6 mb-8 sm:mb-10">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
           Destinos mais clicados da LP nativa
@@ -598,12 +598,12 @@ function ClickTargetBreakdown({ items = [], pending = false }) {
           {items.slice(0, 8).map((item, index) => (
             <div
               key={`${item.label}-${item.url}-${index}`}
-              className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+              className="max-w-full rounded-2xl border border-white/[0.05] bg-[#050505] p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
             >
               <div className="min-w-0">
-                <p className="text-sm font-bold text-white truncate">{item.label || 'Clique'}</p>
+                <p className="break-words text-sm font-bold text-white">{item.label || 'Clique'}</p>
                 {item.url ? (
-                  <p className="text-xs text-neutral-600 truncate mt-1">{item.url}</p>
+                  <p className="break-all text-xs text-neutral-600 mt-1">{item.url}</p>
                 ) : (
                   <p className="text-xs text-neutral-700 mt-1">Botao sem URL direta</p>
                 )}
@@ -643,7 +643,7 @@ function CommercialMetricsBreakdown({ anuncios = [], clientes = [] }) {
 
 function CommercialRankList({ title, empty, items = [], type }) {
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+    <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-4 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-5">
         <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
           {title}
@@ -671,7 +671,7 @@ function CommercialRankList({ title, empty, items = [], type }) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-black text-[#8cf059]">#{index + 1}</span>
-                      <p className="text-sm font-bold text-white truncate">{titleText || 'Sem nome'}</p>
+                      <p className="break-words text-sm font-bold text-white">{titleText || 'Sem nome'}</p>
                     </div>
                     <p className="text-xs text-neutral-500 mt-1 truncate">{subtitle}</p>
                     {type === 'anuncio' && hotspots.length ? (
@@ -700,8 +700,8 @@ function CommercialRankList({ title, empty, items = [], type }) {
 
 function SmallMetric({ label, value }) {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-2 text-center">
-      <p className="text-[9px] text-neutral-600 font-bold uppercase tracking-widest">{label}</p>
+    <div className="min-w-0 rounded-xl border border-white/[0.05] bg-white/[0.02] px-2 py-2 text-center">
+      <p className="truncate text-[9px] text-neutral-600 font-bold uppercase tracking-widest">{label}</p>
       <p className="text-sm text-white font-black mt-1">{value}</p>
     </div>
   )

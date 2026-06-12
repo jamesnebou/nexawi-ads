@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -28,9 +28,9 @@ const supabase = createBrowserSupabaseClient()
 const etapas = [
   { value: 'novo_lead', label: 'Novo lead' },
   { value: 'em_contato', label: 'Em contato' },
-  { value: 'reuniao_agendada', label: 'Reunião agendada' },
+  { value: 'reuniao_agendada', label: 'ReuniÃ£o agendada' },
   { value: 'proposta_enviada', label: 'Proposta enviada' },
-  { value: 'negociacao', label: 'Negociação' },
+  { value: 'negociacao', label: 'NegociaÃ§Ã£o' },
   { value: 'cliente_fechado', label: 'Cliente fechado' },
   { value: 'perdido', label: 'Perdido' },
 ]
@@ -51,7 +51,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -86,7 +86,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
   return new Date(`${value}T00:00:00`).toLocaleDateString('pt-BR')
 }
 
@@ -206,7 +206,7 @@ export default function CrmClientesPage() {
 
   async function salvarCliente(clienteId) {
     if (!canUpdate) {
-      toast.error('Você não tem permissão para atualizar clientes.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para atualizar clientes.')
       return
     }
 
@@ -306,7 +306,7 @@ export default function CrmClientesPage() {
 
   function exportarCSV() {
     if (!canExport) {
-      toast.error('Você não tem permissão para exportar.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar.')
       return
     }
 
@@ -316,7 +316,7 @@ export default function CrmClientesPage() {
     }
 
     const linhas = [
-      ['Tipo', 'Empresa', 'Responsável', 'E-mail', 'Telefone', 'Cidade', 'Segmento', 'Etapa', 'Origem', 'Temperatura', 'Próximo contato', 'Valor potencial', 'Responsável interno', 'Observações'],
+      ['Tipo', 'Empresa', 'ResponsÃ¡vel', 'E-mail', 'Telefone', 'Cidade', 'Segmento', 'Etapa', 'Origem', 'Temperatura', 'PrÃ³ximo contato', 'Valor potencial', 'ResponsÃ¡vel interno', 'ObservaÃ§Ãµes'],
       ...clientes.map((cliente) => [
         'Cliente',
         cliente.nome_empresa || '',
@@ -413,7 +413,7 @@ export default function CrmClientesPage() {
     <>
       <Toaster position="top-right" />
 
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <div className="relative z-10 px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
         <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
@@ -426,7 +426,7 @@ export default function CrmClientesPage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Controle empresas vindas do tráfego, acompanhe negociações e organize o funil comercial da NexaWi.
+              Controle empresas vindas do trÃ¡fego, acompanhe negociaÃ§Ãµes e organize o funil comercial da NexaWi.
             </p>
           </div>
 
@@ -456,7 +456,7 @@ export default function CrmClientesPage() {
 
         <section className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-5 mb-8">
           {cards.map((card) => (
-            <div key={card.label} className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
+            <div key={card.label} className="mobile-tight-card rounded-3xl border border-white/[0.05] bg-white/[0.02] p-4 sm:p-6">
               <div className="flex items-center justify-between mb-6">
                 <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500">
                   {card.label}
@@ -466,11 +466,11 @@ export default function CrmClientesPage() {
                 </div>
               </div>
 
-              <p className={`${card.currency ? 'text-2xl' : 'text-4xl'} font-light text-white truncate`}>
+              <p className={`${card.currency ? 'text-2xl' : 'text-4xl'} font-light text-white`}>
                 {card.currency ? card.value : formatNumber(card.value)}
               </p>
 
-              <p className="text-xs text-neutral-500 mt-2 truncate">
+              <p className="text-xs text-neutral-500 mt-2">
                 {card.detail}
               </p>
             </div>
@@ -513,7 +513,7 @@ export default function CrmClientesPage() {
                 <input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Empresa, responsável, e-mail ou telefone..."
+                  placeholder="Empresa, responsÃ¡vel, e-mail ou telefone..."
                   className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
                 />
 
@@ -571,7 +571,7 @@ export default function CrmClientesPage() {
           </div>
 
           {followUps.length === 0 ? (
-            <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-8 text-center text-sm text-neutral-500">
+            <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 sm:p-8 text-center text-sm text-neutral-500">
               Nenhum proximo contato definido nos filtros atuais.
             </div>
           ) : (
@@ -716,11 +716,11 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
           </div>
 
           <h2 className="text-xl font-black text-white tracking-tight">
-            Visão Kanban dos prospects
+            VisÃ£o Kanban dos prospects
           </h2>
 
           <p className="text-sm text-neutral-500 mt-1">
-            {formatNumber(total)} empresa(s) distribuídas por etapa comercial.
+            {formatNumber(total)} empresa(s) distribuÃ­das por etapa comercial.
           </p>
         </div>
       </div>
@@ -765,7 +765,7 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
                     </p>
 
                     <p className="text-[11px] text-neutral-500 truncate mt-1">
-                      {cliente.nome_responsavel || cliente.nome || 'Sem responsável'}
+                      {cliente.nome_responsavel || cliente.nome || 'Sem responsÃ¡vel'}
                     </p>
 
                     <div className="mt-3 grid gap-1.5 text-[11px] text-neutral-500">
@@ -778,7 +778,7 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
                       </span>
 
                       <span>
-                        Próx.: <strong className="text-white">{formatDate(cliente.crm_proximo_contato)}</strong>
+                        PrÃ³x.: <strong className="text-white">{formatDate(cliente.crm_proximo_contato)}</strong>
                       </span>
                     </div>
                   </div>
@@ -847,13 +847,13 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
           </p>
 
           <p className="text-xs text-neutral-500 mt-1 truncate">
-            {cliente.nome_responsavel || cliente.nome || 'Responsável não informado'}
+            {cliente.nome_responsavel || cliente.nome || 'ResponsÃ¡vel nÃ£o informado'}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <InfoPill icon={Phone} label="Telefone" value={cliente.telefone || '—'} />
-          <InfoPill icon={Mail} label="E-mail" value={cliente.email || '—'} />
+          <InfoPill icon={Phone} label="Telefone" value={cliente.telefone || 'â€”'} />
+          <InfoPill icon={Mail} label="E-mail" value={cliente.email || 'â€”'} />
         </div>
 
         <div className="grid gap-2 text-xs text-neutral-500">
@@ -863,8 +863,8 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
         </div>
 
         <div className="grid gap-2 text-xs text-neutral-500">
-          <p>Próximo: {formatDate(cliente.crm_proximo_contato)}</p>
-          <p>Resp.: {cliente.crm_responsavel || '—'}</p>
+          <p>PrÃ³ximo: {formatDate(cliente.crm_proximo_contato)}</p>
+          <p>Resp.: {cliente.crm_responsavel || 'â€”'}</p>
           {cliente.crm_observacoes && <p className="line-clamp-2">{cliente.crm_observacoes}</p>}
         </div>
 
@@ -895,12 +895,12 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
           <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <FieldSelect label="Etapa" value={form.crm_etapa} onChange={(value) => setForm((current) => ({ ...current, crm_etapa: value }))} options={etapas} />
             <FieldSelect label="Temperatura" value={form.crm_temperatura} onChange={(value) => setForm((current) => ({ ...current, crm_temperatura: value }))} options={temperaturas.map((item) => ({ value: item, label: item }))} />
-            <FieldInput label="Origem" value={form.crm_origem} onChange={(value) => setForm((current) => ({ ...current, crm_origem: value }))} placeholder="Instagram, Google, indicação..." />
+            <FieldInput label="Origem" value={form.crm_origem} onChange={(value) => setForm((current) => ({ ...current, crm_origem: value }))} placeholder="Instagram, Google, indicaÃ§Ã£o..." />
             <FieldInput label="Valor potencial" type="number" value={form.crm_valor_potencial} onChange={(value) => setForm((current) => ({ ...current, crm_valor_potencial: value }))} placeholder="650" />
-            <FieldInput label="Próximo contato" type="date" value={form.crm_proximo_contato} onChange={(value) => setForm((current) => ({ ...current, crm_proximo_contato: value }))} />
-            <FieldInput label="Responsável interno" value={form.crm_responsavel} onChange={(value) => setForm((current) => ({ ...current, crm_responsavel: value }))} placeholder="James, comercial..." />
+            <FieldInput label="PrÃ³ximo contato" type="date" value={form.crm_proximo_contato} onChange={(value) => setForm((current) => ({ ...current, crm_proximo_contato: value }))} />
+            <FieldInput label="ResponsÃ¡vel interno" value={form.crm_responsavel} onChange={(value) => setForm((current) => ({ ...current, crm_responsavel: value }))} placeholder="James, comercial..." />
             <div className="lg:col-span-2">
-              <FieldInput label="Observações" value={form.crm_observacoes} onChange={(value) => setForm((current) => ({ ...current, crm_observacoes: value }))} placeholder="Ex: pediu proposta, quer anunciar em Barueri..." />
+              <FieldInput label="ObservaÃ§Ãµes" value={form.crm_observacoes} onChange={(value) => setForm((current) => ({ ...current, crm_observacoes: value }))} placeholder="Ex: pediu proposta, quer anunciar em Barueri..." />
             </div>
 
             <div className="flex items-end">

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -62,7 +62,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada.')
   }
 
   const response = await fetch(path, {
@@ -96,7 +96,7 @@ function roleLabel(role) {
 function planoLabel(plano) {
   if (!plano) return 'Sem plano definido'
   const max = Number(plano.max_criativos || 0)
-  return `${plano.nome}${max ? ` · ${max} criativo${max > 1 ? 's' : ''}` : ''}`
+  return `${plano.nome}${max ? ` Â· ${max} criativo${max > 1 ? 's' : ''}` : ''}`
 }
 
 export default function EmpresasPage() {
@@ -188,12 +188,12 @@ export default function EmpresasPage() {
     event.preventDefault()
 
     if (editingId === 'nova' && !canCreate) {
-      toast.error('Você não tem permissão para criar empresas.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para criar empresas.')
       return
     }
 
     if (editingId !== 'nova' && !canUpdate) {
-      toast.error('Você não tem permissão para editar empresas.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para editar empresas.')
       return
     }
 
@@ -228,12 +228,12 @@ export default function EmpresasPage() {
     event.preventDefault()
 
     if (!canManageUsers) {
-      toast.error('Você não tem permissão para gerenciar usuários por empresa.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para gerenciar usuÃ¡rios por empresa.')
       return
     }
 
     if (!usuarioForm.empresa_id || !usuarioForm.email.trim()) {
-      toast.error('Selecione a empresa e informe o e-mail do usuário.')
+      toast.error('Selecione a empresa e informe o e-mail do usuÃ¡rio.')
       return
     }
 
@@ -248,12 +248,12 @@ export default function EmpresasPage() {
         },
       })
 
-      toast.success('Usuário vinculado à empresa.')
+      toast.success('UsuÃ¡rio vinculado Ã  empresa.')
       setUsuarioForm(emptyUsuario)
       await carregar()
     } catch (error) {
-      console.error('Erro ao vincular usuário:', error)
-      toast.error(error.message || 'Erro ao vincular usuário.')
+      console.error('Erro ao vincular usuÃ¡rio:', error)
+      toast.error(error.message || 'Erro ao vincular usuÃ¡rio.')
     } finally {
       setSaving(false)
     }
@@ -267,13 +267,13 @@ export default function EmpresasPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
               <Building2 size={13} />
-              Sprint 5 — Multiempresa
+              Multiempresa
             </div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-              Empresas e usuários por cliente
+              Empresas e usuÃ¡rios por cliente
             </h1>
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Crie empresas, vincule usuários, acompanhe hotspots, MikroTiks, anúncios e leads por tenant.
+              Crie empresas, vincule usuÃ¡rios, acompanhe hotspots, MikroTiks, anÃºncios e leads por tenant.
             </p>
           </div>
 
@@ -293,10 +293,10 @@ export default function EmpresasPage() {
 
         <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-6 gap-5 mb-8">
           <Kpi icon={Building2} label="Empresas" value={empresas.length} />
-          <Kpi icon={Users} label="Usuários" value={resumo.usuarios} />
+          <Kpi icon={Users} label="UsuÃ¡rios" value={resumo.usuarios} />
           <Kpi icon={Wifi} label="Hotspots" value={resumo.hotspots} />
           <Kpi icon={Router} label="MikroTiks" value={resumo.mikrotiks} />
-          <Kpi icon={Megaphone} label="Anúncios" value={resumo.anuncios} />
+          <Kpi icon={Megaphone} label="AnÃºncios" value={resumo.anuncios} />
           <Kpi icon={UserPlus} label="Leads" value={resumo.leads} />
         </section>
 
@@ -311,7 +311,7 @@ export default function EmpresasPage() {
                 value={busca}
                 onChange={(event) => setBusca(event.target.value)}
                 onKeyDown={(event) => { if (event.key === 'Enter') carregar() }}
-                placeholder="Empresa, responsável, e-mail, telefone ou cidade..."
+                placeholder="Empresa, responsÃ¡vel, e-mail, telefone ou cidade..."
                 className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
               />
             </label>
@@ -344,17 +344,17 @@ export default function EmpresasPage() {
         )}
 
         {canManageUsers && empresas.length > 0 && (
-          <section className="rounded-[2rem] border border-[#6be12f]/15 bg-[#6be12f]/5 p-5 sm:p-6 mb-8">
-            <div className="flex items-center gap-3 mb-5">
+          <section className="mobile-tight-card rounded-[2rem] border border-[#6be12f]/15 bg-[#6be12f]/5 p-5 sm:p-6 mb-8">
+            <div className="flex flex-col items-center gap-3 mb-5 text-center sm:flex-row sm:text-left">
               <UserPlus className="text-[#8cf059]" size={20} />
               <div>
-                <h2 className="text-xl font-black text-white tracking-tight">Vincular usuário a empresa</h2>
-                <p className="text-sm text-neutral-500">Defina o papel do usuário dentro da empresa selecionada.</p>
+                <h2 className="text-xl font-black text-white tracking-tight">Vincular usuÃ¡rio a empresa</h2>
+                <p className="text-sm text-neutral-500">Defina o papel do usuÃ¡rio dentro da empresa selecionada.</p>
               </div>
             </div>
             <form onSubmit={adicionarUsuario} className="grid grid-cols-1 lg:grid-cols-5 gap-4 items-end">
               <FieldSelect label="Empresa" value={usuarioForm.empresa_id} onChange={(value) => setUsuarioForm((current) => ({ ...current, empresa_id: value }))} options={[{ value: '', label: 'Selecione' }, ...empresas.map((empresa) => ({ value: empresa.id, label: empresa.nome_empresa }))]} />
-              <FieldInput label="Nome" value={usuarioForm.nome} onChange={(value) => setUsuarioForm((current) => ({ ...current, nome: value }))} placeholder="Nome do usuário" />
+              <FieldInput label="Nome" value={usuarioForm.nome} onChange={(value) => setUsuarioForm((current) => ({ ...current, nome: value }))} placeholder="Nome do usuÃ¡rio" />
               <FieldInput label="E-mail" type="email" value={usuarioForm.email} onChange={(value) => setUsuarioForm((current) => ({ ...current, email: value }))} placeholder="usuario@empresa.com" />
               <FieldSelect label="Papel" value={usuarioForm.role} onChange={(value) => setUsuarioForm((current) => ({ ...current, role: value }))} options={roleOptions} />
               <button disabled={saving} className="rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-60 flex items-center justify-center gap-2">
@@ -389,8 +389,8 @@ export default function EmpresasPage() {
 
 function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving, planos = [] }) {
   return (
-    <section className="rounded-[2rem] border border-[#6be12f]/15 bg-[#6be12f]/5 p-5 sm:p-6 mb-8">
-      <div className="flex items-center justify-between gap-4 mb-5">
+    <section className="mobile-tight-card rounded-[2rem] border border-[#6be12f]/15 bg-[#6be12f]/5 p-5 sm:p-6 mb-8">
+      <div className="flex flex-col items-center justify-between gap-4 mb-5 text-center sm:flex-row sm:text-left">
         <div>
           <h2 className="text-xl font-black text-white tracking-tight">{title}</h2>
           <p className="text-sm text-neutral-500">Dados principais da empresa/tenant.</p>
@@ -402,7 +402,7 @@ function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving, planos =
 
       <form onSubmit={onSubmit} className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <FieldInput label="Empresa" value={form.nome_empresa} onChange={(value) => setForm((current) => ({ ...current, nome_empresa: value }))} />
-        <FieldInput label="Responsável" value={form.nome_responsavel} onChange={(value) => setForm((current) => ({ ...current, nome_responsavel: value }))} />
+        <FieldInput label="ResponsÃ¡vel" value={form.nome_responsavel} onChange={(value) => setForm((current) => ({ ...current, nome_responsavel: value }))} />
         <FieldInput label="E-mail" type="email" value={form.email} onChange={(value) => setForm((current) => ({ ...current, email: value }))} />
         <FieldInput label="Telefone" value={form.telefone} onChange={(value) => setForm((current) => ({ ...current, telefone: value }))} />
         <FieldSelect label="Plano" value={form.plano_id} onChange={(value) => setForm((current) => ({ ...current, plano_id: value }))} options={[{ value: '', label: 'Sem plano definido' }, ...planos.map((plano) => ({ value: plano.id, label: planoLabel(plano) }))]} />
@@ -411,7 +411,7 @@ function EmpresaForm({ title, form, setForm, onSubmit, onClose, saving, planos =
         <FieldInput label="Estado" value={form.estado} onChange={(value) => setForm((current) => ({ ...current, estado: value }))} />
         <FieldSelect label="Status" value={form.status} onChange={(value) => setForm((current) => ({ ...current, status: value }))} options={statusOptions.filter((item) => item.value)} />
         <div className="lg:col-span-3">
-          <FieldInput label="Endereço" value={form.endereco} onChange={(value) => setForm((current) => ({ ...current, endereco: value }))} />
+          <FieldInput label="EndereÃ§o" value={form.endereco} onChange={(value) => setForm((current) => ({ ...current, endereco: value }))} />
         </div>
         <button disabled={saving} className="rounded-2xl bg-[#6be12f] px-5 py-3.5 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-60 flex items-center justify-center gap-2 self-end">
           <Save size={16} />
@@ -433,9 +433,9 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
             {empresa.status || 'ativo'}
           </span>
           <h3 className="text-lg font-black text-white">{empresa.nome_empresa}</h3>
-          <p className="text-sm text-neutral-500 mt-1">{empresa.nome_responsavel || 'Responsável não informado'}</p>
-          <p className="text-xs text-neutral-600 mt-2">{empresa.email || 'Sem e-mail'} · {empresa.telefone || 'Sem telefone'}</p>
-          <p className="text-xs text-neutral-600 mt-1">{empresa.cidade || 'Cidade não informada'} {empresa.estado ? `/${empresa.estado}` : ''}</p>
+          <p className="text-sm text-neutral-500 mt-1">{empresa.nome_responsavel || 'ResponsÃ¡vel nÃ£o informado'}</p>
+          <p className="text-xs text-neutral-600 mt-2">{empresa.email || 'Sem e-mail'} Â· {empresa.telefone || 'Sem telefone'}</p>
+          <p className="text-xs text-neutral-600 mt-1">{empresa.cidade || 'Cidade nÃ£o informada'} {empresa.estado ? `/${empresa.estado}` : ''}</p>
           <p className="mt-3 inline-flex rounded-full border border-white/[0.06] bg-white/[0.03] px-3 py-1 text-[11px] font-bold text-neutral-300">
             {planoLabel(empresa.planos)}
           </p>
@@ -444,20 +444,20 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
         <div className="grid grid-cols-2 gap-3">
           <Mini label="Hotspots" value={resumo.hotspots} />
           <Mini label="MikroTiks" value={resumo.mikrotiks} />
-          <Mini label="Anúncios" value={resumo.anuncios} />
+          <Mini label="AnÃºncios" value={resumo.anuncios} />
           <Mini label="Leads" value={resumo.leads} />
         </div>
 
         <div>
-          <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600 mb-3">Usuários</p>
+          <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600 mb-3">UsuÃ¡rios</p>
           <div className="grid gap-2">
             {(empresa.usuarios || []).slice(0, 4).map((usuario) => (
               <div key={usuario.id} className="rounded-2xl border border-white/[0.05] bg-black/20 p-3">
                 <p className="text-xs font-black text-white truncate">{usuario.nome || usuario.email}</p>
-                <p className="text-[11px] text-neutral-500 truncate">{usuario.email} · {roleLabel(usuario.role)}</p>
+                <p className="text-[11px] text-neutral-500 truncate">{usuario.email} Â· {roleLabel(usuario.role)}</p>
               </div>
             ))}
-            {(empresa.usuarios || []).length === 0 && <p className="text-xs text-neutral-600">Nenhum usuário vinculado.</p>}
+            {(empresa.usuarios || []).length === 0 && <p className="text-xs text-neutral-600">Nenhum usuÃ¡rio vinculado.</p>}
           </div>
         </div>
 
@@ -481,8 +481,8 @@ function EmpresaCard({ empresa, canUpdate, onEdit }) {
 
 function Kpi({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="mobile-tight-card mobile-center-card rounded-3xl border border-white/[0.05] bg-white/[0.02] p-6">
+      <div className="flex flex-col items-center justify-center gap-3 mb-5 text-center">
         <p className="text-[11px] uppercase tracking-widest font-extrabold text-neutral-500">{label}</p>
         <Icon size={18} className="text-[#8cf059]" />
       </div>

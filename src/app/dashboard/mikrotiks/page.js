@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -23,7 +23,7 @@ import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
 
-const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
+const statusOpcoes = ['Ativo', 'Inativo', 'ManutenÃ§Ã£o']
 
 const permissoesIniciais = {
   view: false,
@@ -66,7 +66,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
   }
 
   const response = await fetch(path, {
@@ -86,7 +86,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -99,7 +99,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
 function StatCard({ icon: Icon, label, value, description, accent = false }) {
   return (
     <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0a0a] p-5">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">{label}</p>
           <p className={`text-2xl font-black mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
@@ -280,12 +280,12 @@ export default function MikrotiksPage() {
 
   function abrirModal(router = null) {
     if (router && !canUpdate) {
-      toast.error('Você não tem permissão para editar MikroTiks.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para editar MikroTiks.')
       return
     }
 
     if (!router && !canCreate) {
-      toast.error('Você não tem permissão para criar MikroTiks.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para criar MikroTiks.')
       return
     }
 
@@ -350,7 +350,7 @@ export default function MikrotiksPage() {
     }
 
     if (!form.username.trim()) {
-      toast.error('Informe o usuário antes de diagnosticar.')
+      toast.error('Informe o usuÃ¡rio antes de diagnosticar.')
       return
     }
 
@@ -386,10 +386,10 @@ export default function MikrotiksPage() {
       if (data.diagnostics?.ready) {
         toast.success('MikroTik pronto para salvar.')
       } else {
-        toast.error('Diagnóstico encontrou pendências.')
+        toast.error('DiagnÃ³stico encontrou pendÃªncias.')
       }
     } catch (error) {
-      console.error('Erro ao diagnosticar formulário:', error)
+      console.error('Erro ao diagnosticar formulÃ¡rio:', error)
 
       setFormDiagnostics({
         ok: false,
@@ -447,12 +447,12 @@ export default function MikrotiksPage() {
 
   async function salvarRouter() {
     if (routerSelecionado && !canUpdate) {
-      toast.error('Você não tem permissão para editar MikroTiks.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para editar MikroTiks.')
       return
     }
 
     if (!routerSelecionado && !canCreate) {
-      toast.error('Você não tem permissão para criar MikroTiks.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para criar MikroTiks.')
       return
     }
 
@@ -467,7 +467,7 @@ export default function MikrotiksPage() {
     }
 
     if (!form.username.trim()) {
-      toast.error('Informe o usuário.')
+      toast.error('Informe o usuÃ¡rio.')
       return
     }
 
@@ -537,10 +537,10 @@ export default function MikrotiksPage() {
         [router.id]: data.monitor,
       }))
 
-      toast.success('Tráfego atualizado.')
+      toast.success('TrÃ¡fego atualizado.')
     } catch (error) {
-      console.error('Erro ao monitorar tráfego:', error)
-      toast.error(error.message || 'Erro ao monitorar tráfego.')
+      console.error('Erro ao monitorar trÃ¡fego:', error)
+      toast.error(error.message || 'Erro ao monitorar trÃ¡fego.')
     } finally {
       setTrafficLoadingId(null)
     }
@@ -608,7 +608,7 @@ export default function MikrotiksPage() {
       if (data.diagnostics?.ready) {
         toast.success('MikroTik pronto para operar.')
       } else {
-        toast.error('Diagnóstico encontrou pendências.')
+        toast.error('DiagnÃ³stico encontrou pendÃªncias.')
       }
     } catch (error) {
       console.error('Erro ao diagnosticar MikroTik:', error)
@@ -643,7 +643,7 @@ export default function MikrotiksPage() {
       await navigator.clipboard.writeText(value || '')
       toast.success('Copiado!')
     } catch {
-      toast.error('Não foi possível copiar.')
+      toast.error('NÃ£o foi possÃ­vel copiar.')
     }
   }
 
@@ -943,7 +943,7 @@ export default function MikrotiksPage() {
 
   async function excluirRouter(id) {
     if (!canDelete) {
-      toast.error('Você não tem permissão para excluir MikroTiks.')
+      toast.error('VocÃª nÃ£o tem permissÃ£o para excluir MikroTiks.')
       return
     }
 
@@ -956,7 +956,7 @@ export default function MikrotiksPage() {
         },
       })
 
-      toast.success('MikroTik excluído.')
+      toast.success('MikroTik excluÃ­do.')
       setConfirmDelete(null)
       await carregarRouters()
     } catch (error) {
@@ -979,7 +979,7 @@ export default function MikrotiksPage() {
         }}
       />
 
-      <main className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <main className="relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
         <header className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
@@ -994,13 +994,13 @@ export default function MikrotiksPage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium max-w-2xl">
-              Cadastre os roteadores que controlam os hotspots físicos da NexaWi.
+              Cadastre os roteadores que controlam os hotspots fÃ­sicos da NexaWi.
             </p>
 
             {showReadOnly && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: você pode visualizar, mas não alterar MikroTiks.
+                Modo leitura: vocÃª pode visualizar, mas nÃ£o alterar MikroTiks.
               </div>
             )}
           </div>
@@ -1038,7 +1038,7 @@ export default function MikrotiksPage() {
             icon={ShieldCheck}
             label="Ativos"
             value={totals?.ativos ?? 0}
-            description="em operação"
+            description="em operaÃ§Ã£o"
             accent
           />
           <StatCard
@@ -1056,7 +1056,7 @@ export default function MikrotiksPage() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600" />
             <input
               type="text"
-              placeholder="Buscar por nome, slug, URL ou localização..."
+              placeholder="Buscar por nome, slug, URL ou localizaÃ§Ã£o..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all"
@@ -1112,20 +1112,20 @@ export default function MikrotiksPage() {
               return (
                 <article
                   key={routerItem.id}
-                  className="relative overflow-hidden rounded-[2.25rem] border border-white/[0.06] bg-[#0a0a0a] p-6"
+                  className="mobile-tight-card relative max-w-full overflow-hidden rounded-[2.25rem] border border-white/[0.06] bg-[#0a0a0a] p-6"
                 >
                   <div className="absolute -right-16 -top-16 w-40 h-40 rounded-full bg-[#6be12f]/5 blur-3xl pointer-events-none" />
 
                   <div className="relative z-10 space-y-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
                         <div className="w-12 h-12 rounded-2xl bg-[#6be12f]/10 border border-[#6be12f]/20 flex items-center justify-center flex-shrink-0">
                           <Server size={22} className="text-[#6be12f]" />
                         </div>
 
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2 mb-2">
-                            <h2 className="text-lg font-black text-white truncate">
+                          <div className="flex flex-col-reverse items-center gap-2 mb-2 sm:flex-row sm:flex-wrap sm:items-center">
+                            <h2 className="text-lg font-black text-white">
                               {routerItem.nome}
                             </h2>
 
@@ -1134,12 +1134,12 @@ export default function MikrotiksPage() {
                             </span>
                           </div>
 
-                          <p className="text-xs text-neutral-500 font-bold truncate">
+                          <p className="text-xs text-neutral-500 font-bold break-all">
                             {routerItem.slug}
                           </p>
 
-                          <p className="text-xs text-neutral-600 mt-1 truncate">
-                            {routerItem.localizacao || 'Localização não informada'}
+                          <p className="text-xs text-neutral-600 mt-1">
+                            {routerItem.localizacao || 'LocalizaÃ§Ã£o nÃ£o informada'}
                           </p>
                         </div>
                       </div>
@@ -1188,7 +1188,7 @@ export default function MikrotiksPage() {
 
                       <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-4">
                         <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
-                          Usuário
+                          UsuÃ¡rio
                         </p>
                         <p className="text-sm font-bold text-white">
                           {routerItem.username}
@@ -1249,7 +1249,7 @@ export default function MikrotiksPage() {
                         </div>
 
                         <p className="text-[10px] text-neutral-600 mt-3">
-                          Última leitura: {trafficByRouter[routerItem.id]?.checkedAt
+                          Ãšltima leitura: {trafficByRouter[routerItem.id]?.checkedAt
                             ? new Date(trafficByRouter[routerItem.id].checkedAt).toLocaleTimeString('pt-BR')
                             : '-'}
                         </p>
@@ -1358,7 +1358,7 @@ export default function MikrotiksPage() {
                         className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50"
                       >
                         {diagnosing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
-                        Diagnóstico
+                        DiagnÃ³stico
                       </button>
 
                       <button
@@ -1386,7 +1386,7 @@ export default function MikrotiksPage() {
                   {routerSelecionado ? 'Editar MikroTik' : 'Novo MikroTik'}
                 </h2>
                 <p className="text-xs text-neutral-500 mt-1">
-                  A senha nunca será exibida depois de salva.
+                  A senha nunca serÃ¡ exibida depois de salva.
                 </p>
               </div>
 
@@ -1404,7 +1404,7 @@ export default function MikrotiksPage() {
                   <input
                     value={form.nome}
                     onChange={(e) => atualizarNome(e.target.value)}
-                    placeholder="Ex: MikroTik Cândido Sales 01"
+                    placeholder="Ex: MikroTik CÃ¢ndido Sales 01"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none"
                   />
                 </div>
@@ -1437,7 +1437,7 @@ export default function MikrotiksPage() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    Usuário *
+                    UsuÃ¡rio *
                   </label>
                   <input
                     value={form.username}
@@ -1455,7 +1455,7 @@ export default function MikrotiksPage() {
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder={routerSelecionado ? 'Deixe vazio para manter' : 'Senha do usuário API'}
+                    placeholder={routerSelecionado ? 'Deixe vazio para manter' : 'Senha do usuÃ¡rio API'}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none"
                   />
                 </div>
@@ -1476,12 +1476,12 @@ export default function MikrotiksPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    Localização
+                    LocalizaÃ§Ã£o
                   </label>
                   <input
                     value={form.localizacao}
                     onChange={(e) => setForm({ ...form, localizacao: e.target.value })}
-                    placeholder="Ex: Cândido Sales"
+                    placeholder="Ex: CÃ¢ndido Sales"
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none"
                   />
                 </div>
@@ -1506,12 +1506,12 @@ export default function MikrotiksPage() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Observações
+                  ObservaÃ§Ãµes
                 </label>
                 <textarea
                   value={form.observacoes}
                   onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
-                  placeholder="Informações internas sobre este MikroTik..."
+                  placeholder="InformaÃ§Ãµes internas sobre este MikroTik..."
                   rows={3}
                   className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none resize-none"
                 />
@@ -1527,18 +1527,18 @@ export default function MikrotiksPage() {
                   onChange={(e) => setForm({ ...form, hotspot_id: e.target.value })}
                   className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white outline-none focus:border-[#6be12f]/30"
                 >
-                  <option value="">Não vincular agora</option>
+                  <option value="">NÃ£o vincular agora</option>
 
                   {hotspots.map((hotspot) => (
                     <option key={hotspot.id} value={hotspot.id}>
                       {hotspot.nome || hotspot.name || hotspot.slug || hotspot.id}
-                      {hotspot.router_id ? ' — já possui MikroTik' : ''}
+                      {hotspot.router_id ? ' â€” jÃ¡ possui MikroTik' : ''}
                     </option>
                   ))}
                 </select>
 
                 <p className="text-xs text-neutral-500 mt-3 leading-relaxed">
-                  Ao salvar, este MikroTik será vinculado ao hotspot escolhido. Isso permite que o Controle de Rede aplique regras no roteador correto.
+                  Ao salvar, este MikroTik serÃ¡ vinculado ao hotspot escolhido. Isso permite que o Controle de Rede aplique regras no roteador correto.
                 </p>
 
                 <label className="mt-4 flex items-start gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/5 p-4 cursor-pointer">
@@ -1551,11 +1551,11 @@ export default function MikrotiksPage() {
 
                   <div>
                     <p className="text-sm font-black text-white">
-                      Aplicar política base após salvar
+                      Aplicar polÃ­tica base apÃ³s salvar
                     </p>
 
                     <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-                      Cria a política padrão do hotspot e envia as regras iniciais para o MikroTik automaticamente.
+                      Cria a polÃ­tica padrÃ£o do hotspot e envia as regras iniciais para o MikroTik automaticamente.
                     </p>
                   </div>
                 </label>
@@ -1565,10 +1565,10 @@ export default function MikrotiksPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div>
                     <p className="text-sm font-black text-white">
-                      Diagnóstico antes de salvar
+                      DiagnÃ³stico antes de salvar
                     </p>
                     <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
-                      Teste Base URL, usuário, senha e hotspot server antes de gravar este MikroTik no sistema.
+                      Teste Base URL, usuÃ¡rio, senha e hotspot server antes de gravar este MikroTik no sistema.
                     </p>
                   </div>
 
@@ -1598,7 +1598,7 @@ export default function MikrotiksPage() {
                       <AlertTriangle size={18} className="text-red-400 mt-0.5" />
                       <div>
                         <p className="text-sm font-black text-red-300">
-                          Diagnóstico falhou
+                          DiagnÃ³stico falhou
                         </p>
                         <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
                           {formDiagnostics.error}
@@ -1625,16 +1625,16 @@ export default function MikrotiksPage() {
                         <p className={`text-sm font-black ${
                           formDiagnostics.ready ? 'text-[#8cf059]' : 'text-yellow-300'
                         }`}>
-                          {formDiagnostics.ready ? 'MikroTik pronto para salvar' : 'MikroTik com pendências'}
+                          {formDiagnostics.ready ? 'MikroTik pronto para salvar' : 'MikroTik com pendÃªncias'}
                         </p>
 
                         <p className="text-xs text-neutral-400 mt-1">
-                          {formDiagnostics.summary?.criticalIssues || 0} críticos · {formDiagnostics.summary?.warnings || 0} avisos · {formDiagnostics.summary?.checks || 0} verificações
+                          {formDiagnostics.summary?.criticalIssues || 0} crÃ­ticos Â· {formDiagnostics.summary?.warnings || 0} avisos Â· {formDiagnostics.summary?.checks || 0} verificaÃ§Ãµes
                         </p>
 
                         {formDiagnostics.router && (
                           <p className="text-xs text-neutral-300 mt-2">
-                            {formDiagnostics.router.boardName || 'MikroTik'} · RouterOS {formDiagnostics.router.version || '—'} · Uptime {formDiagnostics.router.uptime || '—'}
+                            {formDiagnostics.router.boardName || 'MikroTik'} Â· RouterOS {formDiagnostics.router.version || 'â€”'} Â· Uptime {formDiagnostics.router.uptime || 'â€”'}
                           </p>
                         )}
 
@@ -1669,7 +1669,7 @@ export default function MikrotiksPage() {
                                       </p>
 
                                       <p className="text-xs text-neutral-500 mt-1">
-                                        Interface: {server.interface || '—'} · Profile: {server.profile || '—'} · {server.enabled ? 'Ativo' : 'Desativado'}
+                                        Interface: {server.interface || 'â€”'} Â· Profile: {server.profile || 'â€”'} Â· {server.enabled ? 'Ativo' : 'Desativado'}
                                       </p>
                                     </div>
 
@@ -1726,7 +1726,7 @@ export default function MikrotiksPage() {
                 ) : (
                   <>
                     <Check size={18} />
-                    {routerSelecionado ? 'Salvar Alterações' : 'Cadastrar MikroTik'}
+                    {routerSelecionado ? 'Salvar AlteraÃ§Ãµes' : 'Cadastrar MikroTik'}
                   </>
                 )}
               </button>
@@ -1742,7 +1742,7 @@ export default function MikrotiksPage() {
               <div>
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059] mb-3">
                   <ShieldCheck size={13} />
-                  Diagnóstico técnico
+                  DiagnÃ³stico tÃ©cnico
                 </div>
 
                 <h2 className="text-2xl font-bold text-white">
@@ -1764,7 +1764,7 @@ export default function MikrotiksPage() {
                 <div className="py-20 flex flex-col items-center justify-center gap-4">
                   <Loader2 size={34} className="animate-spin text-[#6be12f]" />
                   <p className="text-sm font-bold text-neutral-400">
-                    Executando diagnóstico no MikroTik...
+                    Executando diagnÃ³stico no MikroTik...
                   </p>
                 </div>
               ) : diagnosticsData?.error ? (
@@ -1773,7 +1773,7 @@ export default function MikrotiksPage() {
                     <AlertTriangle size={20} className="text-red-400 mt-0.5" />
                     <div>
                       <p className="text-sm font-black text-red-300">
-                        Diagnóstico falhou
+                        DiagnÃ³stico falhou
                       </p>
                       <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
                         {diagnosticsData.error}
@@ -1795,11 +1795,11 @@ export default function MikrotiksPage() {
                         <p className={`text-sm font-black ${
                           diagnosticsData.ready ? 'text-[#8cf059]' : 'text-yellow-300'
                         }`}>
-                          {diagnosticsData.ready ? 'MikroTik pronto para operar' : 'MikroTik precisa de atenção'}
+                          {diagnosticsData.ready ? 'MikroTik pronto para operar' : 'MikroTik precisa de atenÃ§Ã£o'}
                         </p>
 
                         <p className="text-xs text-neutral-400 mt-1">
-                          {diagnosticsData.summary?.criticalIssues || 0} críticos · {diagnosticsData.summary?.warnings || 0} avisos · {diagnosticsData.summary?.checks || 0} verificações
+                          {diagnosticsData.summary?.criticalIssues || 0} crÃ­ticos Â· {diagnosticsData.summary?.warnings || 0} avisos Â· {diagnosticsData.summary?.checks || 0} verificaÃ§Ãµes
                         </p>
                       </div>
 
@@ -1816,7 +1816,7 @@ export default function MikrotiksPage() {
                           Modelo
                         </p>
                         <p className="text-sm font-black text-white">
-                          {diagnosticsData.router.boardName || '—'}
+                          {diagnosticsData.router.boardName || 'â€”'}
                         </p>
                       </div>
 
@@ -1825,7 +1825,7 @@ export default function MikrotiksPage() {
                           RouterOS
                         </p>
                         <p className="text-sm font-black text-white">
-                          {diagnosticsData.router.version || '—'}
+                          {diagnosticsData.router.version || 'â€”'}
                         </p>
                       </div>
 
@@ -1834,7 +1834,7 @@ export default function MikrotiksPage() {
                           Uptime
                         </p>
                         <p className="text-sm font-black text-white">
-                          {diagnosticsData.router.uptime || '—'}
+                          {diagnosticsData.router.uptime || 'â€”'}
                         </p>
                       </div>
                     </div>
@@ -1842,7 +1842,7 @@ export default function MikrotiksPage() {
 
                   <div>
                     <h3 className="text-lg font-black text-white mb-4">
-                      Verificações
+                      VerificaÃ§Ãµes
                     </h3>
 
                     <div className="space-y-3">
@@ -1877,7 +1877,7 @@ export default function MikrotiksPage() {
 
                               {!check.ok && check.recommendation && (
                                 <p className="text-xs text-yellow-200 mt-2 leading-relaxed">
-                                  Recomendação: {check.recommendation}
+                                  RecomendaÃ§Ã£o: {check.recommendation}
                                 </p>
                               )}
                             </div>
@@ -1901,7 +1901,7 @@ export default function MikrotiksPage() {
                             <div key={server.id || server.name} className="rounded-xl bg-white/[0.03] border border-white/[0.05] px-4 py-3">
                               <p className="text-sm font-bold text-white">{server.name}</p>
                               <p className="text-xs text-neutral-500 mt-1">
-                                Interface: {server.interface || '—'} · Profile: {server.profile || '—'} · {server.enabled ? 'Ativo' : 'Desativado'}
+                                Interface: {server.interface || 'â€”'} Â· Profile: {server.profile || 'â€”'} Â· {server.enabled ? 'Ativo' : 'Desativado'}
                               </p>
                             </div>
                           ))}
@@ -1911,7 +1911,7 @@ export default function MikrotiksPage() {
 
                     <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5">
                       <p className="text-sm font-black text-white mb-3">
-                        Serviços RouterOS
+                        ServiÃ§os RouterOS
                       </p>
 
                       <div className="space-y-2 max-h-64 overflow-y-auto custom-scrollbar">
@@ -1919,7 +1919,7 @@ export default function MikrotiksPage() {
                           <div key={service.id || service.name} className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.03] border border-white/[0.05] px-4 py-3">
                             <div>
                               <p className="text-sm font-bold text-white">{service.name}</p>
-                              <p className="text-xs text-neutral-500">Porta {service.port || '—'} · {service.address || 'sem restrição exibida'}</p>
+                              <p className="text-xs text-neutral-500">Porta {service.port || 'â€”'} Â· {service.address || 'sem restriÃ§Ã£o exibida'}</p>
                             </div>
 
                             <span className={`text-[10px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 ${
@@ -1971,7 +1971,7 @@ export default function MikrotiksPage() {
               Excluir MikroTik?
             </h2>
             <p className="text-sm text-neutral-500 mb-8">
-              Só será possível excluir se ele não estiver vinculado a nenhum hotspot.
+              SÃ³ serÃ¡ possÃ­vel excluir se ele nÃ£o estiver vinculado a nenhum hotspot.
             </p>
             <div className="flex gap-4">
               <button

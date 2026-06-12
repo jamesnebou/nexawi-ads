@@ -71,7 +71,11 @@ const relatorioInicial = {
     ticketMedio: 0,
     porStatus: [],
     porMetodo: [],
+    porGateway: [],
+    porDia: [],
     porHotspot: [],
+    receitaPendente: 0,
+    taxaAutorizacao: 0,
   },
   vendas: [],
 }
@@ -380,9 +384,12 @@ export default function WifiPixPage() {
   const vendasPix = relatorioPix?.vendas || []
   const alertasPix = relatorioPix?.alertas || []
   const hotspotsMaisRentaveis = resumoPix.porHotspot || []
+  const gatewayPix = resumoPix.porGateway || []
+  const diasPix = resumoPix.porDia || []
+  const webhookEfi = relatorioPix?.webhookEfi || null
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white px-6 py-8">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-5 text-white sm:px-2 sm:py-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -434,7 +441,7 @@ export default function WifiPixPage() {
           </div>
         ) : null}
 
-        <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
           <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-xl font-black flex items-center gap-2">
@@ -519,17 +526,49 @@ export default function WifiPixPage() {
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-8">
             <PixMetricCard label="Receita" value={money(resumoPix.receitaConfirmada)} detail={(resumoPix.vendasConfirmadas || 0) + ' confirmada(s)'} icon={CreditCard} />
+            <PixMetricCard label="Pendente" value={money(resumoPix.receitaPendente)} detail={(resumoPix.pendentes || 0) + ' venda(s)'} icon={Clock3} />
             <PixMetricCard label="Vendas" value={resumoPix.totalVendas || 0} detail={(resumoPix.pendentes || 0) + ' pendente(s)'} icon={QrCode} />
-            <PixMetricCard label="Pagas" value={resumoPix.pagas || 0} detail="Aguardando liberação" icon={CheckCircle2} />
+            <PixMetricCard label="Pagas" value={resumoPix.pagas || 0} detail="Aguardando liberacao" icon={CheckCircle2} />
             <PixMetricCard label="Autorizadas" value={resumoPix.autorizadas || 0} detail="Liberadas no MikroTik" icon={ShieldCheck} />
+            <PixMetricCard label="Taxa liberacao" value={(resumoPix.taxaAutorizacao || 0) + '%'} detail="Pagas que viraram acesso" icon={Wifi} />
             <PixMetricCard label="Ticket medio" value={money(resumoPix.ticketMedio)} detail="Pagas/autorizadas" icon={BarChart3} />
             <PixMetricCard label="Erros" value={resumoPix.erros || 0} detail="Exigem suporte" icon={AlertTriangle} />
           </div>
 
-          <div className="mt-6 grid gap-4 xl:grid-cols-[0.9fr_0.9fr_1.4fr]">
-            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+          {webhookEfi?.enabled ? (
+            <div className="mt-6 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className={
+                    webhookEfi.status === 'critical'
+                      ? 'rounded-xl border border-red-500/25 bg-red-500/10 p-2 text-red-300'
+                      : webhookEfi.status === 'warning'
+                        ? 'rounded-xl border border-yellow-500/25 bg-yellow-500/10 p-2 text-yellow-300'
+                        : 'rounded-xl border border-[#6be12f]/25 bg-[#6be12f]/10 p-2 text-[#6be12f]'
+                  }>
+                    <RefreshCw size={18} />
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black">Monitor Efi</p>
+                    <p className="mt-1 text-lg font-black text-white">{webhookEfi.status === 'ok' ? 'Operando' : webhookEfi.status === 'critical' ? 'Critico' : 'Atencao'}</p>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500">{webhookEfi.message}</p>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <MiniMetric label="Ultimo evento" value={formatDateTime(webhookEfi.lastEventAt)} />
+                  <MiniMetric label="Eventos 7d" value={webhookEfi.events7d || 0} />
+                  <MiniMetric label="Pagos 7d" value={webhookEfi.paid7d || 0} />
+                  <MiniMetric label="Nao casados" value={webhookEfi.unmatched7d || 0} />
+                  <MiniMetric label="Alertas" value={webhookEfi.activeAlerts || 0} />
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-6 grid gap-4 xl:grid-cols-[0.9fr_0.9fr_0.9fr_1.1fr]">
+            <div className="mobile-tight-card rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Plano mais vendido</p>
               {resumoPix.planoMaisVendido ? (
                 <div className="rounded-xl border border-[#ff7a00]/25 bg-[#ff7a00]/10 px-4 py-4">
@@ -542,7 +581,7 @@ export default function WifiPixPage() {
               )}
             </div>
 
-            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+            <div className="mobile-tight-card rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Status</p>
               <div className="grid gap-2">
                 {(resumoPix.porStatus || []).length ? resumoPix.porStatus.map((item) => (
@@ -554,7 +593,21 @@ export default function WifiPixPage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+            <div className="mobile-tight-card rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Gateway</p>
+              {gatewayPix.length ? (
+                <div className="grid gap-2">
+                  {gatewayPix.slice(0, 4).map((item) => (
+                    <div key={item.gateway} className="flex items-center justify-between rounded-xl bg-white/[0.02] px-3 py-2">
+                      <span className="text-sm font-bold uppercase text-white">{item.gateway}</span>
+                      <span className="text-sm font-black text-[#ff9d2e]">{money(item.receita_confirmada)}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="text-sm text-gray-500">Sem gateway no periodo.</p>}
+            </div>
+
+            <div className="mobile-tight-card rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
               <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Hotspots por receita</p>
               {hotspotsMaisRentaveis.length ? (
                 <div className="grid gap-3">
@@ -573,6 +626,21 @@ export default function WifiPixPage() {
               )}
             </div>
           </div>
+
+          {diasPix.length ? (
+            <div className="mt-6 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
+              <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black mb-3">Vendas por dia</p>
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+                {diasPix.slice(0, 14).map((item) => (
+                  <div key={item.dia} className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3 py-3">
+                    <p className="text-[11px] font-black text-gray-500">{item.dia}</p>
+                    <p className="mt-1 truncate text-sm font-black text-white">{item.total_vendas} venda(s)</p>
+                    <p className="text-xs font-bold text-[#ff9d2e]">{money(item.receita_confirmada)}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <div className="mt-6 rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
             <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
@@ -604,27 +672,28 @@ export default function WifiPixPage() {
                       const busy = operacaoVendaId.startsWith(venda.id + ':')
                       return (
                         <tr key={venda.id} className="border-b border-white/[0.04] align-top">
-                          <td className="py-4 pr-3">
+                          <td className="whitespace-nowrap py-4 pr-3">
                             <p className="font-black text-white">{venda.nome || 'Cliente sem nome'}</p>
                             <p className="text-xs text-gray-500">{formatPhone(venda.telefone)}</p>
                             <p className="text-[11px] text-gray-700">{venda.cliente_nome || 'Sem cliente vinculado'}</p>
                           </td>
-                          <td className="py-4 pr-3">
+                          <td className="whitespace-nowrap py-4 pr-3">
                             <p className="font-bold text-white">{venda.plano_nome || 'Sem plano'}</p>
                             <p className="text-xs text-gray-500">{venda.hotspot_nome || 'Sem hotspot'}</p>
                             <p className="text-[11px] text-gray-700">{venda.metodo_pagamento || 'PIX'} / {venda.gateway_pagamento || venda.asaas_payload?.provider || 'asaas'}</p>
+                            {venda.efi_txid ? <p className="mt-1 text-[11px] text-[#ff9d2e]">TXID: {venda.efi_txid}</p> : null}
                           </td>
-                          <td className="py-4 pr-3 font-black text-[#ff9d2e]">{money(venda.valor)}</td>
-                          <td className="py-4 pr-3">
+                          <td className="whitespace-nowrap py-4 pr-3 font-black text-[#ff9d2e]">{money(venda.valor)}</td>
+                          <td className="whitespace-nowrap py-4 pr-3">
                             <span className={'inline-flex rounded-full px-2 py-1 text-[10px] font-black uppercase ' + statusClass(venda.status)}>{statusLabel(venda.status)}</span>
                             {venda.erro_autorizacao ? <p className="mt-2 max-w-44 text-[11px] text-red-300">{venda.erro_autorizacao}</p> : null}
                           </td>
-                          <td className="py-4 pr-3 text-xs text-gray-500">
+                          <td className="whitespace-nowrap py-4 pr-3 text-xs text-gray-500">
                             <p>Criada: {formatDateTime(venda.created_at)}</p>
                             <p>Paga: {formatDateTime(venda.pago_em)}</p>
                             <p>Expira: {formatDateTime(venda.expira_em)}</p>
                           </td>
-                          <td className="py-4 pr-3 text-xs text-gray-500">
+                          <td className="whitespace-nowrap py-4 pr-3 text-xs text-gray-500">
                             <p>MAC: {venda.mac_address || '-'}</p>
                             <p>IP: {venda.ip_address || '-'}</p>
                           </td>
@@ -632,7 +701,7 @@ export default function WifiPixPage() {
                             <div className="flex flex-wrap justify-end gap-2">
                               <VendaActionButton busy={busy} onClick={() => executarAcaoVenda('verificar_venda', venda)} icon={RefreshCw} label="Verificar" />
                               <VendaActionButton busy={busy} disabled={!['pago', 'autorizado'].includes(venda.status)} onClick={() => executarAcaoVenda('liberar_venda', venda)} icon={ShieldCheck} label="Liberar" strong />
-                              <VendaActionButton busy={busy} disabled={venda.status === 'autorizado'} onClick={() => executarAcaoVenda('cancelar_venda', venda)} icon={XCircle} label="Cancelar" danger />
+                              <VendaActionButton busy={busy} disabled={venda.status !== 'pendente'} onClick={() => executarAcaoVenda('cancelar_venda', venda)} icon={XCircle} label="Cancelar" danger />
                               <VendaActionButton busy={busy} disabled={venda.status === 'expirado'} onClick={() => executarAcaoVenda('expirar_venda', venda)} icon={Clock3} label="Expirar" />
                             </div>
                           </td>
@@ -648,7 +717,7 @@ export default function WifiPixPage() {
               </div>
             )}
           </div>
-        </section>        <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+        </section>        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
             <label className="block">
               <span className="text-xs uppercase tracking-[0.18em] text-gray-500 font-bold">Hotspot</span>
@@ -711,7 +780,7 @@ export default function WifiPixPage() {
         ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
             <h2 className="text-xl font-black mb-5 flex items-center gap-2">
               <Plus size={20} className="text-[#6be12f]" /> Plano de acesso
             </h2>
@@ -821,7 +890,7 @@ export default function WifiPixPage() {
             </form>
           </section>
 
-          <section className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-6">
+          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
             <h2 className="text-xl font-black mb-5 flex items-center gap-2">
               <QrCode size={20} className="text-[#6be12f]" /> Planos cadastrados
             </h2>
@@ -833,45 +902,40 @@ export default function WifiPixPage() {
             ) : planosDoHotspot.length ? (
               <div className="grid gap-4">
                 {planosDoHotspot.map((plano) => (
-                  <div
+                                    <div
                     key={plano.id}
-                    className={`relative overflow-hidden rounded-3xl border px-5 py-5 ${
+                    className={`relative overflow-hidden rounded-3xl border p-4 sm:p-5 ${
                       plano.recomendado
                         ? 'border-[#ff7a00]/45 bg-[#ff7a00]/10 shadow-[0_0_32px_rgba(255,122,0,0.12)]'
                         : 'border-white/[0.06] bg-[#0a0a0a]'
                     }`}
                   >
                     {plano.recomendado ? (
-                      <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[plan-reflex_2.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+                      <div className="pointer-events-none absolute inset-0 -translate-x-full animate-[plan-reflex_3.6s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/10 to-transparent" />
                     ) : null}
-                    <div className="relative flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-black">{plano.nome}</p>
-                          <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase ${
+
+                    <div className="relative space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase ${
                             plano.ativo ? 'bg-[#6be12f]/15 text-[#6be12f]' : 'bg-white/[0.06] text-gray-500'
                           }`}>
                             {plano.ativo ? 'Ativo' : 'Arquivado'}
                           </span>
                           {plano.recomendado ? (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-1 text-[10px] font-black uppercase text-black">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2.5 py-1 text-[10px] font-black uppercase text-black">
                               <Star size={11} fill="currentColor" /> Recomendado
                             </span>
                           ) : null}
                         </div>
-                        <p className="text-sm text-gray-500 mt-1">{plano.descricao || 'Sem descrição'}</p>
-                        <div className="mt-3 grid grid-cols-3 gap-2">
-                          <SmallPlanInfo label="Duração" value={formatDuration(plano.duracao_minutos)} />
-                          <SmallPlanInfo label="Download" value={plano.velocidade_download || '15M'} />
-                          <SmallPlanInfo label="Upload" value={plano.velocidade_upload || '15M'} />
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className={plano.recomendado ? 'text-[#ff9d2e] font-black' : 'text-[#6be12f] font-black'}>
-                          {money(plano.valor)}
-                        </p>
-                        <p className="text-[10px] uppercase tracking-[0.16em] text-gray-600">Ordem {plano.ordem ?? 0}</p>
-                        <div className="flex justify-end gap-2 mt-3">
+
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <p className={plano.recomendado ? 'text-[#ff9d2e] font-black' : 'text-[#6be12f] font-black'}>
+                              {money(plano.valor)}
+                            </p>
+                            <p className="text-[10px] uppercase tracking-[0.16em] text-gray-600">Ordem {plano.ordem ?? 0}</p>
+                          </div>
                           <button
                             type="button"
                             onClick={() => editarPlano(plano)}
@@ -888,6 +952,17 @@ export default function WifiPixPage() {
                             <Trash2 size={14} />
                           </button>
                         </div>
+                      </div>
+
+                      <div className="text-center">
+                        <p className="truncate text-lg font-black text-white">{plano.nome}</p>
+                        <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">{plano.descricao || 'Sem descrição'}</p>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <SmallPlanInfo label="Duração" value={formatDuration(plano.duracao_minutos)} />
+                        <SmallPlanInfo label="Download" value={plano.velocidade_download || '15M'} />
+                        <SmallPlanInfo label="Upload" value={plano.velocidade_upload || '15M'} />
                       </div>
                     </div>
                   </div>
@@ -911,20 +986,23 @@ export default function WifiPixPage() {
           </section>
         </div>
       </div>
-      <style jsx global>{`
-        @keyframes plan-reflex {
-          0%, 18% { transform: translateX(-100%); }
-          55%, 100% { transform: translateX(100%); }
-        }
-      `}</style>
+    </div>
+  )
+}
+
+function MiniMetric({ label, value }) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-white/[0.05] bg-black/20 px-2 py-3 text-center">
+      <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-gray-600">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-white">{value || '-'}</p>
     </div>
   )
 }
 
 function SmallPlanInfo({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-600">{label}</p>
+    <div className="min-w-0 rounded-2xl border border-white/[0.05] bg-black/20 px-2 py-3 text-center">
+      <p className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-gray-600">{label}</p>
       <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
     </div>
   )

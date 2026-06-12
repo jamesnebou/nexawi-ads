@@ -2,6 +2,7 @@
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { createAdminNotification } from '@/lib/admin-notifications'
 import { asaasRequest } from '@/lib/asaas'
 import { markWifiPixPaymentStatus, normalizeMacAddress, refreshWifiPixEfiPaymentStatus } from '@/lib/wifi-pix'
 
@@ -79,6 +80,114 @@ function sumBy(rows = [], predicate = () => true) {
   }, 0)
 }
 
+function incrementGroupedMoney(map, key, defaults = {}, value = 0, paid = false) {
+  const current = map.get(key) || {
+    ...defaults,
+    total_vendas: 0,
+    receita_confirmada: 0,
+  }
+
+  current.total_vendas += 1
+  if (paid) current.receita_confirmada += Number(value || 0)
+  map.set(key, current)
+}
+
+async function createWifiPixAlertNotification(alerta) {
+  if (!alerta?.type) return
+
+  await createAdminNotification({
+    type: alerta.type,
+    title: alerta.title,
+    message: alerta.message,
+    severity: alerta.severity || 'warning',
+    entity: alerta.hotspotId ? 'hotspots' : 'wifi_pix',
+    entityId: alerta.hotspotId || '',
+    actionUrl: '/dashboard/wifi-pix',
+    dedupKey: alerta.type + ':' + (alerta.hotspotId || 'global'),
+    metadata: alerta,
+  })
+}
+
+async function loadEfiWebhookMonitor() {
+  const enabled = String(process.env.WIFI_PIX_GATEWAY || '').toLowerCase() === 'efi'
+
+  if (!enabled) {
+    return {
+      enabled: false,
+      status: 'disabled',
+      message: 'Gateway Efi nao esta ativo neste ambiente.',
+      lastEventAt: null,
+      events7d: 0,
+      paid7d: 0,
+      synced7d: 0,
+      unmatched7d: 0,
+      activeAlerts: 0,
+    }
+  }
+
+  const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+
+  const [auditResult, notificationResult] = await Promise.all([
+    supabaseAdmin
+      .from('admin_audit_logs')
+      .select('id, action, created_at, metadata')
+      .in('action', ['wifi_pix_payment_paid', 'wifi_pix_payment_synced'])
+      .gte('created_at', since7d)
+      .order('created_at', { ascending: false })
+      .limit(500),
+    supabaseAdmin
+      .from('admin_notifications')
+      .select('id, type, severity, title, message, created_at, updated_at, metadata')
+      .eq('active', true)
+      .in('type', ['efi_webhook_error', 'efi_webhook_empty', 'efi_webhook_unmatched_payment', 'efi_webhook_sem_evento_recente'])
+      .order('updated_at', { ascending: false })
+      .limit(20),
+  ])
+
+  const auditRows = auditResult.error ? [] : auditResult.data || []
+  const notifications = notificationResult.error ? [] : notificationResult.data || []
+  const lastEventAt = auditRows[0]?.created_at || null
+  const lastEventTime = lastEventAt ? new Date(lastEventAt).getTime() : 0
+  const stale24h = !lastEventTime || Date.now() - lastEventTime > 24 * 60 * 60 * 1000
+  const hasCritical = notifications.some((item) => item.severity === 'critical')
+  const unmatched7d = auditRows.filter((item) => item.metadata?.matched === false).length
+  const paid7d = auditRows.filter((item) => item.action === 'wifi_pix_payment_paid').length
+  const synced7d = auditRows.filter((item) => item.action === 'wifi_pix_payment_synced').length
+  const status = hasCritical ? 'critical' : stale24h || unmatched7d > 0 || notifications.length > 0 ? 'warning' : 'ok'
+
+  if (stale24h) {
+    await createAdminNotification({
+      type: 'efi_webhook_sem_evento_recente',
+      title: 'Webhook Efi sem evento recente',
+      message: lastEventAt
+        ? 'Nenhum evento Efi recebido nas ultimas 24 horas. Se houve Pix pago, verifique o webhook.'
+        : 'Nenhum evento Efi registrado ainda. Depois da primeira venda paga, confirme se o webhook esta chegando.',
+      severity: 'warning',
+      entity: 'wifi_pix',
+      actionUrl: '/dashboard/wifi-pix',
+      dedupKey: 'efi_webhook_sem_evento_recente:global',
+      metadata: { lastEventAt, events7d: auditRows.length },
+    })
+  }
+
+  return {
+    enabled: true,
+    status,
+    message: status === 'ok'
+      ? 'Webhook Efi com eventos recentes e sem alertas ativos.'
+      : stale24h
+        ? 'Webhook Efi sem evento recente. Acompanhe pagamentos reais e confira a URL configurada na Efi.'
+        : 'Webhook Efi com alertas ativos. Verifique eventos nao casados ou erros recentes.',
+    lastEventAt,
+    events7d: auditRows.length,
+    paid7d,
+    synced7d,
+    unmatched7d,
+    activeAlerts: notifications.length,
+    alerts: notifications.slice(0, 5),
+  }
+}
+
 async function loadHotspots(auth) {
   let query = supabaseAdmin
     .from('hotspots')
@@ -148,32 +257,7 @@ async function loadWifiPixAlertas(hotspots = [], planos = []) {
       })
     })
 
-  if (String(process.env.WIFI_PIX_GATEWAY || '').toLowerCase() === 'efi') {
-    const { data, error } = await supabaseAdmin
-      .from('admin_audit_logs')
-      .select('id, action, created_at')
-      .in('action', ['wifi_pix_payment_paid', 'wifi_pix_payment_synced'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-
-    if (!error) {
-      const last = data?.[0] || null
-      const lastAt = last?.created_at ? new Date(last.created_at).getTime() : 0
-      const stale = !lastAt || Date.now() - lastAt > 24 * 60 * 60 * 1000
-
-      if (stale) {
-        alertas.push({
-          type: 'efi_webhook_sem_evento_recente',
-          severity: 'warning',
-          title: 'Webhook Efi sem evento recente',
-          message: lastAt
-            ? 'Nenhum evento Efi recebido nas ultimas 24 horas. Se houve venda paga nesse periodo, verifique o webhook.'
-            : 'Nenhum evento Efi registrado ainda. Depois da primeira venda paga, confirme se o webhook esta chegando.',
-          lastEventAt: last?.created_at || null,
-        })
-      }
-    }
-  }
+  await Promise.all(alertas.map((alerta) => createWifiPixAlertNotification(alerta)))
 
   return alertas
 }
@@ -246,41 +330,34 @@ async function loadWifiPixRelatorio(auth, { periodo = 'ultimos_30', hotspotId = 
   const vendasConfirmadas = vendas.filter((item) => statusesPagos.has(item.status)).length
   const porStatus = new Map()
   const porMetodo = new Map()
+  const porGateway = new Map()
+  const porDia = new Map()
   const porHotspot = new Map()
   const porPlano = new Map()
 
   vendas.forEach((venda) => {
     const statusAtual = venda.status || 'pendente'
     const metodo = venda.metodo_pagamento || 'PIX'
+    const gateway = venda.gateway_pagamento || 'asaas'
+    const pago = statusesPagos.has(statusAtual)
     const hotspot = hotspotsById.get(venda.hotspot_id)
     const plano = planosById.get(venda.plano_id)
     const hotspotNome = hotspot?.nome || 'Sem hotspot'
     const planoNome = plano?.nome || 'Plano removido'
+    const dia = String(venda.pago_em || venda.created_at || '').slice(0, 10) || 'sem_data'
 
     porStatus.set(statusAtual, (porStatus.get(statusAtual) || 0) + 1)
     porMetodo.set(metodo, (porMetodo.get(metodo) || 0) + 1)
-
-    const atualHotspot = porHotspot.get(venda.hotspot_id || 'sem_hotspot') || {
+    incrementGroupedMoney(porGateway, gateway, { gateway }, venda.valor, pago)
+    incrementGroupedMoney(porDia, dia, { dia }, venda.valor, pago)
+    incrementGroupedMoney(porHotspot, venda.hotspot_id || 'sem_hotspot', {
       hotspot_id: venda.hotspot_id || null,
       hotspot_nome: hotspotNome,
-      total_vendas: 0,
-      receita_confirmada: 0,
-    }
-
-    atualHotspot.total_vendas += 1
-    if (statusesPagos.has(statusAtual)) atualHotspot.receita_confirmada += Number(venda.valor || 0)
-    porHotspot.set(venda.hotspot_id || 'sem_hotspot', atualHotspot)
-
-    const atualPlano = porPlano.get(venda.plano_id || 'sem_plano') || {
+    }, venda.valor, pago)
+    incrementGroupedMoney(porPlano, venda.plano_id || 'sem_plano', {
       plano_id: venda.plano_id || null,
       plano_nome: planoNome,
-      total_vendas: 0,
-      receita_confirmada: 0,
-    }
-
-    atualPlano.total_vendas += 1
-    if (statusesPagos.has(statusAtual)) atualPlano.receita_confirmada += Number(venda.valor || 0)
-    porPlano.set(venda.plano_id || 'sem_plano', atualPlano)
+    }, venda.valor, pago)
   })
 
   const rankingPlanos = [...porPlano.values()].sort((a, b) => {
@@ -305,10 +382,14 @@ async function loadWifiPixRelatorio(auth, { periodo = 'ultimos_30', hotspotId = 
       canceladas: vendas.filter((item) => item.status === 'cancelado').length,
       erros: vendas.filter((item) => item.status === 'erro').length,
       receitaConfirmada,
+      receitaPendente: sumBy(vendas, (item) => item.status === 'pendente'),
       ticketMedio: vendasConfirmadas > 0 ? receitaConfirmada / vendasConfirmadas : 0,
+      taxaAutorizacao: vendasConfirmadas > 0 ? Math.round((vendas.filter((item) => item.status === 'autorizado').length / vendasConfirmadas) * 100) : 0,
       planoMaisVendido: rankingPlanos[0] || null,
       porStatus: [...porStatus.entries()].map(([statusItem, total]) => ({ status: statusItem, total })),
       porMetodo: [...porMetodo.entries()].map(([metodo, total]) => ({ metodo, total })),
+      porGateway: [...porGateway.values()].sort((a, b) => b.receita_confirmada - a.receita_confirmada),
+      porDia: [...porDia.values()].sort((a, b) => String(b.dia).localeCompare(String(a.dia))).slice(0, 14),
       porPlano: rankingPlanos,
       porHotspot: [...porHotspot.values()].sort((a, b) => b.receita_confirmada - a.receita_confirmada),
     },
@@ -414,9 +495,10 @@ export async function GET(request) {
       loadHotspots(auth),
       loadPlanos(auth),
     ])
-    const [relatorio, alertas] = await Promise.all([
+    const [relatorio, alertas, webhookEfi] = await Promise.all([
       loadWifiPixRelatorio(auth, { periodo, hotspotId, status, search }),
       loadWifiPixAlertas(hotspots, planos),
+      loadEfiWebhookMonitor(),
     ])
 
     return NextResponse.json({
@@ -426,6 +508,7 @@ export async function GET(request) {
       relatorio: {
         ...relatorio,
         alertas,
+        webhookEfi,
       },
     })
   } catch (error) {

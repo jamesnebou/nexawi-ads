@@ -1,9 +1,9 @@
-'use client'
+﻿'use client'
 
 // src/app/dashboard/layout.js
 // ============================================================
 // Layout premium da Dashboard NexaWi ADS.
-// Protege acesso direto por URL com permissões por módulo.
+// Protege acesso direto por URL com permissÃµes por mÃ³dulo.
 // Sprint 5: rotas multiempresa e dashboard do anunciante.
 // ============================================================
 
@@ -73,7 +73,7 @@ const rotasProtegidas = [
     path: '/dashboard/anuncios',
     module: 'anuncios',
     action: 'view',
-    label: 'Anúncios',
+    label: 'AnÃºncios',
   },
   {
     path: '/dashboard/planos',
@@ -91,25 +91,25 @@ const rotasProtegidas = [
     path: '/dashboard/relatorio-de-acesso',
     module: 'relatorios',
     action: 'view',
-    label: 'Relatório de Acesso',
+    label: 'RelatÃ³rio de Acesso',
   },
   {
     path: '/dashboard/relatorios/acesso',
     module: 'relatorios',
     action: 'view',
-    label: 'Relatório de Acesso',
+    label: 'RelatÃ³rio de Acesso',
   },
   {
     path: '/dashboard/relatorio-comercial',
     module: 'relatorios',
     action: 'view',
-    label: 'Relatório Comercial',
+    label: 'RelatÃ³rio Comercial',
   },
   {
     path: '/dashboard/relatorios/comercial',
     module: 'relatorios',
     action: 'view',
-    label: 'Relatório Comercial',
+    label: 'RelatÃ³rio Comercial',
   },
   {
     path: '/dashboard/cidades',
@@ -139,13 +139,13 @@ const rotasProtegidas = [
     path: '/dashboard/configuracoes',
     module: 'configuracoes',
     action: 'view',
-    label: 'Configurações',
+    label: 'ConfiguraÃ§Ãµes',
   },
   {
     path: '/dashboard',
     module: 'dashboard',
     action: 'view',
-    label: 'Visão Geral',
+    label: 'VisÃ£o Geral',
     exact: true,
   },
 ]
@@ -154,7 +154,7 @@ async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    const error = new Error('Sessão administrativa não encontrada.')
+    const error = new Error('SessÃ£o administrativa nÃ£o encontrada.')
     error.status = 401
     throw error
   }
@@ -175,13 +175,13 @@ async function adminApiFetch(path) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    const error = new Error(`A API não retornou JSON. Status: ${response.status}`)
+    const error = new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
     error.status = response.status
     throw error
   }
 
   if (!response.ok) {
-    const error = new Error(data?.error || 'Erro ao validar permissões.')
+    const error = new Error(data?.error || 'Erro ao validar permissÃµes.')
     error.status = response.status
     throw error
   }
@@ -237,7 +237,7 @@ function LoadingDashboard() {
 
         <div className="text-center">
           <p className="text-sm font-bold text-white">
-            Validando permissões
+            Validando permissÃµes
           </p>
 
           <p className="text-xs text-neutral-500 mt-1">
@@ -308,7 +308,7 @@ export default function DashboardLayout({ children }) {
           moduleLabel: rotaAtual.label || 'Dashboard',
           moduleName: rotaAtual.module || 'dashboard',
           actionName: rotaAtual.action || 'view',
-          message: error.message || 'Não foi possível validar seu acesso.',
+          message: error.message || 'NÃ£o foi possÃ­vel validar seu acesso.',
         })
       } finally {
         if (!cancelado) {
@@ -325,7 +325,7 @@ export default function DashboardLayout({ children }) {
   }, [pathname, rotaAtual, router])
 
   return (
-    <div className="flex min-h-screen bg-[#050505] text-white selection:bg-[#6be12f]/30">
+    <div className="dashboard-root flex min-h-screen max-w-full overflow-x-hidden bg-[#050505] text-white selection:bg-[#6be12f]/30">
       <button
         className="fixed top-4 right-4 z-50 p-2.5 rounded-xl bg-[#0a0a0a] border border-white/[0.05] text-neutral-400 hover:text-white md:hidden transition-colors shadow-lg"
         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -348,7 +348,7 @@ export default function DashboardLayout({ children }) {
         <Sidebar onClose={() => setIsSidebarOpen(false)} />
       </aside>
 
-      <main className="flex-1 overflow-auto p-4 sm:p-6 md:p-8 md:ml-64 relative z-10">
+      <main className="dashboard-shell relative z-10 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-5 md:p-8 md:ml-64">
         {loadingAccess ? (
           <LoadingDashboard />
         ) : accessDenied ? (
@@ -357,7 +357,7 @@ export default function DashboardLayout({ children }) {
             adminEmail={adminEmail}
             message={
               accessDenied.message ||
-              'Você não tem permissão para acessar esta área do sistema.'
+              'VocÃª nÃ£o tem permissÃ£o para acessar esta Ã¡rea do sistema.'
             }
           />
         ) : (

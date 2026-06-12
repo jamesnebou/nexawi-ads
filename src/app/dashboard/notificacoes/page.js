@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -19,7 +19,7 @@ import toast, { Toaster } from 'react-hot-toast'
 const supabase = createBrowserSupabaseClient()
 
 function formatarData(value) {
-  if (!value) return '—'
+  if (!value) return 'â€”'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -57,7 +57,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada.')
+    throw new Error('SessÃ£o administrativa nÃ£o encontrada.')
   }
 
   const response = await fetch(path, {
@@ -101,7 +101,7 @@ export default function NotificacoesPage() {
       setUnreadCount(data.unreadCount || 0)
     } catch (error) {
       console.error(error)
-      toast.error(error.message || 'Erro ao buscar notificações.')
+      toast.error(error.message || 'Erro ao buscar notificaÃ§Ãµes.')
     } finally {
       setLoading(false)
     }
@@ -168,11 +168,11 @@ export default function NotificacoesPage() {
               <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
                 <Bell className="text-[#6be12f]" size={24} />
               </div>
-              Notificações
+              NotificaÃ§Ãµes
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              Alertas internos, chamados, pendências e eventos importantes
+              Alertas internos, chamados, pendÃªncias e eventos importantes
             </p>
           </div>
 
@@ -202,8 +202,8 @@ export default function NotificacoesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
           <CardResumo label="Total" value={notifications.length} />
-          <CardResumo label="Não lidas" value={unreadCount} />
-          <CardResumo label="Críticas" value={notifications.filter((n) => n.severity === 'critical').length} />
+          <CardResumo label="NÃ£o lidas" value={unreadCount} />
+          <CardResumo label="CrÃ­ticas" value={notifications.filter((n) => n.severity === 'critical').length} />
         </div>
 
         {loading ? (
@@ -213,9 +213,9 @@ export default function NotificacoesPage() {
         ) : notifications.length === 0 ? (
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] py-24 text-center">
             <Bell size={44} className="text-neutral-700 mx-auto mb-5" />
-            <h2 className="text-xl font-bold text-white">Nenhuma notificação</h2>
+            <h2 className="text-xl font-bold text-white">Nenhuma notificaÃ§Ã£o</h2>
             <p className="text-sm text-neutral-500 mt-2">
-              Quando houver alertas internos, eles aparecerão aqui.
+              Quando houver alertas internos, eles aparecerÃ£o aqui.
             </p>
           </div>
         ) : (
@@ -227,14 +227,14 @@ export default function NotificacoesPage() {
               return (
                 <div
                   key={notification.id}
-                  className={`rounded-[1.6rem] border p-5 transition-all ${
+                  className={`mobile-tight-card rounded-[1.6rem] border p-5 transition-all ${
                     notification.read
                       ? 'bg-white/[0.015] border-white/[0.04]'
                       : 'bg-white/[0.035] border-white/[0.08] shadow-[0_0_30px_rgba(107,225,47,0.05)]'
                   }`}
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-                    <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex min-w-0 flex-col items-center gap-3 text-center sm:flex-row sm:items-start sm:text-left">
                       <div className={`w-12 h-12 rounded-2xl border flex items-center justify-center flex-shrink-0 ${style}`}>
                         <Icon size={22} />
                       </div>
@@ -247,17 +247,17 @@ export default function NotificacoesPage() {
                             </span>
                           )}
 
-                          <span className="inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-white/[0.04] text-neutral-400 border border-white/[0.06]">
+                          <span className="inline-flex max-w-full break-all px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest bg-white/[0.04] text-neutral-400 border border-white/[0.06]">
                             {notification.type}
                           </span>
                         </div>
 
-                        <h2 className="text-base font-extrabold text-white truncate">
+                        <h2 className="text-base font-extrabold text-white">
                           {notification.title}
                         </h2>
 
                         <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
-                          {notification.message || 'Sem descrição.'}
+                          {notification.message || 'Sem descriÃ§Ã£o.'}
                         </p>
 
                         <p className="text-[11px] text-neutral-600 mt-3">
@@ -266,12 +266,12 @@ export default function NotificacoesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:flex-shrink-0">
                       {!notification.read && (
                         <button
                           onClick={() => marcarComoLida(notification)}
                           disabled={salvando === notification.id}
-                          className="px-4 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] text-sm font-bold text-neutral-300"
+                          className="w-full px-4 py-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.05] text-sm font-bold text-neutral-300 sm:w-auto"
                         >
                           {salvando === notification.id ? (
                             <Loader2 size={17} className="animate-spin" />
@@ -284,7 +284,7 @@ export default function NotificacoesPage() {
                       {notification.action_url && (
                         <button
                           onClick={() => abrirNotificacao(notification)}
-                          className="px-4 py-3 rounded-2xl bg-[#6be12f] text-black text-sm font-extrabold flex items-center gap-2"
+                          className="flex w-full items-center justify-center gap-2 px-4 py-3 rounded-2xl bg-[#6be12f] text-black text-sm font-extrabold sm:w-auto"
                         >
                           Abrir
                           <ExternalLink size={15} />
@@ -316,7 +316,7 @@ export default function NotificacoesPage() {
 
 function CardResumo({ label, value }) {
   return (
-    <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
+    <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6">
       <p className="text-neutral-500 text-xs font-bold tracking-widest uppercase">
         {label}
       </p>
