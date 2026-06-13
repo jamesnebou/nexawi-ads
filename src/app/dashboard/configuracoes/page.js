@@ -14,19 +14,19 @@ import {
   BadgeDollarSign,
 } from 'lucide-react'
 
-// Cliente Supabase usado apenas para pegar a sessÃ£o do admin logado,
+// Cliente Supabase usado apenas para pegar a sessão do admin logado,
 // alterar senha e enviar arquivo usando URL assinada.
-// As configuraÃ§Ãµes agora passam por /api/admin/configuracoes.
+// As configurações agora passam por /api/admin/configuracoes.
 const supabase = createBrowserSupabaseClient()
 
 const HERO_IMAGE_BUCKET = 'landing-assets'
 
 const abas = [
   { id: 'empresa', label: 'Empresa', icon: Building2, desc: 'Dados comerciais' },
-  { id: 'portal', label: 'Portal', icon: Globe, desc: 'AparÃªncia, tempos e preÃ§os' },
+  { id: 'portal', label: 'Portal', icon: Globe, desc: 'Aparência, tempos e preços' },
   { id: 'lgpd', label: 'LGPD', icon: Shield, desc: 'Termos de uso' },
-  { id: 'notificacoes', label: 'NotificaÃ§Ãµes', icon: Bell, desc: 'Avisos e alertas' },
-  { id: 'seguranca', label: 'SeguranÃ§a', icon: Lock, desc: 'Senha de acesso' },
+  { id: 'notificacoes', label: 'Notificações', icon: Bell, desc: 'Avisos e alertas' },
+  { id: 'seguranca', label: 'Segurança', icon: Lock, desc: 'Senha de acesso' },
 ]
 
 const permissoesIniciais = {
@@ -227,7 +227,7 @@ function InputPreco({ label, mensalKey, anualKey, form, setForm }) {
         </div>
         <div>
           <p className="text-sm font-bold text-white tracking-tight">{label}</p>
-          <p className="text-xs text-neutral-500 font-medium">Valores editÃ¡veis para campanhas e promoÃ§Ãµes</p>
+          <p className="text-xs text-neutral-500 font-medium">Valores editáveis para campanhas e promoções</p>
         </div>
       </div>
 
@@ -265,16 +265,16 @@ function InputPreco({ label, mensalKey, anualKey, form, setForm }) {
 }
 
 // ============================================================
-// Chamada padrÃ£o para APIs administrativas.
-// Essa funÃ§Ã£o pega o token do usuÃ¡rio logado e envia para a API.
-// A API valida se o usuÃ¡rio Ã© admin antes de consultar o banco.
+// Chamada padrão para APIs administrativas.
+// Essa função pega o token do usuário logado e envia para a API.
+// A API valida se o usuário é admin antes de consultar o banco.
 // ============================================================
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -375,8 +375,8 @@ const canUpdate = Boolean(permissions.update)
     setCarregando(true)
 
     try {
-      // Agora as configuraÃ§Ãµes nÃ£o sÃ£o lidas direto pelo navegador.
-      // A API admin busca a configuraÃ§Ã£o mais recente com service_role.
+      // Agora as configurações não são lidas direto pelo navegador.
+      // A API admin busca a configuração mais recente com service_role.
       const resposta = await adminApiFetch('/api/admin/configuracoes')
       const data = resposta.config
       setPermissions({
@@ -402,7 +402,7 @@ const canUpdate = Boolean(permissions.update)
           cor_principal: data.cor_principal || '#22c55e',
 
           // LGPD sempre vem do banco.
-          // Se estiver vazio, mantÃ©m vazio; se vocÃª salvou texto, ele volta aqui.
+          // Se estiver vazio, mantém vazio; se você salvou texto, ele volta aqui.
           texto_lgpd: data.texto_lgpd || '',
 
           email_notificacoes: data.email_notificacoes || '',
@@ -454,8 +454,8 @@ const canUpdate = Boolean(permissions.update)
         })
       }
     } catch (error) {
-      console.error('Erro ao buscar configuraÃ§Ãµes:', error)
-      alert(`Erro ao buscar configuraÃ§Ãµes: ${error.message || 'erro desconhecido'}`)
+      console.error('Erro ao buscar configurações:', error)
+      alert(`Erro ao buscar configurações: ${error.message || 'erro desconhecido'}`)
     } finally {
       setCarregando(false)
     }
@@ -464,7 +464,7 @@ const canUpdate = Boolean(permissions.update)
     async function salvarConfiguracoes() {
     try {
       if (!canUpdate) {
-  alert('VocÃª nÃ£o tem permissÃ£o para alterar configuraÃ§Ãµes.')
+  alert('Você não tem permissão para alterar configurações.')
   return
 }
       setSalvando(true)
@@ -552,15 +552,15 @@ const canUpdate = Boolean(permissions.update)
       setSalvo(true)
       setTimeout(() => setSalvo(false), 3000)
     } catch (error) {
-      console.error('Erro ao salvar configuraÃ§Ãµes:', error)
-      alert(`Erro ao salvar configuraÃ§Ãµes: ${error.message || 'erro desconhecido'}`)
+      console.error('Erro ao salvar configurações:', error)
+      alert(`Erro ao salvar configurações: ${error.message || 'erro desconhecido'}`)
     } finally {
       setSalvando(false)
     }
   }
 
   // Upload seguro da imagem do Hero usando URL assinada.
-  // O navegador nÃ£o faz upload pÃºblico direto; ele pede autorizaÃ§Ã£o temporÃ¡ria Ã  API admin.
+  // O navegador não faz upload público direto; ele pede autorização temporária à API admin.
   async function uploadHeroImagePadrao(file) {
     if (!file) return
 
@@ -568,7 +568,7 @@ const canUpdate = Boolean(permissions.update)
       setUploadingHeroImage(true)
 
       if (!canUpdate) {
-  alert('VocÃª nÃ£o tem permissÃ£o para alterar configuraÃ§Ãµes.')
+  alert('Você não tem permissão para alterar configurações.')
   return
 }
 
@@ -614,7 +614,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
     }
 
     if (novaSenha !== confirmarSenha) {
-      setErroSenha('As senhas nÃ£o coincidem.')
+      setErroSenha('As senhas não coincidem.')
       return
     }
 
@@ -646,21 +646,21 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
   }
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-5 sm:p-8 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+    <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 relative z-10">
         <div>
           <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">
-            ConfiguraÃ§Ãµes
+            Configurações
           </h1>
           <p className="text-sm text-neutral-500 mt-2 font-medium">
-            Gerencie preferÃªncias, tempos do portal e preÃ§os padrÃ£o
+            Gerencie preferências, tempos do portal e preços padrão
           </p>
           {!canUpdate && (
   <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
     <Lock size={14} className="text-neutral-500" />
-    Modo leitura: vocÃª pode visualizar, mas nÃ£o alterar configuraÃ§Ãµes.
+    Modo leitura: você pode visualizar, mas não alterar configurações.
   </div>
 )}
         </div>
@@ -679,7 +679,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
               </>
             ) : (
               <>
-                <Save size={18} strokeWidth={2.5} /> Salvar AlteraÃ§Ãµes
+                <Save size={18} strokeWidth={2.5} /> Salvar Alterações
               </>
             )}
           </button>
@@ -687,7 +687,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       </header>
 
       <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] overflow-hidden flex flex-col md:flex-row shadow-[0_20px_40px_rgba(0,0,0,0.5)] backdrop-blur-xl relative z-10">
-        <div className="w-full md:w-80 flex-shrink-0 bg-white/[0.01] border-b md:border-b-0 md:border-r border-white/[0.05] p-6 space-y-3">
+        <div className="w-full md:w-80 flex-shrink-0 bg-white/[0.01] border-b md:border-b-0 md:border-r border-white/[0.05] p-4 sm:p-5 space-y-3">
           {abas.map((aba) => {
             const Icon = aba.icon
             const ativo = abaAtiva === aba.id
@@ -726,13 +726,13 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
           })}
         </div>
 
-        <div className="flex-1 p-5 sm:p-8 sm:p-12">
+        <div className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
           {abaAtiva === 'empresa' && (
             <div className="space-y-8 max-w-3xl animate-fade-in-up">
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Dados da Empresa</h2>
                 <p className="text-sm text-neutral-500 font-medium">
-                  InformaÃ§Ãµes comerciais que aparecerÃ£o nos relatÃ³rios e rodapÃ©s.
+                  Informações comerciais que aparecerão nos relatórios e rodapés.
                 </p>
               </div>
 
@@ -787,7 +787,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
                 <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    EndereÃ§o Completo
+                    Endereço Completo
                   </label>
                   <input
                     type="text"
@@ -805,18 +805,18 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Portal Wi-Fi e Ofertas</h2>
                 <p className="text-sm text-neutral-500 font-medium">
-                  Edite aparÃªncia, tempos do portal e preÃ§os padrÃ£o da landing.
+                  Edite aparência, tempos do portal e preços padrão da landing.
                 </p>
               </div>
 
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    TÃ­tulo do Portal
+                    Título do Portal
                   </label>
                   <input
                     type="text"
-                    placeholder="Ex: Wi-Fi GrÃ¡tis - Minha Empresa"
+                    placeholder="Ex: Wi-Fi Grátis - Minha Empresa"
                     value={form.titulo_portal}
                     onChange={(e) => setForm({ ...form, titulo_portal: e.target.value })}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
@@ -838,7 +838,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    Cor Principal (BotÃµes e Destaques)
+                    Cor Principal (Botões e Destaques)
                   </label>
                   <div className="flex items-center gap-5">
                     <div className="relative w-14 h-14 rounded-2xl overflow-hidden border border-white/[0.1] shadow-inner flex-shrink-0 bg-[#050505]">
@@ -859,7 +859,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                 </div>
               </div>
 
-              {/*AdiÃ§ao de imagem*/}
+              {/*Adiçao de imagem*/}
               <div className="pt-4 border-t border-white/[0.05]">
   <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Imagem lateral do Hero</h3>
 
@@ -911,18 +911,18 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
         </div>
 
         <p className="text-sm text-neutral-500 leading-relaxed">
-          Essa Ã© a imagem lateral da landing principal. No prÃ³ximo CRUD de cidades, cada cidade tambÃ©m poderÃ¡ ter a prÃ³pria imagem.
+          Essa é a imagem lateral da landing principal. No próximo CRUD de cidades, cada cidade também poderá ter a própria imagem.
         </p>
       </div>
     </div>
   </div>
 </div>
 
-{/*ResponsÃ¡vel por criar a seleÃ§Ã£o do estilo do titulo*/}
+{/*Responsável por criar a seleção do estilo do titulo*/}
 
 <div className="pt-4 border-t border-white/[0.05]">
   <h3 className="text-lg font-bold text-white mb-6 tracking-tight">
-    TÃ­tulo e subtÃ­tulo do Hero
+    Título e subtítulo do Hero
   </h3>
 
   <div className="grid grid-cols-1 gap-4">
@@ -931,7 +931,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       value={form.hero_titulo_linha_1_padrao}
       onChange={(e) => setForm({ ...form, hero_titulo_linha_1_padrao: e.target.value })}
       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
-      placeholder="TÃ­tulo 01 - branco"
+      placeholder="Título 01 - branco"
     />
 
     <input
@@ -939,13 +939,13 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       value={form.hero_titulo_linha_2_padrao}
       onChange={(e) => setForm({ ...form, hero_titulo_linha_2_padrao: e.target.value })}
       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
-      placeholder="TÃ­tulo 02"
+      placeholder="Título 02"
     />
 
 
 <div>
   <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
-    Estilo do TÃ­tulo 02
+    Estilo do Título 02
   </label>
 
   <select
@@ -966,7 +966,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       value={form.hero_titulo_linha_3_padrao}
       onChange={(e) => setForm({ ...form, hero_titulo_linha_3_padrao: e.target.value })}
       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
-      placeholder="TÃ­tulo 03 - branco"
+      placeholder="Título 03 - branco"
     />
 
     <textarea
@@ -974,7 +974,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       value={form.hero_subtitulo_linha_1_padrao}
       onChange={(e) => setForm({ ...form, hero_subtitulo_linha_1_padrao: e.target.value })}
       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white resize-none"
-      placeholder="SubtÃ­tulo 01 - branco sÃ³lido"
+      placeholder="Subtítulo 01 - branco sólido"
     />
 
     <textarea
@@ -982,7 +982,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       value={form.hero_subtitulo_linha_2_padrao}
       onChange={(e) => setForm({ ...form, hero_subtitulo_linha_2_padrao: e.target.value })}
       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white resize-none"
-      placeholder="SubtÃ­tulo 02 - branco com transparÃªncia"
+      placeholder="Subtítulo 02 - branco com transparência"
     />
   </div>
 </div>
@@ -990,10 +990,10 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
               <div className="pt-4 border-t border-white/[0.05]">
                 <h3 className="text-lg font-bold text-white mb-2 tracking-tight">
-                  IntegraÃ§Ãµes da LP nativa
+                  Integrações da LP nativa
                 </h3>
                 <p className="text-sm text-neutral-500 mb-6">
-                  IDs pÃºblicos usados em www.nexawi.com.br para campanhas de Meta, Google Ads, GA4 e GTM.
+                  IDs públicos usados em www.nexawi.com.br para campanhas de Meta, Google Ads, GA4 e GTM.
                 </p>
 
                 <TrackingStatusCards form={form} />
@@ -1060,7 +1060,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                       value={form.lp_google_ads_conversion_label}
                       onChange={(e) => setForm({ ...form, lp_google_ads_conversion_label: e.target.value })}
                       className="w-full bg-[#0a0a0a] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white"
-                      placeholder="Label da conversÃ£o de clique/lead"
+                      placeholder="Label da conversão de clique/lead"
                     />
                   </div>
                 </div>
@@ -1069,7 +1069,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                   <label className="flex items-center justify-between gap-4 rounded-2xl border border-white/[0.05] bg-[#050505] p-5 cursor-pointer">
                     <span>
                       <span className="block text-sm font-bold text-white">Preparar Meta Conversions API</span>
-                      <span className="block text-xs text-neutral-500 mt-1">Flag operacional; token server-side serÃ¡ configurado em etapa segura.</span>
+                      <span className="block text-xs text-neutral-500 mt-1">Flag operacional; token server-side será configurado em etapa segura.</span>
                     </span>
                     <input
                       type="checkbox"
@@ -1100,7 +1100,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   <InputTempo
-                    label="Tempo de acesso Ã  internet"
+                    label="Tempo de acesso à internet"
                     prefix="portal_tempo_acesso"
                     form={form}
                     setForm={setForm}
@@ -1112,7 +1112,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                     setForm={setForm}
                   />
                   <InputTempo
-                    label="Intervalo para novo anÃºncio"
+                    label="Intervalo para novo anúncio"
                     prefix="portal_intervalo_anuncio"
                     form={form}
                     setForm={setForm}
@@ -1121,11 +1121,11 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
               </div>
 
               <div className="pt-4 border-t border-white/[0.05]">
-                <h3 className="text-lg font-bold text-white mb-6 tracking-tight">PreÃ§os PadrÃ£o da Landing</h3>
+                <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Preços Padrão da Landing</h3>
 
                 <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
                   <InputPreco
-                    label="Plano BÃ¡sico"
+                    label="Plano Básico"
                     mensalKey="preco_basico_mensal_padrao"
                     anualKey="preco_basico_anual_padrao"
                     form={form}
@@ -1150,20 +1150,20 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
 
               <div className="pt-4 border-t border-white/[0.05]">
-  <h3 className="text-lg font-bold text-white mb-6 tracking-tight">PreÃ§o Ã‚ncora</h3>
+  <h3 className="text-lg font-bold text-white mb-6 tracking-tight">Preço Âncora</h3>
 
   <div
     onClick={() =>
       setForm({ ...form, mostrar_preco_ancora_padrao: !form.mostrar_preco_ancora_padrao })
     }
-    className="mobile-tight-card flex flex-col gap-4 p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group mb-6 sm:flex-row sm:items-center sm:justify-between"
+    className="mobile-tight-card flex flex-col gap-4 p-4 sm:p-5 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group mb-6 sm:flex-row sm:items-center sm:justify-between"
   >
     <div>
       <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
-        Exibir preÃ§o Ã¢ncora na landing
+        Exibir preço âncora na landing
       </p>
       <p className="text-sm text-neutral-500 mt-1 font-medium">
-        Ative para mostrar o preÃ§o riscado acima do valor principal
+        Ative para mostrar o preço riscado acima do valor principal
       </p>
     </div>
 
@@ -1182,21 +1182,21 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
 
   <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
     <InputPreco
-      label="Ã‚ncora Plano BÃ¡sico"
+      label="Âncora Plano Básico"
       mensalKey="preco_ancora_basico_mensal_padrao"
       anualKey="preco_ancora_basico_anual_padrao"
       form={form}
       setForm={setForm}
     />
     <InputPreco
-      label="Ã‚ncora Plano Comercial"
+      label="Âncora Plano Comercial"
       mensalKey="preco_ancora_comercial_mensal_padrao"
       anualKey="preco_ancora_comercial_anual_padrao"
       form={form}
       setForm={setForm}
     />
     <InputPreco
-      label="Ã‚ncora Plano VIP / Exclusividade"
+      label="Âncora Plano VIP / Exclusividade"
       mensalKey="preco_ancora_vip_mensal_padrao"
       anualKey="preco_ancora_vip_anual_padrao"
       form={form}
@@ -1215,7 +1215,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Termos de Uso e LGPD</h2>
                 <p className="text-sm text-neutral-500 font-medium">
-                  Defina o texto legal que os usuÃ¡rios precisam aceitar para usar a rede.
+                  Defina o texto legal que os usuários precisam aceitar para usar a rede.
                 </p>
               </div>
 
@@ -1227,7 +1227,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                   value={form.texto_lgpd}
                   onChange={(e) => setForm({ ...form, texto_lgpd: e.target.value })}
                   className="w-full flex-1 min-h-[400px] bg-[#050505] border border-white/[0.05] rounded-2xl px-6 py-6 text-sm text-neutral-300 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all resize-none custom-scrollbar leading-relaxed shadow-inner"
-                  placeholder="Insira aqui os termos de uso, polÃ­tica de privacidade e adequaÃ§Ã£o Ã  LGPD..."
+                  placeholder="Insira aqui os termos de uso, política de privacidade e adequação à LGPD..."
                 />
               </div>
             </div>
@@ -1236,9 +1236,9 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
           {abaAtiva === 'notificacoes' && (
             <div className="space-y-8 max-w-3xl animate-fade-in-up">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Alertas e NotificaÃ§Ãµes</h2>
+                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Alertas e Notificações</h2>
                 <p className="text-sm text-neutral-500 font-medium">
-                  Configure como e quando vocÃª deseja ser avisado pelo sistema.
+                  Configure como e quando você deseja ser avisado pelo sistema.
                 </p>
               </div>
 
@@ -1261,14 +1261,14 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                     onClick={() =>
                       setForm({ ...form, notificar_novos_leads: !form.notificar_novos_leads })
                     }
-                    className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
+                    className="flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
                       <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
                         Novos leads capturados
                       </p>
                       <p className="text-sm text-neutral-500 mt-1 font-medium">
-                        Receber um resumo diÃ¡rio de novos cadastros na rede
+                        Receber um resumo diário de novos cadastros na rede
                       </p>
                     </div>
                     <div
@@ -1288,14 +1288,14 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                     onClick={() =>
                       setForm({ ...form, notificar_relatorios: !form.notificar_relatorios })
                     }
-                    className="flex items-center justify-between p-6 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
+                    className="flex items-center justify-between gap-4 p-4 sm:p-5 bg-[#050505] border border-white/[0.05] rounded-2xl cursor-pointer hover:border-white/[0.1] transition-all shadow-inner group"
                   >
                     <div>
                       <p className="text-base font-bold text-white group-hover:text-[#8cf059] transition-colors tracking-tight">
-                        RelatÃ³rios automÃ¡ticos
+                        Relatórios automáticos
                       </p>
                       <p className="text-sm text-neutral-500 mt-1 font-medium">
-                        Receber relatÃ³rios de desempenho conforme o intervalo do plano
+                        Receber relatórios de desempenho conforme o intervalo do plano
                       </p>
                     </div>
                     <div
@@ -1318,7 +1318,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
           {abaAtiva === 'seguranca' && (
             <div className="space-y-8 max-w-md animate-fade-in-up">
               <div>
-                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">SeguranÃ§a da Conta</h2>
+                <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Segurança da Conta</h2>
                 <p className="text-sm text-neutral-500 font-medium">
                   Atualize sua senha de acesso ao painel administrativo.
                 </p>
@@ -1331,7 +1331,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
                   </label>
                   <input
                     type="password"
-                    placeholder="MÃ­nimo 6 caracteres"
+                    placeholder="Mínimo 6 caracteres"
                     value={novaSenha}
                     onChange={(e) => setNovaSenha(e.target.value)}
                     className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"

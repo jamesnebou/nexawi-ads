@@ -4,7 +4,7 @@
 // ============================================================
 // Aba Financeiro da dashboard NexaWi ADS.
 //
-// Agora esta tela respeita as permissÃµes retornadas pela API:
+// Agora esta tela respeita as permissões retornadas pela API:
 // - financeiro.view: permite visualizar dados
 // - financeiro.create: mostra Novo Pagamento / Registrar pagamento
 // - financeiro.update: mostra Editar
@@ -13,9 +13,9 @@
 // - financeiro.export: mostra Exportar CSV
 //
 // Importante:
-// - A seguranÃ§a real fica na API /api/admin/financeiro.
-// - Esta tela apenas melhora a experiÃªncia visual, escondendo aÃ§Ãµes
-//   que o administrador nÃ£o pode executar.
+// - A segurança real fica na API /api/admin/financeiro.
+// - Esta tela apenas melhora a experiência visual, escondendo ações
+//   que o administrador não pode executar.
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -53,25 +53,25 @@ const statusOpcoes = [
   'Pago',
   'Vencido',
   'Cancelado',
-  'Em negociaÃ§Ã£o',
+  'Em negociação',
   'Isento',
   'Estornado',
 ]
 
 const metodos = [
   'PIX',
-  'CartÃ£o de CrÃ©dito',
+  'Cartão de Crédito',
   'Boleto',
   'Dinheiro',
-  'TransferÃªncia',
+  'Transferência',
   'Outro',
 ]
 
 const periodos = [
-  { value: 'todos', label: 'Todos os perÃ­odos' },
-  { value: 'mes_atual', label: 'MÃªs atual' },
-  { value: 'ultimos_30', label: 'Ãšltimos 30 dias' },
-  { value: 'proximos_30', label: 'PrÃ³ximos 30 dias' },
+  { value: 'todos', label: 'Todos os períodos' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'ultimos_30', label: 'Últimos 30 dias' },
+  { value: 'proximos_30', label: 'Próximos 30 dias' },
 ]
 
 const permissoesIniciais = {
@@ -87,7 +87,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -107,7 +107,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -227,12 +227,12 @@ export default function Pagamentos() {
 
   function abrirModal(pagamento = null) {
     if (pagamento && !canUpdate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para editar pagamentos.')
+      toast.error('Você não tem permissão para editar pagamentos.')
       return
     }
 
     if (!pagamento && !canCreate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para criar pagamentos.')
+      toast.error('Você não tem permissão para criar pagamentos.')
       return
     }
 
@@ -282,17 +282,17 @@ export default function Pagamentos() {
 
   async function salvarPagamento() {
     if (pagamentoSelecionado && !canUpdate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para editar pagamentos.')
+      toast.error('Você não tem permissão para editar pagamentos.')
       return
     }
 
     if (!pagamentoSelecionado && !canCreate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para criar pagamentos.')
+      toast.error('Você não tem permissão para criar pagamentos.')
       return
     }
 
     if (!form.cliente_id || !form.valor || !form.data_vencimento) {
-      toast.error('Preencha os campos obrigatÃ³rios.')
+      toast.error('Preencha os campos obrigatórios.')
       return
     }
 
@@ -345,7 +345,7 @@ export default function Pagamentos() {
 
   function solicitarExclusaoPagamento(id) {
     if (!canDelete) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para excluir pagamentos.')
+      toast.error('Você não tem permissão para excluir pagamentos.')
       return
     }
 
@@ -354,7 +354,7 @@ export default function Pagamentos() {
 
   async function excluirPagamento(id) {
     if (!canDelete) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para excluir pagamentos.')
+      toast.error('Você não tem permissão para excluir pagamentos.')
       return
     }
 
@@ -367,7 +367,7 @@ export default function Pagamentos() {
         },
       })
 
-      toast.success('Pagamento excluÃ­do!')
+      toast.success('Pagamento excluído!')
       setConfirmDelete(null)
       buscarDados()
     } catch (error) {
@@ -378,7 +378,7 @@ export default function Pagamentos() {
 
   async function marcarComoPago(id) {
     if (!canMarkPaid) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para marcar pagamentos como pago.')
+      toast.error('Você não tem permissão para marcar pagamentos como pago.')
       return
     }
 
@@ -402,7 +402,7 @@ export default function Pagamentos() {
 
   function exportarCSV() {
     if (!canExport) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar financeiro.')
+      toast.error('Você não tem permissão para exportar financeiro.')
       return
     }
 
@@ -418,9 +418,9 @@ export default function Pagamentos() {
         'Valor',
         'Vencimento',
         'Data de Pagamento',
-        'MÃ©todo',
+        'Método',
         'Status',
-        'ObservaÃ§Ã£o',
+        'Observação',
       ],
       ...pagamentos.map((p) => [
         p.clientes?.nome || '',
@@ -459,7 +459,7 @@ export default function Pagamentos() {
     }).format(Number(v || 0))
 
   function formatarData(data) {
-    if (!data) return 'â€”'
+    if (!data) return '—'
     return new Date(`${data}T12:00:00`).toLocaleDateString('pt-BR')
   }
 
@@ -471,7 +471,7 @@ export default function Pagamentos() {
         return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
       case 'Vencido':
         return 'bg-red-500/10 text-red-400 border border-red-500/20'
-      case 'Em negociaÃ§Ã£o':
+      case 'Em negociação':
         return 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
       case 'Cancelado':
         return 'bg-white/[0.05] text-neutral-400 border border-white/[0.1]'
@@ -492,7 +492,7 @@ export default function Pagamentos() {
         return <Clock size={14} />
       case 'Vencido':
         return <AlertCircle size={14} />
-      case 'Em negociaÃ§Ã£o':
+      case 'Em negociação':
         return <ShieldAlert size={14} />
       default:
         return null
@@ -501,7 +501,7 @@ export default function Pagamentos() {
 
   async function criarAssinaturaAsaas(assinatura) {
     if (!canCreate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para criar cobranÃ§a recorrente.')
+      toast.error('Você não tem permissão para criar cobrança recorrente.')
       return
     }
 
@@ -542,13 +542,13 @@ export default function Pagamentos() {
       em_prazo: 'Em prazo',
       pendente: 'Pendente',
       inadimplente: 'Inadimplente',
-      sem_cobranca: 'Sem cobranÃ§a',
+      sem_cobranca: 'Sem cobrança',
       ativo: 'Ativa',
       pausado: 'Pausada',
       bloqueado: 'Bloqueada',
     }
 
-    return labels[status] || status || 'â€”'
+    return labels[status] || status || '—'
   }
 
   function corStatusOperacional(status) {
@@ -567,7 +567,7 @@ export default function Pagamentos() {
 
   const cards = [
     {
-      label: 'Recebido no mÃªs',
+      label: 'Recebido no mês',
       valor: fmt(metricas.recebidoMes),
       sub: `Hoje: ${fmt(metricas.recebidoHoje)}`,
       icon: Wallet,
@@ -575,7 +575,7 @@ export default function Pagamentos() {
       bg: 'bg-[#6be12f]/20',
     },
     {
-      label: 'Previsto no mÃªs',
+      label: 'Previsto no mês',
       valor: fmt(metricas.previstoMes),
       sub: 'Baseado nos vencimentos',
       icon: CalendarDays,
@@ -583,9 +583,9 @@ export default function Pagamentos() {
       bg: 'bg-blue-500/20',
     },
     {
-      label: 'Pendente no mÃªs',
+      label: 'Pendente no mês',
       valor: fmt(metricas.pendenteMes),
-      sub: 'Ainda nÃ£o recebido',
+      sub: 'Ainda não recebido',
       icon: Clock,
       text: 'text-yellow-400',
       bg: 'bg-yellow-500/20',
@@ -607,9 +607,9 @@ export default function Pagamentos() {
       bg: 'bg-purple-500/20',
     },
     {
-      label: 'Ticket mÃ©dio',
+      label: 'Ticket médio',
       valor: fmt(metricas.ticketMedio),
-      sub: 'MÃ©dia dos planos ativos',
+      sub: 'Média dos planos ativos',
       icon: Users,
       text: 'text-cyan-400',
       bg: 'bg-cyan-500/20',
@@ -652,13 +652,13 @@ export default function Pagamentos() {
               Financeiro
             </h1>
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              Controle premium de receita, mensalidades, inadimplÃªncia e MRR
+              Controle premium de receita, mensalidades, inadimplência e MRR
             </p>
 
             {readOnlyMode && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: vocÃª pode visualizar, mas nÃ£o alterar financeiro.
+                Modo leitura: você pode visualizar, mas não alterar financeiro.
               </div>
             )}
           </div>
@@ -696,10 +696,10 @@ export default function Pagamentos() {
 
               <div>
                 <h2 className="text-lg font-extrabold text-white tracking-tight">
-                  IntegraÃ§Ã£o Asaas
+                  Integração Asaas
                 </h2>
                 <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
-                  CobranÃ§a recorrente por PIX, boleto ou cartÃ£o, com webhook para atualizar pagamentos e inadimplÃªncia.
+                  Cobrança recorrente por PIX, boleto ou cartão, com webhook para atualizar pagamentos e inadimplência.
                 </p>
               </div>
             </div>
@@ -797,7 +797,7 @@ export default function Pagamentos() {
                 Assinaturas SaaS
               </h2>
               <p className="text-xs text-neutral-500 mt-1">
-                Status de pagamento, vigÃªncia financeira e criativos contratados por plano.
+                Status de pagamento, vigência financeira e criativos contratados por plano.
               </p>
             </div>
 
@@ -818,8 +818,8 @@ export default function Pagamentos() {
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Cliente</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Plano</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Pagamento</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">OperaÃ§Ã£o</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">VigÃªncia</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Operação</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vigência</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Criativos</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Vencido</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-4 px-6 whitespace-nowrap">Gateway</th>
@@ -867,7 +867,7 @@ export default function Pagamentos() {
                             {formatarData(assinatura.financeiro?.vencimento_bloqueio || assinatura.financeiro?.proximo_vencimento)}
                           </div>
                           <div className="text-[11px] text-neutral-500">
-                            {assinatura.status_pagamento === 'inadimplente' ? 'VigÃªncia vencida' : 'VÃ¡lido atÃ© o vencimento'}
+                            {assinatura.status_pagamento === 'inadimplente' ? 'Vigência vencida' : 'Válido até o vencimento'}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-neutral-300 whitespace-nowrap">
@@ -901,7 +901,7 @@ export default function Pagamentos() {
                                   className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-2 text-xs font-black text-neutral-300 hover:text-white hover:bg-white/[0.06] transition-all"
                                 >
                                   <ExternalLink size={14} />
-                                  Abrir cobranÃ§a
+                                  Abrir cobrança
                                 </a>
                               ) : (
                                 <span className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] px-4 py-2 text-xs font-black text-neutral-500">
@@ -940,7 +940,7 @@ export default function Pagamentos() {
             <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-600 group-focus-within/input:text-[#6be12f] transition-colors duration-300" />
             <input
               type="text"
-              placeholder="Buscar por cliente, plano, valor, mÃ©todo..."
+              placeholder="Buscar por cliente, plano, valor, método..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="w-full bg-[#0a0a0a] backdrop-blur-xl border border-white/[0.05] rounded-2xl pl-11 pr-5 py-3.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner"
@@ -1005,7 +1005,7 @@ export default function Pagamentos() {
               Nenhum pagamento encontrado
             </h3>
             <p className="text-sm text-neutral-500 mb-8 max-w-md">
-              Ajuste os filtros ou registre uma nova cobranÃ§a para comeÃ§ar.
+              Ajuste os filtros ou registre uma nova cobrança para começar.
             </p>
 
             {canCreate && (
@@ -1024,16 +1024,16 @@ export default function Pagamentos() {
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.05] bg-white/[0.01]">
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">CobranÃ§a</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Cobrança</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Cliente</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Plano</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Valor</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Vencimento</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Pagamento</th>
-                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">MÃ©todo</th>
+                    <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Método</th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 whitespace-nowrap">Status</th>
                     {showActionsColumn && (
-                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right whitespace-nowrap">AÃ§Ãµes</th>
+                      <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right whitespace-nowrap">Ações</th>
                     )}
                   </tr>
                 </thead>
@@ -1068,7 +1068,7 @@ export default function Pagamentos() {
                               {p.clientes?.nome?.charAt(0).toUpperCase() || '?'}
                             </div>
                             <span className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors truncate">
-                              {p.clientes?.nome || 'â€”'}
+                              {p.clientes?.nome || '—'}
                             </span>
                           </div>
                         </td>
@@ -1094,7 +1094,7 @@ export default function Pagamentos() {
                         </td>
 
                         <td className="px-6 py-5 text-sm text-neutral-400 font-medium whitespace-nowrap">
-                          {p.metodo_pagamento || 'â€”'}
+                          {p.metodo_pagamento || '—'}
                         </td>
 
                         <td className="px-6 py-5 whitespace-nowrap">
@@ -1158,7 +1158,7 @@ export default function Pagamentos() {
                   {pagamentoSelecionado ? 'Editar Pagamento' : 'Novo Pagamento'}
                 </h2>
                 <p className="text-sm text-neutral-500 mt-1.5 font-medium">
-                  Preencha os dados da cobranÃ§a ou transaÃ§Ã£o financeira
+                  Preencha os dados da cobrança ou transação financeira
                 </p>
               </div>
 
@@ -1274,7 +1274,7 @@ export default function Pagamentos() {
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    MÃ©todo de Pagamento
+                    Método de Pagamento
                   </label>
 
                   <div className="relative group/select">
@@ -1330,11 +1330,11 @@ export default function Pagamentos() {
 
                 <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                    ObservaÃ§Ã£o interna
+                    Observação interna
                   </label>
 
                   <textarea
-                    placeholder="AnotaÃ§Ãµes sobre cobranÃ§a, negociaÃ§Ã£o, atraso, desconto ou condiÃ§Ã£o especial..."
+                    placeholder="Anotações sobre cobrança, negociação, atraso, desconto ou condição especial..."
                     value={form.observacao}
                     onChange={(e) => setForm({ ...form, observacao: e.target.value })}
                     rows={3}
@@ -1362,7 +1362,7 @@ export default function Pagamentos() {
                 ) : (
                   <>
                     <Check size={18} strokeWidth={2.5} />
-                    {pagamentoSelecionado ? 'Salvar AlteraÃ§Ãµes' : 'Registrar Pagamento'}
+                    {pagamentoSelecionado ? 'Salvar Alterações' : 'Registrar Pagamento'}
                   </>
                 )}
               </button>
@@ -1383,7 +1383,7 @@ export default function Pagamentos() {
             </h2>
 
             <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
-              Esta aÃ§Ã£o nÃ£o pode ser desfeita e o registro financeiro serÃ¡ apagado permanentemente.
+              Esta ação não pode ser desfeita e o registro financeiro será apagado permanentemente.
             </p>
 
             <div className="flex gap-4">

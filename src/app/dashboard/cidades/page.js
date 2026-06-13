@@ -4,16 +4,16 @@
 // ============================================================
 // Aba Cidades da dashboard NexaWi ADS.
 //
-// Agora esta tela respeita as permissÃµes retornadas pela API:
+// Agora esta tela respeita as permissões retornadas pela API:
 // - configuracoes.view: permite visualizar cidades
 // - configuracoes.update: mostra Nova cidade, Editar, Ativar/Inativar,
 //   upload de imagem e Salvar cidade
 //
 // Importante:
-// - A seguranÃ§a real fica nas APIs:
+// - A segurança real fica nas APIs:
 //   /api/admin/cidades
 //   /api/admin/cidades/upload-hero-url
-// - Esta tela nÃ£o consulta mais landing_pages_cidades direto pelo navegador.
+// - Esta tela não consulta mais landing_pages_cidades direto pelo navegador.
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
@@ -135,7 +135,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -155,7 +155,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -364,7 +364,7 @@ export default function DashboardCidadesPage() {
     if (!canUpdate) {
       setFeedback({
         type: 'error',
-        message: 'VocÃª nÃ£o tem permissÃ£o para criar cidades.',
+        message: 'Você não tem permissão para criar cidades.',
       })
       return
     }
@@ -383,7 +383,7 @@ export default function DashboardCidadesPage() {
     if (!canUpdate) {
       setFeedback({
         type: 'error',
-        message: 'VocÃª nÃ£o tem permissÃ£o para editar cidades.',
+        message: 'Você não tem permissão para editar cidades.',
       })
       return
     }
@@ -436,7 +436,7 @@ export default function DashboardCidadesPage() {
     if (!canUpdate) {
       setFeedback({
         type: 'error',
-        message: 'VocÃª nÃ£o tem permissÃ£o para ativar ou inativar cidades.',
+        message: 'Você não tem permissão para ativar ou inativar cidades.',
       })
       return
     }
@@ -479,7 +479,7 @@ export default function DashboardCidadesPage() {
     if (!canUpdate) {
       setFeedback({
         type: 'error',
-        message: 'VocÃª nÃ£o tem permissÃ£o para enviar imagem de cidade.',
+        message: 'Você não tem permissão para enviar imagem de cidade.',
       })
       return
     }
@@ -533,7 +533,7 @@ export default function DashboardCidadesPage() {
     if (!canUpdate) {
       setFeedback({
         type: 'error',
-        message: 'VocÃª nÃ£o tem permissÃ£o para salvar cidades.',
+        message: 'Você não tem permissão para salvar cidades.',
       })
       return
     }
@@ -545,8 +545,8 @@ export default function DashboardCidadesPage() {
       const cidadeNome = String(form.cidade_nome || '').trim()
       const slug = slugify(form.slug || cidadeNome)
 
-      if (!cidadeNome) throw new Error('Nome da cidade Ã© obrigatÃ³rio.')
-      if (!slug) throw new Error('Slug invÃ¡lido.')
+      if (!cidadeNome) throw new Error('Nome da cidade é obrigatório.')
+      if (!slug) throw new Error('Slug inválido.')
 
       const payload = {
         slug,
@@ -617,10 +617,10 @@ export default function DashboardCidadesPage() {
 
   return (
     <>
-      <main className="flex-1 p-4 sm:p-6 md:p-5 sm:p-8 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+      <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none z-0" />
 
-        <div className="relative z-10 flex flex-col gap-6 mb-8">
+        <div className="relative z-10 flex min-w-0 max-w-full flex-col gap-5 mb-8">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight">
@@ -628,13 +628,13 @@ export default function DashboardCidadesPage() {
               </h1>
 
               <p className="text-sm text-neutral-500 mt-2 font-medium">
-                Gerencie landing pages por cidade, preÃ§os, CTAs e imagem do Hero.
+                Gerencie landing pages por cidade, preços, CTAs e imagem do Hero.
               </p>
 
               {!canUpdate && (
                 <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                   <Lock size={14} className="text-neutral-500" />
-                  Modo leitura: vocÃª pode visualizar, mas nÃ£o alterar cidades.
+                  Modo leitura: você pode visualizar, mas não alterar cidades.
                 </div>
               )}
             </div>
@@ -699,7 +699,7 @@ export default function DashboardCidadesPage() {
           ) : null}
         </div>
 
-        <div className="relative z-10 rounded-[2rem] border border-white/[0.05] bg-[#0a0a0a] backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+        <div className="relative z-10 max-w-full overflow-hidden rounded-[1.5rem] sm:rounded-[2rem] border border-white/[0.05] bg-[#0a0a0a] backdrop-blur-xl shadow-[0_20px_40px_rgba(0,0,0,0.35)]">
           {loading ? (
             <div className="flex items-center justify-center py-24">
               <div className="relative w-16 h-16 flex items-center justify-center">
@@ -744,7 +744,7 @@ export default function DashboardCidadesPage() {
                   <div>Slug</div>
                   <div>Status</div>
                   <div>Plano Comercial</div>
-                  {canUpdate && <div>AÃ§Ãµes</div>}
+                  {canUpdate && <div>Ações</div>}
                 </div>
 
                 <div className="divide-y divide-white/[0.05]">
@@ -832,7 +832,7 @@ export default function DashboardCidadesPage() {
                 onClick={() => !saving && setDrawerOpen(false)}
               />
 
-              <div className="absolute inset-0 lg:pl-[240px] p-3 sm:p-5 lg:p-5 sm:p-8 flex items-center justify-center">
+              <div className="absolute inset-0 lg:pl-[240px] p-3 sm:p-5 lg:p-6 flex items-center justify-center">
                 <div className="w-full max-w-[1280px] h-[92vh] rounded-[2rem] border border-white/[0.06] bg-[#080808] shadow-[0_0_80px_rgba(0,0,0,0.75)] overflow-hidden flex flex-col">
                   <div className="shrink-0 border-b border-white/[0.06] bg-[#080808]/95 backdrop-blur-xl px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
                     <div>
@@ -841,7 +841,7 @@ export default function DashboardCidadesPage() {
                       </h2>
 
                       <p className="text-sm text-neutral-500 mt-1">
-                        Central premium para configurar pÃ¡ginas por cidade.
+                        Central premium para configurar páginas por cidade.
                       </p>
                     </div>
 
@@ -855,12 +855,12 @@ export default function DashboardCidadesPage() {
                   </div>
 
                   <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="p-4 sm:p-6 lg:p-5 sm:p-8">
+                    <div className="p-4 sm:p-5 lg:p-6">
                       <div className="grid grid-cols-1 xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
                         <div className="space-y-6">
                           <SectionCard
                             icon={MapPin}
-                            title="IdentificaÃ§Ã£o da cidade"
+                            title="Identificação da cidade"
                             subtitle="Nome, slug e status"
                           >
                             <div className="grid grid-cols-1 gap-4">
@@ -911,8 +911,8 @@ export default function DashboardCidadesPage() {
 
                           <SectionCard
                             icon={Megaphone}
-                            title="Contato e observaÃ§Ã£o"
-                            subtitle="WhatsApp da cidade e observaÃ§Ã£o de preÃ§o"
+                            title="Contato e observação"
+                            subtitle="WhatsApp da cidade e observação de preço"
                           >
                             <div className="grid grid-cols-1 gap-4">
                               <TextInput
@@ -927,7 +927,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <TextArea
-                                label="ObservaÃ§Ã£o dos preÃ§os"
+                                label="Observação dos preços"
                                 value={form.observacao_precos}
                                 disabled={!canUpdate}
                                 onChange={(value) =>
@@ -998,7 +998,7 @@ export default function DashboardCidadesPage() {
                           >
                             <div className="grid grid-cols-1 gap-4">
                               <TextInput
-                                label="TÃ­tulo 01"
+                                label="Título 01"
                                 value={form.hero_titulo_linha_1}
                                 disabled={!canUpdate}
                                 placeholder="Linha branca"
@@ -1008,7 +1008,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <TextInput
-                                label="TÃ­tulo 02"
+                                label="Título 02"
                                 value={form.hero_titulo_linha_2}
                                 disabled={!canUpdate}
                                 placeholder="Linha com destaque verde"
@@ -1019,7 +1019,7 @@ export default function DashboardCidadesPage() {
 
                               <div>
                                 <label className="block text-[11px] font-bold text-neutral-500 mb-2 uppercase tracking-widest">
-                                  Estilo do TÃ­tulo 02
+                                  Estilo do Título 02
                                 </label>
 
                                 <select
@@ -1039,7 +1039,7 @@ export default function DashboardCidadesPage() {
                               </div>
 
                               <TextInput
-                                label="TÃ­tulo 03"
+                                label="Título 03"
                                 value={form.hero_titulo_linha_3}
                                 disabled={!canUpdate}
                                 placeholder="Linha branca"
@@ -1049,7 +1049,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <TextArea
-                                label="SubtÃ­tulo 01"
+                                label="Subtítulo 01"
                                 value={form.hero_subtitulo_linha_1}
                                 disabled={!canUpdate}
                                 rows={3}
@@ -1059,7 +1059,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <TextArea
-                                label="SubtÃ­tulo 02"
+                                label="Subtítulo 02"
                                 value={form.hero_subtitulo_linha_2}
                                 disabled={!canUpdate}
                                 rows={3}
@@ -1099,7 +1099,7 @@ export default function DashboardCidadesPage() {
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <TextInput
-                                  label="CTA primÃ¡ria"
+                                  label="CTA primária"
                                   value={form.cta_primaria}
                                   disabled={!canUpdate}
                                   onChange={(value) =>
@@ -1108,7 +1108,7 @@ export default function DashboardCidadesPage() {
                                 />
 
                                 <TextInput
-                                  label="CTA secundÃ¡ria"
+                                  label="CTA secundária"
                                   value={form.cta_secundaria}
                                   disabled={!canUpdate}
                                   onChange={(value) =>
@@ -1121,12 +1121,12 @@ export default function DashboardCidadesPage() {
 
                           <SectionCard
                             icon={BadgeDollarSign}
-                            title="PreÃ§os da cidade"
-                            subtitle="Mensal, anual e Ã¢ncora"
+                            title="Preços da cidade"
+                            subtitle="Mensal, anual e âncora"
                           >
                             <div className="grid grid-cols-1 gap-4">
                               <PriceInputs
-                                label="Plano BÃ¡sico"
+                                label="Plano Básico"
                                 mensalKey="preco_basico_mensal"
                                 anualKey="preco_basico_anual"
                                 form={form}
@@ -1165,11 +1165,11 @@ export default function DashboardCidadesPage() {
                               >
                                 <div>
                                   <p className="text-base font-bold text-white">
-                                    PreÃ§o Ã¢ncora
+                                    Preço âncora
                                   </p>
 
                                   <p className="text-sm text-neutral-500 mt-1">
-                                    Ative para mostrar o preÃ§o riscado nessa cidade.
+                                    Ative para mostrar o preço riscado nessa cidade.
                                   </p>
                                 </div>
 
@@ -1189,7 +1189,7 @@ export default function DashboardCidadesPage() {
                               </button>
 
                               <PriceInputs
-                                label="Ã‚ncora Plano BÃ¡sico"
+                                label="Âncora Plano Básico"
                                 mensalKey="preco_ancora_basico_mensal"
                                 anualKey="preco_ancora_basico_anual"
                                 form={form}
@@ -1198,7 +1198,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <PriceInputs
-                                label="Ã‚ncora Plano Comercial"
+                                label="Âncora Plano Comercial"
                                 mensalKey="preco_ancora_comercial_mensal"
                                 anualKey="preco_ancora_comercial_anual"
                                 form={form}
@@ -1207,7 +1207,7 @@ export default function DashboardCidadesPage() {
                               />
 
                               <PriceInputs
-                                label="Ã‚ncora Plano VIP / Exclusividade"
+                                label="Âncora Plano VIP / Exclusividade"
                                 mensalKey="preco_ancora_vip_mensal"
                                 anualKey="preco_ancora_vip_anual"
                                 form={form}

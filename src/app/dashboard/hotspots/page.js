@@ -827,7 +827,7 @@ export default function HotspotsPro() {
                       <MiniMetric
                         icon={Gauge}
                         label="Velocidade"
-                        value={policy ?`${policy.download_limit || '10M'} / ${policy.upload_limit || '3M'}` : 'â€”'}
+                        value={policy ?`${policy.download_limit || '10M'} / ${policy.upload_limit || '3M'}` : '—'}
                       />
                     </div>
 

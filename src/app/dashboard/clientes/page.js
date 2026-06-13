@@ -4,20 +4,20 @@
 // ============================================================
 // Aba Clientes da dashboard NexaWi ADS.
 //
-// Agora esta tela respeita as permissÃµes retornadas pela API:
+// Agora esta tela respeita as permissões retornadas pela API:
 // - clientes.view: permite visualizar a lista
-// - clientes.create: mostra botÃ£o Novo Cliente e permite cadastrar
-// - clientes.update: mostra botÃ£o Editar e permite salvar alteraÃ§Ãµes
-// - clientes.delete: mostra botÃ£o Excluir e permite abrir confirmaÃ§Ã£o
-// - clientes.export: reservado para exportaÃ§Ã£o futura
+// - clientes.create: mostra botão Novo Cliente e permite cadastrar
+// - clientes.update: mostra botão Editar e permite salvar alterações
+// - clientes.delete: mostra botão Excluir e permite abrir confirmação
+// - clientes.export: reservado para exportação futura
 //
-// Agora tambÃ©m possui:
-// - Status de onboarding/implantaÃ§Ã£o
+// Agora também possui:
+// - Status de onboarding/implantação
 // - Checklist interno de setup
-// - Cliente travado por pendÃªncia
-// - ResponsÃ¡vel interno pela implantaÃ§Ã£o
+// - Cliente travado por pendência
+// - Responsável interno pela implantação
 // - Cards operacionais de acompanhamento
-// - BotÃ£o para gerar contrato automÃ¡tico do cliente
+// - Botão para gerar contrato automático do cliente
 // ============================================================
 
 import { useCallback, useEffect, useState } from 'react'
@@ -98,7 +98,7 @@ const checklistLabels = [
   { key: 'dados_empresa_recebidos', label: 'Dados da empresa recebidos' },
   { key: 'criativo_recebido', label: 'Criativo recebido' },
   { key: 'hotspot_vinculado', label: 'Hotspot vinculado' },
-  { key: 'anuncio_criado', label: 'AnÃºncio criado' },
+  { key: 'anuncio_criado', label: 'Anúncio criado' },
   { key: 'portal_testado', label: 'Portal testado' },
   { key: 'cliente_liberado', label: 'Cliente liberado' },
 ]
@@ -160,7 +160,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -180,7 +180,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -301,7 +301,7 @@ export default function Clientes() {
     const numeros = valor.replace(/\D/g, '')
 
     if (numeros.length > 0 && numeros.length !== 11 && numeros.length !== 14) {
-      return 'CPF deve ter 11 dÃ­gitos ou CNPJ 14 dÃ­gitos.'
+      return 'CPF deve ter 11 dígitos ou CNPJ 14 dígitos.'
     }
 
     return ''
@@ -311,7 +311,7 @@ export default function Clientes() {
     const numeros = valor.replace(/\D/g, '')
 
     if (numeros.length > 0 && numeros.length < 10) {
-      return 'Telefone invÃ¡lido. Inclua o DDD.'
+      return 'Telefone inválido. Inclua o DDD.'
     }
 
     return ''
@@ -336,11 +336,11 @@ export default function Clientes() {
       newValue = value.replace(/\D/g, '').slice(0, 11)
       setTelefoneError(validarTelefone(newValue))
     } else if (name === 'nome') {
-      setNomeEmpresarioError(validarNome(newValue, 'Nome do empresÃ¡rio'))
+      setNomeEmpresarioError(validarNome(newValue, 'Nome do empresário'))
     } else if (name === 'nome_empresa') {
       setNomeEmpresaError(validarNome(newValue, 'Nome da empresa'))
     } else if (name === 'nome_responsavel') {
-      setNomeResponsavelError(validarNome(newValue, 'Nome do responsÃ¡vel'))
+      setNomeResponsavelError(validarNome(newValue, 'Nome do responsável'))
     }
 
     if (name === 'estado') {
@@ -362,12 +362,12 @@ export default function Clientes() {
 
   function abrirModal(cliente = null) {
     if (cliente && !canUpdate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para editar clientes.')
+      toast.error('Você não tem permissão para editar clientes.')
       return
     }
 
     if (!cliente && !canCreate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para criar clientes.')
+      toast.error('Você não tem permissão para criar clientes.')
       return
     }
 
@@ -432,17 +432,17 @@ export default function Clientes() {
 
   async function salvarCliente() {
     if (clienteSelecionado && !canUpdate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para editar clientes.')
+      toast.error('Você não tem permissão para editar clientes.')
       return
     }
 
     if (!clienteSelecionado && !canCreate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para criar clientes.')
+      toast.error('Você não tem permissão para criar clientes.')
       return
     }
 
     if (cpfCnpjError || telefoneError || nomeEmpresarioError || nomeEmpresaError || nomeResponsavelError) {
-      toast.error('Corrija os erros no formulÃ¡rio antes de salvar.')
+      toast.error('Corrija os erros no formulário antes de salvar.')
       return
     }
 
@@ -454,7 +454,7 @@ export default function Clientes() {
       !form.cpf_cnpj.trim() ||
       !form.email.trim()
     ) {
-      toast.error('Preencha todos os campos obrigatÃ³rios, incluindo o E-mail.')
+      toast.error('Preencha todos os campos obrigatórios, incluindo o E-mail.')
       return
     }
 
@@ -502,7 +502,7 @@ export default function Clientes() {
 
   function solicitarExclusaoCliente(id) {
     if (!canDelete) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para excluir clientes.')
+      toast.error('Você não tem permissão para excluir clientes.')
       return
     }
 
@@ -511,7 +511,7 @@ export default function Clientes() {
 
   async function excluirCliente(id) {
     if (!canDelete) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para excluir clientes.')
+      toast.error('Você não tem permissão para excluir clientes.')
       return
     }
 
@@ -524,24 +524,24 @@ export default function Clientes() {
         },
       })
 
-      toast.success('Cliente excluÃ­do com sucesso!')
+      toast.success('Cliente excluído com sucesso!')
       setConfirmDelete(null)
       buscarDados()
     } catch (error) {
       console.error('Erro ao excluir:', error)
-      toast.error(error.message || 'Erro ao excluir cliente. Verifique se hÃ¡ dependÃªncias.')
+      toast.error(error.message || 'Erro ao excluir cliente. Verifique se há dependências.')
     }
   }
 
 
   async function resetarAcessoCliente(cliente) {
   if (!canUpdate) {
-    toast.error('VocÃª nÃ£o tem permissÃ£o para resetar acesso de clientes.')
+    toast.error('Você não tem permissão para resetar acesso de clientes.')
     return
   }
 
   if (!cliente?.id) {
-    toast.error('Cliente invÃ¡lido.')
+    toast.error('Cliente inválido.')
     return
   }
 
@@ -582,7 +582,7 @@ async function copiarAcessoCliente() {
     await navigator.clipboard.writeText(texto)
     toast.success('Acesso copiado!')
   } catch {
-    toast.error('NÃ£o foi possÃ­vel copiar automaticamente.')
+    toast.error('Não foi possível copiar automaticamente.')
   }
 }
 
@@ -597,14 +597,14 @@ async function copiarAcessoCliente() {
     {
       label: 'Em setup',
       value: resumoOnboarding.emSetup,
-      sub: 'implantaÃ§Ã£o em andamento',
+      sub: 'implantação em andamento',
       icon: Rocket,
       text: 'text-purple-400',
     },
     {
       label: 'Ativos',
       value: resumoOnboarding.ativos,
-      sub: 'liberados para operaÃ§Ã£o',
+      sub: 'liberados para operação',
       icon: CheckCircle2,
       text: 'text-[#8cf059]',
     },
@@ -618,7 +618,7 @@ async function copiarAcessoCliente() {
     {
       label: 'Travados',
       value: resumoOnboarding.travados,
-      sub: 'precisam de atenÃ§Ã£o',
+      sub: 'precisam de atenção',
       icon: AlertTriangle,
       text: 'text-red-400',
     },
@@ -657,13 +657,13 @@ async function copiarAcessoCliente() {
               Clientes
             </h1>
             <p className="text-sm text-neutral-500 mt-1.5 font-medium">
-              Gerencie sua base, contratos e implantaÃ§Ã£o dos clientes
+              Gerencie sua base, contratos e implantação dos clientes
             </p>
 
             {!canCreate && !canUpdate && !canDelete && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: vocÃª pode visualizar, mas nÃ£o alterar clientes.
+                Modo leitura: você pode visualizar, mas não alterar clientes.
               </div>
             )}
           </div>
@@ -674,7 +674,7 @@ async function copiarAcessoCliente() {
               className="w-full sm:w-auto bg-white/[0.03] hover:bg-white/[0.06] text-white font-bold py-3.5 px-6 rounded-2xl text-sm transition-all duration-300 flex items-center justify-center gap-2 border border-white/[0.08] hover:border-[#6be12f]/30 hover:text-[#8cf059]"
             >
               <FileText size={18} strokeWidth={2.5} />
-              Gerador de PÃ¡ginas
+              Gerador de Páginas
             </Link>
 
             {canCreate && (
@@ -751,8 +751,8 @@ async function copiarAcessoCliente() {
 
           <SelectFiltro value={filtroTravado} onChange={setFiltroTravado}>
             <option value="Todos" className="bg-[#0a0a0a]">Todos</option>
-            <option value="Sim" className="bg-[#0a0a0a]">SÃ³ travados</option>
-            <option value="NÃ£o" className="bg-[#0a0a0a]">NÃ£o travados</option>
+            <option value="Sim" className="bg-[#0a0a0a]">Só travados</option>
+            <option value="Não" className="bg-[#0a0a0a]">Não travados</option>
           </SelectFiltro>
         </div>
 
@@ -772,7 +772,7 @@ async function copiarAcessoCliente() {
               Nenhum cliente encontrado
             </h3>
             <p className="text-sm text-neutral-500 mb-8 max-w-md">
-              VocÃª ainda nÃ£o tem clientes cadastrados ou nenhum resultado corresponde Ã  sua busca.
+              Você ainda não tem clientes cadastrados ou nenhum resultado corresponde à sua busca.
             </p>
 
             {canCreate && (
@@ -795,23 +795,23 @@ async function copiarAcessoCliente() {
                       Empresa / Contato
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
-                      ComunicaÃ§Ã£o
+                      Comunicação
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
-                      LocalizaÃ§Ã£o
+                      Localização
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
                       Plano / Resp.
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
-                      ImplantaÃ§Ã£o
+                      Implantação
                     </th>
                     <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6">
                       Status
                     </th>
                     {showActionsColumn && (
                       <th className="text-xs font-bold text-neutral-500 uppercase tracking-widest py-5 px-6 text-right">
-                        AÃ§Ãµes
+                        Ações
                       </th>
                     )}
                   </tr>
@@ -830,11 +830,11 @@ async function copiarAcessoCliente() {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-neutral-300 group-hover:text-white transition-colors">
-                                {cliente.nome || 'â€”'}
+                                {cliente.nome || '—'}
                               </p>
                               <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1">
                                 <Building size={12} className="text-neutral-600" />
-                                {cliente.nome_empresa || 'â€”'}
+                                {cliente.nome_empresa || '—'}
                               </p>
                             </div>
                           </div>
@@ -844,12 +844,12 @@ async function copiarAcessoCliente() {
                           <div className="flex flex-col gap-2">
                             <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
                               <Phone size={14} className="text-neutral-600" />
-                              <span className="text-xs font-medium">{cliente.telefone || 'â€”'}</span>
+                              <span className="text-xs font-medium">{cliente.telefone || '—'}</span>
                             </div>
                             <div className="flex items-center gap-2.5 text-neutral-500 group-hover:text-neutral-400 transition-colors">
                               <Mail size={14} className="text-neutral-600" />
                               <span className="text-xs font-medium whitespace-nowrap" title={cliente.email}>
-                                {cliente.email || 'â€”'}
+                                {cliente.email || '—'}
                               </span>
                             </div>
                           </div>
@@ -859,11 +859,11 @@ async function copiarAcessoCliente() {
                           <div className="flex items-center gap-2.5 text-neutral-400 mb-1.5">
                             <MapPin size={14} className="text-neutral-600" />
                             <span className="text-xs font-bold">
-                              {cliente.cidade || 'â€”'}, {cliente.estado || 'â€”'}
+                              {cliente.cidade || '—'}, {cliente.estado || '—'}
                             </span>
                           </div>
                           <p className="text-xs text-neutral-600 whitespace-nowrap font-medium" title={cliente.endereco}>
-                            {cliente.endereco || 'â€”'}
+                            {cliente.endereco || '—'}
                           </p>
                         </td>
 
@@ -873,7 +873,7 @@ async function copiarAcessoCliente() {
                           </p>
                           <p className="text-xs text-neutral-500 flex items-center gap-1.5 mt-1 font-medium">
                             <User size={12} className="text-neutral-600" />
-                            {cliente.nome_responsavel || 'â€”'}
+                            {cliente.nome_responsavel || '—'}
                           </p>
                         </td>
 
@@ -892,7 +892,7 @@ async function copiarAcessoCliente() {
                             </div>
 
                             <p className="text-[11px] text-neutral-500 font-medium">
-                              {progresso.feitos}/{progresso.total} etapas Â· {cliente.onboarding_responsavel || 'Sem responsÃ¡vel'}
+                              {progresso.feitos}/{progresso.total} etapas · {cliente.onboarding_responsavel || 'Sem responsável'}
                             </p>
                           </div>
                         </td>
@@ -971,7 +971,7 @@ async function copiarAcessoCliente() {
                   {clienteSelecionado ? 'Editar Cliente' : 'Novo Cliente'}
                 </h2>
                 <p className="text-sm text-neutral-500 mt-1.5 font-medium">
-                  Preencha os dados da empresa, contato principal e implantaÃ§Ã£o
+                  Preencha os dados da empresa, contato principal e implantação
                 </p>
               </div>
               <button
@@ -991,13 +991,13 @@ async function copiarAcessoCliente() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-white">Dados do cliente</h3>
-                      <p className="text-xs text-neutral-500">InformaÃ§Ãµes comerciais e de contato</p>
+                      <p className="text-xs text-neutral-500">Informações comerciais e de contato</p>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <InputField
-                      label="EmpresÃ¡rio *"
+                      label="Empresário *"
                       name="nome"
                       value={form.nome}
                       onChange={handleChange}
@@ -1012,17 +1012,17 @@ async function copiarAcessoCliente() {
                       value={form.nome_empresa}
                       onChange={handleChange}
                       icon={Building}
-                      placeholder="Nome do negÃ³cio"
+                      placeholder="Nome do negócio"
                       error={nomeEmpresaError}
                     />
 
                     <InputField
-                      label="ResponsÃ¡vel pela venda *"
+                      label="Responsável pela venda *"
                       name="nome_responsavel"
                       value={form.nome_responsavel}
                       onChange={handleChange}
                       icon={User}
-                      placeholder="Quem fechou o negÃ³cio"
+                      placeholder="Quem fechou o negócio"
                       error={nomeResponsavelError}
                     />
 
@@ -1032,7 +1032,7 @@ async function copiarAcessoCliente() {
                       value={form.cpf_cnpj}
                       onChange={handleChange}
                       icon={CreditCard}
-                      placeholder="Apenas nÃºmeros"
+                      placeholder="Apenas números"
                       maxLength={14}
                       error={cpfCnpjError}
                     />
@@ -1053,19 +1053,19 @@ async function copiarAcessoCliente() {
                       value={form.telefone}
                       onChange={handleChange}
                       icon={Phone}
-                      placeholder="DDD + NÃºmero"
+                      placeholder="DDD + Número"
                       maxLength={11}
                       error={telefoneError}
                     />
 
                     <div className="md:col-span-2">
                       <InputField
-                        label="EndereÃ§o completo"
+                        label="Endereço completo"
                         name="endereco"
                         value={form.endereco}
                         onChange={handleChange}
                         icon={MapPin}
-                        placeholder="Rua, nÃºmero, complemento, bairro"
+                        placeholder="Rua, número, complemento, bairro"
                       />
                     </div>
 
@@ -1158,7 +1158,7 @@ async function copiarAcessoCliente() {
                       <ClipboardCheck size={18} className="text-[#6be12f]" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-white">Onboarding / ImplantaÃ§Ã£o</h3>
+                      <h3 className="text-lg font-bold text-white">Onboarding / Implantação</h3>
                       <p className="text-xs text-neutral-500">Controle interno do setup do cliente</p>
                     </div>
                   </div>
@@ -1183,7 +1183,7 @@ async function copiarAcessoCliente() {
                     </div>
 
                     <InputField
-                      label="ResponsÃ¡vel interno"
+                      label="Responsável interno"
                       name="onboarding_responsavel"
                       value={form.onboarding_responsavel}
                       onChange={handleChange}
@@ -1205,7 +1205,7 @@ async function copiarAcessoCliente() {
                           Cliente travado
                         </p>
                         <p className="text-xs text-neutral-500 mt-1">
-                          Marque quando a implantaÃ§Ã£o estiver parada por pendÃªncia.
+                          Marque quando a implantação estiver parada por pendência.
                         </p>
                       </div>
 
@@ -1224,7 +1224,7 @@ async function copiarAcessoCliente() {
                           value={form.onboarding_motivo_trava}
                           onChange={handleChange}
                           rows={3}
-                          placeholder="Ex: Cliente ainda nÃ£o enviou arte, pagamento nÃ£o confirmado, hotspot pendente..."
+                          placeholder="Ex: Cliente ainda não enviou arte, pagamento não confirmado, hotspot pendente..."
                           className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner resize-none"
                         />
                       </div>
@@ -1233,7 +1233,7 @@ async function copiarAcessoCliente() {
                     <div>
                       <div className="flex items-center justify-between mb-4">
                         <label className="block text-xs font-bold text-neutral-500 uppercase tracking-widest">
-                          Checklist de implantaÃ§Ã£o
+                          Checklist de implantação
                         </label>
 
                         <span className="text-xs text-neutral-500 font-bold">
@@ -1271,14 +1271,14 @@ async function copiarAcessoCliente() {
 
                     <div>
                       <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                        ObservaÃ§Ã£o interna
+                        Observação interna
                       </label>
                       <textarea
                         name="onboarding_observacao"
                         value={form.onboarding_observacao}
                         onChange={handleChange}
                         rows={4}
-                        placeholder="Notas internas sobre implantaÃ§Ã£o, pendÃªncias, prÃ³ximos passos..."
+                        placeholder="Notas internas sobre implantação, pendências, próximos passos..."
                         className="w-full bg-[#050505] border border-white/[0.05] rounded-2xl px-5 py-4 text-sm text-white placeholder-neutral-600 focus:outline-none focus:ring-1 focus:ring-[#6be12f]/30 focus:border-[#6be12f]/30 transition-all shadow-inner resize-none"
                       />
                     </div>
@@ -1317,7 +1317,7 @@ async function copiarAcessoCliente() {
                 ) : (
                   <>
                     <Check size={18} strokeWidth={2.5} />
-                    {clienteSelecionado ? 'Salvar AlteraÃ§Ãµes' : 'Cadastrar Cliente'}
+                    {clienteSelecionado ? 'Salvar Alterações' : 'Cadastrar Cliente'}
                   </>
                 )}
               </button>
@@ -1336,7 +1336,7 @@ async function copiarAcessoCliente() {
               Excluir cliente?
             </h2>
             <p className="text-sm text-neutral-500 mb-8 leading-relaxed">
-              Esta aÃ§Ã£o nÃ£o pode ser desfeita. Todos os pagamentos e dados vinculados serÃ£o perdidos permanentemente.
+              Esta ação não pode ser desfeita. Todos os pagamentos e dados vinculados serão perdidos permanentemente.
             </p>
             <div className="flex gap-4">
               <button
@@ -1368,7 +1368,7 @@ async function copiarAcessoCliente() {
       </h2>
 
       <p className="text-sm text-neutral-500 mb-6 leading-relaxed">
-        Envie estes dados para o cliente acessar a Ã¡rea do cliente.
+        Envie estes dados para o cliente acessar a área do cliente.
       </p>
 
       <div className="text-left rounded-2xl bg-[#050505] border border-white/[0.06] p-5 mb-6">

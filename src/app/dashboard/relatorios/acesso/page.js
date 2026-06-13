@@ -2,15 +2,15 @@
 
 // src/app/dashboard/relatorios/acesso/page.js
 // ============================================================
-// RelatÃ³rio de Acesso da dashboard NexaWi ADS.
+// Relatório de Acesso da dashboard NexaWi ADS.
 //
-// Agora esta tela respeita as permissÃµes retornadas pela API:
-// - relatorios.view: permite visualizar o relatÃ³rio
+// Agora esta tela respeita as permissões retornadas pela API:
+// - relatorios.view: permite visualizar o relatório
 // - relatorios.export: mostra Exportar CSV
 //
 // Importante:
-// - A seguranÃ§a real fica na API /api/admin/relatorios/acesso.
-// - Esta tela apenas melhora a experiÃªncia visual.
+// - A segurança real fica na API /api/admin/relatorios/acesso.
+// - Esta tela apenas melhora a experiência visual.
 // ============================================================
 
 import { useEffect, useState } from 'react'
@@ -37,10 +37,10 @@ const supabase = createBrowserSupabaseClient()
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
-  { value: 'ultimos_7', label: 'Ãšltimos 7 dias' },
-  { value: 'ultimos_30', label: 'Ãšltimos 30 dias' },
-  { value: 'mes_atual', label: 'MÃªs atual' },
-  { value: 'todos', label: 'Todo perÃ­odo' },
+  { value: 'ultimos_7', label: 'Últimos 7 dias' },
+  { value: 'ultimos_30', label: 'Últimos 30 dias' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'todos', label: 'Todo período' },
 ]
 
 const permissoesIniciais = {
@@ -52,7 +52,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -72,7 +72,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) {
@@ -147,8 +147,8 @@ export default function RelatorioAcesso() {
         ...(data.permissions || {}),
       })
     } catch (error) {
-      console.error('Erro ao buscar relatÃ³rio de acesso:', error)
-      toast.error(error.message || 'Erro ao carregar o relatÃ³rio.')
+      console.error('Erro ao buscar relatório de acesso:', error)
+      toast.error(error.message || 'Erro ao carregar o relatório.')
     } finally {
       setCarregando(false)
     }
@@ -156,7 +156,7 @@ export default function RelatorioAcesso() {
 
   function exportarCSV() {
     if (!canExport) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar relatÃ³rios.')
+      toast.error('Você não tem permissão para exportar relatórios.')
       return
     }
 
@@ -171,7 +171,7 @@ export default function RelatorioAcesso() {
         'Cliente',
         'Cidade',
         'Status',
-        'VisualizaÃ§Ãµes',
+        'Visualizações',
         'Cliques',
         'Links copiados',
         'Tentativas de abrir CTA',
@@ -228,7 +228,7 @@ export default function RelatorioAcesso() {
       bg: 'bg-emerald-500/20',
     },
     {
-      label: 'VisualizaÃ§Ãµes',
+      label: 'Visualizações',
       valor: resumo.totalViews,
       sub: 'Visitantes impactados',
       icon: Eye,
@@ -246,7 +246,7 @@ export default function RelatorioAcesso() {
     {
       label: 'Copiaram link',
       valor: resumo.totalCopias,
-      sub: 'AÃ§Ã£o segura no portal',
+      sub: 'Ação segura no portal',
       icon: Copy,
       text: 'text-orange-400',
       bg: 'bg-orange-500/20',
@@ -290,17 +290,17 @@ export default function RelatorioAcesso() {
               <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
                 <BarChart3 className="text-[#6be12f]" size={24} />
               </div>
-              RelatÃ³rio de Acesso
+              Relatório de Acesso
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              MÃ©tricas agregadas de visualizaÃ§Ãµes, cliques, cÃ³pias e CTAs por hotspot
+              Métricas agregadas de visualizações, cliques, cópias e CTAs por hotspot
             </p>
 
             {!canExport && (
               <div className="mt-4 inline-flex items-center gap-2 bg-white/[0.03] border border-white/[0.06] rounded-2xl px-4 py-2 text-xs font-bold text-neutral-400">
                 <Lock size={14} className="text-neutral-500" />
-                Modo leitura: vocÃª pode visualizar, mas nÃ£o exportar relatÃ³rios.
+                Modo leitura: você pode visualizar, mas não exportar relatórios.
               </div>
             )}
           </div>
@@ -439,7 +439,7 @@ export default function RelatorioAcesso() {
               Nenhum dado de acesso encontrado
             </h3>
             <p className="text-sm text-neutral-500 mb-8 max-w-md mx-auto">
-              Assim que usuÃ¡rios visualizarem anÃºncios no portal, os dados aparecerÃ£o aqui.
+              Assim que usuários visualizarem anúncios no portal, os dados aparecerão aqui.
             </p>
           </div>
         ) : (
@@ -447,7 +447,7 @@ export default function RelatorioAcesso() {
             {relatorio.map((item, index) => (
               <div
                 key={item.hotspot_id}
-                className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2rem] p-6 sm:p-8 hover:border-white/[0.1] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group flex flex-col xl:flex-row gap-8 items-start xl:items-center justify-between relative overflow-hidden animate-fade-in-up"
+                className="bg-[#0a0a0a] border border-white/[0.05] rounded-[1.5rem] sm:rounded-[2rem] p-4 sm:p-6 hover:border-white/[0.1] hover:-translate-y-1 hover:shadow-[0_20px_40px_rgba(0,0,0,0.4)] transition-all duration-500 group flex flex-col xl:flex-row gap-5 items-start xl:items-center justify-between relative overflow-hidden animate-fade-in-up"
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <div className="absolute -right-10 -top-10 w-32 h-32 bg-[#6be12f]/5 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
@@ -479,7 +479,7 @@ export default function RelatorioAcesso() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 w-full xl:flex-1 relative z-10">
                   <MetricBox
-                    label="VisualizaÃ§Ãµes"
+                    label="Visualizações"
                     value={item.total_unique_views}
                     icon={Eye}
                     color="text-white"

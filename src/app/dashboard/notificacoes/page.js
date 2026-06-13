@@ -19,7 +19,7 @@ import toast, { Toaster } from 'react-hot-toast'
 const supabase = createBrowserSupabaseClient()
 
 function formatarData(value) {
-  if (!value) return 'â€”'
+  if (!value) return '—'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -57,7 +57,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada.')
+    throw new Error('Sessão administrativa não encontrada.')
   }
 
   const response = await fetch(path, {
@@ -101,7 +101,7 @@ export default function NotificacoesPage() {
       setUnreadCount(data.unreadCount || 0)
     } catch (error) {
       console.error(error)
-      toast.error(error.message || 'Erro ao buscar notificaÃ§Ãµes.')
+      toast.error(error.message || 'Erro ao buscar notificações.')
     } finally {
       setLoading(false)
     }
@@ -168,11 +168,11 @@ export default function NotificacoesPage() {
               <div className="p-2.5 bg-[#6be12f]/10 rounded-2xl border border-[#6be12f]/20">
                 <Bell className="text-[#6be12f]" size={24} />
               </div>
-              NotificaÃ§Ãµes
+              Notificações
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 font-medium">
-              Alertas internos, chamados, pendÃªncias e eventos importantes
+              Alertas internos, chamados, pendências e eventos importantes
             </p>
           </div>
 
@@ -202,8 +202,8 @@ export default function NotificacoesPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
           <CardResumo label="Total" value={notifications.length} />
-          <CardResumo label="NÃ£o lidas" value={unreadCount} />
-          <CardResumo label="CrÃ­ticas" value={notifications.filter((n) => n.severity === 'critical').length} />
+          <CardResumo label="Não lidas" value={unreadCount} />
+          <CardResumo label="Críticas" value={notifications.filter((n) => n.severity === 'critical').length} />
         </div>
 
         {loading ? (
@@ -213,9 +213,9 @@ export default function NotificacoesPage() {
         ) : notifications.length === 0 ? (
           <div className="bg-white/[0.02] border border-white/[0.05] rounded-[2rem] py-24 text-center">
             <Bell size={44} className="text-neutral-700 mx-auto mb-5" />
-            <h2 className="text-xl font-bold text-white">Nenhuma notificaÃ§Ã£o</h2>
+            <h2 className="text-xl font-bold text-white">Nenhuma notificação</h2>
             <p className="text-sm text-neutral-500 mt-2">
-              Quando houver alertas internos, eles aparecerÃ£o aqui.
+              Quando houver alertas internos, eles aparecerão aqui.
             </p>
           </div>
         ) : (
@@ -257,7 +257,7 @@ export default function NotificacoesPage() {
                         </h2>
 
                         <p className="text-sm text-neutral-500 mt-1 leading-relaxed">
-                          {notification.message || 'Sem descriÃ§Ã£o.'}
+                          {notification.message || 'Sem descrição.'}
                         </p>
 
                         <p className="text-[11px] text-neutral-600 mt-3">

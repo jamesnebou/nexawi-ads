@@ -28,9 +28,9 @@ const supabase = createBrowserSupabaseClient()
 const etapas = [
   { value: 'novo_lead', label: 'Novo lead' },
   { value: 'em_contato', label: 'Em contato' },
-  { value: 'reuniao_agendada', label: 'ReuniÃ£o agendada' },
+  { value: 'reuniao_agendada', label: 'Reunião agendada' },
   { value: 'proposta_enviada', label: 'Proposta enviada' },
-  { value: 'negociacao', label: 'NegociaÃ§Ã£o' },
+  { value: 'negociacao', label: 'Negociação' },
   { value: 'cliente_fechado', label: 'Cliente fechado' },
   { value: 'perdido', label: 'Perdido' },
 ]
@@ -51,7 +51,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -86,7 +86,7 @@ function formatCurrency(value) {
 }
 
 function formatDate(value) {
-  if (!value) return 'â€”'
+  if (!value) return '—'
   return new Date(`${value}T00:00:00`).toLocaleDateString('pt-BR')
 }
 
@@ -206,7 +206,7 @@ export default function CrmClientesPage() {
 
   async function salvarCliente(clienteId) {
     if (!canUpdate) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para atualizar clientes.')
+      toast.error('Você não tem permissão para atualizar clientes.')
       return
     }
 
@@ -306,7 +306,7 @@ export default function CrmClientesPage() {
 
   function exportarCSV() {
     if (!canExport) {
-      toast.error('VocÃª nÃ£o tem permissÃ£o para exportar.')
+      toast.error('Você não tem permissão para exportar.')
       return
     }
 
@@ -316,7 +316,7 @@ export default function CrmClientesPage() {
     }
 
     const linhas = [
-      ['Tipo', 'Empresa', 'ResponsÃ¡vel', 'E-mail', 'Telefone', 'Cidade', 'Segmento', 'Etapa', 'Origem', 'Temperatura', 'PrÃ³ximo contato', 'Valor potencial', 'ResponsÃ¡vel interno', 'ObservaÃ§Ãµes'],
+      ['Tipo', 'Empresa', 'Responsável', 'E-mail', 'Telefone', 'Cidade', 'Segmento', 'Etapa', 'Origem', 'Temperatura', 'Próximo contato', 'Valor potencial', 'Responsável interno', 'Observações'],
       ...clientes.map((cliente) => [
         'Cliente',
         cliente.nome_empresa || '',
@@ -426,7 +426,7 @@ export default function CrmClientesPage() {
             </h1>
 
             <p className="text-sm text-neutral-500 mt-2 max-w-2xl">
-              Controle empresas vindas do trÃ¡fego, acompanhe negociaÃ§Ãµes e organize o funil comercial da NexaWi.
+              Controle empresas vindas do tráfego, acompanhe negociações e organize o funil comercial da NexaWi.
             </p>
           </div>
 
@@ -513,7 +513,7 @@ export default function CrmClientesPage() {
                 <input
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
-                  placeholder="Empresa, responsÃ¡vel, e-mail ou telefone..."
+                  placeholder="Empresa, responsável, e-mail ou telefone..."
                   className="w-full bg-[#0a0a0a] border border-white/[0.05] text-white text-sm font-medium rounded-2xl block px-5 py-3.5 outline-none"
                 />
 
@@ -716,11 +716,11 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
           </div>
 
           <h2 className="text-xl font-black text-white tracking-tight">
-            VisÃ£o Kanban dos prospects
+            Visão Kanban dos prospects
           </h2>
 
           <p className="text-sm text-neutral-500 mt-1">
-            {formatNumber(total)} empresa(s) distribuÃ­das por etapa comercial.
+            {formatNumber(total)} empresa(s) distribuídas por etapa comercial.
           </p>
         </div>
       </div>
@@ -765,7 +765,7 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
                     </p>
 
                     <p className="text-[11px] text-neutral-500 truncate mt-1">
-                      {cliente.nome_responsavel || cliente.nome || 'Sem responsÃ¡vel'}
+                      {cliente.nome_responsavel || cliente.nome || 'Sem responsável'}
                     </p>
 
                     <div className="mt-3 grid gap-1.5 text-[11px] text-neutral-500">
@@ -778,7 +778,7 @@ function KanbanCrmPreview({ clientes = [], onSelectEtapa }) {
                       </span>
 
                       <span>
-                        PrÃ³x.: <strong className="text-white">{formatDate(cliente.crm_proximo_contato)}</strong>
+                        Próx.: <strong className="text-white">{formatDate(cliente.crm_proximo_contato)}</strong>
                       </span>
                     </div>
                   </div>
@@ -847,13 +847,13 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
           </p>
 
           <p className="text-xs text-neutral-500 mt-1 truncate">
-            {cliente.nome_responsavel || cliente.nome || 'ResponsÃ¡vel nÃ£o informado'}
+            {cliente.nome_responsavel || cliente.nome || 'Responsável não informado'}
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <InfoPill icon={Phone} label="Telefone" value={cliente.telefone || 'â€”'} />
-          <InfoPill icon={Mail} label="E-mail" value={cliente.email || 'â€”'} />
+          <InfoPill icon={Phone} label="Telefone" value={cliente.telefone || '—'} />
+          <InfoPill icon={Mail} label="E-mail" value={cliente.email || '—'} />
         </div>
 
         <div className="grid gap-2 text-xs text-neutral-500">
@@ -863,8 +863,8 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
         </div>
 
         <div className="grid gap-2 text-xs text-neutral-500">
-          <p>PrÃ³ximo: {formatDate(cliente.crm_proximo_contato)}</p>
-          <p>Resp.: {cliente.crm_responsavel || 'â€”'}</p>
+          <p>Próximo: {formatDate(cliente.crm_proximo_contato)}</p>
+          <p>Resp.: {cliente.crm_responsavel || '—'}</p>
           {cliente.crm_observacoes && <p className="line-clamp-2">{cliente.crm_observacoes}</p>}
         </div>
 
@@ -895,12 +895,12 @@ function ClienteCrmCard({ cliente, canUpdate, isEditing, isSaving, form, setForm
           <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             <FieldSelect label="Etapa" value={form.crm_etapa} onChange={(value) => setForm((current) => ({ ...current, crm_etapa: value }))} options={etapas} />
             <FieldSelect label="Temperatura" value={form.crm_temperatura} onChange={(value) => setForm((current) => ({ ...current, crm_temperatura: value }))} options={temperaturas.map((item) => ({ value: item, label: item }))} />
-            <FieldInput label="Origem" value={form.crm_origem} onChange={(value) => setForm((current) => ({ ...current, crm_origem: value }))} placeholder="Instagram, Google, indicaÃ§Ã£o..." />
+            <FieldInput label="Origem" value={form.crm_origem} onChange={(value) => setForm((current) => ({ ...current, crm_origem: value }))} placeholder="Instagram, Google, indicação..." />
             <FieldInput label="Valor potencial" type="number" value={form.crm_valor_potencial} onChange={(value) => setForm((current) => ({ ...current, crm_valor_potencial: value }))} placeholder="650" />
-            <FieldInput label="PrÃ³ximo contato" type="date" value={form.crm_proximo_contato} onChange={(value) => setForm((current) => ({ ...current, crm_proximo_contato: value }))} />
-            <FieldInput label="ResponsÃ¡vel interno" value={form.crm_responsavel} onChange={(value) => setForm((current) => ({ ...current, crm_responsavel: value }))} placeholder="James, comercial..." />
+            <FieldInput label="Próximo contato" type="date" value={form.crm_proximo_contato} onChange={(value) => setForm((current) => ({ ...current, crm_proximo_contato: value }))} />
+            <FieldInput label="Responsável interno" value={form.crm_responsavel} onChange={(value) => setForm((current) => ({ ...current, crm_responsavel: value }))} placeholder="James, comercial..." />
             <div className="lg:col-span-2">
-              <FieldInput label="ObservaÃ§Ãµes" value={form.crm_observacoes} onChange={(value) => setForm((current) => ({ ...current, crm_observacoes: value }))} placeholder="Ex: pediu proposta, quer anunciar em Barueri..." />
+              <FieldInput label="Observações" value={form.crm_observacoes} onChange={(value) => setForm((current) => ({ ...current, crm_observacoes: value }))} placeholder="Ex: pediu proposta, quer anunciar em Barueri..." />
             </div>
 
             <div className="flex items-end">

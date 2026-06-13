@@ -3,7 +3,7 @@
 // src/app/dashboard/layout.js
 // ============================================================
 // Layout premium da Dashboard NexaWi ADS.
-// Protege acesso direto por URL com permissÃµes por mÃ³dulo.
+// Protege acesso direto por URL com permissões por módulo.
 // Sprint 5: rotas multiempresa e dashboard do anunciante.
 // ============================================================
 
@@ -73,7 +73,7 @@ const rotasProtegidas = [
     path: '/dashboard/anuncios',
     module: 'anuncios',
     action: 'view',
-    label: 'AnÃºncios',
+    label: 'Anúncios',
   },
   {
     path: '/dashboard/planos',
@@ -91,25 +91,25 @@ const rotasProtegidas = [
     path: '/dashboard/relatorio-de-acesso',
     module: 'relatorios',
     action: 'view',
-    label: 'RelatÃ³rio de Acesso',
+    label: 'Relatório de Acesso',
   },
   {
     path: '/dashboard/relatorios/acesso',
     module: 'relatorios',
     action: 'view',
-    label: 'RelatÃ³rio de Acesso',
+    label: 'Relatório de Acesso',
   },
   {
     path: '/dashboard/relatorio-comercial',
     module: 'relatorios',
     action: 'view',
-    label: 'RelatÃ³rio Comercial',
+    label: 'Relatório Comercial',
   },
   {
     path: '/dashboard/relatorios/comercial',
     module: 'relatorios',
     action: 'view',
-    label: 'RelatÃ³rio Comercial',
+    label: 'Relatório Comercial',
   },
   {
     path: '/dashboard/cidades',
@@ -139,13 +139,13 @@ const rotasProtegidas = [
     path: '/dashboard/configuracoes',
     module: 'configuracoes',
     action: 'view',
-    label: 'ConfiguraÃ§Ãµes',
+    label: 'Configurações',
   },
   {
     path: '/dashboard',
     module: 'dashboard',
     action: 'view',
-    label: 'VisÃ£o Geral',
+    label: 'Visão Geral',
     exact: true,
   },
 ]
@@ -154,7 +154,7 @@ async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    const error = new Error('SessÃ£o administrativa nÃ£o encontrada.')
+    const error = new Error('Sessão administrativa não encontrada.')
     error.status = 401
     throw error
   }
@@ -175,13 +175,13 @@ async function adminApiFetch(path) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    const error = new Error(`A API nÃ£o retornou JSON. Status: ${response.status}`)
+    const error = new Error(`A API não retornou JSON. Status: ${response.status}`)
     error.status = response.status
     throw error
   }
 
   if (!response.ok) {
-    const error = new Error(data?.error || 'Erro ao validar permissÃµes.')
+    const error = new Error(data?.error || 'Erro ao validar permissões.')
     error.status = response.status
     throw error
   }
@@ -237,7 +237,7 @@ function LoadingDashboard() {
 
         <div className="text-center">
           <p className="text-sm font-bold text-white">
-            Validando permissÃµes
+            Validando permissões
           </p>
 
           <p className="text-xs text-neutral-500 mt-1">
@@ -308,7 +308,7 @@ export default function DashboardLayout({ children }) {
           moduleLabel: rotaAtual.label || 'Dashboard',
           moduleName: rotaAtual.module || 'dashboard',
           actionName: rotaAtual.action || 'view',
-          message: error.message || 'NÃ£o foi possÃ­vel validar seu acesso.',
+          message: error.message || 'Não foi possível validar seu acesso.',
         })
       } finally {
         if (!cancelado) {
@@ -357,7 +357,7 @@ export default function DashboardLayout({ children }) {
             adminEmail={adminEmail}
             message={
               accessDenied.message ||
-              'VocÃª nÃ£o tem permissÃ£o para acessar esta Ã¡rea do sistema.'
+              'Você não tem permissão para acessar esta área do sistema.'
             }
           />
         ) : (

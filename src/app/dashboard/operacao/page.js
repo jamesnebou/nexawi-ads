@@ -130,7 +130,7 @@ function SummaryCard({ title, value, status, icon: Icon }) {
   const config = statusConfig(status)
 
   return (
-    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6 shadow-2xl shadow-black/30">
+    <div className="min-w-0 rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5 shadow-2xl shadow-black/30">
       <div className="flex items-center justify-between gap-4">
         <div>
           <p className="text-[11px] uppercase tracking-[0.22em] text-neutral-500 font-black">
@@ -198,7 +198,7 @@ function EnvGroup({ group }) {
   }
 
   return (
-    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
+    <div className="min-w-0 rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h3 className="text-base font-black text-white">
@@ -232,7 +232,7 @@ function EnvGroup({ group }) {
 
 function ScriptGroup({ scripts }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
+    <div className="min-w-0 rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <TerminalSquare size={20} className="text-[#8cf059]" />
         <div>
@@ -276,7 +276,7 @@ function ScriptGroup({ scripts }) {
 
 function EndToEndChecklist() {
   return (
-    <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
+    <div className="min-w-0 rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5">
       <div className="flex items-center gap-3">
         <ClipboardCheck size={20} className="text-[#8cf059]" />
         <div>
@@ -396,7 +396,7 @@ export default function OperacaoPage() {
       </section>
 
       {loading ? (
-        <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-10 text-center">
+        <div className="rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-5 sm:p-8 text-center">
           <RefreshCw className="mx-auto animate-spin text-[#8cf059]" size={28} />
           <p className="mt-4 text-sm font-bold text-neutral-400">
             Carregando checklist operacional...
@@ -404,7 +404,7 @@ export default function OperacaoPage() {
         </div>
       ) : (
         <>
-          <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-6">
+          <section className="min-w-0 rounded-[1.25rem] sm:rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5">
             <div className="mb-5 flex items-center gap-3">
               <Activity size={20} className="text-[#8cf059]" />
               <div>

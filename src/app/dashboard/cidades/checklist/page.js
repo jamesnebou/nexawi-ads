@@ -249,11 +249,11 @@ export default function ChecklistNovaCidadePage() {
   }
 
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-5 sm:p-8 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+    <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
       <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[900px] h-[420px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none z-0" />
 
-      <div className="relative z-10 max-w-7xl mx-auto space-y-6">
-        <section className="rounded-[2rem] border border-white/[0.06] bg-[#080808]/95 p-5 sm:p-7 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
+      <div className="relative z-10 max-w-7xl mx-auto w-full min-w-0 space-y-5">
+        <section className="rounded-[1.5rem] sm:rounded-[2rem] border border-white/[0.06] bg-[#080808]/95 p-4 sm:p-6 shadow-[0_24px_60px_rgba(0,0,0,0.45)]">
           <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#9cf76b] mb-5">

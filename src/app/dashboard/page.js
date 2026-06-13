@@ -59,7 +59,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('SessÃ£o administrativa nÃ£o encontrada. FaÃ§a login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -111,7 +111,7 @@ function corAlerta(severidade) {
 }
 
 function formatarDataHora(value) {
-  if (!value) return 'â€”'
+  if (!value) return '—'
 
   return new Date(value).toLocaleString('pt-BR', {
     day: '2-digit',
@@ -253,7 +253,7 @@ export default function Dashboard() {
       bg: 'bg-orange-500/20',
     },
     {
-      label: 'Acessos no MÃªs',
+      label: 'Acessos no Mês',
       valor: metricas.leadsMes,
       sub: selectedHotspotName,
       icon: Eye,
@@ -263,13 +263,13 @@ export default function Dashboard() {
     {
       label: 'Pessoas Online',
       valor: metricas.pessoasOnline,
-      sub: metricas.pessoasOnlineConfiavel ? 'Agora no MikroTik' : 'MikroTik indisponÃ­vel',
+      sub: metricas.pessoasOnlineConfiavel ? 'Agora no MikroTik' : 'MikroTik indisponível',
       icon: Activity,
       text: 'text-cyan-400',
       bg: 'bg-cyan-500/20',
     },
     {
-      label: 'Recebido no MÃªs',
+      label: 'Recebido no Mês',
       valor: fmt(metricas.recebidoMes),
       icon: DollarSign,
       text: 'text-purple-400',
@@ -281,7 +281,7 @@ export default function Dashboard() {
     {
       label: 'Em setup',
       valor: resumoOperacional.emSetup,
-      sub: 'clientes em implantaÃ§Ã£o',
+      sub: 'clientes em implantação',
       icon: Rocket,
       text: 'text-purple-400',
       bg: 'bg-purple-500/20',
@@ -289,7 +289,7 @@ export default function Dashboard() {
     {
       label: 'Travados',
       valor: resumoOperacional.travados,
-      sub: 'precisam de aÃ§Ã£o',
+      sub: 'precisam de ação',
       icon: AlertTriangle,
       text: 'text-red-400',
       bg: 'bg-red-500/20',
@@ -313,7 +313,7 @@ export default function Dashboard() {
     {
       label: 'Implantados',
       valor: resumoOperacional.implantacoesConcluidas,
-      sub: 'operaÃ§Ã£o concluÃ­da',
+      sub: 'operação concluída',
       icon: CheckCircle2,
       text: 'text-[#8cf059]',
       bg: 'bg-[#6be12f]/20',
@@ -333,7 +333,7 @@ export default function Dashboard() {
           </h1>
 
           <p className="text-sm text-gray-500 mt-1 font-medium">
-            VisÃ£o geral, mÃ©tricas e operaÃ§Ã£o da NexaWi ADS
+            Visão geral, métricas e operação da NexaWi ADS
           </p>
         </div>
 
@@ -387,11 +387,11 @@ export default function Dashboard() {
                 <div>
                   <h2 className="text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
                     <ClipboardCheck size={22} className="text-[#6be12f]" />
-                    OperaÃ§Ã£o e Onboarding
+                    Operação e Onboarding
                   </h2>
 
                   <p className="text-sm text-gray-500 mt-1">
-                    Acompanhe implantaÃ§Ã£o, gargalos e clientes que precisam de aÃ§Ã£o.
+                    Acompanhe implantação, gargalos e clientes que precisam de ação.
                   </p>
                 </div>
               </div>
@@ -407,11 +407,11 @@ export default function Dashboard() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-7">
                     <div>
                       <h2 className="text-lg font-semibold text-white tracking-tight">
-                        OperaÃ§Ã£o em andamento
+                        Operação em andamento
                       </h2>
 
                       <p className="text-sm text-gray-500 mt-1">
-                        Clientes em setup, travados ou aguardando prÃ³ximos passos
+                        Clientes em setup, travados ou aguardando próximos passos
                       </p>
                     </div>
 
@@ -424,8 +424,8 @@ export default function Dashboard() {
                   {clientesOperacao.length === 0 ? (
                     <EmptyState
                       icon={CheckCircle2}
-                      title="Nenhuma implantaÃ§Ã£o pendente"
-                      description="Quando houver clientes em setup ou travados, eles aparecerÃ£o aqui."
+                      title="Nenhuma implantação pendente"
+                      description="Quando houver clientes em setup ou travados, eles aparecerão aqui."
                     />
                   ) : (
                     <div className="space-y-3">
@@ -465,7 +465,7 @@ export default function Dashboard() {
                               </p>
 
                               <p className="text-xs text-neutral-500 mt-1 truncate">
-                                {cliente.email || 'Sem e-mail'} Â· {cliente.plano_nome || 'Sem plano'}
+                                {cliente.email || 'Sem e-mail'} · {cliente.plano_nome || 'Sem plano'}
                               </p>
 
                               {cliente.onboarding_travado && cliente.onboarding_motivo_trava && (
@@ -491,7 +491,7 @@ export default function Dashboard() {
                               </div>
 
                               <p className="text-[11px] text-neutral-600 mt-2">
-                                {cliente.progresso?.feitos || 0}/{cliente.progresso?.total || 0} etapas concluÃ­das
+                                {cliente.progresso?.feitos || 0}/{cliente.progresso?.total || 0} etapas concluídas
                               </p>
                             </div>
                           </div>
@@ -508,7 +508,7 @@ export default function Dashboard() {
                     </h2>
 
                     <p className="text-sm text-gray-500 mt-1">
-                      PendÃªncias crÃ­ticas que podem travar a operaÃ§Ã£o
+                      Pendências críticas que podem travar a operação
                     </p>
                   </div>
 
@@ -516,7 +516,7 @@ export default function Dashboard() {
                     <EmptyState
                       icon={CheckCircle2}
                       title="Sem alertas no momento"
-                      description="Tudo certo por enquanto. Nenhum cliente travado ou cobranÃ§a pendente apareceu."
+                      description="Tudo certo por enquanto. Nenhum cliente travado ou cobrança pendente apareceu."
                     />
                   ) : (
                     <div className="space-y-3">
@@ -546,7 +546,7 @@ export default function Dashboard() {
 
                                 {alerta.responsavel && (
                                   <p className="text-[11px] text-neutral-600 mt-2">
-                                    ResponsÃ¡vel: {alerta.responsavel}
+                                    Responsável: {alerta.responsavel}
                                   </p>
                                 )}
                               </div>
@@ -564,7 +564,7 @@ export default function Dashboard() {
     <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up">
       <div className="mb-8">
         <h2 className="text-lg font-semibold text-white tracking-tight">
-          DistribuiÃ§Ã£o por etapa de implantaÃ§Ã£o
+          Distribuição por etapa de implantação
         </h2>
 
         <p className="text-sm text-gray-500 mt-1">
@@ -575,8 +575,8 @@ export default function Dashboard() {
       {onboardingPorStatus.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
-          title="Sem dados de implantaÃ§Ã£o"
-          description="Quando houver clientes com etapa definida, o grÃ¡fico aparecerÃ¡ aqui."
+          title="Sem dados de implantação"
+          description="Quando houver clientes com etapa definida, o gráfico aparecerá aqui."
         />
       ) : (
         <ResponsiveContainer width="100%" height={260}>
@@ -616,7 +616,7 @@ export default function Dashboard() {
         <EmptyState
           icon={LogIn}
           title="Nenhum acesso registrado"
-          description="Quando clientes entrarem no portal, os acessos aparecerÃ£o aqui."
+          description="Quando clientes entrarem no portal, os acessos aparecerão aqui."
         />
       ) : (
         <div className="space-y-3 max-h-[260px] overflow-y-auto pr-1 custom-scrollbar">
@@ -669,7 +669,7 @@ export default function Dashboard() {
           )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-            <ChartCard title="Leads Capturados (Geral)" subtitle="EvoluÃ§Ã£o nos Ãºltimos 14 dias" delay="0.2s">
+            <ChartCard title="Leads Capturados (Geral)" subtitle="Evolução nos últimos 14 dias" delay="0.2s">
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={leadsPorDiaGeral} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
@@ -687,7 +687,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title={`Leads Capturados (${selectedHotspotName})`} subtitle="EvoluÃ§Ã£o nos Ãºltimos 14 dias" delay="0.3s">
+            <ChartCard title={`Leads Capturados (${selectedHotspotName})`} subtitle="Evolução nos últimos 14 dias" delay="0.3s">
               <ResponsiveContainer width="100%" height={240}>
                 <AreaChart data={leadsUnicosPorDiaHotspot} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
                   <defs>
@@ -705,7 +705,7 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </ChartCard>
 
-            <ChartCard title="Receita por MÃªs" subtitle="Comparativo dos Ãºltimos 6 meses" delay="0.4s">
+            <ChartCard title="Receita por Mês" subtitle="Comparativo dos últimos 6 meses" delay="0.4s">
               <ResponsiveContainer width="100%" height={240}>
                 <BarChart data={receitaPorMes} margin={{ top: 10, right: 0, left: -10, bottom: 0 }} barSize={20}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -722,7 +722,7 @@ export default function Dashboard() {
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 flex flex-col animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
               <div className="mb-4">
                 <h2 className="text-lg font-semibold text-white tracking-tight">Clientes por Status</h2>
-                <p className="text-sm text-gray-500 mt-1">DistribuiÃ§Ã£o atual da base</p>
+                <p className="text-sm text-gray-500 mt-1">Distribuição atual da base</p>
               </div>
 
               <div className="flex-1 flex flex-col justify-center">
@@ -767,8 +767,8 @@ export default function Dashboard() {
 
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.7s' }}>
               <div className="mb-6">
-                <h2 className="text-lg font-semibold text-white tracking-tight">Ãšltimos Pagamentos</h2>
-                <p className="text-sm text-gray-500 mt-1">MovimentaÃ§Ãµes recentes</p>
+                <h2 className="text-lg font-semibold text-white tracking-tight">Últimos Pagamentos</h2>
+                <p className="text-sm text-gray-500 mt-1">Movimentações recentes</p>
               </div>
 
               <div className="space-y-3">
@@ -776,7 +776,7 @@ export default function Dashboard() {
                   <EmptyState
                     icon={DollarSign}
                     title="Sem pagamentos recentes"
-                    description="Quando houver pagamentos, eles aparecerÃ£o aqui."
+                    description="Quando houver pagamentos, eles aparecerão aqui."
                   />
                 ) : (
                   pagamentosRecentes.map((p) => (
@@ -787,7 +787,7 @@ export default function Dashboard() {
                         </div>
 
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">{p.clientes?.nome || 'â€”'}</p>
+                          <p className="text-sm font-medium text-gray-300 truncate group-hover:text-white transition-colors">{p.clientes?.nome || '—'}</p>
                           <p className="text-xs text-gray-600 mt-0.5">{new Date(p.created_at).toLocaleDateString('pt-BR')}</p>
                         </div>
                       </div>
@@ -804,7 +804,7 @@ export default function Dashboard() {
 
             <div className="bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 animate-fade-in-up" style={{ animationDelay: '0.75s' }}>
               <div className="mb-8">
-                <h2 className="text-lg font-semibold text-white tracking-tight">InteraÃ§Ãµes dos AnÃºncios</h2>
+                <h2 className="text-lg font-semibold text-white tracking-tight">Interações dos Anúncios</h2>
                 <p className="text-sm text-gray-500 mt-1">Cliques do CTA em {selectedHotspotName}</p>
               </div>
 
@@ -863,15 +863,15 @@ export default function Dashboard() {
                             </div>
 
                             <div>
-                              <p className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{l.nome || 'â€”'}</p>
-                              <p className="text-xs text-gray-600 mt-0.5">{l.email || 'â€”'}</p>
+                              <p className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">{l.nome || '—'}</p>
+                              <p className="text-xs text-gray-600 mt-0.5">{l.email || '—'}</p>
                             </div>
                           </div>
                         </td>
 
                         <td className="whitespace-nowrap py-4 text-sm text-gray-400">
                           <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#0a0a0a] border border-white/[0.05] text-xs font-medium shadow-inner">
-                            {l.hotspots?.nome || 'â€”'}
+                            {l.hotspots?.nome || '—'}
                           </span>
                         </td>
 
