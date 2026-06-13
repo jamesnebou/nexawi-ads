@@ -102,7 +102,7 @@ const grupos = [
       },
       {
         id: 'routeros-rest-ok',
-        texto: 'Diagnostico RouterOS REST retornando 200 pela VPS.',
+        texto: 'Diagnóstico RouterOS REST retornando 200 pela VPS.',
         rota: '/dashboard/mikrotiks',
       },
       {
@@ -115,22 +115,22 @@ const grupos = [
   {
     id: 'portal',
     titulo: 'Portal cativo',
-    descricao: 'Valida a jornada obrigatoria do usuario final antes de liberar internet.',
+    descricao: 'Valida a jornada obrigatória do usuário final antes de liberar internet.',
     icon: ShieldCheck,
     items: [
       {
         id: 'lgpd-cpf',
-        texto: 'Formulario exige nome, e-mail, telefone, CPF e aceite LGPD.',
+        texto: 'Formulário exige nome, e-mail, telefone, CPF e aceite LGPD.',
         rota: '/dashboard/configuracoes',
       },
       {
         id: 'anuncio-obrigatorio',
-        texto: 'Anuncio obrigatorio com timer testado antes da liberacao.',
+        texto: 'Anuncio obrigatório com timer testado antes da liberação.',
         rota: '/dashboard/anuncios',
       },
       {
         id: 'mensagem-inatividade',
-        texto: 'Mensagem de inatividade/expiracao revisada no portal.',
+        texto: 'Mensagem de inatividade/expiração revisada no portal.',
         rota: '/dashboard/configuracoes',
       },
     ],
@@ -138,17 +138,17 @@ const grupos = [
   {
     id: 'rede',
     titulo: 'Controle de rede',
-    descricao: 'Aplica politica de bloqueio, testa preset e confirma reversao.',
+    descricao: 'Aplica política de bloqueio, testa preset e confirma reversão.',
     icon: Network,
     items: [
       {
         id: 'presets-aplicados',
-        texto: 'Presets fortes selecionados e politica aplicada no MikroTik real.',
+        texto: 'Presets fortes selecionados e política aplicada no MikroTik real.',
         rota: '/dashboard/rede',
       },
       {
         id: 'bloqueio-testado',
-        texto: 'Bloqueio e desbloqueio testados no celular sem cabo fisico.',
+        texto: 'Bloqueio e desbloqueio testados no celular sem cabo físico.',
         rota: '/dashboard/rede',
       },
       {
@@ -171,12 +171,12 @@ const grupos = [
       },
       {
         id: 'metricas-testadas',
-        texto: 'Lead, impressao e clique de teste registrados.',
+        texto: 'Lead, impressão e clique de teste registrados.',
         rota: '/dashboard/leads',
       },
       {
         id: 'relatorio-pronto',
-        texto: 'Relatorio comercial da cidade revisado.',
+        texto: 'Relatório comercial da cidade revisado.',
         rota: '/dashboard/relatorios/comercial',
       },
     ],
@@ -184,17 +184,17 @@ const grupos = [
   {
     id: 'golive',
     titulo: 'Go-live',
-    descricao: 'Ultima checagem antes de liberar a cidade para operacao.',
+    descricao: 'Última checagem antes de liberar a cidade para operação.',
     icon: ClipboardCheck,
     items: [
       {
         id: 'teste-final-celular',
-        texto: 'Teste final feito no celular: portal, anuncio, CTA e internet.',
+        texto: 'Teste final feito no celular: portal, anúncio, CTA e internet.',
         rota: '/dashboard/hotspots',
       },
       {
         id: 'acessos-guardados',
-        texto: 'IPs, usuario tecnico e dados de acesso guardados em local seguro.',
+        texto: 'IPs, usuário técnico e dados de acesso guardados em local seguro.',
       },
       {
         id: 'equipe-avisada',
@@ -267,7 +267,7 @@ export default function ChecklistNovaCidadePage() {
 
               <p className="text-sm sm:text-base text-neutral-400 mt-3 leading-relaxed">
                 Use esta tela para abrir uma nova cidade sem pular etapas comerciais,
-                tecnicas, LGPD, portal, MikroTik, controle de rede e relatorios.
+                técnicas, LGPD, portal, MikroTik, controle de rede e relatorios.
               </p>
             </div>
 

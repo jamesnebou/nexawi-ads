@@ -495,7 +495,7 @@ export default function Planos() {
                   <div className="flex items-center justify-between group/item">
                     <div className="flex items-center gap-3 text-neutral-500 group-hover/item:text-neutral-300 transition-colors">
                       <UserCheck size={16} className="text-neutral-600 group-hover/item:text-[#6be12f] transition-colors" />
-                      <span className="text-sm font-medium">Leads/mes</span>
+                      <span className="text-sm font-medium">Leads/mês</span>
                     </div>
 
                     <span className="text-sm font-bold text-white">
@@ -646,7 +646,7 @@ export default function Planos() {
 
               <div>
                 <label className="block text-xs font-bold text-neutral-500 mb-3 uppercase tracking-widest">
-                  Leads por mes
+                  Leads por mês
                 </label>
 
                 <input

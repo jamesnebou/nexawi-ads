@@ -23,7 +23,7 @@ const fluxoPontaAPonta = [
     title: 'Landing e CRM',
     items: [
       'Abrir a landing page e selecionar um plano real.',
-      'Enviar o formulario de interesse pela pagina /anunciar.',
+      'Enviar o formulário de interesse pela página /anunciar.',
       'Confirmar que o lead caiu no CRM com plano e valor potencial.',
     ],
   },
@@ -32,25 +32,25 @@ const fluxoPontaAPonta = [
     items: [
       'Converter o lead em cliente/anunciante.',
       'Criar plano ou assinatura recorrente pelo financeiro.',
-      'Confirmar cobranca no Asaas e link de pagamento na area do cliente.',
-      'Pagar uma cobranca teste e validar status Pago no painel.',
+      'Confirmar cobranca no Asaas e link de pagamento na área do cliente.',
+      'Pagar uma cobrança teste e validar status Pago no painel.',
     ],
   },
   {
     title: 'Campanha e portal',
     items: [
-      'Criar anuncio ativo vinculado ao cliente.',
+      'Criar anúncio ativo vinculado ao cliente.',
       'Vincular campanha ao hotspot/local correto.',
       'Acessar o portal no celular e preencher nome, e-mail, telefone, CPF e LGPD.',
-      'Confirmar anuncio obrigatorio, timer, CTA e liberacao apos regra cumprida.',
+      'Confirmar anúncio obrigatório, timer, CTA e liberação apos regra cumprida.',
     ],
   },
   {
-    title: 'Metricas e operacao',
+    title: 'Métricas e operação',
     items: [
-      'Confirmar impressao, clique e lead no relatorio comercial.',
-      'Enviar relatorio por e-mail e validar anexos PDF/CSV.',
-      'Rodar auditoria da VPS e confirmar crons sem erro critico.',
+      'Confirmar impressão, clique e lead no relatório comercial.',
+      'Enviar relatório por e-mail e validar anexos PDF/CSV.',
+      'Rodar auditoria da VPS e confirmar crons sem erro crítico.',
       'Testar bloqueio/desbloqueio no MikroTik quando o roteador estiver online.',
     ],
   },
@@ -60,7 +60,7 @@ async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessao administrativa nao encontrada. Faca login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -98,7 +98,7 @@ function statusConfig(status) {
       iconClassName: 'text-[#8cf059]',
     },
     warning: {
-      label: 'Atencao',
+      label: 'Atenção',
       icon: AlertTriangle,
       className: 'border-yellow-500/20 bg-yellow-500/10 text-yellow-300',
       iconClassName: 'text-yellow-300',
@@ -205,7 +205,7 @@ function EnvGroup({ group }) {
             {group.title}
           </h3>
           <p className="mt-1 text-xs text-neutral-500">
-            Mostra apenas presenca da variavel, nunca o valor.
+            Mostra apenas presenca da variável, nunca o valor.
           </p>
         </div>
 
@@ -343,8 +343,8 @@ export default function OperacaoPage() {
       const result = await adminApiFetch('/api/admin/operacao')
       setData(result)
     } catch (error) {
-      console.error('Erro ao carregar operacao:', error)
-      toast.error(error.message || 'Erro ao carregar operacao.')
+      console.error('Erro ao carregar operação:', error)
+      toast.error(error.message || 'Erro ao carregar operação.')
     } finally {
       setLoading(false)
     }
@@ -364,10 +364,10 @@ export default function OperacaoPage() {
 
           <div>
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-              Operacao
+              Operação
             </h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-neutral-400">
-              Checklist vivo de producao: variaveis, Supabase, scripts, crons e pontos que precisam estar prontos para o SaaS operar sem depender de memoria.
+              Checklist vivo de produção: variáveis, Supabase, scripts, crons e pontos que precisam estar prontos para o SaaS operar sem depender de memória.
             </p>
             {data?.checkedAt && (
               <p className="mt-3 flex items-center gap-2 text-xs font-bold text-neutral-500">
@@ -391,7 +391,7 @@ export default function OperacaoPage() {
       <section className="grid gap-4 md:grid-cols-4">
         <SummaryCard title="Status geral" value={statusConfig(resumoStatus).label} status={resumoStatus} icon={ShieldCheck} />
         <SummaryCard title="OK" value={summary.ok ?? 0} status="ok" icon={CheckCircle2} />
-        <SummaryCard title="Atencoes" value={summary.warning ?? 0} status="warning" icon={AlertTriangle} />
+        <SummaryCard title="Atenções" value={summary.warning ?? 0} status="warning" icon={AlertTriangle} />
         <SummaryCard title="Erros" value={summary.error ?? 0} status="error" icon={XCircle} />
       </section>
 
@@ -412,7 +412,7 @@ export default function OperacaoPage() {
                   Checks principais
                 </h2>
                 <p className="text-xs text-neutral-500">
-                  Erros e atencoes aparecem primeiro.
+                  Erros e atenções aparecem primeiro.
                 </p>
               </div>
             </div>

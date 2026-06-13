@@ -40,10 +40,10 @@ const planoInicial = {
 
 const periodosRelatorio = [
   { value: 'hoje', label: 'Hoje' },
-  { value: 'ultimos_7', label: 'Ultimos 7 dias' },
-  { value: 'ultimos_30', label: 'Ultimos 30 dias' },
-  { value: 'mes_atual', label: 'Mes atual' },
-  { value: 'todos', label: 'Todo periodo' },
+  { value: 'ultimos_7', label: 'Últimos 7 dias' },
+  { value: 'ultimos_30', label: 'Últimos 30 dias' },
+  { value: 'mes_atual', label: 'Mês atual' },
+  { value: 'todos', label: 'Todo período' },
 ]
 
 const statusRelatorioOptions = [
@@ -530,9 +530,9 @@ export default function WifiPixPage() {
             <PixMetricCard label="Receita" value={money(resumoPix.receitaConfirmada)} detail={(resumoPix.vendasConfirmadas || 0) + ' confirmada(s)'} icon={CreditCard} />
             <PixMetricCard label="Pendente" value={money(resumoPix.receitaPendente)} detail={(resumoPix.pendentes || 0) + ' venda(s)'} icon={Clock3} />
             <PixMetricCard label="Vendas" value={resumoPix.totalVendas || 0} detail={(resumoPix.pendentes || 0) + ' pendente(s)'} icon={QrCode} />
-            <PixMetricCard label="Pagas" value={resumoPix.pagas || 0} detail="Aguardando liberacao" icon={CheckCircle2} />
+            <PixMetricCard label="Pagas" value={resumoPix.pagas || 0} detail="Aguardando liberação" icon={CheckCircle2} />
             <PixMetricCard label="Autorizadas" value={resumoPix.autorizadas || 0} detail="Liberadas no MikroTik" icon={ShieldCheck} />
-            <PixMetricCard label="Taxa liberacao" value={(resumoPix.taxaAutorizacao || 0) + '%'} detail="Pagas que viraram acesso" icon={Wifi} />
+            <PixMetricCard label="Taxa liberação" value={(resumoPix.taxaAutorizacao || 0) + '%'} detail="Pagas que viraram acesso" icon={Wifi} />
             <PixMetricCard label="Ticket medio" value={money(resumoPix.ticketMedio)} detail="Pagas/autorizadas" icon={BarChart3} />
             <PixMetricCard label="Erros" value={resumoPix.erros || 0} detail="Exigem suporte" icon={AlertTriangle} />
           </div>
@@ -552,15 +552,15 @@ export default function WifiPixPage() {
                   </div>
                   <div>
                     <p className="text-xs uppercase tracking-[0.18em] text-gray-500 font-black">Monitor Efi</p>
-                    <p className="mt-1 text-lg font-black text-white">{webhookEfi.status === 'ok' ? 'Operando' : webhookEfi.status === 'critical' ? 'Critico' : 'Atencao'}</p>
+                    <p className="mt-1 text-lg font-black text-white">{webhookEfi.status === 'ok' ? 'Operando' : webhookEfi.status === 'critical' ? 'Crítico' : 'Atenção'}</p>
                     <p className="mt-1 max-w-2xl text-sm text-gray-500">{webhookEfi.message}</p>
                   </div>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <MiniMetric label="Ultimo evento" value={formatDateTime(webhookEfi.lastEventAt)} />
+                  <MiniMetric label="Último evento" value={formatDateTime(webhookEfi.lastEventAt)} />
                   <MiniMetric label="Eventos 7d" value={webhookEfi.events7d || 0} />
                   <MiniMetric label="Pagos 7d" value={webhookEfi.paid7d || 0} />
-                  <MiniMetric label="Nao casados" value={webhookEfi.unmatched7d || 0} />
+                  <MiniMetric label="Não casados" value={webhookEfi.unmatched7d || 0} />
                   <MiniMetric label="Alertas" value={webhookEfi.activeAlerts || 0} />
                 </div>
               </div>
@@ -577,7 +577,7 @@ export default function WifiPixPage() {
                   <p className="mt-3 text-xl font-black text-[#ff9d2e]">{money(resumoPix.planoMaisVendido.receita_confirmada)}</p>
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Sem vendas no periodo.</p>
+                <p className="text-sm text-gray-500">Sem vendas no período.</p>
               )}
             </div>
 
@@ -604,7 +604,7 @@ export default function WifiPixPage() {
                     </div>
                   ))}
                 </div>
-              ) : <p className="text-sm text-gray-500">Sem gateway no periodo.</p>}
+              ) : <p className="text-sm text-gray-500">Sem gateway no período.</p>}
             </div>
 
             <div className="mobile-tight-card rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-4">
@@ -622,7 +622,7 @@ export default function WifiPixPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-gray-500">Sem vendas no periodo.</p>
+                <p className="text-sm text-gray-500">Sem vendas no período.</p>
               )}
             </div>
           </div>

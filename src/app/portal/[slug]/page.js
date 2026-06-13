@@ -429,7 +429,7 @@ export default function Portal() {
     }
 
     if (!resolvedIp) {
-      console.warn('IP do cliente ausente na autorizacao; backend tentara localizar pelo MAC.')
+      console.warn('IP do cliente ausente na autorização; backend tentara localizar pelo MAC.')
     }
 
     const response = await controlApiFetch('/api/control/session/authorize', {
@@ -489,11 +489,11 @@ export default function Portal() {
     const resolvedAdSessionId = adSessionIdRef.current || adSessionId
 
     if (!resolvedLeadId) {
-      throw new Error('leadId ausente ao concluir anuncio')
+      throw new Error('leadId ausente ao concluir anúncio')
     }
 
     if (!resolvedAdSessionId) {
-      throw new Error('sessao do anuncio ausente')
+      throw new Error('sessão do anúncio ausente')
     }
 
     await portalApiFetch('/api/portal/ad-complete', {
@@ -630,8 +630,8 @@ export default function Portal() {
       await video.play()
       setVideoAnuncioPronto(true)
     } catch (error) {
-      console.error('Erro ao iniciar video do anuncio com audio:', error)
-      setErroVideoAnuncio('Toque novamente para iniciar o anuncio com audio.')
+      console.error('Erro ao iniciar video do anúncio com áudio:', error)
+      setErroVideoAnuncio('Toque novamente para iniciar o anúncio com áudio.')
     }
   }
 
@@ -726,7 +726,7 @@ leadIdRef.current = data.leadId
     }
 
     if (!leadRapido?.id) {
-      setErroTelefoneRapido('Cadastro nao encontrado para este dispositivo')
+      setErroTelefoneRapido('Cadastro não encontrado para este dispositivo')
       return
     }
 
@@ -1042,8 +1042,8 @@ leadIdRef.current = data.leadId
         wifiPixMetodo === 'CREDIT_CARD'
           ? 'Pagamento criado. Abra o link seguro para pagar com cartão.'
           : data.checkout?.pixCopyPaste
-            ? 'Pix criado. Abra o link seguro ou copie o c?digo Pix.'
-            : 'Pix criado. Abra o link seguro para pagar. O copia-e-cola n?o foi retornado pela Ef?.'
+            ? 'Pix criado. Abra o link seguro ou copie o código Pix.'
+            : 'Pix criado. Abra o link seguro para pagar. O copia-e-cola não foi retornado pela Efí.'
       )
     } catch (error) {
       setWifiPixMensagem(error.message || 'Não foi possível gerar o pagamento.')
@@ -1448,7 +1448,7 @@ leadIdRef.current = data.leadId
                         : 'border-white/[0.08] bg-[#0a0a0a] text-gray-200 hover:border-[#ff7a00]/45 hover:text-[#ffb36b]'
                     }`}
                   >
-                    {wifiPixCopiado ? <>C?digo copiado <CheckCircle2 size={18} /></> : 'Copiar c?digo Pix'}
+                    {wifiPixCopiado ? <>Código copiado <CheckCircle2 size={18} /></> : 'Copiar código Pix'}
                   </button>
                 ) : null}
 
