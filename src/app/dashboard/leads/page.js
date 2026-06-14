@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   CalendarDays,
@@ -24,6 +25,12 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const periodos = [
   { value: 'hoje', label: 'Hoje' },
@@ -419,7 +426,7 @@ export default function AdminLeadsPage() {
         }}
       />
 
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <div className={`${poppins.className} relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up`}>
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[min(720px,90vw)] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
 
         <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">

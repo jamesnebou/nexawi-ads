@@ -1,12 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import { CalendarDays, CheckCircle2, FileText, Mail, Printer, RefreshCw, Search, Send, XCircle } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const statusOptions = [
   { value: '', label: 'Todos' },
@@ -147,7 +154,7 @@ export default function ContratosPage() {
     <>
       <Toaster position="top-right" />
 
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <div className={`${poppins.className} relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up`}>
         <header className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-10">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">

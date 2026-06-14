@@ -4,6 +4,7 @@
 // Sidebar principal da dashboard premium NexaWi ADS.
 
 import { useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import Image from 'next/image'
@@ -34,6 +35,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const menu = [
   {
@@ -326,7 +333,7 @@ export default function Sidebar({ onClose }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] border-r border-white/[0.05] flex flex-col relative overflow-hidden font-sans">
+    <div className={`${poppins.className} min-h-screen bg-[#050505] border-r border-white/[0.05] flex flex-col relative overflow-hidden`}>
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-40 bg-[#6be12f]/5 blur-[80px] rounded-full pointer-events-none" />
 
       <div className="px-6 py-8 flex items-center justify-center relative z-10 group cursor-pointer">

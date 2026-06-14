@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   AlertTriangle,
@@ -24,6 +25,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const planoInicial = {
   id: '',
@@ -389,7 +396,7 @@ export default function WifiPixPage() {
   const webhookEfi = relatorioPix?.webhookEfi || null
 
   return (
-    <div className="min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-5 text-white sm:px-2 sm:py-8">
+    <div className={`${poppins.className} min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-5 text-white sm:px-2 sm:py-8`}>
       <div className="max-w-7xl mx-auto space-y-6">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
