@@ -16,6 +16,7 @@
 //   que o administrador não pode executar.
 // ============================================================
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
@@ -33,6 +34,12 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const intervalos = ['diario', 'semanal', 'mensal']
 
@@ -312,7 +319,7 @@ export default function Planos() {
         }}
       />
 
-      <div className="relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up">
+      <div className={`${poppins.className} relative z-10 px-4 sm:px-6 md:px-8 pb-12 animate-fade-in-up`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
