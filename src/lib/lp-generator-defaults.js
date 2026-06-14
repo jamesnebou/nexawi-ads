@@ -129,7 +129,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
   estilo: {
     preset: 'editorial-premium',
   },
-  cabeçalho: {
+  cabecalho: {
     ativo: true,
     mostrarMarca: true,
     mostrarPrecos: true,
@@ -206,7 +206,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     texto: 'Explique garantia, suporte, acompanhamento ou compromisso que deixa o visitante mais seguro para avancar.',
     selo: 'Compromisso claro com a entrega',
   },
-  urgência: {
+  urgencia: {
     ativo: false,
     backgroundUrl: '',
     eyebrow: 'Agora',
@@ -216,7 +216,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     ctaTexto: 'Quero aproveitar agora',
     ctaUrl: '#formulario',
   },
-  preços: {
+  precos: {
     ativo: false,
     backgroundUrl: '',
     eyebrow: 'Planos',
@@ -303,7 +303,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
       { pergunta: 'Funciona no celular?', resposta: 'Sim. O layout e responsivo e prioriza leitura rapida.' },
     ],
   },
-  formulário: {
+  formulario: {
     ativo: true,
     backgroundUrl: '',
     titulo: 'Entre na fila de atendimento',
@@ -338,7 +338,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     },
     camposExtras: [],
   },
-  rodapé: {
+  rodape: {
     ativo: true,
     mostrarLogo: true,
     mostrarCopyright: true,
@@ -376,7 +376,7 @@ export const LP_GENERATOR_TEMPLATES = [
     name: 'Serviço local',
     description: 'Para prestadores, lojas, assistências, oficinas e negócios de bairro.',
     premium: false,
-    defaultName: 'LP Serviço Local',
+    defaultName: 'LP Servico Local',
     config: {
       identidade: {
         corPrimaria: '#6be12f',
@@ -617,7 +617,7 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Mostre o imovel antes da conversa comercial',
         texto: 'Adicione fachada, planta, ambiente, vista e entorno para transformar curiosidade em visita.',
       },
-      urgência: {
+      urgencia: {
         ativo: true,
         eyebrow: 'Disponibilidade',
         titulo: 'Deixe claro o que pode mudar na condicao atual',
@@ -686,7 +686,7 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Mostre a experiencia antes do ingresso',
         texto: 'Use imagens de palco, publico, convidados ou estrutura para tornar a promessa concreta.',
       },
-      urgência: {
+      urgencia: {
         ativo: true,
         eyebrow: 'Lote atual',
         titulo: 'Data e disponibilidade fazem a decisao acontecer',
@@ -799,7 +799,7 @@ export const LP_GENERATOR_TEMPLATES = [
         templateLayout: 'fashion-store',
         sectionOrder: ['galeria', 'precos', 'beneficios', 'oferta', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'urgencia'],
       },
-      cabeçalho: {
+      cabecalho: {
         precosTexto: 'Produtos',
         contatoTexto: 'Comprar no WhatsApp',
         contatoUrl: '#precos',
@@ -831,7 +831,7 @@ export const LP_GENERATOR_TEMPLATES = [
           { titulo: 'Vitrine atualizada', texto: 'Troque produtos, imagens e ofertas direto pelo editor.' },
         ],
       },
-      preços: {
+      precos: {
         ativo: true,
         eyebrow: 'Produtos em destaque',
         titulo: 'Escolha sua peca e chame no WhatsApp',
