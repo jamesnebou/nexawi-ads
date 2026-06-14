@@ -128,6 +128,8 @@ export default function Dashboard() {
     hotspotsAtivos: 0,
     leadsHoje: 0,
     leadsMes: 0,
+    acessosHoje: 0,
+    acessosMes: 0,
     pessoasOnline: 0,
     recebidoMes: 0,
   })
@@ -160,6 +162,7 @@ export default function Dashboard() {
   const [leadsPorHotspotGeral, setLeadsPorHotspotGeral] = useState([])
   const [pagamentosRecentes, setPagamentosRecentes] = useState([])
   const [leadsRecentes, setLeadsRecentes] = useState([])
+  const [acessosRecentes, setAcessosRecentes] = useState([])
   const [loading, setLoading] = useState(true)
   const [hotspots, setHotspots] = useState([])
   const [selectedHotspotId, setSelectedHotspotId] = useState('')
@@ -185,8 +188,10 @@ export default function Dashboard() {
         clientesAtivos: 0,
         hotspotsAtivos: 0,
         leadsHoje: 0,
-        leadsMes: 0,
-        pessoasOnline: 0,
+    leadsMes: 0,
+    acessosHoje: 0,
+    acessosMes: 0,
+    pessoasOnline: 0,
         recebidoMes: 0,
       })
 
@@ -209,6 +214,7 @@ export default function Dashboard() {
       setLeadsPorHotspotGeral(data.leadsPorHotspotGeral || [])
       setPagamentosRecentes(data.pagamentosRecentes || [])
       setLeadsRecentes(data.leadsRecentes || [])
+      setAcessosRecentes(data.acessosRecentes || data.leadsRecentes || [])
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error)
       toast.error(error.message || 'Erro ao carregar dashboard.')
@@ -246,7 +252,7 @@ export default function Dashboard() {
     },
     {
       label: 'Acessos Hoje',
-      valor: metricas.leadsHoje,
+      valor: metricas.acessosHoje ?? metricas.leadsHoje,
       sub: selectedHotspotName,
       icon: UserPlus,
       text: 'text-orange-400',
@@ -254,7 +260,7 @@ export default function Dashboard() {
     },
     {
       label: 'Acessos no Mês',
-      valor: metricas.leadsMes,
+      valor: metricas.acessosMes ?? metricas.leadsMes,
       sub: selectedHotspotName,
       icon: Eye,
       text: 'text-red-400',
@@ -832,29 +838,31 @@ export default function Dashboard() {
 
           <div className="mobile-tight-card bg-white/[0.02] border border-white/[0.05] rounded-3xl p-6 sm:p-8 hover:border-white/[0.1] transition-all duration-500 overflow-hidden animate-fade-in-up" style={{ animationDelay: '0.8s' }}>
             <div className="mb-8 text-center">
-              <h2 className="text-lg font-semibold text-white tracking-tight">Últimos Leads Capturados</h2>
-              <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">Novos contatos registrados na base</p>
+              <h2 className="text-lg font-semibold text-white tracking-tight">Últimos acessos capturados</h2>
+              <p className="mx-auto mt-1 max-w-sm text-sm text-gray-500">Pessoas que entraram no portal, novas ou recorrentes</p>
             </div>
 
             <div className="dashboard-scroll-x">
-              <table className="w-full min-w-[760px] text-left border-collapse">
+              <table className="w-full min-w-[1080px] text-left border-collapse">
                 <thead>
                   <tr className="border-b border-white/[0.05]">
-                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pl-2">Lead</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pl-2">Pessoa</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Telefone</th>
+                    <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Anúncio visto</th>
                     <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4">Hotspot</th>
                     <th className="whitespace-nowrap text-xs font-bold text-gray-600 uppercase tracking-widest pb-4 pr-2 text-right">Data e Hora</th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-white/[0.02]">
-                  {leadsRecentes.length === 0 ? (
+                  {acessosRecentes.length === 0 ? (
                     <tr>
-                      <td colSpan={3} className="py-10 text-center text-sm text-neutral-500">
-                        Nenhum lead recente encontrado.
+                      <td colSpan={5} className="py-10 text-center text-sm text-neutral-500">
+                        Nenhum acesso recente encontrado.
                       </td>
                     </tr>
                   ) : (
-                    leadsRecentes.map((l) => (
+                    acessosRecentes.map((l) => (
                       <tr key={l.id} className="hover:bg-white/[0.01] transition-colors group">
                         <td className="whitespace-nowrap py-4 pl-2">
                           <div className="flex items-center gap-4">
@@ -870,13 +878,23 @@ export default function Dashboard() {
                         </td>
 
                         <td className="whitespace-nowrap py-4 text-sm text-gray-400">
+                          {l.telefone || '—'}
+                        </td>
+
+                        <td className="whitespace-nowrap py-4 text-sm text-gray-400">
                           <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#0a0a0a] border border-white/[0.05] text-xs font-medium shadow-inner">
-                            {l.hotspots?.nome || '—'}
+                            {l.anuncioTitulo || '—'}
+                          </span>
+                        </td>
+
+                        <td className="whitespace-nowrap py-4 text-sm text-gray-400">
+                          <span className="inline-flex items-center px-3 py-1.5 rounded-lg bg-[#0a0a0a] border border-white/[0.05] text-xs font-medium shadow-inner">
+                            {l.hotspotNome || l.hotspots?.nome || '—'}
                           </span>
                         </td>
 
                         <td className="whitespace-nowrap py-4 pr-2 text-sm text-gray-500 text-right font-medium">
-                          {new Date(l.created_at).toLocaleString('pt-BR', {
+                          {new Date(l.dataHora || l.created_at).toLocaleString('pt-BR', {
                             day: '2-digit',
                             month: '2-digit',
                             year: '2-digit',

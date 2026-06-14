@@ -538,10 +538,13 @@ export async function GET(request) {
     let hotspotsAtivos = 0
     let leadsHoje = 0
     let leadsMes = 0
+    let acessosHoje = 0
+    let acessosMes = 0
     let pessoasOnline = 0
     let pagamentos = []
     let clientes = []
     let leadsGeral = []
+    let acessosRecentes = []
     let interacoes = {
       linksCopiados: 0,
       tentativasAbrir: 0,
@@ -660,6 +663,32 @@ export async function GET(request) {
 
     if (podeVerInteracoes) {
       interacoes = await contarInteracoesAnuncios({ hotspotId })
+
+      let queryAcessosHoje = supabaseAdmin
+        .from('anuncio_views')
+        .select('*', { count: 'exact', head: true })
+        .gte('timestamp', inicioHoje)
+
+      let queryAcessosMes = supabaseAdmin
+        .from('anuncio_views')
+        .select('*', { count: 'exact', head: true })
+        .gte('timestamp', inicioMes)
+
+      if (hotspotId) {
+        queryAcessosHoje = queryAcessosHoje.eq('hotspot_id', hotspotId)
+        queryAcessosMes = queryAcessosMes.eq('hotspot_id', hotspotId)
+      }
+
+      const [
+        { count: acessosHojeCount, error: acessosHojeError },
+        { count: acessosMesCount, error: acessosMesError },
+      ] = await Promise.all([queryAcessosHoje, queryAcessosMes])
+
+      if (acessosHojeError) throw acessosHojeError
+      if (acessosMesError) throw acessosMesError
+
+      acessosHoje = acessosHojeCount || 0
+      acessosMes = acessosMesCount || 0
     }
 
     const recebidoMes = (pagamentos || [])
@@ -682,6 +711,8 @@ pessoasOnline = pessoasOnlineReal.count
   hotspotsAtivos,
   leadsHoje,
   leadsMes,
+  acessosHoje,
+  acessosMes,
   pessoasOnline,
   pessoasOnlineFonte: pessoasOnlineReal.source,
   pessoasOnlineConfiavel: pessoasOnlineReal.reliable,
@@ -812,6 +843,53 @@ pessoasOnline = pessoasOnlineReal.count
           .slice(0, 5)
       : []
 
+    if (podeVerLeads && podeVerInteracoes) {
+      const hotspotIdsPermitidos = new Set((hotspotsData || []).map((hotspot) => hotspot.id).filter(Boolean))
+
+      let queryAcessosRecentes = supabaseAdmin
+        .from('portal_ad_rotations')
+        .select(`
+          id,
+          seen_at,
+          created_at,
+          completed_at,
+          hotspot_id,
+          anuncio_id,
+          lead_id,
+          leads(id, nome, email, telefone),
+          hotspots(id, nome),
+          anuncios(id, titulo)
+        `)
+        .order('seen_at', { ascending: false })
+        .limit(40)
+
+      if (hotspotId) {
+        queryAcessosRecentes = queryAcessosRecentes.eq('hotspot_id', hotspotId)
+      }
+
+      const { data: acessosData, error: acessosError } = await queryAcessosRecentes
+
+      if (acessosError) throw acessosError
+
+      acessosRecentes = (acessosData || [])
+        .filter((acesso) => {
+          if (hotspotId) return true
+          if (hotspotIdsPermitidos.size === 0) return true
+          return hotspotIdsPermitidos.has(acesso.hotspot_id)
+        })
+        .slice(0, 8)
+        .map((acesso) => ({
+          id: acesso.id,
+          nome: acesso.leads?.nome || 'Pessoa sem cadastro',
+          email: acesso.leads?.email || '',
+          telefone: acesso.leads?.telefone || '',
+          anuncioTitulo: acesso.anuncios?.titulo || 'Anúncio não identificado',
+          hotspotNome: acesso.hotspots?.nome || 'Hotspot não identificado',
+          dataHora: acesso.seen_at || acesso.created_at,
+          concluidoEm: acesso.completed_at || null,
+        }))
+    }
+
     const resumoOperacional = podeVerClientes
       ? calcularResumoOperacional(clientes, pagamentos)
       : {
@@ -857,7 +935,8 @@ pessoasOnline = pessoasOnlineReal.count
       receitaPorMes,
       clientesPorStatus,
       leadsPorHotspotGeral,
-      pagamentosRecentes: podeVerFinanceiro ? (pagamentos || []).slice(0, 5) : [],
+            pagamentosRecentes: podeVerFinanceiro ? (pagamentos || []).slice(0, 5) : [],
+      acessosRecentes,
       leadsRecentes: podeVerLeads ? (leadsGeral || []).slice(0, 5) : [],
       cores: CORES_PADRAO,
       permissions: auth.permissions?.dashboard || {},
