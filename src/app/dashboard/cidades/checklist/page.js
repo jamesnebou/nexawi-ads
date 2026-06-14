@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -18,6 +19,12 @@ import {
 } from 'lucide-react'
 
 const STORAGE_KEY = 'nexawi_checklist_nova_cidade_v1'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const grupos = [
   {
@@ -249,7 +256,7 @@ export default function ChecklistNovaCidadePage() {
   }
 
   return (
-    <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+    <main className={`${poppins.className} flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up`}>
       <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[900px] h-[420px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none z-0" />
 
       <div className="relative z-10 max-w-7xl mx-auto w-full min-w-0 space-y-5">

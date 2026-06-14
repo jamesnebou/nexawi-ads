@@ -1,6 +1,7 @@
 ﻿'use client'
 
 import { useEffect, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
   Building2,
@@ -18,6 +19,12 @@ import {
 // alterar senha e enviar arquivo usando URL assinada.
 // As configurações agora passam por /api/admin/configuracoes.
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const HERO_IMAGE_BUCKET = 'landing-assets'
 
@@ -646,7 +653,7 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
   }
 
   return (
-    <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+    <main className={`${poppins.className} flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up`}>
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0"></div>
 
       <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-10 relative z-10">

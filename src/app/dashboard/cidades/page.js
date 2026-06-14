@@ -17,6 +17,7 @@
 // ============================================================
 
 import { useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import { createPortal } from 'react-dom'
 import Link from 'next/link'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -41,6 +42,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const HERO_IMAGE_BUCKET = 'landing-assets'
 
@@ -617,7 +624,7 @@ export default function DashboardCidadesPage() {
 
   return (
     <>
-      <main className="flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up">
+      <main className={`${poppins.className} flex-1 min-w-0 max-w-full overflow-x-hidden p-3 sm:p-5 md:p-6 overflow-y-auto custom-scrollbar relative z-10 animate-fade-in-up`}>
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] bg-[#6be12f]/5 rounded-full blur-[150px] pointer-events-none z-0" />
 
         <div className="relative z-10 flex min-w-0 max-w-full flex-col gap-5 mb-8">
