@@ -36,6 +36,19 @@ import {
 
 const supabase = createBrowserSupabaseClient()
 
+const SESSION_CHECK_TIMEOUT_MS = 8000
+const ADMIN_API_TIMEOUT_MS = 12000
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeoutId
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
 const poppins = Poppins({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
@@ -190,20 +203,40 @@ const menu = [
 ]
 
 async function adminApiFetch(path) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+  const { data: sessionData, error: sessionError } = await withTimeout(
+    supabase.auth.getSession(),
+    SESSION_CHECK_TIMEOUT_MS,
+    'Tempo excedido ao validar sessão administrativa.'
+  )
 
   if (sessionError || !sessionData?.session?.access_token) {
     throw new Error('Sessão administrativa não encontrada.')
   }
 
-  const response = await fetch(path, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${sessionData.session.access_token}`,
-    },
-    cache: 'no-store',
-  })
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ADMIN_API_TIMEOUT_MS)
+
+  let response
+
+  try {
+    response = await fetch(path, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${sessionData.session.access_token}`,
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo excedido ao buscar permissões administrativas.')
+    }
+
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const text = await response.text()
 
