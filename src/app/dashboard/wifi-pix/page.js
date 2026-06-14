@@ -396,8 +396,8 @@ export default function WifiPixPage() {
   const webhookEfi = relatorioPix?.webhookEfi || null
 
   return (
-    <div className={`${poppins.className} min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-5 text-white sm:px-2 sm:py-8`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={`${poppins.className} min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-4 text-white sm:px-1 sm:py-6`}>
+      <div className="max-w-7xl mx-auto space-y-5">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/30 bg-[#6be12f]/10 px-4 py-2 text-[#6be12f] text-xs font-black uppercase tracking-[0.18em] mb-4">
@@ -448,8 +448,8 @@ export default function WifiPixPage() {
           </div>
         ) : null}
 
-        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
-          <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4">
+          <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <h2 className="text-xl font-black flex items-center gap-2">
                 <BarChart3 size={20} className="text-[#ff9d2e]" /> Relatório e gestão Wi-Fi no Pix
@@ -511,7 +511,7 @@ export default function WifiPixPage() {
             </div>
           </div>
 
-          <div className="mb-5 grid gap-3 lg:grid-cols-[1fr_auto]">
+          <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_auto]">
             <label className="relative block">
               <input
                 value={buscaRelatorio}
@@ -533,7 +533,7 @@ export default function WifiPixPage() {
             </button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-8">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-8">
             <PixMetricCard label="Receita" value={money(resumoPix.receitaConfirmada)} detail={(resumoPix.vendasConfirmadas || 0) + ' confirmada(s)'} icon={CreditCard} />
             <PixMetricCard label="Pendente" value={money(resumoPix.receitaPendente)} detail={(resumoPix.pendentes || 0) + ' venda(s)'} icon={Clock3} />
             <PixMetricCard label="Vendas" value={resumoPix.totalVendas || 0} detail={(resumoPix.pendentes || 0) + ' pendente(s)'} icon={QrCode} />
@@ -724,7 +724,7 @@ export default function WifiPixPage() {
               </div>
             )}
           </div>
-        </section>        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
+        </section>        <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4">
           <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr_auto]">
             <label className="block">
               <span className="text-xs uppercase tracking-[0.18em] text-gray-500 font-bold">Hotspot</span>
@@ -787,7 +787,7 @@ export default function WifiPixPage() {
         ) : null}
 
         <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
+          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4">
             <h2 className="text-xl font-black mb-5 flex items-center gap-2">
               <Plus size={20} className="text-[#6be12f]" /> Plano de acesso
             </h2>
@@ -897,7 +897,7 @@ export default function WifiPixPage() {
             </form>
           </section>
 
-          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-4 sm:p-6">
+          <section className="mobile-tight-card rounded-3xl border border-white/[0.06] bg-white/[0.02] p-3 sm:p-4">
             <h2 className="text-xl font-black mb-5 flex items-center gap-2">
               <QrCode size={20} className="text-[#6be12f]" /> Planos cadastrados
             </h2>
@@ -1036,14 +1036,14 @@ function VendaActionButton({ label, icon: Icon, onClick, disabled = false, busy 
 }
 function PixMetricCard({ label, value, detail, icon: Icon }) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-5">
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <p className="text-xs uppercase tracking-[0.16em] text-gray-500 font-black">{label}</p>
-        <div className="rounded-xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 p-2 text-[#ff9d2e]">
-          <Icon size={17} />
+    <div className="rounded-2xl border border-white/[0.06] bg-[#0a0a0a] p-3 sm:p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <p className="min-w-0 text-[10px] uppercase tracking-[0.12em] text-gray-500 font-black">{label}</p>
+        <div className="shrink-0 rounded-xl border border-[#ff7a00]/20 bg-[#ff7a00]/10 p-1.5 text-[#ff9d2e]">
+          <Icon size={15} />
         </div>
       </div>
-      <p className="text-2xl font-black text-white">{value}</p>
+      <p className="text-xl sm:text-2xl font-black text-white">{value}</p>
       <p className="mt-1 text-xs text-gray-600">{detail}</p>
     </div>
   )

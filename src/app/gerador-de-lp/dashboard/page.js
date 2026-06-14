@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Poppins } from 'next/font/google'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -22,6 +23,12 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -185,7 +192,7 @@ export default function LpGeneratorDashboard() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
+    <main className={`${poppins.className} min-h-screen bg-[#050505] text-white`}>
       <Toaster position="top-right" />
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-8 px-5 py-8 sm:px-8">
