@@ -1,22 +1,22 @@
 export const LP_GENERATOR_ORDERABLE_SECTIONS = [
   { id: 'logos', label: 'Logos' },
-  { id: 'beneficios', label: 'Beneficios' },
+  { id: 'beneficios', label: 'Benefícios' },
   { id: 'prova', label: 'Prova social' },
   { id: 'galeria', label: 'Prova visual' },
   { id: 'oferta', label: 'Oferta' },
   { id: 'garantia', label: 'Garantia' },
-  { id: 'urgencia', label: 'Urgencia' },
-  { id: 'precos', label: 'Precos' },
-  { id: 'cta', label: 'CTA intermediario' },
+  { id: 'urgencia', label: 'Urgência' },
+  { id: 'precos', label: 'Preços' },
+  { id: 'cta', label: 'CTA intermediário' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'formulario', label: 'Formulario' },
+  { id: 'formulario', label: 'Formulário' },
 ]
 
 export const LP_GENERATOR_HERO_VARIANTS = [
   {
     id: 'split-media',
     name: 'Imagem lateral',
-    description: 'Texto forte e imagem solta ao lado. Bom para produto, servico e oferta direta.',
+    description: 'Texto forte e imagem solta ao lado. Bom para produto, serviço e oferta direta.',
   },
   {
     id: 'center-stage',
@@ -39,7 +39,7 @@ export const LP_GENERATOR_VISUAL_STYLES = [
   {
     id: 'editorial-premium',
     name: 'Editorial premium',
-    description: 'Composicao de manifesto, contraste alto, secoes com respiro e prova em destaque.',
+    description: 'Composição de manifesto, contraste alto, seções com respiro e prova em destaque.',
     heroVariant: 'center-stage',
     palette: {
       corPrimaria: '#d7ff61',
@@ -52,7 +52,7 @@ export const LP_GENERATOR_VISUAL_STYLES = [
   {
     id: 'tech-neon',
     name: 'Tech neon',
-    description: 'Grade luminosa, linhas tecnicas, superficies compactas e acentos digitais.',
+    description: 'Grade luminosa, linhas técnicas, superfícies compactas e acentos digitais.',
     heroVariant: 'split-media',
     palette: {
       corPrimaria: '#3bf7ff',
@@ -77,7 +77,7 @@ export const LP_GENERATOR_VISUAL_STYLES = [
   },
   {
     id: 'imobiliario-impactante',
-    name: 'Imobiliario impactante',
+    name: 'Imobiliário impactante',
     description: 'Dobra agressiva para imagem, oferta, disponibilidade e agendamento.',
     heroVariant: 'media-left',
     palette: {
@@ -103,8 +103,8 @@ export const LP_GENERATOR_VISUAL_STYLES = [
   },
   {
     id: 'clinica-clean-premium',
-    name: 'Clinica clean premium',
-    description: 'Leve, limpo e sofisticado para atendimento, estetica e saude.',
+    name: 'Clínica clean premium',
+    description: 'Leve, limpo e sofisticado para atendimento, estética e saúde.',
     heroVariant: 'split-media',
     palette: {
       corPrimaria: '#f4b9cb',
@@ -141,9 +141,9 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
   hero: {
     ativo: true,
     variante: 'split-media',
-    eyebrow: 'Pagina de conversao premium',
-    titulo: 'Transforme atencao em clientes todos os dias',
-    subtitulo: 'Uma landing page moderna, direta e construida para mostrar valor rapido, quebrar objeções e capturar leads prontos para conversar.',
+    eyebrow: 'Página de conversão premium',
+    titulo: 'Transforme atenção em clientes todos os dias',
+    subtitulo: 'Uma landing page moderna, direta e construida para mostrar valor rápido, quebrar objeções e capturar leads prontos para conversar.',
     ctaTexto: 'Quero conversar agora',
     ctaUrl: '#formulario',
     imagemUrl: '',
@@ -152,8 +152,8 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
   logos: {
     ativo: false,
     backgroundUrl: '',
-    eyebrow: 'Confianca',
-    titulo: 'Marcas, clientes ou parceiros que reforcam sua autoridade',
+    eyebrow: 'Confiança',
+    titulo: 'Marcas, clientes ou parceiros que reforçam sua autoridade',
     itens: [
       { nome: 'Cliente 01', imagemUrl: '' },
       { nome: 'Cliente 02', imagemUrl: '' },
@@ -163,37 +163,37 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
   beneficios: {
     ativo: true,
     backgroundUrl: '',
-    titulo: 'Uma estrutura pensada para prender atencao e gerar acao',
+    titulo: 'Uma estrutura pensada para prender atenção e gerar ação',
     itens: [
-      { titulo: 'Promessa em segundos', texto: 'A pessoa entende o que voce vende antes de pensar em sair da pagina.' },
-      { titulo: 'Oferta sem ruido', texto: 'O layout destaca valor, prova e proximo passo sem parecer uma pagina comum.' },
-      { titulo: 'Contato mais quente', texto: 'O formulario fica no contexto certo, depois que o visitante ja entendeu a oferta.' },
+      { titulo: 'Promessa em segundos', texto: 'A pessoa entende o que voce vende antes de pensar em sair da página.' },
+      { titulo: 'Oferta sem ruído', texto: 'O layout destaca valor, prova e próximo passo sem parecer uma página comum.' },
+      { titulo: 'Contato mais quente', texto: 'O formulário fica no contexto certo, depois que o visitante ja entendeu a oferta.' },
     ],
   },
   prova: {
     ativo: true,
     backgroundUrl: '',
-    titulo: 'Prova de confianca',
+    titulo: 'Prova de confiança',
     depoimento: 'A pagina ficou mais clara, mais bonita e os contatos passaram a chegar com muito mais contexto.',
-    autor: 'Cliente em operacao',
+    autor: 'Cliente em operação',
   },
   galeria: {
     ativo: false,
     backgroundUrl: '',
     eyebrow: 'Prova visual',
     titulo: 'Mostre resultado, bastidor ou produto em contexto real',
-    texto: 'Imagens certas reduzem duvida e fazem a oferta parecer concreta antes do contato.',
+    texto: 'Imagens certas reduzem dúvida e fazem a oferta parecer concreta antes do contato.',
     itens: [
       { titulo: 'Resultado em destaque', texto: 'Use uma imagem que torne a entrega visivel.', imagemUrl: '' },
-      { titulo: 'Experiencia real', texto: 'Mostre o produto, ambiente ou atendimento.', imagemUrl: '' },
-      { titulo: 'Detalhe que convence', texto: 'Reforce qualidade, acabamento ou transformacao.', imagemUrl: '' },
+      { titulo: 'Experiência real', texto: 'Mostre o produto, ambiente ou atendimento.', imagemUrl: '' },
+      { titulo: 'Detalhe que convence', texto: 'Reforce qualidade, acabamento ou transformação.', imagemUrl: '' },
     ],
   },
   oferta: {
     ativo: true,
     backgroundUrl: '',
-    titulo: 'Mostre sua oferta como algo impossivel de ignorar',
-    texto: 'Use este bloco para resumir a proposta, reforcar diferenciais, reduzir duvidas e levar o visitante direto para o contato.',
+    titulo: 'Mostre sua oferta como algo impossível de ignorar',
+    texto: 'Use este bloco para resumir a proposta, reforcar diferenciais, reduzir dúvidas e levar o visitante direto para o contato.',
     preco: 'Sob consulta',
     ctaTexto: 'Falar no WhatsApp',
     ctaUrl: '#formulario',
@@ -373,10 +373,10 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
 export const LP_GENERATOR_TEMPLATES = [
   {
     id: 'servico-local',
-    name: 'Servico local',
-    description: 'Para prestadores, lojas, assistencias, oficinas e negocios de bairro.',
+    name: 'Serviço local',
+    description: 'Para prestadores, lojas, assistências, oficinas e negócios de bairro.',
     premium: false,
-    defaultName: 'LP Servico Local',
+    defaultName: 'LP Serviço Local',
     config: {
       identidade: {
         corPrimaria: '#6be12f',
@@ -427,15 +427,15 @@ export const LP_GENERATOR_TEMPLATES = [
         ctaTexto: 'Pedir atendimento agora',
       },
       seo: {
-        title: 'Servico local com atendimento rapido',
+        title: 'Serviço local com atendimento rápido',
         description: 'Landing page para capturar clientes interessados em servicos locais.',
       },
     },
   },
   {
     id: 'clinica-estetica',
-    name: 'Clinica e estetica',
-    description: 'Para estetica, saude, odontologia, harmonizacao, terapeutas e studios.',
+    name: 'Clínica e estética',
+    description: 'Para estética, saúde, odontologia, harmonização, terapeutas e stúdios.',
     premium: false,
     defaultName: 'LP Clinica e Estetica',
     config: {
@@ -571,8 +571,8 @@ export const LP_GENERATOR_TEMPLATES = [
   },
   {
     id: 'imobiliaria',
-    name: 'Imobiliaria',
-    description: 'Para corretores, loteamentos, apartamentos, casas e captacao de visitas.',
+    name: 'Imobiliária',
+    description: 'Para corretores, loteamentos, apartamentos, casas e captação de visítas.',
     premium: true,
     defaultName: 'LP Imobiliaria',
     config: {
@@ -894,8 +894,8 @@ export const LP_GENERATOR_TEMPLATES = [
   },
   {
     id: 'loja-calcados',
-    name: 'Loja de calcados',
-    description: 'Para tenis, sandalias, sapatos, chinelos e modelos vendidos por reserva no WhatsApp.',
+    name: 'Loja de calçados',
+    description: 'Para tenis, sandálias, sapatos, chinelos e modelos vendidos por reserva no WhatsApp.',
     premium: false,
     defaultName: 'Site Loja de Calcados',
     config: {
@@ -994,15 +994,15 @@ export const LP_GENERATOR_TEMPLATES = [
         ctaTexto: 'Chamar vendedor',
       },
       seo: {
-        title: 'Loja de calcados com reserva pelo WhatsApp',
-        description: 'Site vitrine para loja de calcados vender modelos pelo WhatsApp.',
+        title: 'Loja de calçados com reserva pelo WhatsApp',
+        description: 'Site vitrine para loja de calçados vender modelos pelo WhatsApp.',
       },
     },
   },
   {
     id: 'farmacia',
-    name: 'Farmacia',
-    description: 'Para farmacias e drogarias com ofertas, itens de cuidado, entrega local e pedido pelo WhatsApp.',
+    name: 'Farmácia',
+    description: 'Para farmácias e drogarias com ofertas, itens de cuidado, entrega local e pedido pelo WhatsApp.',
     premium: false,
     defaultName: 'Site Farmacia',
     config: {
@@ -1025,9 +1025,9 @@ export const LP_GENERATOR_TEMPLATES = [
       },
       hero: {
         variante: 'split-media',
-        eyebrow: 'Farmacia perto de voce',
-        titulo: 'Peca seus produtos de farmacia pelo WhatsApp',
-        subtitulo: 'Mostre ofertas, itens essenciais, cuidado pessoal e entrega local com atendimento rapido pelo WhatsApp.',
+        eyebrow: 'Farmácia perto de voce',
+        titulo: 'Peça seus produtos de farmácia pelo WhatsApp',
+        subtitulo: 'Mostre ofertas, itens essênciais, cuidado pessoal e entrega local com atendimento rápido pelo WhatsApp.',
         ctaTexto: 'Ver ofertas',
         ctaUrl: '#precos',
       },
@@ -1091,11 +1091,11 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Atendimento rapido para confirmar seu pedido',
         texto: 'Explique horario de funcionamento, area de entrega, retirada, pagamento e como o cliente deve enviar o pedido.',
         preco: 'Pedido pelo WhatsApp',
-        ctaTexto: 'Chamar farmacia',
+        ctaTexto: 'Chamar farmácia',
       },
       formulario: {
         titulo: 'Envie seu pedido',
-        texto: 'Informe produto, quantidade e bairro. A farmacia retorna para confirmar disponibilidade e entrega.',
+        texto: 'Informe produto, quantidade e bairro. A farmácia retorna para confirmar disponibilidade e entrega.',
         botao: 'Enviar pedido',
         camposExtras: [
           { id: 'pedido', rotulo: 'Produto e quantidade', placeholder: 'Ex: vitamina C 1 unidade', tipo: 'text', obrigatorio: true },
@@ -1103,8 +1103,8 @@ export const LP_GENERATOR_TEMPLATES = [
         ],
       },
       seo: {
-        title: 'Farmacia com pedido pelo WhatsApp',
-        description: 'Site vitrine para farmacia receber pedidos e consultar produtos pelo WhatsApp.',
+        title: 'Farmácia com pedido pelo WhatsApp',
+        description: 'Site vitrine para farmácia receber pedidos e consultar produtos pelo WhatsApp.',
       },
     },
   },

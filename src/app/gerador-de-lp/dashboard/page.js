@@ -210,7 +210,7 @@ export default function LpGeneratorDashboard() {
                 Gerador de LP
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-neutral-400">
-                Crie landing pages de alta conversao com secoes editaveis, publicacao por slug e pagina publica pronta para captar leads.
+                Crie landing pages de alta conversão com seções editáveis, publicação por slug e página pública pronta para captar leads.
               </p>
             </div>
           </div>
@@ -293,7 +293,7 @@ export default function LpGeneratorDashboard() {
               ))}
             </select>
             <p className="mt-2 text-xs text-neutral-500">
-              O cliente vinculado vera esta LP, os leads e as metricas na area dele.
+              O cliente vinculado vera esta LP, os leads e as métricas na área dele.
             </p>
             {selectedTemplateBlocked ? (
               <p className="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-200">
