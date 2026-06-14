@@ -129,11 +129,11 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
   estilo: {
     preset: 'editorial-premium',
   },
-  cabecalho: {
+  cabeçalho: {
     ativo: true,
     mostrarMarca: true,
     mostrarPrecos: true,
-    precosTexto: 'Precos',
+    precosTexto: 'Preços',
     mostrarContato: true,
     contatoTexto: 'Contato',
     contatoUrl: '#formulario',
@@ -206,7 +206,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     texto: 'Explique garantia, suporte, acompanhamento ou compromisso que deixa o visitante mais seguro para avancar.',
     selo: 'Compromisso claro com a entrega',
   },
-  urgencia: {
+  urgência: {
     ativo: false,
     backgroundUrl: '',
     eyebrow: 'Agora',
@@ -216,7 +216,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     ctaTexto: 'Quero aproveitar agora',
     ctaUrl: '#formulario',
   },
-  precos: {
+  preços: {
     ativo: false,
     backgroundUrl: '',
     eyebrow: 'Planos',
@@ -303,7 +303,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
       { pergunta: 'Funciona no celular?', resposta: 'Sim. O layout e responsivo e prioriza leitura rapida.' },
     ],
   },
-  formulario: {
+  formulário: {
     ativo: true,
     backgroundUrl: '',
     titulo: 'Entre na fila de atendimento',
@@ -338,7 +338,7 @@ export const LP_GENERATOR_DEFAULT_CONFIG = {
     },
     camposExtras: [],
   },
-  rodape: {
+  rodapé: {
     ativo: true,
     mostrarLogo: true,
     mostrarCopyright: true,
@@ -542,15 +542,15 @@ export const LP_GENERATOR_TEMPLATES = [
         texto: 'Mostre para quem e, o que a pessoa recebe, quais resultados ela busca e por que agora e o momento certo.',
         preco: 'Vagas limitadas',
       },
-      urgencia: {
+      urgência: {
         ativo: true,
         eyebrow: 'Proxima turma',
-        titulo: 'Organize urgencia real com vagas, inicio e criterio de entrada',
+        titulo: 'Organize urgência real com vagas, inicio e criterio de entrada',
         texto: 'Use este bloco para mostrar prazo de inscricao, bonus atual ou limite de acompanhamento sem depender de escassez artificial.',
         destaque: 'Inscricoes da turma atual abertas',
         ctaTexto: 'Quero entrar na turma',
       },
-      precos: {
+      preços: {
         ativo: true,
         eyebrow: 'Formatos',
         titulo: 'Apresente a oferta com caminho de entrada claro',
@@ -599,7 +599,7 @@ export const LP_GENERATOR_TEMPLATES = [
         itens: [
           { titulo: 'Diferenciais visiveis', texto: 'Mostre localizacao, acabamento, financiamento e pontos fortes rapidamente.' },
           { titulo: 'Contato qualificado', texto: 'O corretor recebe dados de quem realmente demonstrou interesse.' },
-          { titulo: 'Oferta com urgencia', texto: 'A pagina permite destacar condicao, prazo e disponibilidade.' },
+          { titulo: 'Oferta com urgência', texto: 'A pagina permite destacar condição, prazo e disponibilidade.' },
         ],
       },
       prova: {
@@ -617,7 +617,7 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Mostre o imovel antes da conversa comercial',
         texto: 'Adicione fachada, planta, ambiente, vista e entorno para transformar curiosidade em visita.',
       },
-      urgencia: {
+      urgência: {
         ativo: true,
         eyebrow: 'Disponibilidade',
         titulo: 'Deixe claro o que pode mudar na condicao atual',
@@ -667,7 +667,7 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Por que participar agora',
         itens: [
           { titulo: 'Experiencia clara', texto: 'A pessoa entende o que vai viver e por que deve se inscrever.' },
-          { titulo: 'Urgencia natural', texto: 'Vagas, lote, data e beneficios ficam em destaque.' },
+          { titulo: 'Urgência natural', texto: 'Vagas, lote, data e beneficios ficam em destaque.' },
           { titulo: 'Inscricao simples', texto: 'O formulario captura interesse ou direciona para compra do ingresso.' },
         ],
       },
@@ -686,7 +686,7 @@ export const LP_GENERATOR_TEMPLATES = [
         titulo: 'Mostre a experiencia antes do ingresso',
         texto: 'Use imagens de palco, publico, convidados ou estrutura para tornar a promessa concreta.',
       },
-      urgencia: {
+      urgência: {
         ativo: true,
         eyebrow: 'Lote atual',
         titulo: 'Data e disponibilidade fazem a decisao acontecer',
@@ -761,7 +761,7 @@ export const LP_GENERATOR_TEMPLATES = [
         texto: 'Explique implantacao, suporte, seguranca, teste guiado ou acompanhamento que protege a decisao.',
         selo: 'Demo com contexto real da operacao',
       },
-      precos: {
+      preços: {
         ativo: true,
         eyebrow: 'Planos',
         titulo: 'Deixe a conversa comercial pronta para escalar',
@@ -799,7 +799,7 @@ export const LP_GENERATOR_TEMPLATES = [
         templateLayout: 'fashion-store',
         sectionOrder: ['galeria', 'precos', 'beneficios', 'oferta', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'urgencia'],
       },
-      cabecalho: {
+      cabeçalho: {
         precosTexto: 'Produtos',
         contatoTexto: 'Comprar no WhatsApp',
         contatoUrl: '#precos',
@@ -808,7 +808,7 @@ export const LP_GENERATOR_TEMPLATES = [
         variante: 'split-media',
         eyebrow: 'Colecao disponivel',
         titulo: 'Looks escolhidos para voce comprar pelo WhatsApp',
-        subtitulo: 'Mostre pecas, precos, tamanhos e disponibilidade com uma vitrine moderna que leva o cliente direto para o pedido.',
+        subtitulo: 'Mostre pecas, preços, tamanhos e disponibilidade com uma vitrine moderna que leva o cliente direto para o pedido.',
         ctaTexto: 'Ver produtos',
         ctaUrl: '#precos',
       },
@@ -831,7 +831,7 @@ export const LP_GENERATOR_TEMPLATES = [
           { titulo: 'Vitrine atualizada', texto: 'Troque produtos, imagens e ofertas direto pelo editor.' },
         ],
       },
-      precos: {
+      preços: {
         ativo: true,
         eyebrow: 'Produtos em destaque',
         titulo: 'Escolha sua peca e chame no WhatsApp',
@@ -911,7 +911,7 @@ export const LP_GENERATOR_TEMPLATES = [
         templateLayout: 'shoe-store',
         sectionOrder: ['precos', 'galeria', 'beneficios', 'oferta', 'prova', 'cta', 'faq', 'formulario', 'logos', 'garantia', 'urgencia'],
       },
-      cabecalho: {
+      cabeçalho: {
         precosTexto: 'Modelos',
         contatoTexto: 'Reservar modelo',
         contatoUrl: '#precos',
@@ -920,7 +920,7 @@ export const LP_GENERATOR_TEMPLATES = [
         variante: 'media-left',
         eyebrow: 'Modelos disponiveis',
         titulo: 'Escolha seu calcado e reserve pelo WhatsApp',
-        subtitulo: 'Uma vitrine direta para mostrar modelos, precos, numeracao e levar o cliente para a conversa de compra.',
+        subtitulo: 'Uma vitrine direta para mostrar modelos, preços, numeracao e levar o cliente para a conversa de compra.',
         ctaTexto: 'Ver modelos',
         ctaUrl: '#precos',
       },
@@ -1018,7 +1018,7 @@ export const LP_GENERATOR_TEMPLATES = [
         templateLayout: 'pharmacy-store',
         sectionOrder: ['precos', 'beneficios', 'oferta', 'garantia', 'prova', 'cta', 'faq', 'formulario', 'logos', 'galeria', 'urgencia'],
       },
-      cabecalho: {
+      cabeçalho: {
         precosTexto: 'Ofertas',
         contatoTexto: 'Pedir no WhatsApp',
         contatoUrl: '#precos',
@@ -1046,7 +1046,7 @@ export const LP_GENERATOR_TEMPLATES = [
         texto: 'Use esta secao para orientar sobre disponibilidade, substituicoes, entrega e contato com a equipe.',
         selo: 'Atendimento local pelo WhatsApp',
       },
-      precos: {
+      preços: {
         ativo: true,
         eyebrow: 'Ofertas e produtos',
         titulo: 'Escolha o produto e confirme pelo WhatsApp',
