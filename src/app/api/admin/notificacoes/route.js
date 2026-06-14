@@ -152,9 +152,11 @@ export async function GET(request) {
   }
 
   try {
-    await sincronizarAlertasOperacionais(auth)
-
     const { searchParams } = new URL(request.url)
+
+    if (searchParams.get('sync') === '1') {
+      await sincronizarAlertasOperacionais(auth)
+    }
 
     const limit = Math.min(Number(searchParams.get('limit') || 50), 100)
     const unreadOnly = searchParams.get('unreadOnly') === '1'

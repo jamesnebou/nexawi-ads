@@ -297,7 +297,7 @@ export default function Sidebar({ onClose }) {
 
     const interval = setInterval(() => {
       buscarNotificacoesNaoLidas()
-    }, 30000)
+    }, 120000)
 
     return () => clearInterval(interval)
   }, [])
@@ -305,7 +305,6 @@ export default function Sidebar({ onClose }) {
   useEffect(() => {
     async function carregarAdminLogado() {
       setCarregandoPermissoes(true)
-      buscarNotificacoesNaoLidas()
 
       try {
         const data = await adminApiFetch('/api/admin/me')

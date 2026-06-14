@@ -102,7 +102,7 @@ export default function NotificacoesPage() {
     setLoading(true)
 
     try {
-      const data = await adminApiFetch('/api/admin/notificacoes?limit=100')
+      const data = await adminApiFetch('/api/admin/notificacoes?limit=100&sync=1')
 
       setNotifications(data.notifications || [])
       setUnreadCount(data.unreadCount || 0)
