@@ -28,6 +28,18 @@ import {
 
 const supabase = createBrowserSupabaseClient()
 
+const SESSION_CHECK_TIMEOUT_MS = 8000
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeoutId
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
 export default function Login() {
   const router = useRouter()
 
@@ -54,7 +66,7 @@ export default function Login() {
         const acessoNegado = params.get('denied') === '1'
 
         if (veioDoLogout) {
-          await supabase.auth.signOut()
+          await withTimeout(supabase.auth.signOut(), SESSION_CHECK_TIMEOUT_MS, 'Tempo excedido ao limpar sessão.')
 
           setAviso({
             type: 'success',
@@ -66,7 +78,7 @@ export default function Login() {
         }
 
         if (sessaoExpirada) {
-          await supabase.auth.signOut()
+          await withTimeout(supabase.auth.signOut(), SESSION_CHECK_TIMEOUT_MS, 'Tempo excedido ao limpar sessão.')
 
           setAviso({
             type: 'warning',
@@ -87,7 +99,7 @@ export default function Login() {
           return
         }
 
-        const { data } = await supabase.auth.getSession()
+        const { data } = await withTimeout(supabase.auth.getSession(), SESSION_CHECK_TIMEOUT_MS, 'Tempo excedido ao validar sessão.')
 
         if (data?.session?.access_token) {
           router.replace('/dashboard')
@@ -97,6 +109,10 @@ export default function Login() {
         setVerificandoSessao(false)
       } catch (error) {
         console.error('Erro ao preparar login:', error)
+        setAviso({
+          type: 'warning',
+          message: 'Não foi possível validar a sessão automaticamente. Entre novamente para continuar.',
+        })
         setVerificandoSessao(false)
       }
     }
