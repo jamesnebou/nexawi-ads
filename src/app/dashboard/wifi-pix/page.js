@@ -397,7 +397,7 @@ export default function WifiPixPage() {
 
   return (
     <div className={`${poppins.className} min-h-screen max-w-full overflow-x-hidden bg-[#050505] px-0 py-4 text-white sm:px-1 sm:py-6`}>
-      <div className="max-w-7xl mx-auto space-y-5">
+      <div className="w-full max-w-none space-y-5">
         <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/30 bg-[#6be12f]/10 px-4 py-2 text-[#6be12f] text-xs font-black uppercase tracking-[0.18em] mb-4">
