@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -25,6 +26,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const DEFAULT_POLICY = {
   hotspotSubnet: '192.168.88.0/24',
@@ -190,7 +197,7 @@ function StatCard({ icon: Icon, label, value, accent = false }) {
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
             {label}
           </p>
-          <p className={`text-2xl font-black mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
+          <p className={`text-2xl font-extrabold mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
             {value}
           </p>
         </div>
@@ -213,7 +220,7 @@ function InfoCard({ icon: Icon, label, value, description }) {
         </p>
       </div>
 
-      <p className="text-sm font-black text-white break-all">
+      <p className="text-sm font-extrabold text-white break-all">
         {value || '—'}
       </p>
 
@@ -294,7 +301,7 @@ function DomainManager({
   return (
     <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
       <div className="mb-4">
-        <p className="text-sm font-black text-white">{title}</p>
+        <p className="text-sm font-extrabold text-white">{title}</p>
         <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
           {description}
         </p>
@@ -832,7 +839,7 @@ function togglePreset(preset) {
 
   if (loading) {
     return (
-      <main className="min-h-[calc(100vh-4rem)] flex items-center justify-center">
+      <main className={`${poppins.className} min-h-[calc(100vh-4rem)] flex items-center justify-center`}>
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="animate-spin text-[#6be12f]" size={34} />
           <p className="text-sm font-bold text-neutral-400">
@@ -844,7 +851,7 @@ function togglePreset(preset) {
   }
 
   return (
-    <main className="relative z-10 animate-fade-in-up">
+    <main className={`${poppins.className} relative z-10 animate-fade-in-up`}>
       <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[720px] h-[360px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none" />
 
       <header className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-8">
@@ -863,7 +870,7 @@ function togglePreset(preset) {
             Controle operacional do hotspot
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
             Controle de Rede
           </h1>
 
@@ -886,7 +893,7 @@ function togglePreset(preset) {
             <button
               onClick={configurarPortalCativo}
               disabled={processing}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
             >
               {processing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
               Configurar Portal Cativo
@@ -897,7 +904,7 @@ function togglePreset(preset) {
             <button
               onClick={aplicarPolitica}
               disabled={processing}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all shadow-[0_0_30px_rgba(107,225,47,0.18)]"
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-50 transition-all shadow-[0_0_30px_rgba(107,225,47,0.18)]"
             >
               {processing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
               Aplicar Política
@@ -920,7 +927,7 @@ function togglePreset(preset) {
 
       {policyNotice && (
         <div className="relative z-10 mb-6 rounded-2xl border border-blue-500/20 bg-blue-500/10 px-5 py-4 text-sm text-blue-100">
-          <p className="font-black text-blue-200 mb-2">
+          <p className="font-extrabold text-blue-200 mb-2">
             {policyNotice.title}
           </p>
 
@@ -936,7 +943,7 @@ function togglePreset(preset) {
 
       {statusUnavailable && (
         <div className="relative z-10 mb-6 rounded-2xl border border-yellow-500/20 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-100">
-          <p className="font-black text-yellow-200 mb-1">
+          <p className="font-extrabold text-yellow-200 mb-1">
             MikroTik inacessivel no momento
           </p>
           <p className="text-xs leading-relaxed text-yellow-100/85">
@@ -990,7 +997,7 @@ function togglePreset(preset) {
               </div>
 
               <div>
-                <h2 className="text-lg font-black text-white">Hotspot selecionado</h2>
+                <h2 className="text-lg font-extrabold text-white">Hotspot selecionado</h2>
                 <p className="text-xs text-neutral-500 font-medium">
                   Política aplicada somente neste ponto
                 </p>
@@ -1028,7 +1035,7 @@ function togglePreset(preset) {
               <button
                 onClick={configurarPortalCativo}
                 disabled={processing}
-                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
+                className="mt-5 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50 transition-all"
               >
                 {processing ? <Loader2 size={16} className="animate-spin" /> : <Wifi size={16} />}
                 Configurar Portal Cativo
@@ -1043,7 +1050,7 @@ function togglePreset(preset) {
               </div>
 
               <div>
-                <h2 className="text-lg font-black text-white">Política NexaWi</h2>
+                <h2 className="text-lg font-extrabold text-white">Política NexaWi</h2>
                 <p className="text-xs text-neutral-500 font-medium">
                   Configuração enviada para o MikroTik
                 </p>
@@ -1136,7 +1143,7 @@ function togglePreset(preset) {
               <button
                 onClick={resetarPolitica}
                 disabled={processing}
-                className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-black text-red-300 hover:bg-red-500/15 disabled:opacity-50 transition-all"
+                className="mt-6 w-full inline-flex items-center justify-center gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 px-5 py-3 text-sm font-extrabold text-red-300 hover:bg-red-500/15 disabled:opacity-50 transition-all"
               >
                 <ShieldOff size={16} />
                 Resetar Política
@@ -1149,7 +1156,7 @@ function togglePreset(preset) {
             <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
     <div>
-      <h2 className="text-lg font-black text-white">
+      <h2 className="text-lg font-extrabold text-white">
         Presets rápidos
       </h2>
       <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
@@ -1182,11 +1189,11 @@ function togglePreset(preset) {
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
-                <p className="text-sm font-black text-white">
+                <p className="text-sm font-extrabold text-white">
                   {preset.title}
                 </p>
 
-                <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+                <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[#8cf059]">
                   {preset.badge}
                 </span>
               </div>
@@ -1246,7 +1253,7 @@ function togglePreset(preset) {
           <div className="rounded-[2rem] border border-white/[0.06] bg-[#0a0a0a] p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
               <div>
-                <h2 className="text-lg font-black text-white">Regras ativas</h2>
+                <h2 className="text-lg font-extrabold text-white">Regras ativas</h2>
                 <p className="text-xs text-neutral-500 mt-1">
                   Lista lida diretamente do MikroTik via Control API.
                 </p>

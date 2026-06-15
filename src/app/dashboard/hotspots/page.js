@@ -13,6 +13,7 @@
 // - Botões operacionais: Gerenciar Rede, Testar MikroTik, Abrir Portal
 // ============================================================
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -47,6 +48,12 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
 
@@ -181,7 +188,7 @@ function StatCard({ icon: Icon, label, value, description, accent = false }) {
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">
             {label}
           </p>
-          <p className={`text-2xl font-black mt-2 ${accent ?'text-[#6be12f]' : 'text-white'}`}>
+          <p className={`text-2xl font-extrabold mt-2 ${accent ?'text-[#6be12f]' : 'text-white'}`}>
             {value}
           </p>
           {description && (
@@ -208,7 +215,7 @@ function MiniMetric({ icon: Icon, label, value }) {
           {label}
         </p>
       </div>
-      <p className="text-sm font-black text-white">
+      <p className="text-sm font-extrabold text-white">
         {value}
       </p>
     </div>
@@ -251,7 +258,7 @@ function PlanoUsoBanner({ planoUso }) {
           </div>
           <div>
             <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-400">Uso do plano</p>
-            <h2 className="text-lg font-black text-white mt-1">Pontos Wi-Fi: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
+            <h2 className="text-lg font-extrabold text-white mt-1">Pontos Wi-Fi: {formatarLimitePlano(planoUso.uso, planoUso.limite)}</h2>
             <p className="text-sm text-neutral-400 mt-1">
               {planoUso.plano?.nome ?`Plano ${planoUso.plano.nome}. ` : ''}
               {bloqueado ? planoUso.motivo_bloqueio || 'Conta bloqueada.' : noLimite ?'Limite atingido para este recurso.' : pertoLimite ?'Uso próximo do limite contratado.' : 'Dentro do limite contratado.'}
@@ -581,7 +588,7 @@ export default function HotspotsPro() {
         }}
       />
 
-      <main className="relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
+      <main className={`${poppins.className} relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up`}>
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
         <header className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
@@ -591,7 +598,7 @@ export default function HotspotsPro() {
               Centro operacional
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500 tracking-tight flex items-center gap-3">
               Hotspots
             </h1>
 
@@ -756,7 +763,7 @@ export default function HotspotsPro() {
 
                         <div className="min-w-0">
                           <div className="flex flex-col-reverse items-center gap-2 mb-2 sm:flex-row sm:flex-wrap sm:items-center">
-                            <h2 className="text-lg font-black text-white">
+                            <h2 className="text-lg font-extrabold text-white">
                               {hotspot.nome}
                             </h2>
 
@@ -839,7 +846,7 @@ export default function HotspotsPro() {
                           </div>
 
                           <div>
-                            <p className="text-sm font-black text-white">
+                            <p className="text-sm font-extrabold text-white">
                               Modo do Portal
                             </p>
                             <p className="text-xs text-neutral-600">
@@ -878,7 +885,7 @@ export default function HotspotsPro() {
                           </div>
 
                           <div>
-                            <p className="text-sm font-black text-white">
+                            <p className="text-sm font-extrabold text-white">
                               MikroTik
                             </p>
                             <p className="text-xs text-neutral-600">
@@ -928,7 +935,7 @@ export default function HotspotsPro() {
                           </div>
 
                           <div>
-                            <p className="text-sm font-black text-white">
+                            <p className="text-sm font-extrabold text-white">
                               Política de Rede
                             </p>
                             <p className="text-xs text-neutral-600">
@@ -976,7 +983,7 @@ export default function HotspotsPro() {
                     <div className="flex flex-col sm:flex-row flex-wrap gap-3 pt-1">
                       <button
                         onClick={() => gerenciarRede(hotspot)}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] transition-all shadow-[0_0_30px_rgba(107,225,47,0.16)]"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black hover:bg-[#8cf059] transition-all shadow-[0_0_30px_rgba(107,225,47,0.16)]"
                       >
                         <Network size={16} />
                         Gerenciar Rede
@@ -1223,7 +1230,7 @@ export default function HotspotsPro() {
                   <div className="flex items-start gap-3 mb-5">
                     <ShieldCheck size={18} className="text-[#6be12f] mt-0.5 flex-shrink-0" />
                     <div>
-                      <h3 className="text-sm font-black text-white">Regras do portal deste hotspot</h3>
+                      <h3 className="text-sm font-extrabold text-white">Regras do portal deste hotspot</h3>
                       <p className="text-xs text-neutral-500 mt-1">
                         Use para adaptar Cândido Sales sem alterar o fluxo das outras cidades.
                       </p>

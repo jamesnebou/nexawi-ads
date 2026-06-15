@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useState } from 'react'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
 import {
@@ -22,6 +23,12 @@ import {
 import toast, { Toaster } from 'react-hot-toast'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const statusOpcoes = ['Ativo', 'Inativo', 'Manutenção']
 
@@ -102,7 +109,7 @@ function StatCard({ icon: Icon, label, value, description, accent = false }) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-widest text-neutral-500">{label}</p>
-          <p className={`text-2xl font-black mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
+          <p className={`text-2xl font-extrabold mt-2 ${accent ? 'text-[#6be12f]' : 'text-white'}`}>
             {value}
           </p>
           {description && <p className="text-xs text-neutral-600 mt-1">{description}</p>}
@@ -150,12 +157,12 @@ function RemoteAccessPanel() {
     <section className="relative z-10 rounded-[2rem] border border-[#6be12f]/15 bg-[#071006] p-6 mb-8">
       <div className="flex flex-col xl:flex-row xl:items-start justify-between gap-6">
         <div className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059] mb-4">
+          <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-4">
             <ShieldCheck size={13} />
             Acesso remoto recomendado
           </div>
 
-          <h2 className="text-xl font-black text-white tracking-tight">
+          <h2 className="text-xl font-extrabold text-white tracking-tight">
             Prepare o MikroTik para operar sem cabo
           </h2>
 
@@ -173,7 +180,7 @@ function RemoteAccessPanel() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mt-6">
         {steps.map((step) => (
           <div key={step.title} className="rounded-2xl border border-white/[0.06] bg-black/30 p-4">
-            <p className="text-sm font-black text-white">{step.title}</p>
+            <p className="text-sm font-extrabold text-white">{step.title}</p>
             <p className="text-xs text-neutral-500 mt-2 leading-relaxed">{step.description}</p>
           </div>
         ))}
@@ -183,12 +190,12 @@ function RemoteAccessPanel() {
         {commands.map((command) => (
           <div key={command.label} className="rounded-2xl border border-white/[0.06] bg-[#050505] p-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-              <p className="text-xs font-black text-white">{command.label}</p>
+              <p className="text-xs font-extrabold text-white">{command.label}</p>
 
               <button
                 type="button"
                 onClick={() => navigator.clipboard.writeText(command.value).then(() => toast.success('Copiado!')).catch(() => toast.error('Nao foi possivel copiar.'))}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-extrabold text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
               >
                 <Copy size={13} />
                 Copiar
@@ -764,7 +771,7 @@ export default function MikrotiksPage() {
       <div className="rounded-[2rem] border border-white/[0.06] bg-[#050505] p-5">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-5">
           <div>
-            <p className="text-sm font-black text-white">
+            <p className="text-sm font-extrabold text-white">
               Wizard de onboarding MikroTik
             </p>
             <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
@@ -772,7 +779,7 @@ export default function MikrotiksPage() {
             </p>
           </div>
 
-          <span className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest border ${statusClass(diagnostics?.ready ? 'ok' : 'warning')}`}>
+          <span className={`inline-flex items-center justify-center rounded-full px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest border ${statusClass(diagnostics?.ready ? 'ok' : 'warning')}`}>
             {diagnostics?.ready ? 'Pronto para operar' : 'Com pendencias'}
           </span>
         </div>
@@ -789,12 +796,12 @@ export default function MikrotiksPage() {
                 className={`text-left rounded-2xl border p-3 transition-all ${statusClass(step.status, selected)}`}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest">
+                  <span className="text-[10px] font-extrabold uppercase tracking-widest">
                     {String(index + 1).padStart(2, '0')}
                   </span>
                   {step.ok ? <Check size={14} /> : <AlertTriangle size={14} />}
                 </div>
-                <p className="text-sm font-black text-white mt-2">
+                <p className="text-sm font-extrabold text-white mt-2">
                   {step.title}
                 </p>
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-75 mt-1">
@@ -808,7 +815,7 @@ export default function MikrotiksPage() {
         <div className={`rounded-2xl border p-5 ${statusClass(activeStep.status, true)}`}>
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div>
-              <p className="text-lg font-black text-white">
+              <p className="text-lg font-extrabold text-white">
                 {activeStep.title}: {activeStep.ok ? 'validado' : 'precisa de atencao'}
               </p>
               <p className="text-sm font-bold mt-2">
@@ -826,7 +833,7 @@ export default function MikrotiksPage() {
                 <div key={command.title} className="rounded-xl border border-white/[0.06] bg-black/40 p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                     <div>
-                      <p className="text-xs font-black text-white">
+                      <p className="text-xs font-extrabold text-white">
                         {command.title}
                       </p>
                       <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
@@ -837,7 +844,7 @@ export default function MikrotiksPage() {
                     <button
                       type="button"
                       onClick={() => copiarTexto(command.value)}
-                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+                      className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-extrabold text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
                     >
                       <Copy size={13} />
                       Copiar
@@ -865,7 +872,7 @@ export default function MikrotiksPage() {
       <div className="rounded-2xl border border-white/[0.06] bg-[#050505] p-5">
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-5">
           <div>
-            <p className="text-sm font-black text-white">
+            <p className="text-sm font-extrabold text-white">
               Onboarding RouterOS
             </p>
             <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
@@ -873,7 +880,7 @@ export default function MikrotiksPage() {
             </p>
           </div>
 
-          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#8cf059]">
             {onboarding.hotspotSubnet}
           </span>
         </div>
@@ -896,7 +903,7 @@ export default function MikrotiksPage() {
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-black text-white">
+                  <p className="text-xs font-extrabold text-white">
                     {item.label}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
@@ -913,7 +920,7 @@ export default function MikrotiksPage() {
             <div key={command.title} className="rounded-xl border border-white/[0.05] bg-[#0a0a0a] p-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                 <div>
-                  <p className="text-xs font-black text-white">
+                  <p className="text-xs font-extrabold text-white">
                     {command.title}
                   </p>
                   <p className="text-[11px] text-neutral-500 mt-1 leading-relaxed">
@@ -924,7 +931,7 @@ export default function MikrotiksPage() {
                 <button
                   type="button"
                   onClick={() => copiarTexto(command.value)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-black text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-white/[0.05] px-3 py-2 text-[11px] font-extrabold text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]"
                 >
                   <Copy size={13} />
                   Copiar
@@ -979,7 +986,7 @@ export default function MikrotiksPage() {
         }}
       />
 
-      <main className="relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up">
+      <main className={`${poppins.className} relative z-10 max-w-full overflow-x-hidden px-0 sm:px-2 md:px-4 pb-12 animate-fade-in-up`}>
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[#6be12f]/5 rounded-full blur-[120px] pointer-events-none z-0" />
 
         <header className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 mb-8">
@@ -989,7 +996,7 @@ export default function MikrotiksPage() {
               Infraestrutura
             </div>
 
-            <h1 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               MikroTiks
             </h1>
 
@@ -1125,7 +1132,7 @@ export default function MikrotiksPage() {
 
                         <div className="min-w-0">
                           <div className="flex flex-col-reverse items-center gap-2 mb-2 sm:flex-row sm:flex-wrap sm:items-center">
-                            <h2 className="text-lg font-black text-white">
+                            <h2 className="text-lg font-extrabold text-white">
                               {routerItem.nome}
                             </h2>
 
@@ -1209,7 +1216,7 @@ export default function MikrotiksPage() {
                       <div className="rounded-2xl border border-[#6be12f]/15 bg-[#071006] p-4">
                         <div className="flex items-center justify-between gap-3 mb-3">
                           <div>
-                            <p className="text-[10px] uppercase tracking-widest font-black text-[#8cf059]">
+                            <p className="text-[10px] uppercase tracking-widest font-extrabold text-[#8cf059]">
                               Monitoramento ao vivo
                             </p>
                             <p className="text-[11px] text-neutral-500 mt-1">
@@ -1217,7 +1224,7 @@ export default function MikrotiksPage() {
                             </p>
                           </div>
 
-                          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[#8cf059]">
+                          <span className="rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[#8cf059]">
                             Online
                           </span>
                         </div>
@@ -1227,7 +1234,7 @@ export default function MikrotiksPage() {
                             <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
                               Download
                             </p>
-                            <p className="text-xl font-black text-white mt-1">
+                            <p className="text-xl font-extrabold text-white mt-1">
                               {trafficByRouter[routerItem.id]?.traffic?.download || '0 Mbps'}
                             </p>
                             <p className="text-[10px] text-neutral-600 mt-1">
@@ -1239,7 +1246,7 @@ export default function MikrotiksPage() {
                             <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
                               Upload
                             </p>
-                            <p className="text-xl font-black text-white mt-1">
+                            <p className="text-xl font-extrabold text-white mt-1">
                               {trafficByRouter[routerItem.id]?.traffic?.upload || '0 Mbps'}
                             </p>
                             <p className="text-[10px] text-neutral-600 mt-1">
@@ -1259,7 +1266,7 @@ export default function MikrotiksPage() {
                     <div className="rounded-2xl border border-sky-400/15 bg-sky-950/10 p-4">
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div>
-                          <p className="text-[10px] uppercase tracking-widest font-black text-sky-300">
+                          <p className="text-[10px] uppercase tracking-widest font-extrabold text-sky-300">
                             Teste rapido da internet
                           </p>
                           <p className="text-[11px] text-neutral-500 mt-1">
@@ -1267,7 +1274,7 @@ export default function MikrotiksPage() {
                           </p>
                         </div>
 
-                        <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-sky-300">
+                        <span className="shrink-0 rounded-full border border-sky-400/20 bg-sky-400/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-sky-300">
                           Operadora
                         </span>
                       </div>
@@ -1279,7 +1286,7 @@ export default function MikrotiksPage() {
                               <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
                                 Download medio
                               </p>
-                              <p className="text-xl font-black text-white mt-1">
+                              <p className="text-xl font-extrabold text-white mt-1">
                                 {speedTestByRouter[routerItem.id]?.internetTest?.download || '0 Mbps'}
                               </p>
                               <p className="text-[10px] text-neutral-600 mt-1">
@@ -1291,7 +1298,7 @@ export default function MikrotiksPage() {
                               <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-500">
                                 Upload observado
                               </p>
-                              <p className="text-xl font-black text-white mt-1">
+                              <p className="text-xl font-extrabold text-white mt-1">
                                 {speedTestByRouter[routerItem.id]?.internetTest?.upload || '0 Mbps'}
                               </p>
                               <p className="text-[10px] text-neutral-600 mt-1">
@@ -1316,7 +1323,7 @@ export default function MikrotiksPage() {
                         </>
                       ) : speedTestErrorByRouter[routerItem.id] ? (
                         <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3">
-                          <p className="text-xs font-black text-red-300">
+                          <p className="text-xs font-extrabold text-red-300">
                             Teste nao concluido
                           </p>
                           <p className="text-[11px] text-red-200/80 mt-1 break-words">
@@ -1337,7 +1344,7 @@ export default function MikrotiksPage() {
                       <button
                         onClick={() => monitorarTrafegoRouter(routerItem)}
                         disabled={trafficLoadingId === routerItem.id}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-black text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-5 py-3 text-sm font-extrabold text-[#8cf059] hover:bg-[#6be12f]/15 disabled:opacity-50"
                       >
                         {trafficLoadingId === routerItem.id ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
                         Trafego agora
@@ -1346,7 +1353,7 @@ export default function MikrotiksPage() {
                       <button
                         onClick={() => testarVelocidadeInternet(routerItem)}
                         disabled={speedTestLoadingId === routerItem.id}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-400/10 px-5 py-3 text-sm font-black text-sky-200 hover:bg-sky-400/15 disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-sky-400/20 bg-sky-400/10 px-5 py-3 text-sm font-extrabold text-sky-200 hover:bg-sky-400/15 disabled:opacity-50"
                       >
                         {speedTestLoadingId === routerItem.id ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
                         Teste de internet
@@ -1355,7 +1362,7 @@ export default function MikrotiksPage() {
                       <button
                         onClick={() => testarRouter(routerItem)}
                         disabled={diagnosing}
-                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50"
+                        className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-50"
                       >
                         {diagnosing ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
                         Diagnóstico
@@ -1550,7 +1557,7 @@ export default function MikrotiksPage() {
                   />
 
                   <div>
-                    <p className="text-sm font-black text-white">
+                    <p className="text-sm font-extrabold text-white">
                       Aplicar política base após salvar
                     </p>
 
@@ -1564,7 +1571,7 @@ export default function MikrotiksPage() {
               <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#050505] p-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                   <div>
-                    <p className="text-sm font-black text-white">
+                    <p className="text-sm font-extrabold text-white">
                       Diagnóstico antes de salvar
                     </p>
                     <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
@@ -1576,7 +1583,7 @@ export default function MikrotiksPage() {
                     type="button"
                     onClick={diagnosticarFormularioRouter}
                     disabled={formDiagnosticsLoading}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black hover:bg-[#8cf059] disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black hover:bg-[#8cf059] disabled:opacity-50"
                   >
                     {formDiagnosticsLoading ? <Loader2 size={16} className="animate-spin" /> : <ShieldCheck size={16} />}
                     Diagnosticar
@@ -1597,7 +1604,7 @@ export default function MikrotiksPage() {
                     <div className="flex items-start gap-3">
                       <AlertTriangle size={18} className="text-red-400 mt-0.5" />
                       <div>
-                        <p className="text-sm font-black text-red-300">
+                        <p className="text-sm font-extrabold text-red-300">
                           Diagnóstico falhou
                         </p>
                         <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
@@ -1622,7 +1629,7 @@ export default function MikrotiksPage() {
                       )}
 
                       <div className="min-w-0">
-                        <p className={`text-sm font-black ${
+                        <p className={`text-sm font-extrabold ${
                           formDiagnostics.ready ? 'text-[#8cf059]' : 'text-yellow-300'
                         }`}>
                           {formDiagnostics.ready ? 'MikroTik pronto para salvar' : 'MikroTik com pendências'}
@@ -1646,7 +1653,7 @@ export default function MikrotiksPage() {
 
                         {(formDiagnostics.hotspotServers || []).length > 0 && (
                           <div className="mt-4 rounded-2xl border border-white/[0.06] bg-[#050505] p-4">
-                            <p className="text-xs font-black text-white mb-3">
+                            <p className="text-xs font-extrabold text-white mb-3">
                               Hotspot servers encontrados
                             </p>
 
@@ -1664,7 +1671,7 @@ export default function MikrotiksPage() {
                                     }`}
                                   >
                                     <div>
-                                      <p className="text-sm font-black text-white">
+                                      <p className="text-sm font-extrabold text-white">
                                         {server.name}
                                       </p>
 
@@ -1676,7 +1683,7 @@ export default function MikrotiksPage() {
                                     <button
                                       type="button"
                                       onClick={() => usarHotspotServerDoDiagnostico(server.name)}
-                                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-black transition-all ${
+                                      className={`inline-flex items-center justify-center rounded-xl px-4 py-2 text-xs font-extrabold transition-all ${
                                         selected
                                           ? 'bg-[#6be12f] text-black'
                                           : 'bg-white/[0.05] text-neutral-300 hover:bg-[#6be12f]/10 hover:text-[#8cf059]'
@@ -1740,7 +1747,7 @@ export default function MikrotiksPage() {
           <div className="bg-[#0a0a0a] border border-white/[0.05] rounded-[2.5rem] w-full max-w-4xl flex flex-col max-h-[90vh]">
             <div className="flex items-center justify-between p-8 border-b border-white/[0.05]">
               <div>
-                <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-[#8cf059] mb-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest text-[#8cf059] mb-3">
                   <ShieldCheck size={13} />
                   Diagnóstico técnico
                 </div>
@@ -1772,7 +1779,7 @@ export default function MikrotiksPage() {
                   <div className="flex items-start gap-3">
                     <AlertTriangle size={20} className="text-red-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-black text-red-300">
+                      <p className="text-sm font-extrabold text-red-300">
                         Diagnóstico falhou
                       </p>
                       <p className="text-xs text-red-200/80 mt-1 leading-relaxed">
@@ -1792,7 +1799,7 @@ export default function MikrotiksPage() {
                   }`}>
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div>
-                        <p className={`text-sm font-black ${
+                        <p className={`text-sm font-extrabold ${
                           diagnosticsData.ready ? 'text-[#8cf059]' : 'text-yellow-300'
                         }`}>
                           {diagnosticsData.ready ? 'MikroTik pronto para operar' : 'MikroTik precisa de atenção'}
@@ -1815,7 +1822,7 @@ export default function MikrotiksPage() {
                         <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
                           Modelo
                         </p>
-                        <p className="text-sm font-black text-white">
+                        <p className="text-sm font-extrabold text-white">
                           {diagnosticsData.router.boardName || '—'}
                         </p>
                       </div>
@@ -1824,7 +1831,7 @@ export default function MikrotiksPage() {
                         <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
                           RouterOS
                         </p>
-                        <p className="text-sm font-black text-white">
+                        <p className="text-sm font-extrabold text-white">
                           {diagnosticsData.router.version || '—'}
                         </p>
                       </div>
@@ -1833,7 +1840,7 @@ export default function MikrotiksPage() {
                         <p className="text-[10px] uppercase tracking-widest font-bold text-neutral-600 mb-1">
                           Uptime
                         </p>
-                        <p className="text-sm font-black text-white">
+                        <p className="text-sm font-extrabold text-white">
                           {diagnosticsData.router.uptime || '—'}
                         </p>
                       </div>
@@ -1841,7 +1848,7 @@ export default function MikrotiksPage() {
                   )}
 
                   <div>
-                    <h3 className="text-lg font-black text-white mb-4">
+                    <h3 className="text-lg font-extrabold text-white mb-4">
                       Verificações
                     </h3>
 
@@ -1865,7 +1872,7 @@ export default function MikrotiksPage() {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="text-sm font-black text-white">
+                              <p className="text-sm font-extrabold text-white">
                                 {check.label}
                               </p>
 
@@ -1889,7 +1896,7 @@ export default function MikrotiksPage() {
 
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                     <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5">
-                      <p className="text-sm font-black text-white mb-3">
+                      <p className="text-sm font-extrabold text-white mb-3">
                         Hotspot servers
                       </p>
 
@@ -1910,7 +1917,7 @@ export default function MikrotiksPage() {
                     </div>
 
                     <div className="rounded-2xl border border-white/[0.05] bg-[#050505] p-5">
-                      <p className="text-sm font-black text-white mb-3">
+                      <p className="text-sm font-extrabold text-white mb-3">
                         Serviços RouterOS
                       </p>
 
@@ -1922,7 +1929,7 @@ export default function MikrotiksPage() {
                               <p className="text-xs text-neutral-500">Porta {service.port || '—'} · {service.address || 'sem restrição exibida'}</p>
                             </div>
 
-                            <span className={`text-[10px] font-black uppercase tracking-widest rounded-full px-2.5 py-1 ${
+                            <span className={`text-[10px] font-extrabold uppercase tracking-widest rounded-full px-2.5 py-1 ${
                               service.enabled
                                 ? 'bg-[#6be12f]/10 text-[#8cf059] border border-[#6be12f]/20'
                                 : 'bg-red-500/10 text-red-300 border border-red-500/20'
