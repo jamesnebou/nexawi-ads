@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
@@ -16,6 +17,12 @@ import {
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
 import { LP_GENERATOR_ORDERABLE_SECTIONS } from '@/lib/lp-generator-defaults'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 function sectionStyle(config) {
   return {
@@ -35,7 +42,7 @@ function Cta({ href, children, variant = 'primary', className = '' }) {
   return (
     <a
       href={href || '#formulario'}
-      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-black transition ${variantClassName} ${className}`}
+      className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold transition ${variantClassName} ${className}`}
     >
       {children}
       <ArrowRight size={17} />
@@ -46,7 +53,7 @@ function Cta({ href, children, variant = 'primary', className = '' }) {
 function Metric({ value, label }) {
   return (
     <div className="min-w-0">
-      <p className="text-2xl font-black tracking-tight text-white sm:text-3xl">{value}</p>
+      <p className="text-2xl font-extrabold tracking-tight text-white sm:text-3xl">{value}</p>
       <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--page-muted)]">{label}</p>
     </div>
   )
@@ -109,10 +116,10 @@ function VisualPanel({ config }) {
       <div className="rounded-[1.5rem] border border-white/10 bg-black/80 p-4">
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div>
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)]">{textOr(config.textos?.previewEyebrow, 'Live preview')}</p>
-            <p className="mt-1 text-sm font-black text-white">{config.identidade.marca}</p>
+            <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--primary)]">{textOr(config.textos?.previewEyebrow, 'Live preview')}</p>
+            <p className="mt-1 text-sm font-extrabold text-white">{config.identidade.marca}</p>
           </div>
-          <div className="rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-[var(--primary)]">
+          <div className="rounded-full border border-[var(--primary)]/30 bg-[var(--primary)]/10 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-[var(--primary)]">
             {textOr(config.textos?.previewStatus, 'Online')}
           </div>
         </div>
@@ -131,8 +138,8 @@ function VisualPanel({ config }) {
         <div className="grid grid-cols-3 gap-3">
           {previewCards.map((item, index) => (
             <div key={`${item.numero}-${item.texto}-${index}`} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="text-lg font-black text-white">{item.numero}</p>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-widest text-[var(--page-muted)]">{item.texto}</p>
+              <p className="text-lg font-extrabold text-white">{item.numero}</p>
+              <p className="mt-1 text-[10px] font-extrabold uppercase tracking-widest text-[var(--page-muted)]">{item.texto}</p>
             </div>
           ))}
         </div>
@@ -153,7 +160,7 @@ function BrandMark({ config, compact = false }) {
   }
 
   return (
-    <div className={`flex ${compact ? 'h-8 w-8' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-black text-black`}>
+    <div className={`flex ${compact ? 'h-8 w-8' : 'h-9 w-9'} shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-extrabold text-black`}>
       {config.identidade.marca?.charAt(0) || 'L'}
     </div>
   )
@@ -623,7 +630,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
       data-lp-style={visualStyle}
       data-lp-hero={heroVariant}
       data-lp-template={templateLayout}
-      className="lp-page min-h-screen [overflow-x:clip] bg-[var(--page-bg)] pb-20 text-[var(--page-text)] selection:bg-[var(--primary)] selection:text-black md:pb-0"
+      className={`${poppins.className} lp-page min-h-screen [overflow-x:clip] bg-[var(--page-bg)] pb-20 text-[var(--page-text)] selection:bg-[var(--primary)] selection:text-black md:pb-0`}
     >
       {!previewMode && <Toaster position="top-right" />}
       <style jsx global>{`
@@ -1026,18 +1033,18 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
             {config.cabecalho.mostrarMarca ? (
               <a href="#" className="flex min-w-0 items-center gap-3">
                 <BrandMark config={config} />
-                <span className="truncate text-sm font-black">{config.identidade.marca}</span>
+                <span className="truncate text-sm font-extrabold">{config.identidade.marca}</span>
               </a>
             ) : <span aria-hidden="true" className="h-9" />}
 
             <div className="flex shrink-0 items-center gap-2">
               {showHeaderPricing ? (
-                <a href="#precos" className="hidden rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-black text-white transition hover:bg-white/[0.1] sm:inline-flex">
+                <a href="#precos" className="hidden rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-white/[0.1] sm:inline-flex">
                   {config.cabecalho.precosTexto || 'Precos'}
                 </a>
               ) : null}
               {showHeaderContact ? (
-                <a href={config.cabecalho.contatoUrl || '#formulario'} className="rounded-full bg-white px-4 py-2 text-xs font-black text-black transition hover:bg-[var(--primary)]">
+                <a href={config.cabecalho.contatoUrl || '#formulario'} className="rounded-full bg-white px-4 py-2 text-xs font-extrabold text-black transition hover:bg-[var(--primary)]">
                   {config.cabecalho.contatoTexto}
                 </a>
               ) : null}
@@ -1062,12 +1069,12 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="relative mx-auto flex min-h-[calc(100svh-76px)] w-full max-w-7xl flex-col px-5 pb-12 pt-8 sm:px-8 sm:pb-14">
             <div className={`lp-hero-grid mt-6 grid flex-1 items-center gap-8 sm:mt-10 sm:gap-12 ${heroGridClassName}`}>
               <div data-lp-reveal="left" className="lp-hero-copy">
-                <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-black uppercase tracking-[0.22em] text-[var(--primary)] backdrop-blur-xl">
+                <p className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--primary)] backdrop-blur-xl">
                   <Sparkles size={14} />
                   {config.hero.eyebrow}
                 </p>
 
-                <h1 className="max-w-5xl text-balance text-4xl font-black leading-[0.95] tracking-tight sm:text-7xl sm:leading-[0.92] lg:text-8xl">
+                <h1 className="max-w-5xl text-balance text-4xl font-extrabold leading-[0.95] tracking-tight sm:text-7xl sm:leading-[0.92] lg:text-8xl">
                   {config.hero.titulo}
                 </h1>
 
@@ -1092,7 +1099,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               </div>
             </div>
 
-            <a href={detailsHref} className="mt-10 inline-flex w-fit items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[var(--page-muted)] hover:text-white">
+            <a href={detailsHref} className="mt-10 inline-flex w-fit items-center gap-2 text-xs font-extrabold uppercase tracking-[0.2em] text-[var(--page-muted)] hover:text-white">
               {editableText.heroScrollTexto}
               <ChevronDown size={15} />
             </a>
@@ -1110,7 +1117,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               className="lp-signal-card rounded-[1.35rem] border border-white/10 bg-black/55 p-5 shadow-2xl shadow-black/25 backdrop-blur-xl"
             >
               <Icon size={18} className="text-[var(--primary)]" />
-              <p className="mt-4 text-base font-black text-white">{title}</p>
+              <p className="mt-4 text-base font-extrabold text-white">{title}</p>
               <p className="mt-2 text-sm leading-relaxed text-[var(--page-muted)]">{text}</p>
             </div>
           ))}
@@ -1125,8 +1132,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="max-w-4xl">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.logos.eyebrow}</p>
-              <h2 className="mt-4 text-balance text-3xl font-black leading-tight sm:text-5xl">{config.logos.titulo}</h2>
+              <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.logos.eyebrow}</p>
+              <h2 className="mt-4 text-balance text-3xl font-extrabold leading-tight sm:text-5xl">{config.logos.titulo}</h2>
             </div>
 
             <div className="mt-9 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1140,7 +1147,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                   {item.imagemUrl ? (
                     <img src={item.imagemUrl} alt={item.nome || ''} className="max-h-16 w-auto max-w-full object-contain opacity-90" />
                   ) : (
-                    <span className="text-base font-black text-white">{item.nome}</span>
+                    <span className="text-base font-extrabold text-white">{item.nome}</span>
                   )}
                 </div>
               ))}
@@ -1158,8 +1165,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-end">
               <div>
-                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.benefitEyebrow}</p>
-                <h2 className="mt-4 max-w-3xl text-4xl font-black leading-tight sm:text-6xl">{config.beneficios.titulo}</h2>
+                <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.benefitEyebrow}</p>
+                <h2 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight sm:text-6xl">{config.beneficios.titulo}</h2>
               </div>
               <p className="max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">
                 {editableText.benefitIntro}
@@ -1179,8 +1186,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                     <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)]">
                       <Icon size={22} />
                     </div>
-                    <span className="mt-8 block text-xs font-black uppercase tracking-[0.22em] text-[var(--page-muted)]">0{index + 1}</span>
-                    <h3 className="mt-3 text-2xl font-black">{item.titulo}</h3>
+                    <span className="mt-8 block text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--page-muted)]">0{index + 1}</span>
+                    <h3 className="mt-3 text-2xl font-extrabold">{item.titulo}</h3>
                     <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{item.texto}</p>
                   </div>
                 )
@@ -1198,17 +1205,17 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[360px_1fr] lg:items-center">
             <div data-lp-reveal="left" className="lp-surface rounded-[1.75rem] border border-white/10 bg-black/30 p-6">
               <BadgeCheck className="text-[var(--primary)]" size={34} />
-              <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.prova.titulo}</p>
+              <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.prova.titulo}</p>
               <p className="mt-3 text-sm leading-relaxed text-[var(--page-muted)]">
                 {editableText.proofIntro}
               </p>
             </div>
 
             <div data-lp-reveal="right" style={{ '--lp-reveal-delay': '90ms' }}>
-              <blockquote className="text-balance text-3xl font-black leading-tight sm:text-5xl">
+              <blockquote className="text-balance text-3xl font-extrabold leading-tight sm:text-5xl">
                 &ldquo;{config.prova.depoimento}&rdquo;
               </blockquote>
-              <p className="mt-6 text-sm font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{config.prova.autor}</p>
+              <p className="mt-6 text-sm font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{config.prova.autor}</p>
             </div>
           </div>
         </section>
@@ -1222,8 +1229,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="grid gap-6 lg:grid-cols-[.85fr_1.15fr] lg:items-end">
               <div>
-                <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.galeria.eyebrow}</p>
-                <h2 className="mt-4 text-balance text-4xl font-black leading-tight sm:text-6xl">{config.galeria.titulo}</h2>
+                <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.galeria.eyebrow}</p>
+                <h2 className="mt-4 text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.galeria.titulo}</h2>
               </div>
               <p className="max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">{config.galeria.texto}</p>
             </div>
@@ -1240,13 +1247,13 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                     {item.imagemUrl ? (
                       <img src={item.imagemUrl} alt={item.titulo || ''} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
                     ) : (
-                      <div className="flex h-full items-center justify-center p-8 text-center text-sm font-black text-[var(--page-muted)]">
+                      <div className="flex h-full items-center justify-center p-8 text-center text-sm font-extrabold text-[var(--page-muted)]">
                         {item.titulo || 'Imagem da prova visual'}
                       </div>
                     )}
                   </div>
                   <div className="p-5 sm:p-6">
-                    {item.titulo ? <h3 className="text-xl font-black text-white">{item.titulo}</h3> : null}
+                    {item.titulo ? <h3 className="text-xl font-extrabold text-white">{item.titulo}</h3> : null}
                     {item.texto ? <p className="mt-3 text-sm leading-relaxed text-[var(--page-muted)]">{item.texto}</p> : null}
                   </div>
                 </article>
@@ -1263,8 +1270,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div data-lp-reveal className="lp-surface lp-offer-card mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-black/50 shadow-2xl shadow-black/25 backdrop-blur-sm lg:grid-cols-[1.1fr_.9fr]">
             <div className="p-7 sm:p-10 lg:p-12">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.ofertaEyebrow}</p>
-              <h2 className="mt-5 text-balance text-4xl font-black leading-tight sm:text-6xl">{config.oferta.titulo}</h2>
+              <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.ofertaEyebrow}</p>
+              <h2 className="mt-5 text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.oferta.titulo}</h2>
               <p className="mt-6 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.oferta.texto}</p>
 
               <div className="mt-8 grid gap-3 sm:grid-cols-3">
@@ -1279,8 +1286,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
 
             <div className="flex flex-col justify-between border-t border-white/10 bg-black/30 p-7 sm:p-10 lg:border-l lg:border-t-0">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.22em] text-[var(--page-muted)]">{editableText.ofertaCondicaoLabel}</p>
-                <p className="mt-5 text-5xl font-black tracking-tight">{config.oferta.preco}</p>
+                <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[var(--page-muted)]">{editableText.ofertaCondicaoLabel}</p>
+                <p className="mt-5 text-5xl font-extrabold tracking-tight">{config.oferta.preco}</p>
                 <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">
                   {editableText.ofertaTextoAuxiliar}
                 </p>
@@ -1302,11 +1309,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div data-lp-reveal className="lp-surface mx-auto grid max-w-7xl gap-5 rounded-[2rem] border border-[var(--primary)]/20 bg-[linear-gradient(135deg,rgba(255,255,255,.06),rgba(0,0,0,.35))] p-6 shadow-2xl shadow-black/25 backdrop-blur-sm sm:p-10 lg:grid-cols-[280px_1fr] lg:items-center">
             <div className="rounded-[1.75rem] border border-[var(--primary)]/20 bg-[var(--primary)]/[0.12] p-6">
               <ShieldCheck size={38} className="text-[var(--primary)]" />
-              <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.garantia.eyebrow}</p>
-              <p className="mt-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-black text-white">{config.garantia.selo}</p>
+              <p className="mt-6 text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.garantia.eyebrow}</p>
+              <p className="mt-4 rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm font-extrabold text-white">{config.garantia.selo}</p>
             </div>
             <div>
-              <h2 className="text-balance text-4xl font-black leading-tight sm:text-6xl">{config.garantia.titulo}</h2>
+              <h2 className="text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.garantia.titulo}</h2>
               <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.garantia.texto}</p>
             </div>
           </div>
@@ -1320,12 +1327,12 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div data-lp-reveal className="lp-surface lp-urgency-card mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-black/55 shadow-2xl shadow-black/30 backdrop-blur-sm lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="p-7 sm:p-10">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.urgencia.eyebrow}</p>
-              <h2 className="mt-5 text-balance text-4xl font-black leading-tight sm:text-6xl">{config.urgencia.titulo}</h2>
+              <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.urgencia.eyebrow}</p>
+              <h2 className="mt-5 text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.urgencia.titulo}</h2>
               <p className="mt-5 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.urgencia.texto}</p>
             </div>
             <div className="border-t border-white/10 bg-white/[0.04] p-7 sm:p-10 lg:min-w-[320px] lg:border-l lg:border-t-0">
-              <p className="rounded-2xl border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-4 py-3 text-sm font-black text-[var(--primary)]">{config.urgencia.destaque}</p>
+              <p className="rounded-2xl border border-[var(--primary)]/25 bg-[var(--primary)]/10 px-4 py-3 text-sm font-extrabold text-[var(--primary)]">{config.urgencia.destaque}</p>
               <Cta href={config.urgencia.ctaUrl} className="mt-5 w-full">{config.urgencia.ctaTexto}</Cta>
             </div>
           </div>
@@ -1340,8 +1347,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="max-w-4xl">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.precos.eyebrow}</p>
-              <h2 className="mt-4 text-balance text-4xl font-black leading-tight sm:text-6xl">{config.precos.titulo}</h2>
+              <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.precos.eyebrow}</p>
+              <h2 className="mt-4 text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.precos.titulo}</h2>
               <p className="mt-5 max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">{config.precos.texto}</p>
             </div>
 
@@ -1374,18 +1381,18 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                   ) : null}
 
                   {plan.destaque ? (
-                    <div className="absolute right-5 top-5 z-10 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)] px-3 py-1 text-[10px] font-black uppercase tracking-widest text-black shadow-lg shadow-black/30">
+                    <div className="absolute right-5 top-5 z-10 rounded-full border border-[var(--primary)]/30 bg-[var(--primary)] px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-black shadow-lg shadow-black/30">
                       {editableText.planoDestaqueTexto}
                     </div>
                   ) : null}
 
                   <div className="relative z-10 pr-16">
-                    <p className="text-2xl font-black text-white">{plan.nome || `Plano ${index + 1}`}</p>
+                    <p className="text-2xl font-extrabold text-white">{plan.nome || `Plano ${index + 1}`}</p>
                     {plan.descricao ? <p className="mt-3 text-sm leading-relaxed text-[var(--page-muted)]">{plan.descricao}</p> : null}
                   </div>
 
                   <div className="relative z-10 mt-8 border-y border-white/10 py-6">
-                    <p className="flex flex-wrap items-end gap-2 text-4xl font-black tracking-tight text-white sm:text-5xl">
+                    <p className="flex flex-wrap items-end gap-2 text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
                       <span>{plan.preco || 'Sob consulta'}</span>
                       {plan.periodo ? <span className="pb-1 text-sm font-bold text-[var(--page-muted)]">{plan.periodo}</span> : null}
                     </p>
@@ -1419,8 +1426,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           style={orderedSectionStyle('cta', config.cta.backgroundUrl, 'linear-gradient(120deg, rgba(5,5,5,.95), rgba(5,5,5,.72))')}
         >
           <div data-lp-reveal className="lp-surface mx-auto max-w-7xl rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-7 text-center shadow-2xl shadow-black/25 backdrop-blur-sm sm:p-12">
-            <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{config.cta.eyebrow}</p>
-            <h2 className="mx-auto mt-5 max-w-5xl text-balance text-4xl font-black leading-tight sm:text-6xl">{config.cta.titulo}</h2>
+            <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{config.cta.eyebrow}</p>
+            <h2 className="mx-auto mt-5 max-w-5xl text-balance text-4xl font-extrabold leading-tight sm:text-6xl">{config.cta.titulo}</h2>
             <p className="mx-auto mt-5 max-w-3xl text-base leading-relaxed text-[var(--page-muted)]">{config.cta.texto}</p>
             <div className="mt-8 flex justify-center">
               <Cta href={config.cta.ctaUrl} className="w-full sm:w-auto">{config.cta.ctaTexto}</Cta>
@@ -1436,8 +1443,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         >
           <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.8fr_1.2fr]">
             <div data-lp-reveal="left">
-              <p className="lp-section-label text-xs font-black uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.faqEyebrow}</p>
-              <h2 className="mt-4 text-4xl font-black leading-tight sm:text-5xl">{config.faq.titulo}</h2>
+              <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.faqEyebrow}</p>
+              <h2 className="mt-4 text-4xl font-extrabold leading-tight sm:text-5xl">{config.faq.titulo}</h2>
             </div>
 
             <div className="grid gap-3">
@@ -1448,7 +1455,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                   style={{ '--lp-reveal-delay': `${index * 75}ms` }}
                   className="lp-surface group rounded-2xl border border-white/10 bg-black/45 p-5 backdrop-blur-sm"
                 >
-                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-black">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-extrabold">
                     {item.pergunta}
                     <ChevronDown className="shrink-0 transition group-open:rotate-180" size={18} />
                   </summary>
@@ -1469,7 +1476,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
           <div data-lp-reveal className="lp-surface mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-black/50 shadow-2xl shadow-black/25 backdrop-blur-sm lg:grid-cols-[.82fr_1.18fr]">
             <div className="border-b border-white/10 bg-black/30 p-7 sm:p-10 lg:border-b-0 lg:border-r">
               <MessageCircle className="text-[var(--primary)]" size={34} />
-              <h2 className="mt-6 text-balance text-4xl font-black leading-tight">{config.formulario.titulo}</h2>
+              <h2 className="mt-6 text-balance text-4xl font-extrabold leading-tight">{config.formulario.titulo}</h2>
               <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{config.formulario.texto}</p>
 
               <div className="mt-8 space-y-3 text-sm font-bold text-white">
@@ -1483,26 +1490,26 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               <div className="grid gap-4 sm:grid-cols-2">
                 {formFieldVisible(formFields.nome) ? (
                   <label className="grid gap-2">
-                    <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.nome, 'Nome')}</span>
+                    <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.nome, 'Nome')}</span>
                     <input required={Boolean(formFields.nome.obrigatorio)} autoComplete="name" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} placeholder={formFields.nome.placeholder || 'Nome'} className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm outline-none transition focus:border-[var(--primary)]/50" />
                   </label>
                 ) : null}
                 {formFieldVisible(formFields.telefone) ? (
                   <label className="grid gap-2">
-                    <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.telefone, 'Telefone / WhatsApp')}</span>
+                    <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.telefone, 'Telefone / WhatsApp')}</span>
                     <input required={Boolean(formFields.telefone.obrigatorio)} inputMode="tel" autoComplete="tel" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder={formFields.telefone.placeholder || 'Telefone / WhatsApp'} className="min-w-0 rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm outline-none transition focus:border-[var(--primary)]/50" />
                   </label>
                 ) : null}
               </div>
               {formFieldVisible(formFields.email) ? (
                 <label className="grid gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.email, 'E-mail')}</span>
+                  <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.email, 'E-mail')}</span>
                   <input required={Boolean(formFields.email.obrigatorio)} type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder={formFields.email.placeholder || 'E-mail'} className="rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm outline-none transition focus:border-[var(--primary)]/50" />
                 </label>
               ) : null}
               {customFormFields.map((field, index) => (
                 <label key={`${field.id || 'campo'}-${index}`} className="grid gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{field.rotulo}</span>
+                  <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{field.rotulo}</span>
                   {field.tipo === 'textarea' ? (
                     <textarea required={Boolean(field.obrigatorio)} value={form.camposExtras[field.id] || ''} onChange={(e) => setForm({ ...form, camposExtras: { ...form.camposExtras, [field.id]: e.target.value } })} placeholder={field.placeholder || field.rotulo} rows={3} className="rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm outline-none transition focus:border-[var(--primary)]/50" />
                   ) : (
@@ -1512,11 +1519,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
               ))}
               {formFieldVisible(formFields.mensagem) ? (
                 <label className="grid gap-2">
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.mensagem, 'Mensagem')}</span>
+                  <span className="text-xs font-extrabold uppercase tracking-[0.18em] text-[var(--page-muted)]">{formFieldLabel(formFields.mensagem, 'Mensagem')}</span>
                   <textarea required={Boolean(formFields.mensagem.obrigatorio)} value={form.mensagem} onChange={(e) => setForm({ ...form, mensagem: e.target.value })} placeholder={formFields.mensagem.placeholder || 'Mensagem'} rows={4} className="rounded-2xl border border-white/10 bg-black/35 px-4 py-4 text-sm outline-none transition focus:border-[var(--primary)]/50" />
                 </label>
               ) : null}
-              <button disabled={sending} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-4 text-sm font-black text-black transition hover:brightness-110 disabled:opacity-60">
+              <button disabled={sending} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-4 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-60">
                 {sending ? editableText.formularioEnviandoTexto : config.formulario.botao}
                 {!sending && <ArrowRight size={17} />}
               </button>
@@ -1571,7 +1578,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         <div className="fixed inset-x-3 bottom-3 z-30 rounded-full border border-white/10 bg-black/80 p-2 shadow-2xl shadow-black/60 backdrop-blur-xl md:hidden">
           <a
             href="#formulario"
-            className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-black text-black"
+            className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-extrabold text-black"
           >
             {mobileCtaText}
             <ArrowRight size={17} />

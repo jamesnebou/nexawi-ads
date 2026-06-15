@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useState } from 'react'
 import {
   ArrowRight,
@@ -12,6 +13,12 @@ import {
   Sparkles,
   Wifi,
 } from 'lucide-react'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const formInicial = {
   empresa: '',
@@ -148,7 +155,7 @@ export default function AnunciarPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white overflow-hidden relative selection:bg-[#6be12f]/30">
+    <main className={`${poppins.className} min-h-screen bg-[#050505] text-white overflow-hidden relative selection:bg-[#6be12f]/30`}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(107,225,47,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(107,225,47,0.08),transparent_30%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
 
@@ -160,7 +167,7 @@ export default function AnunciarPage() {
               Mídia local inevitável
             </div>
 
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[0.98] text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[0.98] text-transparent bg-clip-text bg-gradient-to-r from-white to-neutral-500">
               Sua marca na tela de quem está usando Wi-Fi agora.
             </h1>
 
@@ -182,7 +189,7 @@ export default function AnunciarPage() {
                 </div>
 
                 <div>
-                  <h2 className="font-black text-white text-lg">
+                  <h2 className="font-extrabold text-white text-lg">
                     Ideal para empresas que querem aparecer no momento certo.
                   </h2>
 
@@ -207,7 +214,7 @@ export default function AnunciarPage() {
                   <p className="text-[11px] uppercase tracking-widest font-extrabold text-[#8cf059]">
                     Acompanhe a NexaWi
                   </p>
-                  <p className="text-sm font-black text-white mt-1">
+                  <p className="text-sm font-extrabold text-white mt-1">
                     @nexawi_ads
                   </p>
                 </div>
@@ -223,7 +230,7 @@ export default function AnunciarPage() {
                   <CheckCircle2 className="text-[#6be12f]" size={36} />
                 </div>
 
-                <h2 className="text-2xl font-black text-white">
+                <h2 className="text-2xl font-extrabold text-white">
                   Interesse registrado!
                 </h2>
 
@@ -256,7 +263,7 @@ export default function AnunciarPage() {
             ) : (
               <>
                 <div className="mb-7">
-                  <h2 className="text-2xl font-black text-white">
+                  <h2 className="text-2xl font-extrabold text-white">
                     Quero anunciar na NexaWi
                   </h2>
 
@@ -315,7 +322,7 @@ export default function AnunciarPage() {
                   <button
                     type="submit"
                     disabled={loading}
-                    className="sm:col-span-2 rounded-2xl bg-[#6be12f] hover:bg-[#8cf059] text-black font-black py-4 flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    className="sm:col-span-2 rounded-2xl bg-[#6be12f] hover:bg-[#8cf059] text-black font-extrabold py-4 flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                   >
                     {loading ? (
                       <>
@@ -343,7 +350,7 @@ function Feature({ icon: Icon, title, text }) {
   return (
     <div className="rounded-3xl border border-white/[0.06] bg-white/[0.02] p-5">
       <Icon className="text-[#6be12f] mb-4" size={22} />
-      <h3 className="font-black text-white">{title}</h3>
+      <h3 className="font-extrabold text-white">{title}</h3>
       <p className="text-xs text-neutral-500 mt-2 leading-relaxed">{text}</p>
     </div>
   )

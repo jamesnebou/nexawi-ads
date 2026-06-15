@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
@@ -14,6 +15,12 @@ import {
   X,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const supabase = createClient()
 
@@ -170,7 +177,7 @@ export default function ClienteSuportePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white p-5 sm:p-8">
+    <div className={`${poppins.className} min-h-screen bg-[#050505] text-white p-5 sm:p-8`}>
       <Toaster position="top-right" />
 
       <div className="max-w-7xl mx-auto">

@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -20,6 +21,12 @@ import {
   Users,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const supabase = createClient()
 
@@ -77,7 +84,7 @@ function SourceBreakdown({ title, items = [] }) {
 
   return (
     <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
-      <h2 className="text-lg font-black text-white">{title}</h2>
+      <h2 className="text-lg font-extrabold text-white">{title}</h2>
       <div className="mt-4 grid gap-3">
         {items.length === 0 ? (
           <p className="text-sm text-neutral-500">Sem origem registrada ainda.</p>
@@ -219,7 +226,7 @@ export default function ClienteLpsPage() {
     <>
       <Toaster position="top-right" />
 
-      <main className="min-h-screen bg-[#050505] px-4 py-8 text-white sm:px-6">
+      <main className={`${poppins.className} min-h-screen bg-[#050505] px-4 py-8 text-white sm:px-6`}>
         <div className="mx-auto max-w-7xl">
           <header className="mb-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -237,7 +244,7 @@ export default function ClienteLpsPage() {
                 Minhas landing pages
               </div>
 
-              <h1 className="text-3xl font-black tracking-tight sm:text-5xl">
+              <h1 className="text-3xl font-extrabold tracking-tight sm:text-5xl">
                 LPs e conversao
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-relaxed text-neutral-500">
@@ -331,7 +338,7 @@ export default function ClienteLpsPage() {
           <section className="grid gap-8 xl:grid-cols-[0.9fr_1.4fr]">
             <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
               <div className="mb-5">
-                <h2 className="text-xl font-black text-white">LPs vinculadas</h2>
+                <h2 className="text-xl font-extrabold text-white">LPs vinculadas</h2>
                 <p className="mt-1 text-sm text-neutral-500">{formatNumber(pages.length)} pagina(s) encontradas</p>
               </div>
 
@@ -345,12 +352,12 @@ export default function ClienteLpsPage() {
                     <article key={page.id} className="rounded-3xl border border-white/[0.05] bg-[#050505] p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
-                          <h3 className="truncate text-base font-black text-white">{page.name}</h3>
+                          <h3 className="truncate text-base font-extrabold text-white">{page.name}</h3>
                           <p className="mt-1 text-xs text-neutral-500">/lp/{page.slug}</p>
                           <p className="mt-2 text-[11px] text-neutral-600">Atualizada em {formatDateTime(page.updated_at)}</p>
                         </div>
 
-                        <span className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-widest ${
+                        <span className={`rounded-full border px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest ${
                           page.status === 'published'
                             ? 'border-[#6be12f]/20 bg-[#6be12f]/10 text-[#8cf059]'
                             : 'border-yellow-500/20 bg-yellow-500/10 text-yellow-300'
@@ -362,7 +369,7 @@ export default function ClienteLpsPage() {
                       <div className="mt-4 flex flex-wrap gap-2">
                         <Link
                           href={`/cliente/lps/editor/${page.id}`}
-                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-black text-white transition hover:bg-white/[0.08]"
+                          className="inline-flex items-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2.5 text-xs font-extrabold text-white transition hover:bg-white/[0.08]"
                         >
                           <Pencil size={14} />
                           Editar LP
@@ -373,7 +380,7 @@ export default function ClienteLpsPage() {
                             href={`/lp/${page.slug}`}
                             target="_blank"
                             rel="noreferrer"
-                            className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2.5 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15"
+                            className="inline-flex items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2.5 text-xs font-extrabold text-[#8cf059] transition hover:bg-[#6be12f]/15"
                           >
                             <ExternalLink size={14} />
                             Abrir
@@ -389,7 +396,7 @@ export default function ClienteLpsPage() {
             <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
               <div className="mb-5 flex items-center justify-between gap-4">
                 <div>
-                  <h2 className="text-xl font-black text-white">Leads das LPs</h2>
+                  <h2 className="text-xl font-extrabold text-white">Leads das LPs</h2>
                   <p className="mt-1 text-sm text-neutral-500">{formatNumber(leads.length)} contato(s) recentes</p>
                 </div>
               </div>
@@ -425,7 +432,7 @@ function EmptyBox({ title, text }) {
   return (
     <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-10 text-center">
       <FileText size={34} className="mx-auto mb-4 text-neutral-700" />
-      <h3 className="text-lg font-black text-white">{title}</h3>
+      <h3 className="text-lg font-extrabold text-white">{title}</h3>
       <p className="mt-2 text-sm text-neutral-500">{text}</p>
     </div>
   )
@@ -436,7 +443,7 @@ function LeadCard({ lead }) {
     <article className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5">
       <div className="grid gap-5 lg:grid-cols-[1fr_1.3fr_0.9fr] lg:items-center">
         <div>
-          <p className="truncate text-base font-black text-white">{lead.nome || 'Lead sem nome'}</p>
+          <p className="truncate text-base font-extrabold text-white">{lead.nome || 'Lead sem nome'}</p>
           <p className="mt-1 text-xs text-neutral-500">Capturado em {formatDateTime(lead.created_at)}</p>
           <p className="mt-2 truncate text-xs text-[#8cf059]">{lead.page_name || lead.page_slug || 'LP'}</p>
         </div>

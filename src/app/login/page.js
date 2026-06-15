@@ -13,6 +13,7 @@
 // - Permite trocar de administrador com segurança.
 // ============================================================
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient as createBrowserSupabaseClient } from '@/lib/supabase/admin-client'
@@ -27,6 +28,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const SESSION_CHECK_TIMEOUT_MS = 8000
 
@@ -152,7 +159,7 @@ export default function Login() {
 
   if (verificandoSessao) {
     return (
-      <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4 relative overflow-hidden">
+      <div className={`${poppins.className} min-h-screen bg-[#050505] text-white flex items-center justify-center p-4 relative overflow-hidden`}>
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(107,225,47,0.12),transparent_35%)]" />
 
         <div className="relative z-10 flex flex-col items-center gap-5">
@@ -176,7 +183,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white flex items-center justify-center p-4 relative overflow-hidden">
+    <div className={`${poppins.className} min-h-screen bg-[#050505] text-white flex items-center justify-center p-4 relative overflow-hidden`}>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(107,225,47,0.12),transparent_35%),radial-gradient(circle_at_bottom_right,rgba(107,225,47,0.08),transparent_30%)]" />
       <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:48px_48px]" />
 

@@ -1,5 +1,6 @@
 ﻿'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'next/navigation'
 import {
@@ -21,6 +22,12 @@ import {
   Star,
 } from 'lucide-react'
 import { controlApiFetch } from '@/lib/control-api-client'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 
 const ETAPAS = {
@@ -1116,7 +1123,7 @@ leadIdRef.current = data.leadId
   }
 
   return (
-    <div className={`min-h-screen bg-[#050505] text-white font-sans ${etapaWifiPixAtiva ? 'selection:bg-[#ff7a00]/30' : 'selection:bg-[#6be12f]/30'} flex items-center justify-center p-4 relative overflow-hidden`}>
+    <div className={`${poppins.className} min-h-screen bg-[#050505] text-white ${etapaWifiPixAtiva ? 'selection:bg-[#ff7a00]/30' : 'selection:bg-[#6be12f]/30'} flex items-center justify-center p-4 relative overflow-hidden`}>
       <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] ${etapaWifiPixAtiva ? 'bg-[#ff7a00]/8' : 'bg-[#6be12f]/5'} rounded-full blur-[150px] pointer-events-none`}></div>
 
       {etapa === ETAPAS.LOADING && (
@@ -1187,10 +1194,10 @@ leadIdRef.current = data.leadId
             </div>
 
             <div className="text-center mb-8">
-              <p className="inline-flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-gray-300 font-black mb-4">
+              <p className="inline-flex items-center justify-center rounded-full border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-gray-300 font-extrabold mb-4">
                 Escolha como continuar
               </p>
-              <h1 className="text-3xl font-black text-white mb-3 tracking-tight leading-tight">
+              <h1 className="text-3xl font-extrabold text-white mb-3 tracking-tight leading-tight">
                 Wi-Fi gratuito ou acesso premium
               </h1>
               <p className="text-gray-500 text-sm leading-relaxed">
@@ -1210,7 +1217,7 @@ leadIdRef.current = data.leadId
                     <Wifi size={22} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-lg font-black text-white">Veja o anúncio e ganhe 30 minutos grátis</p>
+                    <p className="text-lg font-extrabold text-white">Veja o anúncio e ganhe 30 minutos grátis</p>
                     <p className="mt-1 text-sm leading-relaxed text-gray-500">
                       Depois desse tempo, a internet deste aparelho sera encerrada automaticamente.
                     </p>
@@ -1232,7 +1239,7 @@ leadIdRef.current = data.leadId
                     <QrCode size={22} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-lg font-black text-white">Comprar acesso premium</p>
+                    <p className="text-lg font-extrabold text-white">Comprar acesso premium</p>
                     <p className="mt-1 text-sm leading-relaxed text-gray-500">
                       Escolha um plano, pague no Pix ou cartao e libere este aparelho.
                     </p>
@@ -1275,10 +1282,10 @@ leadIdRef.current = data.leadId
             </div>
 
             <div className="text-center mb-7">
-              <p className="inline-flex items-center justify-center rounded-full border border-[#ff7a00]/35 bg-[#ff7a00]/12 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-[#ff9d2e] font-black mb-4 shadow-[0_0_24px_rgba(255,122,0,0.14)]">
+              <p className="inline-flex items-center justify-center rounded-full border border-[#ff7a00]/35 bg-[#ff7a00]/12 px-4 py-2 text-[11px] uppercase tracking-[0.22em] text-[#ff9d2e] font-extrabold mb-4 shadow-[0_0_24px_rgba(255,122,0,0.14)]">
                 Acesso premium instantaneo
               </p>
-              <h1 className="text-4xl font-black text-white mb-3 tracking-tight leading-none">Internet no Pix</h1>
+              <h1 className="text-4xl font-extrabold text-white mb-3 tracking-tight leading-none">Internet no Pix</h1>
               <p className="text-gray-500 text-sm leading-relaxed">
                 Pague com Pix ou cartão e libere a internet neste aparelho sem esperar atendimento.
               </p>
@@ -1312,9 +1319,9 @@ leadIdRef.current = data.leadId
                           <div className="flex items-start justify-between gap-4">
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-2">
-                                <p className="font-black text-white">{plano.nome}</p>
+                                <p className="font-extrabold text-white">{plano.nome}</p>
                                 {recommended ? (
-                                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-1 text-[10px] font-black uppercase text-black">
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ff7a00] px-2 py-1 text-[10px] font-extrabold uppercase text-black">
                                     <Star size={11} fill="currentColor" /> Melhor escolha
                                   </span>
                                 ) : null}
@@ -1323,7 +1330,7 @@ leadIdRef.current = data.leadId
                                 <p className="mt-1 text-xs text-gray-500">{plano.descricao}</p>
                               ) : null}
                             </div>
-                            <p className="shrink-0 text-[#ff9d2e] font-black text-lg">
+                            <p className="shrink-0 text-[#ff9d2e] font-extrabold text-lg">
                               {Number(plano.valor || 0).toLocaleString('pt-BR', {
                                 style: 'currency',
                                 currency: 'BRL',
@@ -1333,16 +1340,16 @@ leadIdRef.current = data.leadId
 
                           <div className="grid grid-cols-3 gap-2">
                             <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
-                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Tempo</p>
-                              <p className="mt-1 truncate text-xs font-black text-white">{formatWifiPixDuration(plano.duracao_minutos)}</p>
+                              <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-gray-600">Tempo</p>
+                              <p className="mt-1 truncate text-xs font-extrabold text-white">{formatWifiPixDuration(plano.duracao_minutos)}</p>
                             </div>
                             <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
-                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Download</p>
-                              <p className="mt-1 truncate text-xs font-black text-white">{plano.velocidade_download || '15M'}</p>
+                              <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-gray-600">Download</p>
+                              <p className="mt-1 truncate text-xs font-extrabold text-white">{plano.velocidade_download || '15M'}</p>
                             </div>
                             <div className="rounded-2xl border border-white/[0.05] bg-black/20 px-3 py-3">
-                              <p className="text-[9px] font-black uppercase tracking-[0.14em] text-gray-600">Upload</p>
-                              <p className="mt-1 truncate text-xs font-black text-white">{plano.velocidade_upload || '15M'}</p>
+                              <p className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-gray-600">Upload</p>
+                              <p className="mt-1 truncate text-xs font-extrabold text-white">{plano.velocidade_upload || '15M'}</p>
                             </div>
                           </div>
                         </div>
@@ -1401,7 +1408,7 @@ leadIdRef.current = data.leadId
                 <button
                   type="submit"
                   disabled={wifiPixProcessando || !wifiPixPlanos.length}
-                  className="w-full mt-2 bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-black py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_28px_rgba(255,122,0,0.28)]"
+                  className="w-full mt-2 bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-extrabold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed shadow-[0_0_28px_rgba(255,122,0,0.28)]"
                 >
                   {wifiPixProcessando ? <Loader2 size={20} className="animate-spin" /> : <>Gerar pagamento <ArrowRight size={18} /></>}
                 </button>
@@ -1422,7 +1429,7 @@ leadIdRef.current = data.leadId
                     href={wifiPixCheckout.invoiceUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="w-full bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-black py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(255,122,0,0.25)]"
+                    className="w-full bg-[#ff7a00] hover:bg-[#ff9d2e] text-black font-extrabold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_28px_rgba(255,122,0,0.25)]"
                   >
                     Abrir pagamento seguro <ArrowRight size={18} />
                   </a>
@@ -1442,7 +1449,7 @@ leadIdRef.current = data.leadId
                         setWifiPixMensagem('N?o foi poss?vel copiar automaticamente. Toque e segure para selecionar o c?digo.')
                       }
                     }}
-                    className={`w-full border font-black py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 ${
+                    className={`w-full border font-extrabold py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-2 ${
                       wifiPixCopiado
                         ? 'animate-pulse border-[#34d399]/70 bg-[#34d399] text-black shadow-[0_0_30px_rgba(52,211,153,0.30)]'
                         : 'border-white/[0.08] bg-[#0a0a0a] text-gray-200 hover:border-[#ff7a00]/45 hover:text-[#ffb36b]'

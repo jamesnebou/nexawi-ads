@@ -1,11 +1,18 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
 import { ArrowLeft, CheckCircle2, Loader2, Printer, RefreshCw, ShieldCheck, XCircle } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const supabase = createClient()
 
@@ -128,7 +135,7 @@ export default function ClienteContratoDetalhePage() {
     <>
       <Toaster position="top-right" />
 
-      <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
+      <div className={`${poppins.className} min-h-screen bg-[#050505] text-white selection:bg-[#6be12f]/30`}>
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none no-print" />
 
         <main className="relative z-10 max-w-6xl mx-auto px-5 lg:px-8 py-10 print:p-0 print:max-w-none">
@@ -181,13 +188,13 @@ export default function ClienteContratoDetalhePage() {
           ) : !contrato ? (
             <div className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-12 text-center no-print">
               <XCircle size={36} className="mx-auto text-red-400 mb-4" />
-              <h2 className="text-xl font-black text-white">Contrato não encontrado</h2>
+              <h2 className="text-xl font-extrabold text-white">Contrato não encontrado</h2>
               <p className="text-sm text-neutral-500 mt-2">Este contrato não está disponível para este cliente.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-[320px_1fr] gap-6 print:block">
               <aside className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6 h-fit no-print">
-                <span className={`inline-flex rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-widest mb-5 ${statusStyle[contrato.status] || statusStyle.rascunho}`}>
+                <span className={`inline-flex rounded-full border px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-widest mb-5 ${statusStyle[contrato.status] || statusStyle.rascunho}`}>
                   {statusLabel[contrato.status] || contrato.status}
                 </span>
 
@@ -199,11 +206,11 @@ export default function ClienteContratoDetalhePage() {
                   <Info label="Aceito por" value={contrato.accepted_by_email || '—'} />
                 </div>
 
-                <h3 className="text-sm font-black text-white mt-8 mb-3">Histórico</h3>
+                <h3 className="text-sm font-extrabold text-white mt-8 mb-3">Histórico</h3>
                 <div className="grid gap-2 max-h-[300px] overflow-auto pr-1">
                   {eventos.length === 0 ? <p className="text-xs text-neutral-600">Nenhum evento registrado.</p> : eventos.map((evento) => (
                     <div key={evento.id} className="rounded-2xl border border-white/[0.05] bg-black/20 p-3">
-                      <p className="text-xs font-black text-white">{evento.event_type}</p>
+                      <p className="text-xs font-extrabold text-white">{evento.event_type}</p>
                       <p className="text-[11px] text-neutral-500 mt-1">{formatDate(evento.created_at)}</p>
                     </div>
                   ))}

@@ -1,7 +1,14 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { controlApiFetch } from '@/lib/control-api-client'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 function clean(value = '') {
   return String(value || '').trim()
@@ -148,7 +155,7 @@ export default function LpHotspotUnlockGate() {
     : 0
 
   return (
-    <div className="fixed bottom-3 left-3 right-3 z-[9999] mx-auto max-w-sm rounded-2xl border border-white/10 bg-[#050505]/90 px-3 py-2 text-white shadow-[0_10px_35px_rgba(0,0,0,.35)] backdrop-blur-xl">
+    <div className={`${poppins.className} fixed bottom-3 left-3 right-3 z-[9999] mx-auto max-w-sm rounded-2xl border border-white/10 bg-[#050505]/90 px-3 py-2 text-white shadow-[0_10px_35px_rgba(0,0,0,.35)] backdrop-blur-xl`}>
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-3">
@@ -159,7 +166,7 @@ export default function LpHotspotUnlockGate() {
             </p>
 
             {status === 'waiting' ? (
-              <span className="shrink-0 rounded-full bg-[#6be12f]/10 px-2 py-0.5 text-[11px] font-black text-[#6be12f]">
+              <span className="shrink-0 rounded-full bg-[#6be12f]/10 px-2 py-0.5 text-[11px] font-extrabold text-[#6be12f]">
                 {secondsLeft}s
               </span>
             ) : null}

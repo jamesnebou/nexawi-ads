@@ -1,10 +1,17 @@
 "use client";
+import { Poppins } from 'next/font/google'
 import PlanosSection from '@/components/PlanosSection'
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ChevronDown } from 'lucide-react'; // Importe o ícone ChevronDown
 import { useMemo } from 'react'
 import { usePathname } from 'next/navigation'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const META_PIXEL_ID_PATTERN = /^\d{5,30}$/
 const GA4_ID_PATTERN = /^G-[A-Z0-9]{4,20}$/
@@ -604,7 +611,7 @@ useEffect(() => {
 };
 
   return (
-    <div className="relative min-h-screen bg-[#050505] text-white selection:bg-[#6be12f] selection:text-black font-sans overflow-x-hidden">
+    <div className={`${poppins.className} relative min-h-screen bg-[#050505] text-white selection:bg-[#6be12f] selection:text-black overflow-x-hidden`}>
       {showIntro && (
   <div
     className={`fixed inset-0 z-[99999] flex items-center justify-center bg-[#050505] transition-opacity duration-700 ${
@@ -1249,7 +1256,7 @@ useEffect(() => {
                   <span className="relative inline-flex rounded-full h-3 w-3 bg-[#6be12f]" />
                 </span>
                 <p className="text-gray-400 text-sm font-medium">
-                  <strong className="text-white text-lg sm:text-xl font-black">
+                  <strong className="text-white text-lg sm:text-xl font-extrabold">
                      {onlineLoading ? '...' : onlineUsers}
                   </strong>{" "}
                      {onlineReliable ? 'Online Agora' : 'Monitoramento Ativo'}
@@ -1270,7 +1277,7 @@ useEffect(() => {
                   </svg>
                 </span>
                 <p className="text-gray-400 text-sm font-medium">
-                  <strong className="text-white text-lg sm:text-xl font-black">
+                  <strong className="text-white text-lg sm:text-xl font-extrabold">
                     {leadsToday}
                   </strong>{" "}
                   Leads Hoje
@@ -1368,7 +1375,7 @@ useEffect(() => {
 
           <div className="max-w-7xl mx-auto px-6 relative z-10">
             <div className="text-center mb-16 md:mb-24 reveal-on-scroll opacity-0 translate-y-8 transition-all duration-1000">
-              <h2 className="text-4xl sm:text-5xl md:text-6xl font-black text-white mb-4 md:mb-6 tracking-tight">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-white mb-4 md:mb-6 tracking-tight">
                 Como o sistema funciona?
               </h2>
               <p className="text-gray-400 text-lg sm:text-xl md:text-2xl max-w-3xl mx-auto">
@@ -1386,7 +1393,7 @@ useEffect(() => {
       <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
         FASE 01
       </span>
-      <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 sm:mb-4">
+      <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4">
         A Busca por Conexão
       </h3>
       <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
@@ -1418,7 +1425,7 @@ useEffect(() => {
                   <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
                     FASE 02
                   </span>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 sm:mb-4">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4">
                     Wi-Fi Grátis Nexa
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
@@ -1446,7 +1453,7 @@ useEffect(() => {
                   <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
                     FASE 03
                   </span>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 sm:mb-4">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4">
                     Captura de Dados
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
@@ -1473,7 +1480,7 @@ useEffect(() => {
                   <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
                     FASE 04
                   </span>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 sm:mb-4">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4">
                     Anúncio Inpulável
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
@@ -1501,7 +1508,7 @@ useEffect(() => {
                   <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
                     FASE 05
                   </span>
-                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-white mb-3 sm:mb-4">
+                  <h3 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white mb-3 sm:mb-4">
                     Redirecionamento
                   </h3>
                   <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed">
@@ -1529,7 +1536,7 @@ useEffect(() => {
                   <span className="text-[#6be12f] font-mono text-xs sm:text-sm md:text-[20px] font-bold tracking-widest mb-3 sm:mb-4 block">
                     FASE 06
                   </span>
-                  <h3 className="text-3xl sm:text-4xl md:text-5xl font-black text-[#6be12f] mb-3 sm:mb-4">
+                  <h3 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-[#6be12f] mb-3 sm:mb-4">
                     Internet Liberada
                   </h3>
                   <p className="text-gray-300 text-lg sm:text-xl md:text-2xl leading-relaxed">

@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/cliente-client'
@@ -17,6 +18,12 @@ import {
   Users,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const supabase = createClient()
 
@@ -269,7 +276,7 @@ export default function ClienteLeadsPage() {
         }}
       />
 
-      <main className="min-h-screen bg-[#050505] text-white px-4 sm:px-6 py-8">
+      <main className={`${poppins.className} min-h-screen bg-[#050505] text-white px-4 sm:px-6 py-8`}>
         <div className="max-w-7xl mx-auto">
           <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 mb-10">
             <div>
@@ -287,7 +294,7 @@ export default function ClienteLeadsPage() {
                 Central de leads
               </div>
 
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight">
+              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight">
                 Leads capturados
               </h1>
 
@@ -435,7 +442,7 @@ export default function ClienteLeadsPage() {
           <section className="rounded-[2rem] border border-white/[0.05] bg-white/[0.02] p-5 sm:p-6">
             <div className="flex items-center justify-between gap-4 mb-6">
               <div>
-                <h2 className="text-xl font-black text-white tracking-tight">
+                <h2 className="text-xl font-extrabold text-white tracking-tight">
                   Lista de contatos
                 </h2>
                 <p className="text-sm text-neutral-500 mt-1">
@@ -483,7 +490,7 @@ function LeadCard({ lead }) {
     <div className="rounded-3xl border border-white/[0.05] bg-[#050505] p-5 hover:border-[#6be12f]/20 transition-colors">
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1.4fr_1fr] gap-5 items-center">
         <div>
-          <p className="text-base font-black text-white truncate">
+          <p className="text-base font-extrabold text-white truncate">
             {lead.nome || 'Lead sem nome'}
           </p>
 

@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -31,6 +32,12 @@ import {
 } from 'lucide-react'
 
 const supabase = createClient()
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 async function clienteApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
@@ -343,7 +350,7 @@ export default function ClientDashboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white">
+      <div className={`${poppins.className} min-h-screen bg-[#050505] flex flex-col items-center justify-center text-white`}>
         <div className="relative w-20 h-20 flex items-center justify-center mb-5">
           <div className="absolute inset-0 border-t-2 border-[#6be12f]/50 rounded-full animate-spin" />
           <Activity className="text-[#6be12f] animate-pulse" size={30} />
@@ -381,7 +388,7 @@ export default function ClientDashboardPage() {
     ['inadimplente', 'vencido', 'overdue'].includes(String(assinatura?.status_pagamento || '').toLowerCase())
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white font-sans selection:bg-[#6be12f]/30">
+    <div className={`${poppins.className} min-h-screen bg-[#050505] text-white selection:bg-[#6be12f]/30`}>
       <div className="screen-dashboard">
         <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[900px] h-[450px] bg-[#6be12f]/5 rounded-full blur-[130px] pointer-events-none no-print" />
 
@@ -801,7 +808,7 @@ function AdPreviewCard({ ad }) {
           <div className="flex items-start justify-between gap-3 mb-3">
             <div>
               <p className="text-xs font-extrabold uppercase tracking-widest text-[#8cf059] mb-2">{isVideo ? 'Vídeo' : 'Imagem'} · {statusLabel}</p>
-              <h3 className="text-lg font-black text-white">{ad.titulo || 'Anúncio sem título'}</h3>
+              <h3 className="text-lg font-extrabold text-white">{ad.titulo || 'Anúncio sem título'}</h3>
             </div>
             {ad.url_destino && (
               <a href={ad.url_destino} target="_blank" rel="noreferrer" className="no-print rounded-xl border border-white/[0.06] bg-white/[0.03] p-2 text-neutral-400 hover:text-white">
@@ -832,7 +839,7 @@ function Metric({ label, value }) {
   return (
     <div className="rounded-2xl border border-white/[0.05] bg-white/[0.02] p-3 print-card">
       <p className="text-[10px] uppercase tracking-widest font-extrabold text-neutral-600">{label}</p>
-      <p className="text-sm font-black text-white mt-1">{value}</p>
+      <p className="text-sm font-extrabold text-white mt-1">{value}</p>
     </div>
   )
 }

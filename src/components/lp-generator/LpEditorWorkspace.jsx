@@ -1,5 +1,6 @@
 'use client'
 
+import { Poppins } from 'next/font/google'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -31,6 +32,12 @@ import {
   Smartphone,
 } from 'lucide-react'
 import toast, { Toaster } from 'react-hot-toast'
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 const adminSupabase = createBrowserSupabaseClient()
 const clienteSupabase = createClienteSupabaseClient()
@@ -132,7 +139,7 @@ function updateNested(setConfig, section, key, value) {
 function Field({ label, value, onChange, placeholder = '', textarea = false, type = 'text' }) {
   return (
     <label className="block">
-      <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-neutral-500">
+      <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">
         {label}
       </span>
       {textarea ? (
@@ -210,7 +217,7 @@ function ImageUploadField({ label, value, onChange, field, slug, scope, pageId, 
         )}
 
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-black uppercase tracking-widest text-neutral-500">{label}</p>
+          <p className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">{label}</p>
           <input
             value={value || ''}
             onChange={(event) => onChange(event.target.value)}
@@ -218,7 +225,7 @@ function ImageUploadField({ label, value, onChange, field, slug, scope, pageId, 
             className="mt-2 w-full rounded-xl border border-white/[0.06] bg-black/40 px-4 py-3 text-sm text-white outline-none transition focus:border-[#6be12f]/40"
           />
           <div className="mt-3 flex flex-wrap gap-2">
-            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-black text-[#8cf059] transition hover:bg-[#6be12f]/15">
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-2 text-xs font-extrabold text-[#8cf059] transition hover:bg-[#6be12f]/15">
               {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
               {uploading ? 'Enviando...' : 'Enviar imagem'}
               <input type="file" accept="image/*" onChange={handleFile} disabled={uploading} className="hidden" />
@@ -228,7 +235,7 @@ function ImageUploadField({ label, value, onChange, field, slug, scope, pageId, 
               <button
                 type="button"
                 onClick={() => onChange('')}
-                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-black text-white"
+                className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-extrabold text-white"
               >
                 Remover
               </button>
@@ -287,7 +294,7 @@ function ListEditor({ items = [], labels, onChange }) {
           <button
             type="button"
             onClick={() => removeItem(index)}
-            className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+            className="mt-3 rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-300"
           >
             Remover item
           </button>
@@ -297,7 +304,7 @@ function ListEditor({ items = [], labels, onChange }) {
       <button
         type="button"
         onClick={addItem}
-        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059]"
+        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059]"
       >
         Adicionar item
       </button>
@@ -366,11 +373,11 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
       {plans.map((plan, planIndex) => (
         <div key={planIndex} className="rounded-2xl border border-white/[0.06] bg-black/35 p-4">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-black text-white">Tabela {planIndex + 1}</p>
+            <p className="text-sm font-extrabold text-white">Tabela {planIndex + 1}</p>
             <button
               type="button"
               onClick={() => removePlan(planIndex)}
-              className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+              className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-300"
             >
               Remover tabela
             </button>
@@ -399,7 +406,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/[0.06] bg-black/30 p-4">
-            <p className="mb-3 text-[11px] font-black uppercase tracking-widest text-neutral-500">Entregaveis</p>
+            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Entregaveis</p>
             <div className="grid gap-2">
               {(plan.entregaveis || []).map((item, itemIndex) => (
                 <div key={itemIndex} className="flex gap-2">
@@ -412,7 +419,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
                   <button
                     type="button"
                     onClick={() => removeDeliverable(planIndex, itemIndex)}
-                    className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 text-xs font-black text-red-300"
+                    className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 text-xs font-extrabold text-red-300"
                   >
                     Remover
                   </button>
@@ -422,7 +429,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
             <button
               type="button"
               onClick={() => addDeliverable(planIndex)}
-              className="mt-3 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059]"
+              className="mt-3 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059]"
             >
               Adicionar entregavel
             </button>
@@ -434,7 +441,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
         type="button"
         onClick={addPlan}
         disabled={plans.length >= 3}
-        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
+        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
       >
         {plans.length >= 3 ? 'Limite de 3 tabelas atingido' : 'Adicionar tabela de preco'}
       </button>
@@ -460,15 +467,15 @@ function ChoiceGrid({ choices, selected, onSelect, applyLabel = '' }) {
             }`}
           >
             <span className="flex items-start justify-between gap-3">
-              <span className="text-sm font-black text-white">{choice.name}</span>
+              <span className="text-sm font-extrabold text-white">{choice.name}</span>
               {active ? (
-                <span className="rounded-full bg-[#6be12f] px-2 py-1 text-[10px] font-black uppercase tracking-widest text-black">
+                <span className="rounded-full bg-[#6be12f] px-2 py-1 text-[10px] font-extrabold uppercase tracking-widest text-black">
                   Atual
                 </span>
               ) : null}
             </span>
             <span className="mt-3 block text-xs leading-relaxed text-neutral-400">{choice.description}</span>
-            {applyLabel ? <span className="mt-4 inline-flex text-[11px] font-black uppercase tracking-widest text-[#8cf059]">{applyLabel}</span> : null}
+            {applyLabel ? <span className="mt-4 inline-flex text-[11px] font-extrabold uppercase tracking-widest text-[#8cf059]">{applyLabel}</span> : null}
           </button>
         )
       })}
@@ -511,7 +518,7 @@ function MediaItemsEditor({
   return (
     <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
       <div>
-        <p className="text-sm font-black text-white">{title}</p>
+        <p className="text-sm font-extrabold text-white">{title}</p>
         <p className="mt-1 text-xs leading-relaxed text-neutral-500">
           Cada item pode receber imagem por upload ou URL.
         </p>
@@ -520,11 +527,11 @@ function MediaItemsEditor({
       {items.map((item, index) => (
         <div key={`${fieldPrefix}-${index}`} className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/30 p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-sm font-black text-white">Item {index + 1}</p>
+            <p className="text-sm font-extrabold text-white">Item {index + 1}</p>
             <button
               type="button"
               onClick={() => removeItem(index)}
-              className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+              className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-300"
             >
               Remover item
             </button>
@@ -557,7 +564,7 @@ function MediaItemsEditor({
         type="button"
         onClick={addItem}
         disabled={items.length >= maxItems}
-        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
+        className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
       >
         {items.length >= maxItems ? `Limite de ${maxItems} itens atingido` : addLabel}
       </button>
@@ -617,7 +624,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
     <div className="grid gap-4">
       <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
         <div>
-          <p className="text-sm font-black text-white">Campos padrao</p>
+          <p className="text-sm font-extrabold text-white">Campos padrao</p>
           <p className="mt-1 text-xs leading-relaxed text-neutral-500">
             O lead continua usando estes campos nas colunas principais do painel e do CSV.
           </p>
@@ -625,7 +632,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
 
         {standardFields.map((field) => (
           <div key={field.id} className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/25 p-4">
-            <p className="text-sm font-black text-white">{field.label}</p>
+            <p className="text-sm font-extrabold text-white">{field.label}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Toggle label="Exibir campo" checked={fields[field.id]?.ativo} onChange={(value) => updateStandardField(field.id, 'ativo', value)} />
               <Toggle label="Obrigatorio" checked={fields[field.id]?.obrigatorio} onChange={(value) => updateStandardField(field.id, 'obrigatorio', value)} />
@@ -640,7 +647,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
 
       <div className="grid gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
         <div>
-          <p className="text-sm font-black text-white">Campos personalizados</p>
+          <p className="text-sm font-extrabold text-white">Campos personalizados</p>
           <p className="mt-1 text-xs leading-relaxed text-neutral-300">
             Use para captar empresa, cidade, interesse, numero de convidados ou outro dado especifico desta LP.
           </p>
@@ -649,11 +656,11 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
         {customFields.map((field, index) => (
           <div key={`${field.id || 'campo'}-${index}`} className="grid gap-3 rounded-2xl border border-white/[0.08] bg-black/35 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-black text-white">Campo extra {index + 1}</p>
+              <p className="text-sm font-extrabold text-white">Campo extra {index + 1}</p>
               <button
                 type="button"
                 onClick={() => removeCustomField(index)}
-                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-black text-red-300"
+                className="rounded-xl border border-red-500/20 bg-red-500/10 px-3 py-2 text-xs font-extrabold text-red-300"
               >
                 Remover campo
               </button>
@@ -663,7 +670,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
               <Field label="Rotulo" value={field.rotulo} onChange={(value) => updateCustomField(index, 'rotulo', value)} />
               <Field label="Placeholder" value={field.placeholder} onChange={(value) => updateCustomField(index, 'placeholder', value)} />
               <label className="block">
-                <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-neutral-500">Tipo</span>
+                <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Tipo</span>
                 <select
                   value={field.tipo || 'text'}
                   onChange={(event) => updateCustomField(index, 'tipo', event.target.value)}
@@ -684,7 +691,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
           type="button"
           onClick={addCustomField}
           disabled={customFields.length >= 8}
-          className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
+          className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
         >
           {customFields.length >= 8 ? 'Limite de 8 campos extras atingido' : 'Adicionar campo personalizado'}
         </button>
@@ -721,8 +728,8 @@ function SectionOrderEditor({ order = [], onChange }) {
       {orderedSections.map((section, index) => (
         <div key={section.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-black/35 px-4 py-3">
           <div>
-            <p className="text-[11px] font-black uppercase tracking-widest text-neutral-500">Secao {index + 1}</p>
-            <p className="mt-1 text-sm font-black text-white">{section.label}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Secao {index + 1}</p>
+            <p className="mt-1 text-sm font-extrabold text-white">{section.label}</p>
           </div>
           <div className="flex gap-2">
             <button
@@ -925,7 +932,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Field label="Slug publico" value={slug} onChange={(value) => setSlug(slugifyLp(value))} />
           {scope === 'admin' ? (
             <label className="block">
-              <span className="mb-2 block text-[11px] font-black uppercase tracking-widest text-neutral-500">
+              <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">
                 Cliente vinculado
               </span>
               <select
@@ -946,7 +953,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <ImageUploadField label="Logo" field="logo" slug={slug || name} scope={scope} pageId={id} value={config.identidade.logoUrl} onChange={(value) => updateNested(setConfig, 'identidade', 'logoUrl', value)} />
           <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.06] bg-black/35 p-4">
             <div>
-              <p className="text-sm font-black text-white">Biblioteca visual</p>
+              <p className="text-sm font-extrabold text-white">Biblioteca visual</p>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500">
                 O preset muda atmosfera, superficies, hero inicial e paleta. Textos, imagens e campos da LP sao preservados.
               </p>
@@ -974,12 +981,12 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Toggle label="Exibir cabeçalho fixo" checked={config.cabecalho.ativo} onChange={(value) => updateNested(setConfig, 'cabecalho', 'ativo', value)} />
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Marca no menu</p>
+            <p className="text-sm font-extrabold text-white">Marca no menu</p>
             <Toggle label="Mostrar logo e marca" checked={config.cabecalho.mostrarMarca} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarMarca', value)} />
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Link de preços</p>
+            <p className="text-sm font-extrabold text-white">Link de preços</p>
             <Toggle label="Mostrar link para preços" checked={config.cabecalho.mostrarPrecos} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarPrecos', value)} />
             <Field label="Texto do link" value={config.cabecalho.precosTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'precosTexto', value)} />
             <p className="text-xs leading-relaxed text-neutral-500">
@@ -988,7 +995,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
-            <p className="text-sm font-black text-white">CTA do cabecalho</p>
+            <p className="text-sm font-extrabold text-white">CTA do cabecalho</p>
             <Toggle label="Mostrar botao de contato" checked={config.cabecalho.mostrarContato} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarContato', value)} />
             <Field label="Texto do botao" value={config.cabecalho.contatoTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoTexto', value)} />
             <Field label="URL do botao" value={config.cabecalho.contatoUrl} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoUrl', value)} placeholder="#formulario" />
@@ -1003,7 +1010,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-sm font-black text-white">Biblioteca de imagens da LP</p>
+                <p className="text-sm font-extrabold text-white">Biblioteca de imagens da LP</p>
                 <p className="mt-1 text-xs leading-relaxed text-neutral-400">
                   Toda imagem enviada pelo editor fica registrada aqui para reutilizar em outras secoes.
                 </p>
@@ -1012,7 +1019,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                 type="button"
                 onClick={loadAssets}
                 disabled={assetsLoading}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-black text-white disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-extrabold text-white disabled:opacity-60"
               >
                 {assetsLoading ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
                 Atualizar
@@ -1033,7 +1040,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           ) : assets.length === 0 ? (
             <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-10 text-center">
               <ImageIcon size={34} className="mx-auto text-neutral-700" />
-              <p className="mt-3 text-sm font-black text-white">Nenhuma imagem enviada ainda.</p>
+              <p className="mt-3 text-sm font-extrabold text-white">Nenhuma imagem enviada ainda.</p>
               <p className="mt-1 text-xs text-neutral-500">Envie imagens nos campos do editor e clique em Atualizar.</p>
             </div>
           ) : (
@@ -1043,14 +1050,14 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                   <img src={asset.public_url} alt="" className="h-40 w-full object-cover" />
                   <div className="grid gap-3 p-4">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-white">{asset.filename || 'Imagem'}</p>
+                      <p className="truncate text-sm font-extrabold text-white">{asset.filename || 'Imagem'}</p>
                       <p className="mt-1 truncate text-xs text-neutral-500">{asset.field || asset.path}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => copyAssetUrl(asset.public_url)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-black text-white"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-xs font-extrabold text-white"
                       >
                         <Copy size={14} />
                         Copiar
@@ -1058,7 +1065,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                       <button
                         type="button"
                         onClick={() => updateNested(setConfig, 'hero', 'imagemUrl', asset.public_url)}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-2 text-xs font-black text-[#8cf059]"
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-3 py-2 text-xs font-extrabold text-[#8cf059]"
                       >
                         Usar no hero
                       </button>
@@ -1078,7 +1085,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Toggle label="Exibir hero" checked={config.hero.ativo} onChange={(value) => updateNested(setConfig, 'hero', 'ativo', value)} />
           <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.06] bg-black/35 p-4">
             <div>
-              <p className="text-sm font-black text-white">Variacao visual do hero</p>
+              <p className="text-sm font-extrabold text-white">Variacao visual do hero</p>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500">
                 Escolha a composicao da primeira dobra. A imagem principal pode ficar lateral, central, invertida ou imersiva.
               </p>
@@ -1287,7 +1294,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Field label="Texto do CTA" value={config.cta.ctaTexto} onChange={(value) => updateNested(setConfig, 'cta', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.cta.ctaUrl} onChange={(value) => updateNested(setConfig, 'cta', 'ctaUrl', value)} />
           <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
-            <p className="text-sm font-black text-white">Botao fixo no mobile</p>
+            <p className="text-sm font-extrabold text-white">Botao fixo no mobile</p>
             <p className="mt-2 text-xs leading-relaxed text-neutral-500">
               Texto do botão que fica preso no rodapé do celular. Se ficar vazio, usa o texto do botão do formulário.
             </p>
@@ -1310,7 +1317,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Hero e preview</p>
+            <p className="text-sm font-extrabold text-white">Hero e preview</p>
             <Field label="Botão secundário do hero" value={textos.heroBotaoSecundario} onChange={(value) => updateNested(setConfig, 'textos', 'heroBotaoSecundario', value)} placeholder="Ver detalhes" />
             <Field label="Texto de rolagem" value={textos.heroScrollTexto} onChange={(value) => updateNested(setConfig, 'textos', 'heroScrollTexto', value)} placeholder="Descer" />
             <Field label="Eyebrow do preview" value={textos.previewEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'previewEyebrow', value)} placeholder="Live preview" />
@@ -1323,7 +1330,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Métricas e cards do topo</p>
+            <p className="text-sm font-extrabold text-white">Métricas e cards do topo</p>
             <ListEditor
               items={textos.metricas || []}
               labels={[{ key: 'value', label: 'Valor' }, { key: 'label', label: 'Rotulo' }]}
@@ -1337,7 +1344,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Textos de apoio das secoes</p>
+            <p className="text-sm font-extrabold text-white">Textos de apoio das secoes</p>
             <Field label="Eyebrow dos benefícios" value={textos.beneficiosEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosEyebrow', value)} />
             <Field label="Introdução dos benefícios" value={textos.beneficiosIntro} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosIntro', value)} textarea />
             <Field label="Introdução da prova social" value={textos.provaIntro} onChange={(value) => updateNested(setConfig, 'textos', 'provaIntro', value)} textarea />
@@ -1348,7 +1355,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Bullets automáticos</p>
+            <p className="text-sm font-extrabold text-white">Bullets automáticos</p>
             <ListEditor
               items={textos.ofertaItens || []}
               labels={[{ key: 'texto', label: 'Item da oferta' }]}
@@ -1362,7 +1369,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Preços, formulário e rodapé</p>
+            <p className="text-sm font-extrabold text-white">Preços, formulário e rodapé</p>
             <Field label="Selo do plano em destaque" value={textos.planoDestaqueTexto} onChange={(value) => updateNested(setConfig, 'textos', 'planoDestaqueTexto', value)} placeholder="Destaque" />
             <Field label="CTA fallback dos planos" value={textos.planoCtaFallback} onChange={(value) => updateNested(setConfig, 'textos', 'planoCtaFallback', value)} placeholder="Escolher plano" />
             <Field label="Texto enquanto formulário envia" value={textos.formularioEnviandoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'formularioEnviandoTexto', value)} placeholder="Enviando..." />
@@ -1388,14 +1395,14 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Toggle label="Exibir rodape" checked={config.rodape.ativo} onChange={(value) => updateNested(setConfig, 'rodape', 'ativo', value)} />
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Elementos visiveis</p>
+            <p className="text-sm font-extrabold text-white">Elementos visiveis</p>
             <Toggle label="Mostrar logo/marca" checked={config.rodape.mostrarLogo} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarLogo', value)} />
             <Toggle label="Mostrar copyright" checked={config.rodape.mostrarCopyright} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarCopyright', value)} />
             <Field label="Texto do copyright" value={config.rodape.copyright} onChange={(value) => updateNested(setConfig, 'rodape', 'copyright', value)} />
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-black text-white">Links do rodape</p>
+            <p className="text-sm font-extrabold text-white">Links do rodape</p>
             <Toggle label="Mostrar Termos de Uso" checked={config.rodape.mostrarTermos} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarTermos', value)} />
             <Field label="URL dos Termos" value={config.rodape.termosUrl} onChange={(value) => updateNested(setConfig, 'rodape', 'termosUrl', value)} placeholder="https://..." />
             <Toggle label="Mostrar Privacidade" checked={config.rodape.mostrarPrivacidade} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarPrivacidade', value)} />
@@ -1407,7 +1414,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
-            <p className="text-sm font-black text-white">WhatsApp flutuante</p>
+            <p className="text-sm font-extrabold text-white">WhatsApp flutuante</p>
             <p className="text-sm leading-relaxed text-neutral-300">
               A mensagem enviada usa a marca da LP: Olá [Nome da empresa], vim pelo seu site e queria saber mais informações.
             </p>
@@ -1433,7 +1440,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           Informe somente os identificadores das plataformas. O gerador carrega as tags permitidas na LP publicada e registra o envio do formulario como lead.
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-          <p className="text-sm font-black text-white">Dominio personalizado</p>
+          <p className="text-sm font-extrabold text-white">Dominio personalizado</p>
           <p className="mt-2 text-xs leading-relaxed text-neutral-500">
             Informe o dominio que sera apontado para esta LP. A ativacao completa ainda depende de DNS e dominio configurado na Vercel.
           </p>
@@ -1458,7 +1465,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <div className="mt-4 grid gap-3 rounded-2xl border border-white/[0.06] bg-black/40 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="text-xs font-black uppercase tracking-widest text-neutral-500">Checklist DNS</p>
+                <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-500">Checklist DNS</p>
                 <p className="mt-1 text-sm font-bold text-white">
                   Aponte o dominio e depois verifique a propagacao.
                 </p>
@@ -1467,7 +1474,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                 type="button"
                 onClick={checkDomainStatus}
                 disabled={domainStatusLoading || !config.integracoes.customDomain}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-black text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {domainStatusLoading ? <Loader2 size={15} className="animate-spin" /> : <Globe2 size={15} />}
                 Verificar DNS
@@ -1492,12 +1499,12 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               }`}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className={`text-sm font-black ${domainStatus.ok ? 'text-[#8cf059]' : 'text-yellow-200'}`}>
+                    <p className={`text-sm font-extrabold ${domainStatus.ok ? 'text-[#8cf059]' : 'text-yellow-200'}`}>
                       {domainStatus.label}
                     </p>
                     <p className="mt-1 text-xs leading-relaxed text-neutral-300">{domainStatus.message}</p>
                   </div>
-                  <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-neutral-300">
+                  <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-neutral-300">
                     {domainStatus.host || 'sem dominio'}
                   </span>
                 </div>
@@ -1536,7 +1543,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
   }
 
   return (
-    <main className="min-h-screen bg-[#050505] text-white">
+    <main className={`${poppins.className} min-h-screen bg-[#050505] text-white`}>
       <Toaster position="top-right" />
 
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-5 py-8 sm:px-8">
@@ -1546,7 +1553,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               <ArrowLeft size={16} />
               {context.backLabel}
             </Link>
-            <h1 className="mt-4 text-3xl font-black tracking-tight sm:text-5xl">
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight sm:text-5xl">
               Editor de LP
             </h1>
             <p className="mt-2 text-sm text-neutral-500">
@@ -1555,14 +1562,14 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link href={publicUrl} target="_blank" className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-5 py-3 text-sm font-black text-white">
+            <Link href={publicUrl} target="_blank" className="inline-flex items-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.04] px-5 py-3 text-sm font-extrabold text-white">
               <Eye size={17} />
               Preview
             </Link>
             <button
               onClick={savePage}
               disabled={saving || loading}
-              className="inline-flex items-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black disabled:opacity-60"
             >
               {saving ? <Loader2 size={17} className="animate-spin" /> : <Save size={17} />}
               Salvar
@@ -1572,13 +1579,13 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
 
         {!hasValidId ? (
           <div className="rounded-[1.5rem] border border-yellow-500/20 bg-yellow-500/10 p-10 text-center">
-            <p className="text-lg font-black text-yellow-200">ID da LP invalido.</p>
+            <p className="text-lg font-extrabold text-yellow-200">ID da LP invalido.</p>
             <p className="mt-2 text-sm text-yellow-100/75">
               Volte para o painel do gerador e abra uma landing page pelo botao Editar.
             </p>
             <Link
               href={context.backHref}
-              className="mt-6 inline-flex rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black"
+              className="mt-6 inline-flex rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black"
             >
               Voltar para LPs
             </Link>
@@ -1590,11 +1597,11 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
         ) : loadError ? (
           <div className="rounded-[1.5rem] border border-red-500/20 bg-red-500/10 p-10 text-center">
-            <p className="text-lg font-black text-red-200">Nao foi possivel abrir esta LP.</p>
+            <p className="text-lg font-extrabold text-red-200">Nao foi possivel abrir esta LP.</p>
             <p className="mt-2 text-sm text-red-100/75">{loadError}</p>
             <Link
               href={context.backHref}
-              className="mt-6 inline-flex rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-black text-black"
+              className="mt-6 inline-flex rounded-2xl bg-[#6be12f] px-5 py-3 text-sm font-extrabold text-black"
             >
               Voltar
             </Link>
@@ -1604,7 +1611,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <aside className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 lg:sticky lg:top-6 lg:self-start">
               <div className="mb-4 flex items-center gap-3 px-2">
                 <Settings2 size={18} className="text-[#8cf059]" />
-                <p className="text-sm font-black">Secoes</p>
+                <p className="text-sm font-extrabold">Secoes</p>
               </div>
 
               <nav className="grid gap-2">
@@ -1612,7 +1619,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`rounded-2xl px-4 py-3 text-left text-sm font-black transition ${
+                    className={`rounded-2xl px-4 py-3 text-left text-sm font-extrabold transition ${
                       activeTab === tab.id
                         ? 'bg-[#6be12f] text-black'
                         : 'bg-white/[0.03] text-neutral-400 hover:bg-white/[0.06] hover:text-white'
@@ -1624,7 +1631,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               </nav>
 
               <div className="mt-5 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-                <p className="text-[11px] font-black uppercase tracking-widest text-neutral-500">Status</p>
+                <p className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Status</p>
                 <select
                   value={status}
                   onChange={(event) => setStatus(event.target.value)}
@@ -1640,7 +1647,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               <div className="mb-6 flex items-center gap-3">
                 {activeTab === 'identidade' ? <Palette size={20} className="text-[#8cf059]" /> : <ImageIcon size={20} className="text-[#8cf059]" />}
                 <div>
-                  <h2 className="text-xl font-black">
+                  <h2 className="text-xl font-extrabold">
                     {tabs.find((tab) => tab.id === activeTab)?.label}
                   </h2>
                   <p className="text-xs text-neutral-500">Edite os campos e clique em salvar.</p>
@@ -1653,7 +1660,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <section className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 sm:p-5 lg:col-start-2">
               <div className="mb-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h2 className="text-xl font-black">Preview ao vivo</h2>
+                  <h2 className="text-xl font-extrabold">Preview ao vivo</h2>
                   <p className="mt-1 text-xs text-neutral-500">
                     Mostra o layout com as alteracoes atuais. Salve para publicar.
                   </p>
@@ -1663,7 +1670,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('desktop')}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition ${
                       previewDevice === 'desktop' ? 'bg-[#6be12f] text-black' : 'text-neutral-400 hover:text-white'
                     }`}
                   >
@@ -1673,7 +1680,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                   <button
                     type="button"
                     onClick={() => setPreviewDevice('mobile')}
-                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition ${
+                    className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-extrabold transition ${
                       previewDevice === 'mobile' ? 'bg-[#6be12f] text-black' : 'text-neutral-400 hover:text-white'
                     }`}
                   >
