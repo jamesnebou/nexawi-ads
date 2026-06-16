@@ -84,6 +84,13 @@ export async function getLandingPageConfig(slug = '') {
     hero_titulo_linha_2_estilo:
   globalConfig.hero_titulo_linha_2_estilo_padrao || 'gradiente',
 
+    video_explicativo: {
+      ativo: Boolean(globalConfig.lp_video_explicativo_ativo),
+      url: globalConfig.lp_video_explicativo_url || '',
+      titulo: globalConfig.lp_video_explicativo_titulo || 'Veja como a NexaWi funciona na prática',
+      descricao: globalConfig.lp_video_explicativo_descricao || 'Entenda em poucos segundos como o Wi-Fi vira mídia local, captura leads e entrega métricas para anunciantes.',
+    },
+
     integracoes: {
       metaPixelId: globalConfig.lp_meta_pixel_id || '',
       ga4MeasurementId: globalConfig.lp_ga4_measurement_id || '',
@@ -136,6 +143,8 @@ export async function getLandingPageConfig(slug = '') {
 
     hero_titulo_linha_2_estilo:
   cityRecord.hero_titulo_linha_2_estilo || defaultConfig.hero_titulo_linha_2_estilo,
+
+    video_explicativo: defaultConfig.video_explicativo,
 
     integracoes: defaultConfig.integracoes,
     

@@ -223,6 +223,34 @@ const faqs = [
 
 
 
+function getYouTubeEmbedUrl(url = '') {
+  const normalized = String(url || '').trim()
+  if (!normalized) return ''
+
+  try {
+    const parsed = new URL(normalized)
+    const host = parsed.hostname.replace(/^www\./, '')
+    let videoId = ''
+
+    if (host === 'youtu.be') {
+      videoId = parsed.pathname.split('/').filter(Boolean)[0] || ''
+    } else if (host === 'youtube.com' || host === 'm.youtube.com') {
+      if (parsed.pathname.startsWith('/shorts/')) {
+        videoId = parsed.pathname.split('/').filter(Boolean)[1] || ''
+      } else if (parsed.pathname.startsWith('/embed/')) {
+        videoId = parsed.pathname.split('/').filter(Boolean)[1] || ''
+      } else {
+        videoId = parsed.searchParams.get('v') || ''
+      }
+    }
+
+    if (!/^[A-Za-z0-9_-]{6,20}$/.test(videoId)) return ''
+    return `https://www.youtube-nocookie.com/embed/${videoId}?rel=0&modestbranding=1&playsinline=1`
+  } catch {
+    return ''
+  }
+}
+
 export default function LandingPage() {
   // Variáveis de Estado para a Barra de Status ao Vivo
   const [onlineUsers, setOnlineUsers] = useState(0);
@@ -268,6 +296,12 @@ const [landingConfig, setLandingConfig] = useState({
   hero_subtitulo_linha_1: 'O cliente usa a internet, a sua marca aparece na tela dele.',
   hero_subtitulo_linha_2: 'Simples, inevitável e 100% local.',
   hero_titulo_linha_2_estilo: 'gradiente',
+  video_explicativo: {
+    ativo: false,
+    url: '',
+    titulo: 'Veja como a NexaWi funciona na prática',
+    descricao: 'Entenda em poucos segundos como o Wi-Fi vira mídia local, captura leads e entrega métricas para anunciantes.',
+  },
   integracoes: {
     metaPixelId: '',
     ga4MeasurementId: '',
@@ -278,6 +312,15 @@ const [landingConfig, setLandingConfig] = useState({
 })
 
 const currentSlug = useMemo(() => resolveSlugFromPathname(pathname), [pathname])
+
+const videoExplicativoEmbedUrl = useMemo(
+  () => getYouTubeEmbedUrl(landingConfig.video_explicativo?.url),
+  [landingConfig.video_explicativo?.url]
+)
+
+const mostrarVideoExplicativo = Boolean(
+  landingConfig.video_explicativo?.ativo && videoExplicativoEmbedUrl
+)
 
 //efeito para sair a logo  
 useEffect(() => {
@@ -1364,7 +1407,38 @@ useEffect(() => {
           </div>
         </section>
 
-        {/* Como Funciona */}
+        {mostrarVideoExplicativo && (
+        <section id="video-explicativo" className="relative z-10 px-6 py-20 md:py-28">
+          <div className="mx-auto max-w-6xl">
+            <div className="mb-10 text-center">
+              <span className="inline-flex rounded-full border border-[#59ff2f]/30 bg-[#59ff2f]/10 px-4 py-2 text-xs font-black uppercase tracking-[0.35em] text-[#59ff2f]">
+                Demonstração
+              </span>
+              <h2 className="mt-5 text-3xl font-black leading-tight text-white md:text-5xl">
+                {landingConfig.video_explicativo?.titulo || 'Veja como a NexaWi funciona na prática'}
+              </h2>
+              <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-neutral-400 md:text-lg">
+                {landingConfig.video_explicativo?.descricao || 'Entenda em poucos segundos como o Wi-Fi vira mídia local, captura leads e entrega métricas para anunciantes.'}
+              </p>
+            </div>
+
+            <div className="overflow-hidden rounded-[2rem] border border-[#59ff2f]/20 bg-black shadow-[0_30px_120px_rgba(89,255,47,0.12)]">
+              <div className="relative aspect-video w-full">
+                <iframe
+                  title="Vídeo explicativo NexaWi"
+                  src={videoExplicativoEmbedUrl}
+                  className="absolute inset-0 h-full w-full"
+                  loading="lazy"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Como Funciona */}
         <section
           id="como-funciona"
           className="py-20 md:py-32 bg-black relative overflow-hidden"

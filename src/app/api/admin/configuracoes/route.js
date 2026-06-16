@@ -124,6 +124,11 @@ function sanitizarPayload(config = {}) {
         ? config.hero_titulo_linha_2_estilo_padrao
         : 'gradiente',
 
+    lp_video_explicativo_ativo: booleano(config.lp_video_explicativo_ativo, false),
+    lp_video_explicativo_url: nullableTexto(config.lp_video_explicativo_url),
+    lp_video_explicativo_titulo: nullableTexto(config.lp_video_explicativo_titulo),
+    lp_video_explicativo_descricao: nullableTexto(config.lp_video_explicativo_descricao),
+
     lp_meta_pixel_id: nullableTexto(config.lp_meta_pixel_id),
     lp_ga4_measurement_id: nullableTexto(config.lp_ga4_measurement_id),
     lp_google_tag_manager_id: nullableTexto(config.lp_google_tag_manager_id),
@@ -239,6 +244,7 @@ export async function POST(request) {
           payload.lp_google_tag_manager_id ||
           payload.lp_google_ads_id
         ),
+        alterou_video_lp: Boolean(payload.lp_video_explicativo_url),
       },
     })
 

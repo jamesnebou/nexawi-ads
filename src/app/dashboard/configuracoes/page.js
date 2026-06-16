@@ -13,6 +13,7 @@ import {
   Save,
   TimerReset,
   BadgeDollarSign,
+  PlayCircle,
 } from 'lucide-react'
 
 // Cliente Supabase usado apenas para pegar a sessão do admin logado,
@@ -89,6 +90,10 @@ hero_titulo_linha_3_padrao: '',
 hero_subtitulo_linha_1_padrao: '',
 hero_subtitulo_linha_2_padrao: '',
 hero_titulo_linha_2_estilo_padrao: 'gradiente',
+  lp_video_explicativo_ativo: false,
+  lp_video_explicativo_url: '',
+  lp_video_explicativo_titulo: 'Veja como a NexaWi funciona na prática',
+  lp_video_explicativo_descricao: 'Entenda em poucos segundos como o Wi-Fi vira mídia local, captura leads e entrega métricas para anunciantes.',
 
   lp_meta_pixel_id: '',
   lp_ga4_measurement_id: '',
@@ -451,6 +456,10 @@ const canUpdate = Boolean(permissions.update)
           hero_subtitulo_linha_1_padrao: data.hero_subtitulo_linha_1_padrao || '',
           hero_subtitulo_linha_2_padrao: data.hero_subtitulo_linha_2_padrao || '',
           hero_titulo_linha_2_estilo_padrao: data.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+          lp_video_explicativo_ativo: Boolean(data.lp_video_explicativo_ativo),
+          lp_video_explicativo_url: data.lp_video_explicativo_url || '',
+          lp_video_explicativo_titulo: data.lp_video_explicativo_titulo || DEFAULT_FORM.lp_video_explicativo_titulo,
+          lp_video_explicativo_descricao: data.lp_video_explicativo_descricao || DEFAULT_FORM.lp_video_explicativo_descricao,
           lp_meta_pixel_id: data.lp_meta_pixel_id || '',
           lp_ga4_measurement_id: data.lp_ga4_measurement_id || '',
           lp_google_tag_manager_id: data.lp_google_tag_manager_id || '',
@@ -533,6 +542,10 @@ const canUpdate = Boolean(permissions.update)
         hero_subtitulo_linha_1_padrao: form.hero_subtitulo_linha_1_padrao || null,
         hero_subtitulo_linha_2_padrao: form.hero_subtitulo_linha_2_padrao || null,
         hero_titulo_linha_2_estilo_padrao: form.hero_titulo_linha_2_estilo_padrao || 'gradiente',
+        lp_video_explicativo_ativo: form.lp_video_explicativo_ativo,
+        lp_video_explicativo_url: form.lp_video_explicativo_url,
+        lp_video_explicativo_titulo: form.lp_video_explicativo_titulo,
+        lp_video_explicativo_descricao: form.lp_video_explicativo_descricao,
         lp_meta_pixel_id: form.lp_meta_pixel_id || null,
         lp_ga4_measurement_id: form.lp_ga4_measurement_id || null,
         lp_google_tag_manager_id: form.lp_google_tag_manager_id || null,
@@ -992,7 +1005,73 @@ const uploadInfo = await adminApiFetch('/api/admin/configuracoes/upload-hero-url
       placeholder="Subtítulo 02 - branco com transparência"
     />
   </div>
-</div>
+</div>        <div className="pt-4 border-t border-white/[0.05]">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-white tracking-tight">Vídeo explicativo da LP</h3>
+              <p className="mt-1 text-sm text-neutral-500">
+                Exiba um vídeo do YouTube na landing principal para explicar a proposta antes dos planos.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setForm({ ...form, lp_video_explicativo_ativo: !form.lp_video_explicativo_ativo })}
+              className={`inline-flex items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-sm font-extrabold transition ${form.lp_video_explicativo_ativo ? 'border-lime-500/40 bg-lime-500/15 text-lime-300' : 'border-white/10 bg-white/[0.03] text-neutral-400'}`}
+            >
+              <PlayCircle size={18} />
+              {form.lp_video_explicativo_ativo ? 'Vídeo ativo' : 'Vídeo desativado'}
+            </button>
+          </div>
+
+          <div className="grid gap-4 rounded-[2rem] border border-white/10 bg-black/30 p-4 sm:p-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-4">
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-neutral-500">URL do vídeo</span>
+                <input
+                  type="url"
+                  value={form.lp_video_explicativo_url}
+                  onChange={(event) => setForm({ ...form, lp_video_explicativo_url: event.target.value })}
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm font-semibold text-white outline-none transition focus:border-lime-500/60"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-neutral-500">Título</span>
+                <input
+                  type="text"
+                  value={form.lp_video_explicativo_titulo}
+                  onChange={(event) => setForm({ ...form, lp_video_explicativo_titulo: event.target.value })}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm font-semibold text-white outline-none transition focus:border-lime-500/60"
+                />
+              </label>
+
+              <label className="block">
+                <span className="text-[11px] font-black uppercase tracking-[0.25em] text-neutral-500">Descrição</span>
+                <textarea
+                  value={form.lp_video_explicativo_descricao}
+                  onChange={(event) => setForm({ ...form, lp_video_explicativo_descricao: event.target.value })}
+                  rows={3}
+                  className="mt-2 w-full rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-sm font-semibold text-white outline-none transition focus:border-lime-500/60"
+                />
+              </label>
+            </div>
+
+            <div className="rounded-[1.5rem] border border-white/10 bg-[#070707] p-4">
+              <div className="flex h-full min-h-[180px] flex-col items-center justify-center rounded-[1.25rem] border border-dashed border-white/10 bg-white/[0.02] p-5 text-center">
+                <PlayCircle className={form.lp_video_explicativo_ativo ? 'text-lime-400' : 'text-neutral-600'} size={34} />
+                <p className="mt-3 text-sm font-extrabold text-white">
+                  {form.lp_video_explicativo_ativo ? 'Seção ativa na LP' : 'Seção oculta na LP'}
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-neutral-500">
+                  A seção só aparece quando estiver ativa e uma URL válida do YouTube estiver configurada.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
 
 
               <div className="pt-4 border-t border-white/[0.05]">

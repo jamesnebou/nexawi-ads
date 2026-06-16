@@ -29,6 +29,11 @@ export const DEFAULT_PORTAL_RUNTIME_CONFIG = {
   hero_imagem_url_padrao: '/mockup-celular.png',
   hero_titulo_linha_2_estilo_padrao: 'gradiente',
 
+  lp_video_explicativo_ativo: false,
+  lp_video_explicativo_url: '',
+  lp_video_explicativo_titulo: 'Veja como a NexaWi funciona na prática',
+  lp_video_explicativo_descricao: 'Entenda em poucos segundos como o Wi-Fi vira mídia local, captura leads e entrega métricas para anunciantes.',
+
   lp_meta_pixel_id: '',
   lp_ga4_measurement_id: '',
   lp_google_tag_manager_id: '',
@@ -150,6 +155,11 @@ hero_subtitulo_linha_1_padrao:  data?.hero_subtitulo_linha_1_padrao || DEFAULT_P
 hero_subtitulo_linha_2_padrao:   data?.hero_subtitulo_linha_2_padrao || DEFAULT_PORTAL_RUNTIME_CONFIG.hero_subtitulo_linha_2_padrao,
 
   hero_titulo_linha_2_estilo_padrao:  data?.hero_titulo_linha_2_estilo_padrao || DEFAULT_PORTAL_RUNTIME_CONFIG.hero_titulo_linha_2_estilo_padrao,
+
+  lp_video_explicativo_ativo: Boolean(data?.lp_video_explicativo_ativo ?? DEFAULT_PORTAL_RUNTIME_CONFIG.lp_video_explicativo_ativo),
+  lp_video_explicativo_url: data?.lp_video_explicativo_url || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_video_explicativo_url,
+  lp_video_explicativo_titulo: data?.lp_video_explicativo_titulo || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_video_explicativo_titulo,
+  lp_video_explicativo_descricao: data?.lp_video_explicativo_descricao || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_video_explicativo_descricao,
 
   lp_meta_pixel_id: data?.lp_meta_pixel_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_meta_pixel_id,
   lp_ga4_measurement_id: data?.lp_ga4_measurement_id || DEFAULT_PORTAL_RUNTIME_CONFIG.lp_ga4_measurement_id,
