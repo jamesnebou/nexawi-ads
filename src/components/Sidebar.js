@@ -55,6 +55,30 @@ const poppins = Poppins({
   display: 'swap',
 })
 
+async function getAdminAccessToken({ forceRefresh = false } = {}) {
+  const request = forceRefresh
+    ? supabase.auth.refreshSession()
+    : supabase.auth.getSession()
+
+  const { data: sessionData, error: sessionError } = await withTimeout(
+    request,
+    SESSION_CHECK_TIMEOUT_MS,
+    forceRefresh
+      ? 'Tempo excedido ao renovar sessão administrativa.'
+      : 'Tempo excedido ao validar sessão administrativa.'
+  )
+
+  const token = sessionData?.session?.access_token
+
+  if (sessionError || !token) {
+    const error = new Error('Sessão administrativa não encontrada.')
+    error.status = 401
+    throw error
+  }
+
+  return token
+}
+
 const menu = [
   {
     label: 'Visão Geral',
@@ -202,17 +226,7 @@ const menu = [
   },
 ]
 
-async function adminApiFetch(path) {
-  const { data: sessionData, error: sessionError } = await withTimeout(
-    supabase.auth.getSession(),
-    SESSION_CHECK_TIMEOUT_MS,
-    'Tempo excedido ao validar sessão administrativa.'
-  )
-
-  if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessão administrativa não encontrada.')
-  }
-
+async function fetchAdminJson(path, token) {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), ADMIN_API_TIMEOUT_MS)
 
@@ -223,7 +237,7 @@ async function adminApiFetch(path) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${sessionData.session.access_token}`,
+        Authorization: `Bearer ${token}`,
       },
       cache: 'no-store',
       signal: controller.signal,
@@ -239,22 +253,39 @@ async function adminApiFetch(path) {
   }
 
   const text = await response.text()
-
   let data = null
 
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
+    const error = new Error(`A API não retornou JSON. Status: ${response.status}`)
+    error.status = response.status
+    throw error
   }
 
   if (!response.ok) {
-    throw new Error(data?.error || 'Erro ao buscar permissões.')
+    const error = new Error(data?.error || 'Erro ao buscar permissões.')
+    error.status = response.status
+    throw error
   }
 
   return data
 }
 
+async function adminApiFetch(path) {
+  let token = await getAdminAccessToken()
+
+  try {
+    return await fetchAdminJson(path, token)
+  } catch (error) {
+    if (error.status !== 401) {
+      throw error
+    }
+
+    token = await getAdminAccessToken({ forceRefresh: true })
+    return fetchAdminJson(path, token)
+  }
+}
 function temAlgumaPermissaoNoModulo(permissions, moduleName, isMaster = false) {
   if (isMaster) return true
   if (!moduleName) return true

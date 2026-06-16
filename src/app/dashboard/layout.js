@@ -20,6 +20,87 @@ import {
 
 const supabase = createBrowserSupabaseClient()
 
+const SESSION_CHECK_TIMEOUT_MS = 8000
+const ADMIN_API_TIMEOUT_MS = 12000
+
+function withTimeout(promise, timeoutMs, message) {
+  let timeoutId
+
+  const timeout = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error(message)), timeoutMs)
+  })
+
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId))
+}
+
+async function getAdminAccessToken({ forceRefresh = false } = {}) {
+  const request = forceRefresh
+    ? supabase.auth.refreshSession()
+    : supabase.auth.getSession()
+
+  const { data: sessionData, error: sessionError } = await withTimeout(
+    request,
+    SESSION_CHECK_TIMEOUT_MS,
+    forceRefresh
+      ? 'Tempo excedido ao renovar sessão administrativa.'
+      : 'Tempo excedido ao validar sessão administrativa.'
+  )
+
+  const token = sessionData?.session?.access_token
+
+  if (sessionError || !token) {
+    const error = new Error('Sessão administrativa não encontrada.')
+    error.status = 401
+    throw error
+  }
+
+  return token
+}
+
+async function fetchAdminJson(path, token) {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), ADMIN_API_TIMEOUT_MS)
+
+  try {
+    const response = await fetch(path, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      cache: 'no-store',
+      signal: controller.signal,
+    })
+
+    const text = await response.text()
+    let data = null
+
+    try {
+      data = text ? JSON.parse(text) : null
+    } catch {
+      const error = new Error(`A API não retornou JSON. Status: ${response.status}`)
+      error.status = response.status
+      throw error
+    }
+
+    if (!response.ok) {
+      const error = new Error(data?.error || 'Erro ao validar permissões.')
+      error.status = response.status
+      throw error
+    }
+
+    return data
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Tempo excedido ao validar permissões administrativas.')
+    }
+
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
 const rotasProtegidas = [
   {
     path: '/dashboard/empresas',
@@ -151,42 +232,18 @@ const rotasProtegidas = [
 ]
 
 async function adminApiFetch(path) {
-  const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
-
-  if (sessionError || !sessionData?.session?.access_token) {
-    const error = new Error('Sessão administrativa não encontrada.')
-    error.status = 401
-    throw error
-  }
-
-  const response = await fetch(path, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${sessionData.session.access_token}`,
-    },
-    cache: 'no-store',
-  })
-
-  const text = await response.text()
-
-  let data = null
+  let token = await getAdminAccessToken()
 
   try {
-    data = text ? JSON.parse(text) : null
-  } catch {
-    const error = new Error(`A API não retornou JSON. Status: ${response.status}`)
-    error.status = response.status
-    throw error
-  }
+    return await fetchAdminJson(path, token)
+  } catch (error) {
+    if (error.status !== 401) {
+      throw error
+    }
 
-  if (!response.ok) {
-    const error = new Error(data?.error || 'Erro ao validar permissões.')
-    error.status = response.status
-    throw error
+    token = await getAdminAccessToken({ forceRefresh: true })
+    return fetchAdminJson(path, token)
   }
-
-  return data
 }
 
 function resolverRota(pathname) {
