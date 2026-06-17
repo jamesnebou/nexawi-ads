@@ -41,7 +41,7 @@ function Cta({ href, children, variant = 'primary', className = '' }) {
 
   return (
     <a
-      href={href || '#formulario'}
+      href={href || '#formulário'}
       className={`inline-flex min-h-12 items-center justify-center gap-2 rounded-full px-6 py-3 text-sm font-extrabold transition ${variantClassName} ${className}`}
     >
       {children}
@@ -171,13 +171,13 @@ function footerLinkVisible(enabled, href) {
 }
 
 function buildFloatingWhatsappUrl(config) {
-  const phone = String(config.rodape.whatsappNumero || '').replace(/\D/g, '')
+  const phone = String(config.rodape.whatsappNúmero || '').replace(/\D/g, '')
   if (!phone) return ''
 
   const brand = config.identidade.marca || 'sua empresa'
   const template = textOr(
     config.textos?.whatsappMensagem,
-    'Ola [Nome da empresa], vim pelo seu site e queria saber mais informacoes.'
+    'Olá [Nome da empresa], vim pelo seu site e queria saber mais informações.'
   )
   const message = template.replace(/\[Nome da empresa\]/g, brand)
   return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
@@ -270,18 +270,18 @@ function getEditableTextContent(config, layoutContent) {
     heroScrollTexto: textOr(textos.heroScrollTexto, 'Descer'),
     metrics: normalizeMetrics(textos.metricas, layoutContent.metrics),
     signals: normalizeSignals(textos.sinais, layoutContent.signals),
-    benefitEyebrow: textOr(textos.beneficiosEyebrow, layoutContent.benefitEyebrow),
-    benefitIntro: textOr(textos.beneficiosIntro, layoutContent.benefitIntro),
+    benefitEyebrow: textOr(textos.benefíciosEyebrow, layoutContent.benefitEyebrow),
+    benefitIntro: textOr(textos.benefíciosIntro, layoutContent.benefitIntro),
     proofIntro: textOr(textos.provaIntro, layoutContent.proofIntro),
     ofertaEyebrow: textOr(textos.ofertaEyebrow, 'Oferta principal'),
     offerBullets: normalizeTextList(textos.ofertaItens, layoutContent.offerBullets),
-    ofertaCondicaoLabel: textOr(textos.ofertaCondicaoLabel, 'Condicao'),
-    ofertaTextoAuxiliar: textOr(textos.ofertaTextoAuxiliar, 'Direcione o visitante para o proximo passo sem excesso de texto.'),
-    formBullets: normalizeTextList(textos.formularioItens, layoutContent.formBullets),
-    faqEyebrow: textOr(textos.faqEyebrow, 'Duvidas'),
+    ofertaCondicaoLabel: textOr(textos.ofertaCondicaoLabel, 'Condição'),
+    ofertaTextoAuxiliar: textOr(textos.ofertaTextoAuxiliar, 'Direcione o visitante para o próximo passo sem excesso de texto.'),
+    formBullets: normalizeTextList(textos.formulárioItens, layoutContent.formBullets),
+    faqEyebrow: textOr(textos.faqEyebrow, 'Dúvidas'),
     planoDestaqueTexto: textOr(textos.planoDestaqueTexto, 'Destaque'),
     planoCtaFallback: textOr(textos.planoCtaFallback, 'Escolher plano'),
-    formularioEnviandoTexto: textOr(textos.formularioEnviandoTexto, 'Enviando...'),
+    formulárioEnviandoTexto: textOr(textos.formulárioEnviandoTexto, 'Enviando...'),
     rodapeTermosTexto: textOr(textos.rodapeTermosTexto, 'Termos de Uso'),
     rodapePrivacidadeTexto: textOr(textos.rodapePrivacidadeTexto, 'Privacidade'),
     rodapeContatoTexto: textOr(textos.rodapeContatoTexto, 'Contato'),
@@ -298,66 +298,66 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
         { value: '1 clique', label: 'contato' },
       ],
       signals: [
-        { icon: Zap, title: 'Urgencia real', text: 'A pagina mostra que o atendimento pode resolver agora.' },
-        { icon: ShieldCheck, title: 'Confianca local', text: 'Proximidade, clareza e prova deixam o contato mais seguro.' },
+        { icon: Zap, title: 'Urgencia real', text: 'A página mostra que o atendimento pode resolver agora.' },
+        { icon: ShieldCheck, title: 'Confiança local', text: 'Proximidade, clareza e prova deixam o contato mais seguro.' },
         { icon: MessageCircle, title: 'WhatsApp em foco', text: 'O visitante encontra o caminho direto para pedir atendimento.' },
       ],
       benefitEyebrow: 'Atendimento local',
-      benefitIntro: 'Esse modelo prioriza velocidade, regiao atendida e contato direto para transformar procura em conversa.',
+      benefitIntro: 'Esse modelo prioriza velocidade, região atendida e contato direto para transformar procura em conversa.',
       proofIntro: 'Prova simples e local reduz receio antes do primeiro contato.',
-      offerBullets: ['Area atendida', 'Prazo claro', 'Contato direto'],
-      formBullets: ['Pedido chega com contexto', 'Atendimento mais rapido', 'Lead pronto para WhatsApp'],
+      offerBullets: ['Área atendida', 'Prazo claro', 'Contato direto'],
+      formBullets: ['Pedido chega com contexto', 'Atendimento mais rápido', 'Lead pronto para WhatsApp'],
     },
     'clinic-editorial': {
       metrics: [
-        { value: 'Avalie', label: 'com criterio' },
+        { value: 'Avalie', label: 'com critério' },
         { value: 'Clean', label: 'experiencia' },
         { value: 'Agenda', label: 'organizada' },
       ],
       signals: [
-        { icon: Sparkles, title: 'Desejo elegante', text: 'A estetica valoriza resultado sem parecer apelativa.' },
-        { icon: ShieldCheck, title: 'Seguranca percebida', text: 'Cuidado, criterio e acompanhamento aparecem antes da oferta.' },
-        { icon: BadgeCheck, title: 'Autoridade visual', text: 'Ambiente, equipe e prova sustentam a decisao.' },
+        { icon: Sparkles, title: 'Desejo elegante', text: 'A estética valoriza resultado sem parecer apelativa.' },
+        { icon: ShieldCheck, title: 'Segurança percebida', text: 'Cuidado, critério e acompanhamento aparecem antes da oferta.' },
+        { icon: BadgeCheck, title: 'Autoridade visual', text: 'Ambiente, equipe e prova sustentam a decisão.' },
       ],
-      benefitEyebrow: 'Experiencia premium',
-      benefitIntro: 'Esse modelo trabalha desejo, seguranca e autoridade com ritmo mais limpo e sofisticado.',
-      proofIntro: 'Depoimentos e cuidado visual ajudam o visitante a confiar antes da avaliacao.',
-      offerBullets: ['Avaliacao', 'Cuidado', 'Acompanhamento'],
-      formBullets: ['Interesse qualificado', 'Dados para avaliacao', 'Conversa sem pressa'],
+      benefitEyebrow: 'Experiência premium',
+      benefitIntro: 'Esse modelo trabalha desejo, segurança e autoridade com ritmo mais limpo e sofisticado.',
+      proofIntro: 'Depoimentos e cuidado visual ajudam o visitante a confiar antes da avaliação.',
+      offerBullets: ['Avaliação', 'Cuidado', 'Acompanhamento'],
+      formBullets: ['Interesse qualificado', 'Dados para avaliação', 'Conversa sem pressa'],
     },
     'expert-launch': {
       metrics: [
-        { value: 'Metodo', label: 'central' },
+        { value: 'Método', label: 'central' },
         { value: 'Turma', label: 'aberta' },
-        { value: 'Aplicacao', label: 'guiada' },
+        { value: 'Aplicação', label: 'guiada' },
       ],
       signals: [
-        { icon: Target, title: 'Promessa especifica', text: 'O visitante entende a transformacao antes de ver preco.' },
-        { icon: TrendingUp, title: 'Autoridade em camadas', text: 'Metodo, prova e urgencia constroem decisao.' },
-        { icon: Zap, title: 'Entrada com criterio', text: 'O formulario filtra interessados para turma, lista ou chamada.' },
+        { icon: Target, title: 'Promessa específica', text: 'O visitante entende a transformação antes de ver preço.' },
+        { icon: TrendingUp, title: 'Autoridade em camadas', text: 'Método, prova e urgencia constroem decisão.' },
+        { icon: Zap, title: 'Entrada com critério', text: 'O formulário filtra interessados para turma, lista ou chamada.' },
       ],
-      benefitEyebrow: 'Arquitetura de lancamento',
-      benefitIntro: 'Esse modelo parece uma pagina de inscricao: autoridade primeiro, urgencia real depois e aplicacao no fim.',
-      proofIntro: 'Prova social posicionada como resultado de metodo, nao apenas opiniao solta.',
-      offerBullets: ['Metodo claro', 'Turma atual', 'Aplicacao'],
+      benefitEyebrow: 'Arquitetura de lançamento',
+      benefitIntro: 'Esse modelo parece uma página de inscrição: autoridade primeiro, urgencia real depois e aplicação no fim.',
+      proofIntro: 'Prova social posicionada como resultado de método, não apenas opiniao solta.',
+      offerBullets: ['Método claro', 'Turma atual', 'Aplicação'],
       formBullets: ['Lead para turma', 'Interesse segmentado', 'Contexto comercial'],
     },
     'real-estate-showcase': {
       metrics: [
         { value: 'Visita', label: 'agendada' },
-        { value: 'Condicao', label: 'em foco' },
+        { value: 'Condição', label: 'em foco' },
         { value: 'Corretor', label: 'direto' },
       ],
       signals: [
-        { icon: Target, title: 'Imovel primeiro', text: 'Imagem, localizacao e condicao ganham prioridade visual.' },
+        { icon: Target, title: 'Imóvel primeiro', text: 'Imagem, localização e condição ganham prioridade visual.' },
         { icon: TrendingUp, title: 'Interesse qualificado', text: 'O lead chega sabendo o que quer visitar ou simular.' },
-        { icon: MessageCircle, title: 'Corretor acionado', text: 'A pagina empurra para conversa sem perder o contexto.' },
+        { icon: MessageCircle, title: 'Corretor acionado', text: 'A página empurra para conversa sem perder o contexto.' },
       ],
       benefitEyebrow: 'Vitrine imobiliaria',
-      benefitIntro: 'Esse modelo destaca imagem, disponibilidade e agendamento, como uma pagina de oportunidade real.',
-      proofIntro: 'A prova aparece para confirmar liquidez, procura ou confianca comercial.',
-      offerBullets: ['Localizacao', 'Condicao', 'Visita'],
-      formBullets: ['Contato do comprador', 'Interesse no imovel', 'Simulacao ou visita'],
+      benefitIntro: 'Esse modelo destaca imagem, disponibilidade e agendamento, como uma página de oportunidade real.',
+      proofIntro: 'A prova aparece para confirmar liquidez, procura ou confiança comercial.',
+      offerBullets: ['Localização', 'Condição', 'Visita'],
+      formBullets: ['Contato do comprador', 'Interesse no imóvel', 'Simulação ou visita'],
     },
     'event-ticket': {
       metrics: [
@@ -368,13 +368,13 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
       signals: [
         { icon: Zap, title: 'Energia de evento', text: 'A primeira dobra cria movimento e senso de acontecimento.' },
         { icon: TrendingUp, title: 'Virada de lote', text: 'Urgencia aparece cedo para evitar visitante frio.' },
-        { icon: BadgeCheck, title: 'Experiencia concreta', text: 'Galeria, prova e chamada sustentam inscricao.' },
+        { icon: BadgeCheck, title: 'Experiência concreta', text: 'Galeria, prova e chamada sustentam inscrição.' },
       ],
-      benefitEyebrow: 'Pagina de inscricao',
-      benefitIntro: 'Esse modelo funciona como pagina de ingresso: data, lote, experiencia e acao aparecem com mais agressividade.',
-      proofIntro: 'A prova reforca energia, presenca e vontade de participar.',
-      offerBullets: ['Data e local', 'Lote atual', 'Inscricao'],
-      formBullets: ['Interessado no evento', 'Contato para inscricao', 'Origem da campanha'],
+      benefitEyebrow: 'Página de inscrição',
+      benefitIntro: 'Esse modelo funciona como página de ingresso: data, lote, experiência e ação aparecem com mais agressividade.',
+      proofIntro: 'A prova reforça energia, presenca e vontade de participar.',
+      offerBullets: ['Data e local', 'Lote atual', 'Inscrição'],
+      formBullets: ['Interessado no evento', 'Contato para inscrição', 'Origem da campanha'],
     },
     'product-demo': {
       metrics: [
@@ -383,15 +383,15 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
         { value: 'Escala', label: 'comercial' },
       ],
       signals: [
-        { icon: Layers3, title: 'Produto explicado', text: 'Beneficios viram fluxo de uso, nao apenas promessa.' },
-        { icon: Target, title: 'Dor operacional', text: 'A pagina mostra o problema antes da solucao.' },
+        { icon: Layers3, title: 'Produto explicado', text: 'Benefícios viram fluxo de uso, não apenas promessa.' },
+        { icon: Target, title: 'Dor operacional', text: 'A página mostra o problema antes da solução.' },
         { icon: TrendingUp, title: 'Demo qualificada', text: 'O lead chega com contexto para venda consultiva.' },
       ],
-      benefitEyebrow: 'Demonstracao de produto',
-      benefitIntro: 'Esse modelo organiza SaaS como produto: problema, fluxo, prova, planos e demo com menos ruido.',
-      proofIntro: 'Prova de produto ajuda o lead a imaginar implantacao e uso real.',
+      benefitEyebrow: 'Demonstração de produto',
+      benefitIntro: 'Esse modelo organiza SaaS como produto: problema, fluxo, prova, planos e demo com menos ruído.',
+      proofIntro: 'Prova de produto ajuda o lead a imaginar implantação e uso real.',
       offerBullets: ['Problema claro', 'Fluxo de uso', 'Demo'],
-      formBullets: ['Lead para demo', 'Contexto da operacao', 'Dados para venda'],
+      formBullets: ['Lead para demo', 'Contexto da operação', 'Dados para venda'],
     },
     'fashion-store': {
       metrics: [
@@ -400,15 +400,15 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
         { value: 'Whats', label: 'compra' },
       ],
       signals: [
-        { icon: Sparkles, title: 'Vitrine de desejo', text: 'As pecas aparecem como colecao, nao como tabela fria.' },
-        { icon: BadgeCheck, title: 'Preco visivel', text: 'Cada produto pode mostrar nome, preco, descricao e chamada.' },
+        { icon: Sparkles, title: 'Vitrine de desejo', text: 'As peças aparecem como coleção, não como tabela fria.' },
+        { icon: BadgeCheck, title: 'Preço visível', text: 'Cada produto pode mostrar nome, preço, descrição e chamada.' },
         { icon: MessageCircle, title: 'Pedido no WhatsApp', text: 'O visitante escolhe e chama a loja no canal de venda.' },
       ],
-      benefitEyebrow: 'Moda e colecao',
-      benefitIntro: 'Esse modelo troca a logica de LP por vitrine: colecao, prova visual, produtos e chamada direta para comprar.',
+      benefitEyebrow: 'Moda e coleção',
+      benefitIntro: 'Esse modelo troca a logica de LP por vitrine: coleção, prova visual, produtos e chamada direta para comprar.',
       proofIntro: 'Prova visual e estilo ajudam a roupa parecer desejada antes do contato.',
-      offerBullets: ['Colecao atual', 'Pedido no WhatsApp', 'Entrega ou retirada'],
-      formBullets: ['Peca desejada', 'Tamanho e cor', 'Contato para fechar pedido'],
+      offerBullets: ['Coleção atual', 'Pedido no WhatsApp', 'Entrega ou retirada'],
+      formBullets: ['Peça desejada', 'Tamanho e cor', 'Contato para fechar pedido'],
     },
     'shoe-store': {
       metrics: [
@@ -417,15 +417,15 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
         { value: 'Whats', label: 'reserva' },
       ],
       signals: [
-        { icon: Target, title: 'Modelo em foco', text: 'O produto ganha destaque por foto, preco e disponibilidade.' },
-        { icon: ShieldCheck, title: 'Compra assistida', text: 'O cliente pode tirar duvida de numero, cor e entrega.' },
-        { icon: MessageCircle, title: 'Reserva rapida', text: 'A chamada leva direto para conversa de venda.' },
+        { icon: Target, title: 'Modelo em foco', text: 'O produto ganha destaque por foto, preço e disponibilidade.' },
+        { icon: ShieldCheck, title: 'Compra assistida', text: 'O cliente pode tirar dúvida de numero, cor e entrega.' },
+        { icon: MessageCircle, title: 'Reserva rápida', text: 'A chamada leva direto para conversa de venda.' },
       ],
-      benefitEyebrow: 'Calcados e disponibilidade',
-      benefitIntro: 'Esse modelo funciona como vitrine de modelos: destaque visual, preco, numeracao e reserva por WhatsApp.',
-      proofIntro: 'Prova e imagem ajudam o cliente confiar no modelo antes de pedir numeracao.',
-      offerBullets: ['Modelo em destaque', 'Numeracao', 'Reserva no WhatsApp'],
-      formBullets: ['Modelo desejado', 'Numero do cliente', 'Contato para reserva'],
+      benefitEyebrow: 'Calçados e disponibilidade',
+      benefitIntro: 'Esse modelo funciona como vitrine de modelos: destaque visual, preço, numeração e reserva por WhatsApp.',
+      proofIntro: 'Prova e imagem ajudam o cliente confiar no modelo antes de pedir numeração.',
+      offerBullets: ['Modelo em destaque', 'Numeração', 'Reserva no WhatsApp'],
+      formBullets: ['Modelo desejado', 'Número do cliente', 'Contato para reserva'],
     },
     'pharmacy-store': {
       metrics: [
@@ -434,13 +434,13 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
         { value: 'Whats', label: 'pedido' },
       ],
       signals: [
-        { icon: Zap, title: 'Oferta rapida', text: 'Produtos essenciais ficam claros para pedido imediato.' },
-        { icon: ShieldCheck, title: 'Confianca e cuidado', text: 'A pagina valoriza orientacao, entrega e atendimento humano.' },
+        { icon: Zap, title: 'Oferta rápida', text: 'Produtos essenciais ficam claros para pedido imediato.' },
+        { icon: ShieldCheck, title: 'Confiança e cuidado', text: 'A página valoriza orientação, entrega e atendimento humano.' },
         { icon: MessageCircle, title: 'Pedido assistido', text: 'O cliente chama no WhatsApp para confirmar produto e entrega.' },
       ],
       benefitEyebrow: 'Farmacia local',
-      benefitIntro: 'Esse modelo prioriza oferta, conveniencia, entrega e contato rapido para pedidos por WhatsApp.',
-      proofIntro: 'Confianca e atendimento proximo reduzem friccao em compra de farmacia.',
+      benefitIntro: 'Esse modelo prioriza oferta, conveniencia, entrega e contato rápido para pedidos por WhatsApp.',
+      proofIntro: 'Confiança e atendimento próximo reduzem fricção em compra de farmacia.',
       offerBullets: ['Oferta do dia', 'Entrega local', 'Atendimento no WhatsApp'],
       formBullets: ['Produto desejado', 'Bairro para entrega', 'Contato para confirmar pedido'],
     },
@@ -453,13 +453,13 @@ function getTemplateLayoutContent(templateLayout = 'conversion-flow') {
       { value: '100%', label: 'editavel' },
     ],
     signals: [
-      { icon: Zap, title: 'Decisao rapida', text: 'Promessa, prova e oferta aparecem no ritmo certo.' },
-      { icon: Layers3, title: 'Secoes fluidas', text: 'Cada bloco sustenta o proximo passo sem quebrar a leitura.' },
-      { icon: ShieldCheck, title: 'Contato claro', text: 'O formulario chega depois do visitante entender o valor.' },
+      { icon: Zap, title: 'Decisão rápida', text: 'Promessa, prova e oferta aparecem no ritmo certo.' },
+      { icon: Layers3, title: 'Seções fluidas', text: 'Cada bloco sustenta o próximo passo sem quebrar a leitura.' },
+      { icon: ShieldCheck, title: 'Contato claro', text: 'O formulário chega depois do visitante entender o valor.' },
     ],
-    benefitEyebrow: 'Metodo visual',
-    benefitIntro: 'Uma LP forte precisa ser entendida em segundos: promessa clara, prova suficiente e chamada para acao sem friccao.',
-    proofIntro: 'Prova social posicionada antes da oferta reduz duvida e aumenta confianca na decisao.',
+    benefitEyebrow: 'Método visual',
+    benefitIntro: 'Uma LP forte precisa ser entendida em segundos: promessa clara, prova suficiente e chamada para ação sem fricção.',
+    proofIntro: 'Prova social posicionada antes da oferta reduz dúvida e aumenta confiança na decisão.',
     offerBullets: ['Promessa clara', 'Contato direto', 'Layout mobile'],
     formBullets: ['Retorno com contexto da LP', 'Dados organizados no painel', 'Pronto para contato comercial'],
   }
@@ -469,7 +469,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
   const pageRef = useRef(null)
   const [form, setForm] = useState(emptyLeadForm)
   const [sending, setSending] = useState(false)
-  const benefitItems = visibleItems(config.beneficios.itens, ['titulo', 'texto'])
+  const benefitItems = visibleItems(config.benefícios.itens, ['titulo', 'texto'])
   const faqItems = visibleItems(config.faq.itens, ['pergunta', 'resposta'])
   const logoItems = visibleItems(config.logos.itens, ['nome', 'imagemUrl']).slice(0, 8)
   const galleryItems = visibleItems(config.galeria.itens, ['titulo', 'texto', 'imagemUrl']).slice(0, 6)
@@ -477,19 +477,19 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
     .slice(0, 3)
     .map((plan) => ({
       ...plan,
-      entregaveis: (plan.entregaveis || []).filter((item) => String(item || '').trim()),
+      entregáveis: (plan.entregáveis || []).filter((item) => String(item || '').trim()),
     }))
-  const detailsHref = config.beneficios.ativo && benefitItems.length > 0 ? '#beneficios' : '#formulario'
+  const detailsHref = config.benefícios.ativo && benefitItems.length > 0 ? '#benefícios' : '#formulário'
   const floatingWhatsappUrl = config.rodape.whatsappAtivo ? buildFloatingWhatsappUrl(config) : ''
   const showHeaderPricing = config.cabecalho.mostrarPrecos && config.precos.ativo && pricePlans.length > 0
   const showHeaderContact = config.cabecalho.mostrarContato && String(config.cabecalho.contatoTexto || '').trim()
-  const formFields = config.formulario.campos || {}
-  const customFormFields = cleanCustomFormFields(config.formulario.camposExtras)
+  const formFields = config.formulário.campos || {}
+  const customFormFields = cleanCustomFormFields(config.formulário.camposExtras)
   const visualStyle = config.estilo?.preset || 'editorial-premium'
   const templateLayout = config.layout?.templateLayout || 'conversion-flow'
   const layoutContent = getTemplateLayoutContent(templateLayout)
   const editableText = getEditableTextContent(config, layoutContent)
-  const mobileCtaText = String(config.cta?.mobileTexto || '').trim() || config.formulario.botao
+  const mobileCtaText = String(config.cta?.mobileTexto || '').trim() || config.formulário.botao
   const heroVariant = config.hero.variante || 'split-media'
   const heroCoverUrl = config.hero.backgroundUrl || (heroVariant === 'cover-story' ? config.hero.imagemUrl : '')
   const heroGridClassName = {
@@ -575,7 +575,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
     event.preventDefault()
 
     if (previewMode) {
-      toast('Formulario desativado no preview.')
+      toast('Formulário desativado no preview.')
       return
     }
 
@@ -608,10 +608,10 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
       toast.success(data.message || 'Enviado com sucesso.')
       setForm(emptyLeadForm())
 
-      const whatsapp = config.formulario.destinoWhatsapp
+      const whatsapp = config.formulário.destinoWhatsapp
       if (whatsapp) {
         const contactName = form.nome || 'um novo interessado'
-        const message = encodeURIComponent(`Ola, vim pela landing page ${page.name}. Meu nome e ${contactName}.`)
+        const message = encodeURIComponent(`Olá, vim pela landing page ${page.name}. Meu nome e ${contactName}.`)
         window.setTimeout(() => {
           window.open(`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${message}`, '_blank')
         }, 700)
@@ -637,7 +637,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         [data-lp-reveal] {
           opacity: 0;
           filter: blur(7px);
-          transform: translate3d(0, 30px, 0) scale(0.985);
+          transform: translaté3d(0, 30px, 0) scale(0.985);
           transition:
             opacity 760ms cubic-bezier(.2,.8,.2,1),
             filter 760ms cubic-bezier(.2,.8,.2,1),
@@ -647,17 +647,17 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         [data-lp-reveal="left"] {
-          transform: translate3d(-34px, 18px, 0) scale(0.985);
+          transform: translaté3d(-34px, 18px, 0) scale(0.985);
         }
 
         [data-lp-reveal="right"] {
-          transform: translate3d(34px, 18px, 0) scale(0.985);
+          transform: translaté3d(34px, 18px, 0) scale(0.985);
         }
 
         [data-lp-reveal][data-lp-visible="true"] {
           opacity: 1;
           filter: blur(0);
-          transform: translate3d(0, 0, 0) scale(1);
+          transform: translaté3d(0, 0, 0) scale(1);
           will-change: auto;
         }
 
@@ -761,7 +761,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         .lp-page[data-lp-style="imobiliario-impactante"] .lp-signal-card:first-child {
-          transform: translateY(-14px);
+          transform: translatéY(-14px);
         }
 
         .lp-page[data-lp-style="evento-agressivo"] {
@@ -873,7 +873,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         .lp-page[data-lp-template="clinic-editorial"] .lp-gallery-card:first-child {
-          transform: translateY(-18px);
+          transform: translatéY(-18px);
         }
 
         .lp-page[data-lp-template="expert-launch"] .lp-hero h1 {
@@ -886,23 +886,23 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         .lp-page[data-lp-template="expert-launch"] .lp-price-card[data-featured="true"] {
-          transform: translateY(-34px) scale(1.08);
+          transform: translatéY(-34px) scale(1.08);
         }
 
-        .lp-page[data-lp-template="real-estate-showcase"] .lp-hero-grid {
+        .lp-page[data-lp-template="real-estáte-showcase"] .lp-hero-grid {
           gap: clamp(1.5rem, 4vw, 5rem);
         }
 
-        .lp-page[data-lp-template="real-estate-showcase"] .lp-hero-media img {
+        .lp-page[data-lp-template="real-estáte-showcase"] .lp-hero-media img {
           width: min(100%, 780px);
           max-width: none;
         }
 
-        .lp-page[data-lp-template="real-estate-showcase"] .lp-gallery-card:first-child {
+        .lp-page[data-lp-template="real-estáte-showcase"] .lp-gallery-card:first-child {
           grid-column: span 2 / span 2;
         }
 
-        .lp-page[data-lp-template="real-estate-showcase"] .lp-offer-card {
+        .lp-page[data-lp-template="real-estáte-showcase"] .lp-offer-card {
           border-radius: .9rem;
         }
 
@@ -912,11 +912,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         .lp-page[data-lp-template="event-ticket"] .lp-signal-card {
-          transform: rotate(-1deg);
+          transform: rotaté(-1deg);
         }
 
         .lp-page[data-lp-template="event-ticket"] .lp-signal-card:nth-child(even) {
-          transform: rotate(1deg) translateY(12px);
+          transform: rotaté(1deg) translatéY(12px);
         }
 
         .lp-page[data-lp-template="event-ticket"] .lp-urgency-card {
@@ -992,7 +992,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         }
 
         @media (max-width: 1023px) {
-          .lp-page[data-lp-template="real-estate-showcase"] .lp-gallery-card:first-child {
+          .lp-page[data-lp-template="real-estáte-showcase"] .lp-gallery-card:first-child {
             grid-column: auto;
           }
 
@@ -1040,11 +1040,11 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
             <div className="flex shrink-0 items-center gap-2">
               {showHeaderPricing ? (
                 <a href="#precos" className="hidden rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 text-xs font-extrabold text-white transition hover:bg-white/[0.1] sm:inline-flex">
-                  {config.cabecalho.precosTexto || 'Precos'}
+                  {config.cabecalho.precosTexto || 'Preços'}
                 </a>
               ) : null}
               {showHeaderContact ? (
-                <a href={config.cabecalho.contatoUrl || '#formulario'} className="rounded-full bg-white px-4 py-2 text-xs font-extrabold text-black transition hover:bg-[var(--primary)]">
+                <a href={config.cabecalho.contatoUrl || '#formulário'} className="rounded-full bg-white px-4 py-2 text-xs font-extrabold text-black transition hover:bg-[var(--primary)]">
                   {config.cabecalho.contatoTexto}
                 </a>
               ) : null}
@@ -1156,17 +1156,17 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         </section>
       )}
 
-      {config.beneficios.ativo && benefitItems.length > 0 && (
+      {config.benefícios.ativo && benefitItems.length > 0 && (
         <section
-          id="beneficios"
+          id="benefícios"
           className="px-5 py-20 sm:px-8 sm:py-28"
-          style={orderedSectionStyle('beneficios', config.beneficios.backgroundUrl)}
+          style={orderedSectionStyle('benefícios', config.benefícios.backgroundUrl)}
         >
           <div className="mx-auto max-w-7xl">
             <div data-lp-reveal className="grid gap-8 lg:grid-cols-[.75fr_1.25fr] lg:items-end">
               <div>
                 <p className="lp-section-label text-xs font-extrabold uppercase tracking-[0.24em] text-[var(--primary)]">{editableText.benefitEyebrow}</p>
-                <h2 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight sm:text-6xl">{config.beneficios.titulo}</h2>
+                <h2 className="mt-4 max-w-3xl text-4xl font-extrabold leading-tight sm:text-6xl">{config.benefícios.titulo}</h2>
               </div>
               <p className="max-w-2xl text-base leading-relaxed text-[var(--page-muted)]">
                 {editableText.benefitIntro}
@@ -1238,7 +1238,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
             <div className="mt-12 grid gap-4 lg:grid-cols-3">
               {galleryItems.map((item, index) => (
                 <article
-                  key={`${item.titulo || 'prova'}-${index}`}
+                  key={`${item.título || 'prova'}-${index}`}
                   data-lp-reveal
                   style={{ '--lp-reveal-delay': `${index * 85}ms` }}
                   className={`lp-surface lp-gallery-card group overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/50 shadow-2xl shadow-black/20 backdrop-blur-sm ${index === 0 ? 'lg:col-span-2' : ''}`}
@@ -1399,7 +1399,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                   </div>
 
                   <div className="relative z-10 mt-6 flex-1 space-y-3">
-                    {plan.entregaveis.map((item, itemIndex) => (
+                    {plan.entregáveis.map((item, itemIndex) => (
                       <p key={`${item}-${itemIndex}`} className="flex gap-3 text-sm font-bold leading-relaxed text-white">
                         <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[var(--primary)]" />
                         <span>{item}</span>
@@ -1408,7 +1408,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                   </div>
 
                   <div className="relative z-10 mt-8">
-                    <Cta href={plan.ctaUrl || '#formulario'} className="w-full">
+                    <Cta href={plan.ctaUrl || '#formulário'} className="w-full">
                       {plan.ctaTexto || editableText.planoCtaFallback}
                     </Cta>
                   </div>
@@ -1457,7 +1457,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                 >
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-base font-extrabold">
                     {item.pergunta}
-                    <ChevronDown className="shrink-0 transition group-open:rotate-180" size={18} />
+                    <ChevronDown className="shrink-0 transition group-open:rotaté-180" size={18} />
                   </summary>
                   <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{item.resposta}</p>
                 </details>
@@ -1467,17 +1467,17 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         </section>
       )}
 
-      {config.formulario.ativo && (
+      {config.formulário.ativo && (
         <section
-          id="formulario"
+          id="formulário"
           className="px-5 py-20 sm:px-8 sm:py-28"
-          style={orderedSectionStyle('formulario', config.formulario.backgroundUrl)}
+          style={orderedSectionStyle('formulário', config.formulário.backgroundUrl)}
         >
           <div data-lp-reveal className="lp-surface mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-black/50 shadow-2xl shadow-black/25 backdrop-blur-sm lg:grid-cols-[.82fr_1.18fr]">
             <div className="border-b border-white/10 bg-black/30 p-7 sm:p-10 lg:border-b-0 lg:border-r">
               <MessageCircle className="text-[var(--primary)]" size={34} />
-              <h2 className="mt-6 text-balance text-4xl font-extrabold leading-tight">{config.formulario.titulo}</h2>
-              <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{config.formulario.texto}</p>
+              <h2 className="mt-6 text-balance text-4xl font-extrabold leading-tight">{config.formulário.titulo}</h2>
+              <p className="mt-4 text-sm leading-relaxed text-[var(--page-muted)]">{config.formulário.texto}</p>
 
               <div className="mt-8 space-y-3 text-sm font-bold text-white">
                 {editableText.formBullets.map((item) => (
@@ -1524,7 +1524,7 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
                 </label>
               ) : null}
               <button disabled={sending} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-6 py-4 text-sm font-extrabold text-black transition hover:brightness-110 disabled:opacity-60">
-                {sending ? editableText.formularioEnviandoTexto : config.formulario.botao}
+                {sending ? editableText.formulárioEnviandoTexto : config.formulário.botao}
                 {!sending && <ArrowRight size={17} />}
               </button>
             </form>
@@ -1574,10 +1574,10 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
         </footer>
       ) : null}
 
-      {!previewMode && config.formulario.ativo ? (
+      {!previewMode && config.formulário.ativo ? (
         <div className="fixed inset-x-3 bottom-3 z-30 rounded-full border border-white/10 bg-black/80 p-2 shadow-2xl shadow-black/60 backdrop-blur-xl md:hidden">
           <a
-            href="#formulario"
+            href="#formulário"
             className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-[var(--primary)] px-5 py-3 text-sm font-extrabold text-black"
           >
             {mobileCtaText}
@@ -1587,8 +1587,8 @@ export default function GeneratedLandingPage({ page, config, previewMode = false
       ) : null}
 
       {!previewMode && floatingWhatsappUrl ? (
-        <div className={`fixed right-4 z-50 group sm:right-6 ${config.formulario.ativo ? 'bottom-20 sm:bottom-24 md:bottom-6' : 'bottom-4 sm:bottom-6'}`}>
-          <div className="absolute inset-0 animate-ping rounded-full bg-[var(--primary)] opacity-20 transition-opacity duration-500 group-hover:opacity-40" />
+        <div className={`fixed right-4 z-50 group sm:right-6 ${config.formulário.ativo ? 'bottom-20 sm:bottom-24 md:bottom-6' : 'bottom-4 sm:bottom-6'}`}>
+          <div className="absolute inset-0 animaté-ping rounded-full bg-[var(--primary)] opacity-20 transition-opacity duration-500 group-hover:opacity-40" />
           <a
             href={floatingWhatsappUrl}
             target="_blank"

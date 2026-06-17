@@ -34,7 +34,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessao administrativa nao encontrada. Faca login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -53,7 +53,7 @@ async function adminApiFetch(path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nao retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) throw new Error(data?.error || 'Erro na API administrativa')
@@ -148,7 +148,7 @@ export default function LpGeneratorDashboard() {
 
   async function createPage() {
     if (selectedTemplateBlocked) {
-      toast.error('Este template premium nao esta liberado no plano do cliente selecionado.')
+      toast.error('Este template premium não está liberado no plano do cliente selecionado.')
       return
     }
 
@@ -182,10 +182,10 @@ export default function LpGeneratorDashboard() {
         body: { action, id },
       })
 
-      toast.success('Acao concluida.')
+      toast.success('Ação concluída.')
       loadPages()
     } catch (error) {
-      toast.error(error.message || 'Erro ao executar acao.')
+      toast.error(error.message || 'Erro ao executar ação.')
     } finally {
       setSaving(false)
     }
@@ -297,7 +297,7 @@ export default function LpGeneratorDashboard() {
             </p>
             {selectedTemplateBlocked ? (
               <p className="mt-3 rounded-xl border border-yellow-500/20 bg-yellow-500/10 px-3 py-2 text-xs font-bold text-yellow-200">
-                O plano deste cliente nao libera templates premium. Escolha um template comum ou altere o plano.
+                O plano deste cliente não libera templates premium. Escolha um template comum ou altere o plano.
               </p>
             ) : null}
           </label>
@@ -381,7 +381,7 @@ export default function LpGeneratorDashboard() {
                     </div>
                     <p className="mt-2 text-sm text-neutral-500">/lp/{page.slug}</p>
                     <p className="mt-1 text-xs text-neutral-500">
-                      Cliente: {clientes.find((cliente) => cliente.id === page.cliente_id)?.nome_empresa || 'Nao vinculado'}
+                      Cliente: {clientes.find((cliente) => cliente.id === page.cliente_id)?.nome_empresa || 'Não vinculado'}
                     </p>
                     <p className="mt-1 text-xs text-neutral-600">Atualizada em {formatDate(page.updated_at)}</p>
                   </div>

@@ -21,7 +21,7 @@ async function adminApiFetch(path) {
   const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error('Sessao administrativa nao encontrada. Faca login novamente.')
+    throw new Error('Sessão administrativa não encontrada. Faça login novamente.')
   }
 
   const response = await fetch(path, {
@@ -38,7 +38,7 @@ async function adminApiFetch(path) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nao retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) throw new Error(data?.error || 'Erro na API administrativa')
@@ -176,12 +176,12 @@ export default function LpGeneratorLeadsPage() {
 
   function exportCsv() {
     if (leads.length === 0) {
-      toast.error('Nao ha leads para exportar.')
+      toast.error('Não há leads para exportar.')
       return
     }
 
     if (permissions.export === false) {
-      toast.error('Voce nao tem permissao para exportar leads.')
+      toast.error('Você não tem permissão para exportar leads.')
       return
     }
 
@@ -251,12 +251,12 @@ export default function LpGeneratorLeadsPage() {
         </header>
 
         <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-          <Kpi label="Visitas" value={resumo.visitas || 0} detail="visualizacoes totais" />
-          <Kpi label="Visitas hoje" value={resumo.visitasHoje || 0} detail="visualizacoes no dia" />
-          <Kpi label="Visitas mes" value={resumo.visitasMes || 0} detail="visualizacoes no mes" />
+          <Kpi label="Visitas" value={resumo.visitas || 0} detail="visualizações totais" />
+          <Kpi label="Visitas hoje" value={resumo.visitasHoje || 0} detail="visualizações no dia" />
+          <Kpi label="Visitas mês" value={resumo.visitasMes || 0} detail="visualizações no mês" />
           <Kpi label="Total" value={resumo.total || 0} detail="leads encontrados" />
           <Kpi label="Hoje" value={resumo.hoje || 0} detail="capturados no dia" />
-          <Kpi label="Conversao" value={formatPercent(resumo.conversao)} detail="leads / visitas" />
+          <Kpi label="Conversão" value={formatPercent(resumo.conversao)} detail="leads / visitas" />
         </section>
 
         <section className="rounded-[1.5rem] border border-[#6be12f]/20 bg-[#6be12f]/10 p-5">
@@ -271,7 +271,7 @@ export default function LpGeneratorLeadsPage() {
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-black/30 px-5 py-3 text-sm font-black text-[#8cf059]">
-              Conversao: {formatPercent(resumo.conversao)}
+              Conversão: {formatPercent(resumo.conversao)}
             </div>
           </div>
         </section>
@@ -334,7 +334,7 @@ export default function LpGeneratorLeadsPage() {
             <div className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-10 text-center">
               <FileText className="mx-auto text-neutral-600" size={34} />
               <p className="mt-4 text-lg font-black">Nenhum lead encontrado.</p>
-              <p className="mt-2 text-sm text-neutral-500">Quando alguem preencher uma LP publicada, o contato aparece aqui.</p>
+              <p className="mt-2 text-sm text-neutral-500">Quando alguém preencher uma LP publicada, o contato aparece aqui.</p>
             </div>
           ) : (
             leads.map((lead) => (

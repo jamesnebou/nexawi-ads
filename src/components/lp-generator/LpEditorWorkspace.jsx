@@ -48,7 +48,7 @@ const tabs = [
   { id: 'hero', label: 'Hero' },
   { id: 'midia', label: 'Mídia' },
   { id: 'logos', label: 'Logos' },
-  { id: 'beneficios', label: 'Benefícios' },
+  { id: 'benefícios', label: 'Benefícios' },
   { id: 'prova', label: 'Prova social' },
   { id: 'galeria', label: 'Prova visual' },
   { id: 'oferta', label: 'Oferta' },
@@ -58,7 +58,7 @@ const tabs = [
   { id: 'cta', label: 'CTA' },
   { id: 'textos', label: 'Textos extras' },
   { id: 'faq', label: 'FAQ' },
-  { id: 'formulario', label: 'Formulário' },
+  { id: 'formulário', label: 'Formulário' },
   { id: 'rodape', label: 'Rodapé' },
   { id: 'ordem', label: 'Ordem' },
   { id: 'seo', label: 'SEO' },
@@ -100,7 +100,7 @@ async function editorApiFetch(scope, path, { method = 'GET', body } = {}) {
   const { data: sessionData, error: sessionError } = await context.supabase.auth.getSession()
 
   if (sessionError || !sessionData?.session?.access_token) {
-    throw new Error(`Sessao ${context.sessionLabel} nao encontrada. Faca login novamente.`)
+    throw new Error(`Sessão ${context.sessionLabel} não encontrada. Faça login novamente.`)
   }
 
   const response = await fetch(path, {
@@ -119,7 +119,7 @@ async function editorApiFetch(scope, path, { method = 'GET', body } = {}) {
   try {
     data = text ? JSON.parse(text) : null
   } catch {
-    throw new Error(`A API nao retornou JSON. Status: ${response.status}`)
+    throw new Error(`A API não retornou JSON. Status: ${response.status}`)
   }
 
   if (!response.ok) throw new Error(data?.error || 'Erro na API do editor')
@@ -331,9 +331,9 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
         periodo: '',
         imagemUrl: '',
         ctaTexto: 'Escolher plano',
-        ctaUrl: '#formulario',
+        ctaUrl: '#formulário',
         destaque: false,
-        entregaveis: [''],
+        entregáveis: [''],
       },
     ])
   }
@@ -344,9 +344,9 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
 
   function updateDeliverable(planIndex, itemIndex, value) {
     const next = [...plans]
-    const deliverables = [...(next[planIndex]?.entregaveis || [])]
+    const deliverables = [...(next[planIndex]?.entregáveis || [])]
     deliverables[itemIndex] = value
-    next[planIndex] = { ...next[planIndex], entregaveis: deliverables }
+    next[planIndex] = { ...next[planIndex], entregáveis: deliverables }
     onChange(next)
   }
 
@@ -354,7 +354,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
     const next = [...plans]
     next[planIndex] = {
       ...next[planIndex],
-      entregaveis: [...(next[planIndex]?.entregaveis || []), ''],
+      entregáveis: [...(next[planIndex]?.entregáveis || []), ''],
     }
     onChange(next)
   }
@@ -363,7 +363,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
     const next = [...plans]
     next[planIndex] = {
       ...next[planIndex],
-      entregaveis: (next[planIndex]?.entregaveis || []).filter((_, index) => index !== itemIndex),
+      entregáveis: (next[planIndex]?.entregáveis || []).filter((_, index) => index !== itemIndex),
     }
     onChange(next)
   }
@@ -385,16 +385,16 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Nome do plano" value={plan.nome} onChange={(value) => updatePlan(planIndex, 'nome', value)} />
-            <Field label="Preco" value={plan.preco} onChange={(value) => updatePlan(planIndex, 'preco', value)} />
+            <Field label="Preço" value={plan.preco} onChange={(value) => updatePlan(planIndex, 'preco', value)} />
             <Field label="Periodo" value={plan.periodo} onChange={(value) => updatePlan(planIndex, 'periodo', value)} placeholder="/mes" />
             <Field label="Texto do CTA" value={plan.ctaTexto} onChange={(value) => updatePlan(planIndex, 'ctaTexto', value)} />
           </div>
 
           <div className="mt-3 grid gap-3">
-            <Field label="Descricao" value={plan.descricao} onChange={(value) => updatePlan(planIndex, 'descricao', value)} textarea />
+            <Field label="Descrição" value={plan.descricao} onChange={(value) => updatePlan(planIndex, 'descricao', value)} textarea />
             <ImageUploadField
               label="Imagem do produto/plano"
-              field={`preco-${planIndex + 1}`}
+              field={`preço-${planIndex + 1}`}
               slug={slug}
               scope={scope}
               pageId={pageId}
@@ -402,13 +402,13 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
               onChange={(value) => updatePlan(planIndex, 'imagemUrl', value)}
             />
             <Field label="URL do CTA" value={plan.ctaUrl} onChange={(value) => updatePlan(planIndex, 'ctaUrl', value)} />
-            <Toggle label="Destacar esta tabela" checked={plan.destaque} onChange={(value) => updatePlan(planIndex, 'destaque', value)} />
+            <Toggle label="Destacar está tabela" checked={plan.destaque} onChange={(value) => updatePlan(planIndex, 'destaque', value)} />
           </div>
 
           <div className="mt-4 rounded-2xl border border-white/[0.06] bg-black/30 p-4">
-            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Entregaveis</p>
+            <p className="mb-3 text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Entregáveis</p>
             <div className="grid gap-2">
-              {(plan.entregaveis || []).map((item, itemIndex) => (
+              {(plan.entregáveis || []).map((item, itemIndex) => (
                 <div key={itemIndex} className="flex gap-2">
                   <input
                     value={item || ''}
@@ -443,7 +443,7 @@ function PricePlansEditor({ plans = [], onChange, slug, scope, pageId }) {
         disabled={plans.length >= 3}
         className="rounded-xl border border-[#6be12f]/20 bg-[#6be12f]/10 px-4 py-3 text-xs font-extrabold text-[#8cf059] disabled:cursor-not-allowed disabled:opacity-45"
       >
-        {plans.length >= 3 ? 'Limite de 3 tabelas atingido' : 'Adicionar tabela de preco'}
+        {plans.length >= 3 ? 'Limite de 3 tabelas atingido' : 'Adicionar tabela de preço'}
       </button>
     </div>
   )
@@ -596,7 +596,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
     onCustomFieldsChange([
       ...customFields,
       {
-        id: `campo-${Date.now()}`,
+        id: `campo-${Daté.now()}`,
         rotulo: '',
         placeholder: '',
         tipo: 'text',
@@ -649,7 +649,7 @@ function FormFieldsEditor({ fields = {}, customFields = [], onFieldsChange, onCu
         <div>
           <p className="text-sm font-extrabold text-white">Campos personalizados</p>
           <p className="mt-1 text-xs leading-relaxed text-neutral-300">
-            Use para captar empresa, cidade, interesse, numero de convidados ou outro dado especifico desta LP.
+            Use para captar empresa, cidade, interesse, número de convidados ou outro dado especifico desta LP.
           </p>
         </div>
 
@@ -722,13 +722,13 @@ function SectionOrderEditor({ order = [], onChange }) {
   return (
     <div className="grid gap-3">
       <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4 text-sm leading-relaxed text-neutral-300">
-        O hero permanece na primeira dobra. Reordene aqui o fluxo de conversao que aparece abaixo dele.
+        O hero permanece na primeira dobra. Reordene aqui o fluxo de conversão que aparece abaixo dele.
       </div>
 
       {orderedSections.map((section, index) => (
         <div key={section.id} className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.06] bg-black/35 px-4 py-3">
           <div>
-            <p className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Secao {index + 1}</p>
+            <p className="text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">Seção {index + 1}</p>
             <p className="mt-1 text-sm font-extrabold text-white">{section.label}</p>
           </div>
           <div className="flex gap-2">
@@ -736,7 +736,7 @@ function SectionOrderEditor({ order = [], onChange }) {
               type="button"
               onClick={() => move(index, -1)}
               disabled={index === 0}
-              title="Subir secao"
+              title="Subir seção"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
               <ArrowUp size={16} />
@@ -745,7 +745,7 @@ function SectionOrderEditor({ order = [], onChange }) {
               type="button"
               onClick={() => move(index, 1)}
               disabled={index === orderedSections.length - 1}
-              title="Descer secao"
+              title="Descer seção"
               className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-white disabled:cursor-not-allowed disabled:opacity-35"
             >
               <ArrowDown size={16} />
@@ -800,7 +800,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       setAssetsWarning(data.warning || '')
     } catch (error) {
       setAssets([])
-      setAssetsWarning(error.message || 'Nao foi possivel carregar a biblioteca.')
+      setAssetsWarning(error.message || 'Não foi possível carregar a biblioteca.')
     } finally {
       setAssetsLoading(false)
     }
@@ -840,7 +840,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
 
   async function savePage() {
     if (!hasValidId) {
-      toast.error('Abra o editor pelo botao Editar de uma LP existente.')
+      toast.error('Abra o editor pelo botão Editar de uma LP existente.')
       return
     }
 
@@ -876,13 +876,13 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       await navigator.clipboard.writeText(url)
       toast.success('URL da imagem copiada.')
     } catch {
-      toast.error('Nao foi possivel copiar a URL.')
+      toast.error('Não foi possível copiar a URL.')
     }
   }
 
   async function checkDomainStatus() {
     if (!hasValidId) {
-      toast.error('Salve a LP antes de verificar o dominio.')
+      toast.error('Salve a LP antes de verificar o domínio.')
       return
     }
 
@@ -900,7 +900,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         toast.error(data.domainStatus?.label || 'DNS ainda pendente.')
       }
     } catch (error) {
-      toast.error(error.message || 'Nao foi possivel verificar o dominio.')
+      toast.error(error.message || 'Não foi possível verificar o domínio.')
     } finally {
       setDomainStatusLoading(false)
     }
@@ -929,7 +929,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       return (
         <div className="grid gap-4">
           <Field label="Nome interno" value={name} onChange={setName} />
-          <Field label="Slug publico" value={slug} onChange={(value) => setSlug(slugifyLp(value))} />
+          <Field label="Slug público" value={slug} onChange={(value) => setSlug(slugifyLp(value))} />
           {scope === 'admin' ? (
             <label className="block">
               <span className="mb-2 block text-[11px] font-extrabold uppercase tracking-widest text-neutral-500">
@@ -990,15 +990,15 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <Toggle label="Mostrar link para preços" checked={config.cabecalho.mostrarPrecos} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarPrecos', value)} />
             <Field label="Texto do link" value={config.cabecalho.precosTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'precosTexto', value)} />
             <p className="text-xs leading-relaxed text-neutral-500">
-              Este link aparece somente quando a seção de preços estiver ativa e com ao menos uma tabela visivel.
+              Este link aparece somente quando a seção de preços estiver ativa e com ao menos uma tabela visível.
             </p>
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
             <p className="text-sm font-extrabold text-white">CTA do cabecalho</p>
-            <Toggle label="Mostrar botao de contato" checked={config.cabecalho.mostrarContato} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarContato', value)} />
-            <Field label="Texto do botao" value={config.cabecalho.contatoTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoTexto', value)} />
-            <Field label="URL do botao" value={config.cabecalho.contatoUrl} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoUrl', value)} placeholder="#formulario" />
+            <Toggle label="Mostrar botão de contato" checked={config.cabecalho.mostrarContato} onChange={(value) => updateNested(setConfig, 'cabecalho', 'mostrarContato', value)} />
+            <Field label="Texto do botão" value={config.cabecalho.contatoTexto} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoTexto', value)} />
+            <Field label="URL do botão" value={config.cabecalho.contatoUrl} onChange={(value) => updateNested(setConfig, 'cabecalho', 'contatoUrl', value)} placeholder="#formulário" />
           </div>
         </div>
       )
@@ -1085,9 +1085,9 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Toggle label="Exibir hero" checked={config.hero.ativo} onChange={(value) => updateNested(setConfig, 'hero', 'ativo', value)} />
           <div className="grid gap-4 rounded-[1.5rem] border border-white/[0.06] bg-black/35 p-4">
             <div>
-              <p className="text-sm font-extrabold text-white">Variacao visual do hero</p>
+              <p className="text-sm font-extrabold text-white">Variação visual do hero</p>
               <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-                Escolha a composicao da primeira dobra. A imagem principal pode ficar lateral, central, invertida ou imersiva.
+                Escolha a composição da primeira dobra. A imagem principal pode ficar lateral, central, invertida ou imersiva.
               </p>
             </div>
             <ChoiceGrid
@@ -1097,26 +1097,26 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             />
           </div>
           <Field label="Eyebrow" value={config.hero.eyebrow} onChange={(value) => updateNested(setConfig, 'hero', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.hero.titulo} onChange={(value) => updateNested(setConfig, 'hero', 'titulo', value)} textarea />
-          <Field label="Subtitulo" value={config.hero.subtitulo} onChange={(value) => updateNested(setConfig, 'hero', 'subtitulo', value)} textarea />
+          <Field label="Título" value={config.hero.titulo} onChange={(value) => updateNested(setConfig, 'hero', 'titulo', value)} textarea />
+          <Field label="Subtítulo" value={config.hero.subtitulo} onChange={(value) => updateNested(setConfig, 'hero', 'subtitulo', value)} textarea />
           <Field label="Texto do CTA" value={config.hero.ctaTexto} onChange={(value) => updateNested(setConfig, 'hero', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.hero.ctaUrl} onChange={(value) => updateNested(setConfig, 'hero', 'ctaUrl', value)} />
           <ImageUploadField label="Imagem principal" field="hero" slug={slug || name} scope={scope} pageId={id} value={config.hero.imagemUrl} onChange={(value) => updateNested(setConfig, 'hero', 'imagemUrl', value)} />
-          <ImageUploadField label="Background da secao" field="hero-background" slug={slug || name} scope={scope} pageId={id} value={config.hero.backgroundUrl} onChange={(value) => updateNested(setConfig, 'hero', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="hero-background" slug={slug || name} scope={scope} pageId={id} value={config.hero.backgroundUrl} onChange={(value) => updateNested(setConfig, 'hero', 'backgroundUrl', value)} />
         </div>
       )
     }
 
-    if (activeTab === 'beneficios') {
+    if (activeTab === 'benefícios') {
       return (
         <div className="grid gap-4">
-          <Toggle label="Exibir beneficios" checked={config.beneficios.ativo} onChange={(value) => updateNested(setConfig, 'beneficios', 'ativo', value)} />
-          <Field label="Titulo" value={config.beneficios.titulo} onChange={(value) => updateNested(setConfig, 'beneficios', 'titulo', value)} />
-          <ImageUploadField label="Background da secao" field="beneficios-background" slug={slug || name} scope={scope} pageId={id} value={config.beneficios.backgroundUrl} onChange={(value) => updateNested(setConfig, 'beneficios', 'backgroundUrl', value)} />
+          <Toggle label="Exibir benefícios" checked={config.benefícios.ativo} onChange={(value) => updateNested(setConfig, 'benefícios', 'ativo', value)} />
+          <Field label="Título" value={config.benefícios.titulo} onChange={(value) => updateNested(setConfig, 'benefícios', 'titulo', value)} />
+          <ImageUploadField label="Background da seção" field="benefícios-background" slug={slug || name} scope={scope} pageId={id} value={config.benefícios.backgroundUrl} onChange={(value) => updateNested(setConfig, 'benefícios', 'backgroundUrl', value)} />
           <ListEditor
-            items={config.beneficios.itens || []}
-            labels={[{ key: 'titulo', label: 'Titulo' }, { key: 'texto', label: 'Texto', textarea: true }]}
-            onChange={(value) => updateNested(setConfig, 'beneficios', 'itens', value)}
+            items={config.benefícios.itens || []}
+            labels={[{ key: 'titulo', label: 'Título' }, { key: 'texto', label: 'Texto', textarea: true }]}
+            onChange={(value) => updateNested(setConfig, 'benefícios', 'itens', value)}
           />
         </div>
       )
@@ -1127,8 +1127,8 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Toggle label="Exibir logos" checked={config.logos.ativo} onChange={(value) => updateNested(setConfig, 'logos', 'ativo', value)} />
           <Field label="Eyebrow" value={config.logos.eyebrow} onChange={(value) => updateNested(setConfig, 'logos', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.logos.titulo} onChange={(value) => updateNested(setConfig, 'logos', 'titulo', value)} textarea />
-          <ImageUploadField label="Background da secao" field="logos-background" slug={slug || name} scope={scope} pageId={id} value={config.logos.backgroundUrl} onChange={(value) => updateNested(setConfig, 'logos', 'backgroundUrl', value)} />
+          <Field label="Título" value={config.logos.titulo} onChange={(value) => updateNested(setConfig, 'logos', 'titulo', value)} textarea />
+          <ImageUploadField label="Background da seção" field="logos-background" slug={slug || name} scope={scope} pageId={id} value={config.logos.backgroundUrl} onChange={(value) => updateNested(setConfig, 'logos', 'backgroundUrl', value)} />
           <MediaItemsEditor
             title="Logos e marcas"
             items={config.logos.itens || []}
@@ -1150,8 +1150,8 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       return (
         <div className="grid gap-4">
           <Toggle label="Exibir prova social" checked={config.prova.ativo} onChange={(value) => updateNested(setConfig, 'prova', 'ativo', value)} />
-          <Field label="Titulo" value={config.prova.titulo} onChange={(value) => updateNested(setConfig, 'prova', 'titulo', value)} />
-          <ImageUploadField label="Background da secao" field="prova-background" slug={slug || name} scope={scope} pageId={id} value={config.prova.backgroundUrl} onChange={(value) => updateNested(setConfig, 'prova', 'backgroundUrl', value)} />
+          <Field label="Título" value={config.prova.titulo} onChange={(value) => updateNested(setConfig, 'prova', 'titulo', value)} />
+          <ImageUploadField label="Background da seção" field="prova-background" slug={slug || name} scope={scope} pageId={id} value={config.prova.backgroundUrl} onChange={(value) => updateNested(setConfig, 'prova', 'backgroundUrl', value)} />
           <Field label="Depoimento" value={config.prova.depoimento} onChange={(value) => updateNested(setConfig, 'prova', 'depoimento', value)} textarea />
           <Field label="Autor" value={config.prova.autor} onChange={(value) => updateNested(setConfig, 'prova', 'autor', value)} />
         </div>
@@ -1163,9 +1163,9 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Toggle label="Exibir prova visual" checked={config.galeria.ativo} onChange={(value) => updateNested(setConfig, 'galeria', 'ativo', value)} />
           <Field label="Eyebrow" value={config.galeria.eyebrow} onChange={(value) => updateNested(setConfig, 'galeria', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.galeria.titulo} onChange={(value) => updateNested(setConfig, 'galeria', 'titulo', value)} textarea />
+          <Field label="Título" value={config.galeria.titulo} onChange={(value) => updateNested(setConfig, 'galeria', 'titulo', value)} textarea />
           <Field label="Texto" value={config.galeria.texto} onChange={(value) => updateNested(setConfig, 'galeria', 'texto', value)} textarea />
-          <ImageUploadField label="Background da secao" field="galeria-background" slug={slug || name} scope={scope} pageId={id} value={config.galeria.backgroundUrl} onChange={(value) => updateNested(setConfig, 'galeria', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="galeria-background" slug={slug || name} scope={scope} pageId={id} value={config.galeria.backgroundUrl} onChange={(value) => updateNested(setConfig, 'galeria', 'backgroundUrl', value)} />
           <MediaItemsEditor
             title="Imagens de prova"
             items={config.galeria.itens || []}
@@ -1178,7 +1178,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             scope={scope}
             pageId={id}
             fields={[
-              { key: 'titulo', label: 'Titulo' },
+              { key: 'titulo', label: 'Título' },
               { key: 'texto', label: 'Texto', textarea: true },
             ]}
           />
@@ -1190,12 +1190,12 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       return (
         <div className="grid gap-4">
           <Toggle label="Exibir oferta" checked={config.oferta.ativo} onChange={(value) => updateNested(setConfig, 'oferta', 'ativo', value)} />
-          <Field label="Titulo" value={config.oferta.titulo} onChange={(value) => updateNested(setConfig, 'oferta', 'titulo', value)} />
+          <Field label="Título" value={config.oferta.titulo} onChange={(value) => updateNested(setConfig, 'oferta', 'titulo', value)} />
           <Field label="Texto" value={config.oferta.texto} onChange={(value) => updateNested(setConfig, 'oferta', 'texto', value)} textarea />
-          <Field label="Preco" value={config.oferta.preco} onChange={(value) => updateNested(setConfig, 'oferta', 'preco', value)} />
+          <Field label="Preço" value={config.oferta.preco} onChange={(value) => updateNested(setConfig, 'oferta', 'preco', value)} />
           <Field label="Texto do CTA" value={config.oferta.ctaTexto} onChange={(value) => updateNested(setConfig, 'oferta', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.oferta.ctaUrl} onChange={(value) => updateNested(setConfig, 'oferta', 'ctaUrl', value)} />
-          <ImageUploadField label="Background da secao" field="oferta-background" slug={slug || name} scope={scope} pageId={id} value={config.oferta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'oferta', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="oferta-background" slug={slug || name} scope={scope} pageId={id} value={config.oferta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'oferta', 'backgroundUrl', value)} />
         </div>
       )
     }
@@ -1205,10 +1205,10 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Toggle label="Exibir garantia" checked={config.garantia.ativo} onChange={(value) => updateNested(setConfig, 'garantia', 'ativo', value)} />
           <Field label="Eyebrow" value={config.garantia.eyebrow} onChange={(value) => updateNested(setConfig, 'garantia', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.garantia.titulo} onChange={(value) => updateNested(setConfig, 'garantia', 'titulo', value)} textarea />
+          <Field label="Título" value={config.garantia.titulo} onChange={(value) => updateNested(setConfig, 'garantia', 'titulo', value)} textarea />
           <Field label="Texto" value={config.garantia.texto} onChange={(value) => updateNested(setConfig, 'garantia', 'texto', value)} textarea />
           <Field label="Selo" value={config.garantia.selo} onChange={(value) => updateNested(setConfig, 'garantia', 'selo', value)} />
-          <ImageUploadField label="Background da secao" field="garantia-background" slug={slug || name} scope={scope} pageId={id} value={config.garantia.backgroundUrl} onChange={(value) => updateNested(setConfig, 'garantia', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="garantia-background" slug={slug || name} scope={scope} pageId={id} value={config.garantia.backgroundUrl} onChange={(value) => updateNested(setConfig, 'garantia', 'backgroundUrl', value)} />
         </div>
       )
     }
@@ -1223,7 +1223,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <Field label="Destaque" value={config.urgencia.destaque} onChange={(value) => updateNested(setConfig, 'urgencia', 'destaque', value)} />
           <Field label="Texto do CTA" value={config.urgencia.ctaTexto} onChange={(value) => updateNested(setConfig, 'urgencia', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.urgencia.ctaUrl} onChange={(value) => updateNested(setConfig, 'urgencia', 'ctaUrl', value)} />
-          <ImageUploadField label="Background da secao" field="urgencia-background" slug={slug || name} scope={scope} pageId={id} value={config.urgencia.backgroundUrl} onChange={(value) => updateNested(setConfig, 'urgencia', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="urgencia-background" slug={slug || name} scope={scope} pageId={id} value={config.urgencia.backgroundUrl} onChange={(value) => updateNested(setConfig, 'urgencia', 'backgroundUrl', value)} />
         </div>
       )
     }
@@ -1233,9 +1233,9 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Toggle label="Exibir seção de preços" checked={config.precos.ativo} onChange={(value) => updateNested(setConfig, 'precos', 'ativo', value)} />
           <Field label="Eyebrow" value={config.precos.eyebrow} onChange={(value) => updateNested(setConfig, 'precos', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.precos.titulo} onChange={(value) => updateNested(setConfig, 'precos', 'titulo', value)} textarea />
+          <Field label="Título" value={config.precos.titulo} onChange={(value) => updateNested(setConfig, 'precos', 'titulo', value)} textarea />
           <Field label="Texto" value={config.precos.texto} onChange={(value) => updateNested(setConfig, 'precos', 'texto', value)} textarea />
-          <ImageUploadField label="Background da secao" field="precos-background" slug={slug || name} scope={scope} pageId={id} value={config.precos.backgroundUrl} onChange={(value) => updateNested(setConfig, 'precos', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="precos-background" slug={slug || name} scope={scope} pageId={id} value={config.precos.backgroundUrl} onChange={(value) => updateNested(setConfig, 'precos', 'backgroundUrl', value)} />
           <PricePlansEditor plans={config.precos.planos || []} onChange={(value) => updateNested(setConfig, 'precos', 'planos', value)} slug={slug || name} scope={scope} pageId={id} />
         </div>
       )
@@ -1245,8 +1245,8 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       return (
         <div className="grid gap-4">
           <Toggle label="Exibir FAQ" checked={config.faq.ativo} onChange={(value) => updateNested(setConfig, 'faq', 'ativo', value)} />
-          <Field label="Titulo" value={config.faq.titulo} onChange={(value) => updateNested(setConfig, 'faq', 'titulo', value)} />
-          <ImageUploadField label="Background da secao" field="faq-background" slug={slug || name} scope={scope} pageId={id} value={config.faq.backgroundUrl} onChange={(value) => updateNested(setConfig, 'faq', 'backgroundUrl', value)} />
+          <Field label="Título" value={config.faq.titulo} onChange={(value) => updateNested(setConfig, 'faq', 'titulo', value)} />
+          <ImageUploadField label="Background da seção" field="faq-background" slug={slug || name} scope={scope} pageId={id} value={config.faq.backgroundUrl} onChange={(value) => updateNested(setConfig, 'faq', 'backgroundUrl', value)} />
           <ListEditor
             items={config.faq.itens || []}
             labels={[{ key: 'pergunta', label: 'Pergunta' }, { key: 'resposta', label: 'Resposta', textarea: true }]}
@@ -1256,20 +1256,20 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
       )
     }
 
-    if (activeTab === 'formulario') {
+    if (activeTab === 'formulário') {
       return (
         <div className="grid gap-4">
-          <Toggle label="Exibir formulário" checked={config.formulario.ativo} onChange={(value) => updateNested(setConfig, 'formulario', 'ativo', value)} />
-          <Field label="Titulo" value={config.formulario.titulo} onChange={(value) => updateNested(setConfig, 'formulario', 'titulo', value)} />
-          <Field label="Texto" value={config.formulario.texto} onChange={(value) => updateNested(setConfig, 'formulario', 'texto', value)} textarea />
-          <Field label="Texto do botao" value={config.formulario.botao} onChange={(value) => updateNested(setConfig, 'formulario', 'botao', value)} />
-          <Field label="WhatsApp destino" value={config.formulario.destinoWhatsapp} onChange={(value) => updateNested(setConfig, 'formulario', 'destinoWhatsapp', value)} />
-          <ImageUploadField label="Background da secao" field="formulario-background" slug={slug || name} scope={scope} pageId={id} value={config.formulario.backgroundUrl} onChange={(value) => updateNested(setConfig, 'formulario', 'backgroundUrl', value)} />
+          <Toggle label="Exibir formulário" checked={config.formulário.ativo} onChange={(value) => updateNested(setConfig, 'formulário', 'ativo', value)} />
+          <Field label="Título" value={config.formulário.titulo} onChange={(value) => updateNested(setConfig, 'formulário', 'titulo', value)} />
+          <Field label="Texto" value={config.formulário.texto} onChange={(value) => updateNested(setConfig, 'formulário', 'texto', value)} textarea />
+          <Field label="Texto do botão" value={config.formulário.botao} onChange={(value) => updateNested(setConfig, 'formulário', 'botao', value)} />
+          <Field label="WhatsApp destino" value={config.formulário.destinoWhatsapp} onChange={(value) => updateNested(setConfig, 'formulário', 'destinoWhatsapp', value)} />
+          <ImageUploadField label="Background da seção" field="formulário-background" slug={slug || name} scope={scope} pageId={id} value={config.formulário.backgroundUrl} onChange={(value) => updateNested(setConfig, 'formulário', 'backgroundUrl', value)} />
           <FormFieldsEditor
-            fields={config.formulario.campos || {}}
-            customFields={config.formulario.camposExtras || []}
-            onFieldsChange={(value) => updateNested(setConfig, 'formulario', 'campos', value)}
-            onCustomFieldsChange={(value) => updateNested(setConfig, 'formulario', 'camposExtras', value)}
+            fields={config.formulário.campos || {}}
+            customFields={config.formulário.camposExtras || []}
+            onFieldsChange={(value) => updateNested(setConfig, 'formulário', 'campos', value)}
+            onCustomFieldsChange={(value) => updateNested(setConfig, 'formulário', 'camposExtras', value)}
           />
         </div>
       )
@@ -1289,20 +1289,20 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
         <div className="grid gap-4">
           <Toggle label="Exibir CTA intermediário" checked={config.cta.ativo} onChange={(value) => updateNested(setConfig, 'cta', 'ativo', value)} />
           <Field label="Eyebrow" value={config.cta.eyebrow} onChange={(value) => updateNested(setConfig, 'cta', 'eyebrow', value)} />
-          <Field label="Titulo" value={config.cta.titulo} onChange={(value) => updateNested(setConfig, 'cta', 'titulo', value)} textarea />
+          <Field label="Título" value={config.cta.titulo} onChange={(value) => updateNested(setConfig, 'cta', 'titulo', value)} textarea />
           <Field label="Texto" value={config.cta.texto} onChange={(value) => updateNested(setConfig, 'cta', 'texto', value)} textarea />
           <Field label="Texto do CTA" value={config.cta.ctaTexto} onChange={(value) => updateNested(setConfig, 'cta', 'ctaTexto', value)} />
           <Field label="URL do CTA" value={config.cta.ctaUrl} onChange={(value) => updateNested(setConfig, 'cta', 'ctaUrl', value)} />
           <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4">
-            <p className="text-sm font-extrabold text-white">Botao fixo no mobile</p>
+            <p className="text-sm font-extrabold text-white">Botão fixo no mobile</p>
             <p className="mt-2 text-xs leading-relaxed text-neutral-500">
               Texto do botão que fica preso no rodapé do celular. Se ficar vazio, usa o texto do botão do formulário.
             </p>
             <div className="mt-3">
-              <Field label="Texto do botao mobile" value={config.cta.mobileTexto || ''} onChange={(value) => updateNested(setConfig, 'cta', 'mobileTexto', value)} placeholder="Enviar meus dados" />
+              <Field label="Texto do botão mobile" value={config.cta.mobileTexto || ''} onChange={(value) => updateNested(setConfig, 'cta', 'mobileTexto', value)} placeholder="Enviar meus dados" />
             </div>
           </div>
-          <ImageUploadField label="Background da secao" field="cta-background" slug={slug || name} scope={scope} pageId={id} value={config.cta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'cta', 'backgroundUrl', value)} />
+          <ImageUploadField label="Background da seção" field="cta-background" slug={slug || name} scope={scope} pageId={id} value={config.cta.backgroundUrl} onChange={(value) => updateNested(setConfig, 'cta', 'backgroundUrl', value)} />
         </div>
       )
     }
@@ -1338,20 +1338,20 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             />
             <ListEditor
               items={textos.sinais || []}
-              labels={[{ key: 'titulo', label: 'Titulo do card' }, { key: 'texto', label: 'Texto do card', textarea: true }]}
+              labels={[{ key: 'titulo', label: 'Título do card' }, { key: 'texto', label: 'Texto do card', textarea: true }]}
               onChange={(value) => updateNested(setConfig, 'textos', 'sinais', value)}
             />
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
-            <p className="text-sm font-extrabold text-white">Textos de apoio das secoes</p>
-            <Field label="Eyebrow dos benefícios" value={textos.beneficiosEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosEyebrow', value)} />
-            <Field label="Introdução dos benefícios" value={textos.beneficiosIntro} onChange={(value) => updateNested(setConfig, 'textos', 'beneficiosIntro', value)} textarea />
+            <p className="text-sm font-extrabold text-white">Textos de apoio das seções</p>
+            <Field label="Eyebrow dos benefícios" value={textos.benefíciosEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'benefíciosEyebrow', value)} />
+            <Field label="Introdução dos benefícios" value={textos.benefíciosIntro} onChange={(value) => updateNested(setConfig, 'textos', 'benefíciosIntro', value)} textarea />
             <Field label="Introdução da prova social" value={textos.provaIntro} onChange={(value) => updateNested(setConfig, 'textos', 'provaIntro', value)} textarea />
             <Field label="Eyebrow da oferta" value={textos.ofertaEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaEyebrow', value)} placeholder="Oferta principal" />
-            <Field label="Label da condição/preço" value={textos.ofertaCondicaoLabel} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaCondicaoLabel', value)} placeholder="Condicao" />
+            <Field label="Label da condição/preço" value={textos.ofertaCondicaoLabel} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaCondicaoLabel', value)} placeholder="Condição" />
             <Field label="Texto auxiliar da condição" value={textos.ofertaTextoAuxiliar} onChange={(value) => updateNested(setConfig, 'textos', 'ofertaTextoAuxiliar', value)} textarea />
-            <Field label="Eyebrow do FAQ" value={textos.faqEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'faqEyebrow', value)} placeholder="Duvidas" />
+            <Field label="Eyebrow do FAQ" value={textos.faqEyebrow} onChange={(value) => updateNested(setConfig, 'textos', 'faqEyebrow', value)} placeholder="Dúvidas" />
           </div>
 
           <div className="grid gap-3 rounded-2xl border border-white/[0.06] bg-black/35 p-4">
@@ -1362,9 +1362,9 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               onChange={(value) => updateNested(setConfig, 'textos', 'ofertaItens', value)}
             />
             <ListEditor
-              items={textos.formularioItens || []}
-              labels={[{ key: 'texto', label: 'Item do formulario' }]}
-              onChange={(value) => updateNested(setConfig, 'textos', 'formularioItens', value)}
+              items={textos.formulárioItens || []}
+              labels={[{ key: 'texto', label: 'Item do formulário' }]}
+              onChange={(value) => updateNested(setConfig, 'textos', 'formulárioItens', value)}
             />
           </div>
 
@@ -1372,7 +1372,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <p className="text-sm font-extrabold text-white">Preços, formulário e rodapé</p>
             <Field label="Selo do plano em destaque" value={textos.planoDestaqueTexto} onChange={(value) => updateNested(setConfig, 'textos', 'planoDestaqueTexto', value)} placeholder="Destaque" />
             <Field label="CTA fallback dos planos" value={textos.planoCtaFallback} onChange={(value) => updateNested(setConfig, 'textos', 'planoCtaFallback', value)} placeholder="Escolher plano" />
-            <Field label="Texto enquanto formulário envia" value={textos.formularioEnviandoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'formularioEnviandoTexto', value)} placeholder="Enviando..." />
+            <Field label="Texto enquanto formulário envia" value={textos.formulárioEnviandoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'formulárioEnviandoTexto', value)} placeholder="Enviando..." />
             <Field label="Texto do link Termos" value={textos.rodapeTermosTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapeTermosTexto', value)} placeholder="Termos de Uso" />
             <Field label="Texto do link Privacidade" value={textos.rodapePrivacidadeTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapePrivacidadeTexto', value)} placeholder="Privacidade" />
             <Field label="Texto do link Contato" value={textos.rodapeContatoTexto} onChange={(value) => updateNested(setConfig, 'textos', 'rodapeContatoTexto', value)} placeholder="Contato" />
@@ -1381,7 +1381,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               label="Mensagem do WhatsApp flutuante"
               value={textos.whatsappMensagem}
               onChange={(value) => updateNested(setConfig, 'textos', 'whatsappMensagem', value)}
-              placeholder="Ola [Nome da empresa], vim pelo seu site e queria saber mais informacoes."
+              placeholder="Olá [Nome da empresa], vim pelo seu site e queria saber mais informações."
               textarea
             />
           </div>
@@ -1408,7 +1408,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <Toggle label="Mostrar Privacidade" checked={config.rodape.mostrarPrivacidade} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarPrivacidade', value)} />
             <Field label="URL de Privacidade" value={config.rodape.privacidadeUrl} onChange={(value) => updateNested(setConfig, 'rodape', 'privacidadeUrl', value)} placeholder="https://..." />
             <Toggle label="Mostrar Contato" checked={config.rodape.mostrarContato} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarContato', value)} />
-            <Field label="URL de Contato" value={config.rodape.contatoUrl} onChange={(value) => updateNested(setConfig, 'rodape', 'contatoUrl', value)} placeholder="#formulario" />
+            <Field label="URL de Contato" value={config.rodape.contatoUrl} onChange={(value) => updateNested(setConfig, 'rodape', 'contatoUrl', value)} placeholder="#formulário" />
             <Toggle label="Mostrar Instagram" checked={config.rodape.mostrarInstagram} onChange={(value) => updateNested(setConfig, 'rodape', 'mostrarInstagram', value)} />
             <Field label="URL do Instagram" value={config.rodape.instagramUrl} onChange={(value) => updateNested(setConfig, 'rodape', 'instagramUrl', value)} placeholder="https://instagram.com/..." />
           </div>
@@ -1419,7 +1419,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               A mensagem enviada usa a marca da LP: Olá [Nome da empresa], vim pelo seu site e queria saber mais informações.
             </p>
             <Toggle label="Exibir WhatsApp flutuante" checked={config.rodape.whatsappAtivo} onChange={(value) => updateNested(setConfig, 'rodape', 'whatsappAtivo', value)} />
-            <Field label="Numero do WhatsApp" value={config.rodape.whatsappNumero} onChange={(value) => updateNested(setConfig, 'rodape', 'whatsappNumero', value)} placeholder="5577999999999" />
+            <Field label="Número do WhatsApp" value={config.rodape.whatsappNumero} onChange={(value) => updateNested(setConfig, 'rodape', 'whatsappNumero', value)} placeholder="5577999999999" />
           </div>
         </div>
       )
@@ -1437,16 +1437,16 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
     return (
       <div className="grid gap-4">
         <div className="rounded-2xl border border-[#6be12f]/15 bg-[#6be12f]/[0.06] p-4 text-sm leading-relaxed text-neutral-300">
-          Informe somente os identificadores das plataformas. O gerador carrega as tags permitidas na LP publicada e registra o envio do formulario como lead.
+          Informe somente os identificadores das plataformas. O gerador carrega as tags permitidas na LP publicada e registra o envio do formulário como lead.
         </div>
         <div className="rounded-2xl border border-white/[0.06] bg-black/35 p-4">
           <p className="text-sm font-extrabold text-white">Dominio personalizado</p>
           <p className="mt-2 text-xs leading-relaxed text-neutral-500">
-            Informe o dominio que sera apontado para esta LP. A ativacao completa ainda depende de DNS e dominio configurado na Vercel.
+            Informe o domínio que será apontado para esta LP. A ativação completa ainda depende de DNS e domínio configurado na Vercel.
           </p>
           <div className="mt-4">
             <Field
-              label="Dominio ou subdominio"
+              label="Domínio ou subdomínio"
               value={config.integracoes.customDomain}
               onChange={(value) => updateNested(
                 setConfig,
@@ -1467,7 +1467,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-widest text-neutral-500">Checklist DNS</p>
                 <p className="mt-1 text-sm font-bold text-white">
-                  Aponte o dominio e depois verifique a propagacao.
+                  Aponte o domínio e depois verifique a propagação.
                 </p>
               </div>
               <button
@@ -1505,7 +1505,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                     <p className="mt-1 text-xs leading-relaxed text-neutral-300">{domainStatus.message}</p>
                   </div>
                   <span className="rounded-full border border-white/[0.08] bg-black/30 px-3 py-1 text-[10px] font-extrabold uppercase tracking-widest text-neutral-300">
-                    {domainStatus.host || 'sem dominio'}
+                    {domainStatus.host || 'sem domínio'}
                   </span>
                 </div>
 
@@ -1581,7 +1581,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           <div className="rounded-[1.5rem] border border-yellow-500/20 bg-yellow-500/10 p-10 text-center">
             <p className="text-lg font-extrabold text-yellow-200">ID da LP invalido.</p>
             <p className="mt-2 text-sm text-yellow-100/75">
-              Volte para o painel do gerador e abra uma landing page pelo botao Editar.
+              Volte para o painel do gerador e abra uma landing page pelo botão Editar.
             </p>
             <Link
               href={context.backHref}
@@ -1597,7 +1597,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
           </div>
         ) : loadError ? (
           <div className="rounded-[1.5rem] border border-red-500/20 bg-red-500/10 p-10 text-center">
-            <p className="text-lg font-extrabold text-red-200">Nao foi possivel abrir esta LP.</p>
+            <p className="text-lg font-extrabold text-red-200">Não foi possível abrir esta LP.</p>
             <p className="mt-2 text-sm text-red-100/75">{loadError}</p>
             <Link
               href={context.backHref}
@@ -1611,7 +1611,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
             <aside className="rounded-[1.5rem] border border-white/[0.06] bg-[#0b0b0b] p-4 lg:sticky lg:top-6 lg:self-start">
               <div className="mb-4 flex items-center gap-3 px-2">
                 <Settings2 size={18} className="text-[#8cf059]" />
-                <p className="text-sm font-extrabold">Secoes</p>
+                <p className="text-sm font-extrabold">Seções</p>
               </div>
 
               <nav className="grid gap-2">
@@ -1662,7 +1662,7 @@ export default function LpEditorWorkspace({ scope = 'admin' }) {
                 <div>
                   <h2 className="text-xl font-extrabold">Preview ao vivo</h2>
                   <p className="mt-1 text-xs text-neutral-500">
-                    Mostra o layout com as alteracoes atuais. Salve para publicar.
+                    Mostra o layout com as alterações atuais. Salve para publicar.
                   </p>
                 </div>
 

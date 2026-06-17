@@ -128,7 +128,7 @@ export default function LpHotspotUnlockGate() {
         } catch {}
 
         setStatus('done')
-        setMessage('Internet liberada. Continue nesta página ou navegue normalmente.')
+        setMessage('Internet liberada. Continue nestá página ou navegue normalmente.')
 
         window.setTimeout(() => {
           setVisible(false)
