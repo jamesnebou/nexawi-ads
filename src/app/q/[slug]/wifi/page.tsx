@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import WifiQrBox from "@/components/WifiQrBox";
+import {WifiQrBox} from "@/components/WifiQrBox";
 
 export default async function DynamicWifiPage({
   params,
