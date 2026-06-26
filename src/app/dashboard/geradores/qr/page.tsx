@@ -527,7 +527,7 @@ export default function DashboardQrGeneratorPage() {
                 <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-white p-5 shadow-[0_0_45px_rgba(107,225,47,0.08)]">
                   <img src={qrDataUrl} alt="QR Code NexaWi" className="w-full rounded-2xl" />
                   <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-black/10 bg-white shadow-xl">
-                    <img src="/Nexa-logo.png" alt="NexaWi" className="max-h-9 max-w-12 object-contain" />
+                    <img src="/simbolo-verde.png" alt="NexaWi" className="max-h-9 max-w-12 object-contain" />
                   </div>
                 </div>
 

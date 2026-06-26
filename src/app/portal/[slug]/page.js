@@ -1045,12 +1045,16 @@ leadIdRef.current = data.leadId
       })
 
       setWifiPixCheckout(data.checkout)
+      const janelaPagamento = data.paymentWindow?.ok
+        ? ' Liberei alguns minutos de internet temporária para abrir o app do banco.'
+        : ''
+
       setWifiPixMensagem(
         wifiPixMetodo === 'CREDIT_CARD'
-          ? 'Pagamento criado. Abra o link seguro para pagar com cartão.'
+          ? `Pagamento criado. Abra o link seguro para pagar com cartão.${janelaPagamento}`
           : data.checkout?.pixCopyPaste
-            ? 'Pix criado. Abra o link seguro ou copie o código Pix.'
-            : 'Pix criado. Abra o link seguro para pagar. O copia-e-cola não foi retornado pela Efí.'
+            ? `Pix criado. Abra o link seguro ou copie o código Pix.${janelaPagamento}`
+            : `Pix criado. Abra o link seguro para pagar. O copia-e-cola não foi retornado pela Efí.${janelaPagamento}`
       )
     } catch (error) {
       setWifiPixMensagem(error.message || 'Não foi possível gerar o pagamento.')

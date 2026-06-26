@@ -18,6 +18,69 @@ function clean(value = '') {
   return String(value || '').trim()
 }
 
+async function grantTemporaryPaymentWindow(request, {
+  hotspotSlug,
+  macAddress,
+  ipAddress,
+  vendaId,
+} = {}) {
+  const mac = clean(macAddress)
+
+  if (!hotspotSlug || !mac) {
+    return {
+      ok: false,
+      skipped: true,
+      reason: 'hotspotSlug ou MAC ausente para janela temporaria de pagamento.',
+    }
+  }
+
+  try {
+    const origin = new URL(request.url).origin
+    const response = await fetch(`${origin}/api/control/session/authorize`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+      body: JSON.stringify({
+        hotspotSlug,
+        leadId: null,
+        clientMac: mac,
+        clientIp: clean(ipAddress),
+        adSessionId: null,
+        authorizationReason: 'wifi_pix_payment_window',
+      }),
+    })
+
+    const data = await response.json().catch(() => ({}))
+
+    if (!response.ok) {
+      return {
+        ok: false,
+        skipped: false,
+        status: response.status,
+        error: data.error || 'Falha ao liberar janela temporaria para pagamento.',
+      }
+    }
+
+    return {
+      ok: true,
+      vendaId,
+      sessionId: data?.session?.id || null,
+      expiresAt: data?.session?.expires_at || null,
+      alreadyAuthorized: Boolean(data?.alreadyAuthorized),
+      reauthorized: Boolean(data?.reauthorized),
+      bandwidthQueue: data?.bandwidthQueue || null,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      skipped: false,
+      error: error.message || 'Falha ao liberar janela temporaria para pagamento.',
+    }
+  }
+}
+
 export async function POST(request) {
   const rate = checkRateLimit(request, RATE_LIMIT)
 
@@ -81,6 +144,13 @@ export async function POST(request) {
       metodoPagamento,
     })
 
+    const paymentWindow = await grantTemporaryPaymentWindow(request, {
+      hotspotSlug: hotspot.slug,
+      macAddress,
+      ipAddress,
+      vendaId: result.venda.id,
+    })
+
     await logAdminAction({
       request,
       adminUser: { id: null, email: 'wifi-pix-checkout@nexawi.system' },
@@ -95,6 +165,7 @@ export async function POST(request) {
         metodoPagamento: result.venda.metodo_pagamento,
         valor: Number(result.venda.valor || 0),
         gateway: result.venda.gateway_pagamento || result.venda.asaas_payload?.provider || 'asaas',
+        paymentWindow,
       },
     })
 
@@ -108,6 +179,7 @@ export async function POST(request) {
         duracao_minutos: Number(result.venda.duracao_minutos || 0),
       },
       checkout: result.checkout,
+      paymentWindow,
     })
   } catch (error) {
     return NextResponse.json(

@@ -22,6 +22,16 @@ import {
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
 const AD_COMPLETION_MAX_AGE_MS = 15 * 60 * 1000
+const WIFI_PIX_PAYMENT_WINDOW_SECONDS = boundedSeconds(
+  process.env.NEXAWI_WIFI_PIX_PAYMENT_WINDOW_SECONDS,
+  5 * 60,
+  60,
+  15 * 60
+)
+const WIFI_PIX_PAYMENT_WINDOW_UPLOAD =
+  cleanBandwidthLimit(process.env.NEXAWI_WIFI_PIX_PAYMENT_WINDOW_UPLOAD || '512k')
+const WIFI_PIX_PAYMENT_WINDOW_DOWNLOAD =
+  cleanBandwidthLimit(process.env.NEXAWI_WIFI_PIX_PAYMENT_WINDOW_DOWNLOAD || '2M')
 const RATE_LIMIT = {
   keyPrefix: 'control:session:authorize',
   limit: 80,
@@ -32,6 +42,53 @@ export const runtime = 'nodejs'
 
 function clean(value = '') {
   return String(value || '').trim()
+}
+
+function boundedSeconds(value, fallback, min, max) {
+  const parsed = Number(value)
+
+  if (!Number.isFinite(parsed)) return fallback
+
+  return Math.max(min, Math.min(max, Math.floor(parsed)))
+}
+
+function cleanBandwidthLimit(value = '') {
+  const limit = clean(value)
+
+  return /^[0-9]+[kKmMgG]?$/.test(limit) ? limit : ''
+}
+
+function resolveAuthorizationProfile(reason = '') {
+  if (reason === 'hybrid_ad_30m') {
+    return {
+      sessionSecondsOverride: 30 * 60,
+      uploadLimit: null,
+      downloadLimit: null,
+      skipLead: false,
+      skipAdValidation: false,
+      routerCommentPrefix: 'auth_session',
+    }
+  }
+
+  if (reason === 'wifi_pix_payment_window') {
+    return {
+      sessionSecondsOverride: WIFI_PIX_PAYMENT_WINDOW_SECONDS,
+      uploadLimit: WIFI_PIX_PAYMENT_WINDOW_UPLOAD,
+      downloadLimit: WIFI_PIX_PAYMENT_WINDOW_DOWNLOAD,
+      skipLead: true,
+      skipAdValidation: true,
+      routerCommentPrefix: 'wifi_pix_payment_window',
+    }
+  }
+
+  return {
+    sessionSecondsOverride: null,
+    uploadLimit: null,
+    downloadLimit: null,
+    skipLead: false,
+    skipAdValidation: false,
+    routerCommentPrefix: 'auth_session',
+  }
 }
 
 function privateClientIp(value = '') {
@@ -121,14 +178,15 @@ export async function POST(request) {
     const clientIp = String(body.clientIp || '').trim()
     const adSessionId = clean(body.adSessionId || body.ad_session_id)
     const authorizationReason = clean(body.authorizationReason || body.authorization_reason)
-    const sessionSecondsOverride = authorizationReason === 'hybrid_ad_30m' ? 30 * 60 : null
+    const authorizationProfile = resolveAuthorizationProfile(authorizationReason)
+    const sessionSecondsOverride = authorizationProfile.sessionSecondsOverride
 
     if (!hotspotSlug) {
       return NextResponse.json({ ok: false, error: 'hotspotSlug é obrigatório' }, { status: 400 })
     }
 
-    if (!leadId) {
-      return NextResponse.json({ ok: false, error: 'leadId é obrigatório' }, { status: 400 })
+    if (!leadId && !authorizationProfile.skipLead) {
+      return NextResponse.json({ ok: false, error: 'leadId e obrigatorio' }, { status: 400 })
     }
 
     if (!clientMac) {
@@ -141,15 +199,17 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Hotspot não encontrado' }, { status: 404 })
     }
 
-    const lead = await resolveLeadForAuthorization({
-      leadId,
-      hotspotId: hotspot.id,
-      clientMac,
-      clientIp,
-    })
+    const lead = authorizationProfile.skipLead
+      ? null
+      : await resolveLeadForAuthorization({
+        leadId,
+        hotspotId: hotspot.id,
+        clientMac,
+        clientIp,
+      })
 
-    if (!lead) {
-      return NextResponse.json({ ok: false, error: 'Lead não encontrado para este hotspot' }, { status: 404 })
+    if (!lead && !authorizationProfile.skipLead) {
+      return NextResponse.json({ ok: false, error: 'Lead nao encontrado para este hotspot' }, { status: 404 })
     }
 
     const latestSession = await getLatestSession({
@@ -161,6 +221,19 @@ export async function POST(request) {
       const status = computeStatusFromSession(latestSession)
 
       if (status.state === 'authorized') {
+        if (
+          authorizationReason === 'wifi_pix_payment_window' &&
+          Number(status.remainingSeconds || 0) > WIFI_PIX_PAYMENT_WINDOW_SECONDS
+        ) {
+          return NextResponse.json({
+            ok: true,
+            alreadyAuthorized: true,
+            paymentWindowSkipped: true,
+            session: latestSession,
+            status,
+          })
+        }
+
   try {
     await logRouterAction({
       authSessionId: latestSession.id,
@@ -168,7 +241,7 @@ export async function POST(request) {
       status: 'success',
       requestPayload: {
         hotspotSlug,
-        leadId: lead.id,
+        leadId: lead?.id || null,
         clientMac,
         clientIp,
         reason: 'session_already_authorized_reensure_routeros',
@@ -186,14 +259,16 @@ export async function POST(request) {
     const binding = await ensureBypassBinding({
       macAddress: clientMac,
       address: bindingAddress,
-      comment: `auth_session:${latestSession.id}`,
+      comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
     })
 
 
     const bandwidthQueue = await ensureClientBandwidthQueue({
   macAddress: clientMac,
   targetAddress: hostBeforeAuthorization?.address || '',
-  comment: `auth_session:${latestSession.id}`,
+  comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
+  uploadLimit: authorizationProfile.uploadLimit,
+  downloadLimit: authorizationProfile.downloadLimit,
 })
 
     const authorizedSession = await markSessionAuthorized(
@@ -258,20 +333,22 @@ export async function POST(request) {
       }
     }
 
-    const adErrorResponse = await validateCompletedAdSession({
-      lead,
-      hotspotId: hotspot.id,
-      adSessionId,
-    })
+    if (!authorizationProfile.skipAdValidation) {
+      const adErrorResponse = await validateCompletedAdSession({
+        lead,
+        hotspotId: hotspot.id,
+        adSessionId,
+      })
 
-    if (adErrorResponse) {
-      return adErrorResponse
+      if (adErrorResponse) {
+        return adErrorResponse
+      }
     }
 
     const pendingSession = await createPendingSession({
       hotspotId: hotspot.id,
       hotspotSlug,
-      leadId: lead.id,
+      leadId: lead?.id || null,
       clientMac,
       clientIp,
     })
@@ -283,7 +360,7 @@ export async function POST(request) {
         status: 'success',
         requestPayload: {
           hotspotSlug,
-          leadId: lead.id,
+          leadId: lead?.id || null,
           clientMac,
           clientIp,
           authorizationReason: authorizationReason || null,
@@ -300,13 +377,15 @@ export async function POST(request) {
       const binding = await ensureBypassBinding({
         macAddress: clientMac,
         address: bindingAddress,
-        comment: `auth_session:${pendingSession.id}`,
+        comment: `${authorizationProfile.routerCommentPrefix}:${pendingSession.id}`,
       })
 
       const bandwidthQueue = await ensureClientBandwidthQueue({
   macAddress: clientMac,
   targetAddress: hostBeforeAuthorization?.address || '',
-  comment: `auth_session:${pendingSession.id}`,
+  comment: `${authorizationProfile.routerCommentPrefix}:${pendingSession.id}`,
+  uploadLimit: authorizationProfile.uploadLimit,
+  downloadLimit: authorizationProfile.downloadLimit,
 })
 
       const authorizedSession = await markSessionAuthorized(
