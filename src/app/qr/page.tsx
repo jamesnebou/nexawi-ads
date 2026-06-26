@@ -38,6 +38,15 @@ export default function QRPage() {
   const [dynamicType, setDynamicType] = useState("link");
   const [dynamicResult, setDynamicResult] = useState("");
 
+  const [dynamicWifiSsid, setDynamicWifiSsid] = useState(
+  "WIFI CANDIDO SALES - NexaWi"
+);
+const [dynamicWifiSecurity, setDynamicWifiSecurity] = useState<"nopass" | "WPA">(
+  "nopass"
+);
+const [dynamicWifiPassword, setDynamicWifiPassword] = useState("");
+const [dynamicWifiHidden, setDynamicWifiHidden] = useState(false);
+
   const payload = useMemo(() => {
     if (staticType === "link") return link;
 
@@ -117,43 +126,47 @@ export default function QRPage() {
   }
 
   async function createDynamicQR() {
-    setDynamicResult("");
-    setQrDataUrl("");
-    setQrPayload("");
+  setDynamicResult("");
+  setQrDataUrl("");
+  setQrPayload("");
 
-    const response = await fetch("/api/qrcodes", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-admin-key": adminKey,
-      },
-      body: JSON.stringify({
-        name: dynamicName,
-        slug: dynamicSlug,
-        type: dynamicType,
-        target_url: dynamicTarget,
-      }),
-    });
+  const response = await fetch("/api/qrcodes", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-key": adminKey,
+    },
+    body: JSON.stringify({
+      name: dynamicName,
+      slug: dynamicSlug,
+      type: dynamicType,
+      target_url: dynamicType === "wifi" ? null : dynamicTarget,
+      wifi_ssid: dynamicType === "wifi" ? dynamicWifiSsid : null,
+      wifi_security: dynamicType === "wifi" ? dynamicWifiSecurity : null,
+      wifi_password: dynamicType === "wifi" ? dynamicWifiPassword : null,
+      wifi_hidden: dynamicType === "wifi" ? dynamicWifiHidden : false,
+    }),
+  });
 
-    const data = await response.json();
+  const data = await response.json();
 
-    if (!response.ok) {
-      alert(data.error || "Erro ao criar QR dinâmico.");
-      return;
-    }
-
-    const dynamicUrl = data.dynamic_url;
-
-    const dataUrl = await QRCode.toDataURL(dynamicUrl, {
-      errorCorrectionLevel: "H",
-      margin: 2,
-      width: 900,
-    });
-
-    setDynamicResult(dynamicUrl);
-    setQrPayload(dynamicUrl);
-    setQrDataUrl(dataUrl);
+  if (!response.ok) {
+    alert(data.error || "Erro ao criar QR dinâmico.");
+    return;
   }
+
+  const dynamicUrl = data.dynamic_url;
+
+  const dataUrl = await QRCode.toDataURL(dynamicUrl, {
+    errorCorrectionLevel: "H",
+    margin: 2,
+    width: 900,
+  });
+
+  setDynamicResult(dynamicUrl);
+  setQrPayload(dynamicUrl);
+  setQrDataUrl(dataUrl);
+}
 
   return (
     <main className="min-h-screen bg-black px-6 py-10 text-white">
@@ -345,25 +358,71 @@ export default function QRPage() {
                     Tipo
                   </span>
                   <select
-                    value={dynamicType}
-                    onChange={(e) => setDynamicType(e.target.value)}
-                    className="w-full rounded-xl border border-zinc-700 bg-black p-3"
-                  >
-                    <option value="link">Link</option>
-                    <option value="whatsapp">WhatsApp</option>
-                    <option value="instagram">Instagram</option>
-                    <option value="maps">Google Maps</option>
-                    <option value="cardapio">Cardápio</option>
-                    <option value="campanha">Campanha</option>
-                  </select>
+  value={dynamicType}
+  onChange={(e) => setDynamicType(e.target.value)}
+  className="w-full rounded-xl border border-zinc-700 bg-black p-3"
+>
+  <option value="link">Link</option>
+  <option value="wifi">Wi-Fi dinâmico</option>
+  <option value="whatsapp">WhatsApp</option>
+  <option value="instagram">Instagram</option>
+  <option value="maps">Google Maps</option>
+  <option value="cardapio">Cardápio</option>
+  <option value="campanha">Campanha</option>
+</select>
                 </label>
 
-                <Input
-                  label="Destino"
-                  value={dynamicTarget}
-                  onChange={setDynamicTarget}
-                  placeholder="https://..."
-                />
+                {dynamicType === "wifi" ? (
+  <>
+    <Input
+      label="Nome da rede Wi-Fi"
+      value={dynamicWifiSsid}
+      onChange={setDynamicWifiSsid}
+      placeholder="WIFI CANDIDO SALES - NexaWi"
+    />
+
+    <label className="block">
+      <span className="mb-2 block text-sm text-zinc-400">
+        Segurança
+      </span>
+
+      <select
+        value={dynamicWifiSecurity}
+        onChange={(e) =>
+          setDynamicWifiSecurity(e.target.value as "nopass" | "WPA")
+        }
+        className="w-full rounded-xl border border-zinc-700 bg-black p-3"
+      >
+        <option value="nopass">Aberta / Sem senha</option>
+        <option value="WPA">WPA/WPA2 com senha</option>
+      </select>
+    </label>
+
+    {dynamicWifiSecurity === "WPA" && (
+      <Input
+        label="Senha do Wi-Fi"
+        value={dynamicWifiPassword}
+        onChange={setDynamicWifiPassword}
+      />
+    )}
+
+    <label className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-black p-3 text-sm text-zinc-300">
+      <input
+        type="checkbox"
+        checked={dynamicWifiHidden}
+        onChange={(e) => setDynamicWifiHidden(e.target.checked)}
+      />
+      Rede oculta
+    </label>
+  </>
+) : (
+  <Input
+    label="Destino"
+    value={dynamicTarget}
+    onChange={setDynamicTarget}
+    placeholder="https://..."
+  />
+)}
 
                 <button
                   onClick={createDynamicQR}

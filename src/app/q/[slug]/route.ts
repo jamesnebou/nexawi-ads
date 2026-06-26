@@ -20,9 +20,7 @@ export async function GET(
     .maybeSingle();
 
   if (error || !qrCode || qrCode.status !== "active") {
-    return NextResponse.redirect(
-      new URL("/qr/inativo", request.url)
-    );
+    return NextResponse.redirect(new URL("/qr/inativo", request.url));
   }
 
   const forwardedFor = request.headers.get("x-forwarded-for");
@@ -41,5 +39,13 @@ export async function GET(
     referrer,
   });
 
-  return NextResponse.redirect(qrCode.target_url);
+  if (qrCode.type === "wifi") {
+    return NextResponse.redirect(new URL(`/q/${slug}/wifi`, request.url));
+  }
+
+  if (!qrCode.target_url) {
+    return NextResponse.redirect(new URL("/qr/inativo", request.url));
+  }
+
+  return NextResponse.redirect(new URL(qrCode.target_url, request.url));
 }

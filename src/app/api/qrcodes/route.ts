@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 function checkAdmin(request: NextRequest) {
@@ -52,15 +53,34 @@ export async function POST(request: NextRequest) {
     const type = String(body.type || "link").trim();
     const targetUrl = String(body.target_url || "").trim();
 
-    if (!name || !targetUrl) {
+    const wifiSsid = String(body.wifi_ssid || "").trim();
+    const wifiSecurity = String(body.wifi_security || "nopass").trim();
+    const wifiPassword = String(body.wifi_password || "").trim();
+    const wifiHidden = Boolean(body.wifi_hidden);
+
+    if (!name) {
       return NextResponse.json(
-        { error: "Nome e destino são obrigatórios." },
+        { error: "Nome é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (type === "wifi" && !wifiSsid) {
+      return NextResponse.json(
+        { error: "Nome da rede Wi-Fi é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (type !== "wifi" && !targetUrl) {
+      return NextResponse.json(
+        { error: "Destino é obrigatório." },
         { status: 400 }
       );
     }
 
     const baseSlug = slugify(body.slug || name);
-    const slug = baseSlug || crypto.randomUUID().slice(0, 8);
+    const slug = baseSlug || randomUUID().slice(0, 8);
 
     const { data: existing } = await supabaseAdmin
       .from("qr_codes")
@@ -81,7 +101,12 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         type,
-        target_url: targetUrl,
+        target_url: type === "wifi" ? null : targetUrl,
+        wifi_ssid: type === "wifi" ? wifiSsid : null,
+        wifi_security: type === "wifi" ? wifiSecurity : null,
+        wifi_password:
+          type === "wifi" && wifiSecurity !== "nopass" ? wifiPassword : null,
+        wifi_hidden: type === "wifi" ? wifiHidden : false,
         customer_name: body.customer_name || null,
         location_name: body.location_name || null,
         campaign_name: body.campaign_name || null,
