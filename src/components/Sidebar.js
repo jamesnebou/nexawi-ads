@@ -32,6 +32,8 @@ import {
   Building2,
   FileText,
   ClipboardCheck,
+  QrCode,
+  WandSparkles,
 } from 'lucide-react'
 
 const supabase = createBrowserSupabaseClient()
@@ -122,6 +124,26 @@ const menu = [
     icon: FileText,
     module: 'empresas',
   },
+  { type: 'section', label: 'Geradores' },
+  {
+    label: 'Landing Pages',
+    path: '/gerador-de-lp/dashboard',
+    icon: WandSparkles,
+    module: 'configuracoes',
+  },
+  {
+    label: 'Gerador de Contrato',
+    path: '/dashboard/contratos/gerar',
+    icon: FileText,
+    module: 'empresas',
+  },
+  {
+    label: 'QR Codes',
+    path: '/dashboard/geradores/qr',
+    icon: QrCode,
+    module: 'configuracoes',
+  },
+
   {
     label: 'Hotspots',
     path: '/dashboard/hotspots',
@@ -386,7 +408,7 @@ export default function Sidebar({ onClose }) {
 
   const menuPermitido = useMemo(() => {
     return menu.filter((item) =>
-      temAlgumaPermissaoNoModulo(permissions, item.module, isMaster)
+      item.type === 'section' || temAlgumaPermissaoNoModulo(permissions, item.module, isMaster)
     )
   }, [permissions, isMaster])
 
@@ -421,6 +443,17 @@ export default function Sidebar({ onClose }) {
           </div>
         ) : (
           menuPermitido.map((item) => {
+            if (item.type === 'section') {
+              return (
+                <div
+                  key={item.label}
+                  className="px-4 pt-5 pb-2 text-[10px] font-black uppercase tracking-[0.22em] text-gray-700"
+                >
+                  {item.label}
+                </div>
+              )
+            }
+
             const Icon = item.icon
             const active =
               item.path === '/dashboard'

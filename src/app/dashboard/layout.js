@@ -157,6 +157,13 @@ const rotasProtegidas = [
     label: 'Anúncios',
   },
   {
+    path: '/dashboard/geradores/qr',
+    module: 'configuracoes',
+    action: 'view',
+    label: 'Gerador de QR Codes',
+  },
+
+  {
     path: '/dashboard/planos',
     module: 'planos',
     action: 'view',
