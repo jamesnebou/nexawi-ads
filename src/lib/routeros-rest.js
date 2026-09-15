@@ -65,6 +65,14 @@ function formatFetchError(error) {
   return parts.filter(Boolean).join(' / ') || 'fetch failed'
 }
 
+function getRouterRequestTimeoutMs() {
+  const value = Number(process.env.ROUTEROS_REQUEST_TIMEOUT_MS || 8_000)
+
+  if (!Number.isFinite(value)) return 8_000
+
+  return Math.max(1_000, Math.min(30_000, Math.floor(value)))
+}
+
 function getRouterConfig(routerConfig = {}) {
   const baseUrl =
     routerConfig.baseUrl ||
@@ -133,6 +141,7 @@ async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) 
         headers,
         body: payload,
         cache: 'no-store',
+        signal: AbortSignal.timeout(getRouterRequestTimeoutMs()),
       })
       usedBaseUrl = candidateBaseUrl
       break
@@ -222,25 +231,25 @@ function normalizarOnlineClient(item = {}, source = 'unknown') {
   }
 }
 
-export async function routerHealth() {
-  return routerosFetch('/system/resource')
+export async function routerHealth({ routerConfig } = {}) {
+  return routerosFetch('/system/resource', { routerConfig })
 }
 
-export async function listHotspotBindings() {
-  const data = await routerosFetch('/ip/hotspot/ip-binding')
+export async function listHotspotBindings({ routerConfig } = {}) {
+  const data = await routerosFetch('/ip/hotspot/ip-binding', { routerConfig })
   return Array.isArray(data) ? data : []
 }
 
-export async function listSimpleQueues() {
-  const data = await routerosFetch('/queue/simple')
+export async function listSimpleQueues({ routerConfig } = {}) {
+  const data = await routerosFetch('/queue/simple', { routerConfig })
   return Array.isArray(data) ? data : []
 }
 
-export async function listHotspotActiveUsers({ server } = {}) {
-  const { hotspotServer } = getRouterConfig()
+export async function listHotspotActiveUsers({ server, routerConfig } = {}) {
+  const { hotspotServer } = getRouterConfig(routerConfig)
   const targetServer = server || hotspotServer
 
-  const data = await routerosFetch('/ip/hotspot/active')
+  const data = await routerosFetch('/ip/hotspot/active', { routerConfig })
   const list = Array.isArray(data) ? data : []
 
   return list
@@ -252,11 +261,11 @@ export async function listHotspotActiveUsers({ server } = {}) {
     .map((item) => normalizarOnlineClient(item, 'active'))
 }
 
-export async function listHotspotHosts({ server } = {}) {
-  const { hotspotServer } = getRouterConfig()
+export async function listHotspotHosts({ server, routerConfig } = {}) {
+  const { hotspotServer } = getRouterConfig(routerConfig)
   const targetServer = server || hotspotServer
 
-  const data = await routerosFetch('/ip/hotspot/host')
+  const data = await routerosFetch('/ip/hotspot/host', { routerConfig })
   const list = Array.isArray(data) ? data : []
 
   return list
@@ -268,10 +277,10 @@ export async function listHotspotHosts({ server } = {}) {
     .map((item) => normalizarOnlineClient(item, 'host'))
 }
 
-export async function listOnlineHotspotClients({ server } = {}) {
+export async function listOnlineHotspotClients({ server, routerConfig } = {}) {
   const [activeUsers, hosts] = await Promise.all([
-    listHotspotActiveUsers({ server }),
-    listHotspotHosts({ server }),
+    listHotspotActiveUsers({ server, routerConfig }),
+    listHotspotHosts({ server, routerConfig }),
   ])
 
   const map = new Map()
@@ -324,19 +333,19 @@ export async function listOnlineHotspotClients({ server } = {}) {
   return Array.from(map.values())
 }
 
-export async function countOnlineHotspotClients({ server } = {}) {
-  const clients = await listOnlineHotspotClients({ server })
+export async function countOnlineHotspotClients({ server, routerConfig } = {}) {
+  const clients = await listOnlineHotspotClients({ server, routerConfig })
 
   return {
     ok: true,
     count: clients.length,
-    server: server || getRouterConfig().hotspotServer,
+    server: server || getRouterConfig(routerConfig).hotspotServer,
     checkedAt: new Date().toISOString(),
   }
 }
 
-export async function listCurrentHotspotMacs({ server } = {}) {
-  const clients = await listOnlineHotspotClients({ server })
+export async function listCurrentHotspotMacs({ server, routerConfig } = {}) {
+  const clients = await listOnlineHotspotClients({ server, routerConfig })
 
   const macs = new Set()
 
@@ -351,12 +360,12 @@ export async function listCurrentHotspotMacs({ server } = {}) {
   return macs
 }
 
-export async function findHotspotHostByMac({ macAddress, server } = {}) {
+export async function findHotspotHostByMac({ macAddress, server, routerConfig } = {}) {
   const mac = normalizeMac(macAddress)
 
   if (!mac) return null
 
-  const hosts = await listHotspotHosts({ server })
+  const hosts = await listHotspotHosts({ server, routerConfig })
 
   return (
     hosts.find((item) => normalizeMac(item.macAddress) === mac && item.address) ||
@@ -380,8 +389,15 @@ function normalizeIPv4(value = '') {
   return valid ? ip : ''
 }
 
-export async function ensureBypassBinding({ macAddress, address = '', comment }) {
-  const { hotspotServer } = getRouterConfig()
+export async function ensureBypassBinding({
+  macAddress,
+  address = '',
+  comment,
+  server = '',
+  routerConfig,
+}) {
+  const { hotspotServer } = getRouterConfig(routerConfig)
+  const targetServer = String(server || hotspotServer || '').trim()
   const mac = normalizeMac(macAddress)
   const normalizedAddress = normalizeIPv4(address)
 
@@ -391,7 +407,7 @@ export async function ensureBypassBinding({ macAddress, address = '', comment })
 
   const payload = {
     'mac-address': mac,
-    server: hotspotServer,
+    server: targetServer,
     type: 'bypassed',
     disabled: false,
     comment: comment || '',
@@ -401,16 +417,19 @@ export async function ensureBypassBinding({ macAddress, address = '', comment })
     payload.address = normalizedAddress
   }
 
-  const bindings = await listHotspotBindings()
+  const bindings = await listHotspotBindings({ routerConfig })
 
   const existing = bindings.find(
-    (item) => normalizeMac(item['mac-address']) === mac
+    (item) =>
+      normalizeMac(item['mac-address']) === mac &&
+      (!targetServer || item.server === targetServer)
   )
 
   if (existing?.['.id']) {
     await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(existing['.id'])}`, {
       method: 'PATCH',
       body: payload,
+      routerConfig,
     })
 
     return {
@@ -424,6 +443,7 @@ export async function ensureBypassBinding({ macAddress, address = '', comment })
     return await routerosFetch('/ip/hotspot/ip-binding', {
       method: 'PUT',
       body: payload,
+      routerConfig,
     })
   } catch (error) {
     const message = String(error?.message || '')
@@ -432,9 +452,11 @@ export async function ensureBypassBinding({ macAddress, address = '', comment })
       throw error
     }
 
-    const retryBindings = await listHotspotBindings()
+    const retryBindings = await listHotspotBindings({ routerConfig })
     const retryExisting = retryBindings.find(
-      (item) => normalizeMac(item['mac-address']) === mac
+      (item) =>
+        normalizeMac(item['mac-address']) === mac &&
+        (!targetServer || item.server === targetServer)
     )
 
     if (!retryExisting?.['.id']) {
@@ -444,6 +466,7 @@ export async function ensureBypassBinding({ macAddress, address = '', comment })
     await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(retryExisting['.id'])}`, {
       method: 'PATCH',
       body: payload,
+      routerConfig,
     })
 
     return {
@@ -460,11 +483,12 @@ export async function ensureClientBandwidthQueue({
   comment = '',
   uploadLimit,
   downloadLimit,
+  routerConfig,
 } = {}) {
   const {
     clientUploadLimit,
     clientDownloadLimit,
-  } = getRouterConfig()
+  } = getRouterConfig(routerConfig)
 
   const mac = normalizeMac(macAddress)
 
@@ -475,7 +499,7 @@ export async function ensureClientBandwidthQueue({
   let resolvedTargetAddress = String(targetAddress || '').trim()
 
   if (!resolvedTargetAddress) {
-    const host = await findHotspotHostByMac({ macAddress: mac })
+    const host = await findHotspotHostByMac({ macAddress: mac, routerConfig })
     resolvedTargetAddress = String(host?.address || '').trim()
   }
 
@@ -500,13 +524,14 @@ export async function ensureClientBandwidthQueue({
     disabled: false,
   }
 
-  const queues = await listSimpleQueues()
+  const queues = await listSimpleQueues({ routerConfig })
   const existing = queues.find((item) => item.name === queueName)
 
   if (existing?.['.id']) {
     await routerosFetch(`/queue/simple/${encodeURIComponent(existing['.id'])}`, {
       method: 'PATCH',
       body: payload,
+      routerConfig,
     })
 
     return {
@@ -524,6 +549,7 @@ export async function ensureClientBandwidthQueue({
   const created = await routerosFetch('/queue/simple', {
     method: 'PUT',
     body: payload,
+    routerConfig,
   })
 
   return {
@@ -534,7 +560,7 @@ export async function ensureClientBandwidthQueue({
   }
 }
 
-export async function removeClientBandwidthQueue({ macAddress } = {}) {
+export async function removeClientBandwidthQueue({ macAddress, routerConfig } = {}) {
   const mac = normalizeMac(macAddress)
 
   if (!mac) {
@@ -545,7 +571,7 @@ export async function removeClientBandwidthQueue({ macAddress } = {}) {
   }
 
   const queueName = queueNameFromMac(mac)
-  const queues = await listSimpleQueues()
+  const queues = await listSimpleQueues({ routerConfig })
 
   const toRemove = queues.filter((item) => {
     const nameMatch = item.name === queueName
@@ -559,6 +585,7 @@ export async function removeClientBandwidthQueue({ macAddress } = {}) {
 
     await routerosFetch(`/queue/simple/${encodeURIComponent(item['.id'])}`, {
       method: 'DELETE',
+      routerConfig,
     })
   }
 
@@ -567,7 +594,7 @@ export async function removeClientBandwidthQueue({ macAddress } = {}) {
   }
 }
 
-export async function removeHotspotHostsByMac({ macAddress, server } = {}) {
+export async function removeHotspotHostsByMac({ macAddress, server, routerConfig } = {}) {
   const mac = normalizeMac(macAddress)
 
   if (!mac) {
@@ -577,7 +604,7 @@ export async function removeHotspotHostsByMac({ macAddress, server } = {}) {
     }
   }
 
-  const hosts = await listHotspotHosts({ server })
+  const hosts = await listHotspotHosts({ server, routerConfig })
 
   const toRemove = hosts.filter(
     (item) => normalizeMac(item.macAddress) === mac
@@ -588,6 +615,7 @@ export async function removeHotspotHostsByMac({ macAddress, server } = {}) {
 
     await routerosFetch(`/ip/hotspot/host/${encodeURIComponent(item.id)}`, {
       method: 'DELETE',
+      routerConfig,
     })
   }
 
@@ -596,16 +624,17 @@ export async function removeHotspotHostsByMac({ macAddress, server } = {}) {
   }
 }
 
-export async function removeBypassBindings({ macAddress }) {
-  const { hotspotServer } = getRouterConfig()
+export async function removeBypassBindings({ macAddress, server, routerConfig } = {}) {
+  const { hotspotServer } = getRouterConfig(routerConfig)
+  const targetServer = server || hotspotServer
   const mac = normalizeMac(macAddress)
 
-  const bindings = await listHotspotBindings()
+  const bindings = await listHotspotBindings({ routerConfig })
 
   const toRemove = bindings.filter(
     (item) =>
       normalizeMac(item['mac-address']) === mac &&
-      item.server === hotspotServer &&
+      (!targetServer || item.server === targetServer) &&
       item.type === 'bypassed'
   )
 
@@ -614,6 +643,7 @@ export async function removeBypassBindings({ macAddress }) {
 
     await routerosFetch(`/ip/hotspot/ip-binding/${encodeURIComponent(item['.id'])}`, {
       method: 'DELETE',
+      routerConfig,
     })
   }
 
@@ -622,7 +652,7 @@ export async function removeBypassBindings({ macAddress }) {
   }
 }
 
-export async function cleanupClientAccess({ macAddress } = {}) {
+export async function cleanupClientAccess({ macAddress, server, routerConfig } = {}) {
   const mac = normalizeMac(macAddress)
 
   if (!mac) {
@@ -636,9 +666,9 @@ export async function cleanupClientAccess({ macAddress } = {}) {
   }
 
   const [bypass, queue, hosts] = await Promise.all([
-    removeBypassBindings({ macAddress: mac }),
-    removeClientBandwidthQueue({ macAddress: mac }),
-    removeHotspotHostsByMac({ macAddress: mac }),
+    removeBypassBindings({ macAddress: mac, server, routerConfig }),
+    removeClientBandwidthQueue({ macAddress: mac, routerConfig }),
+    removeHotspotHostsByMac({ macAddress: mac, server, routerConfig }),
   ])
 
   return {

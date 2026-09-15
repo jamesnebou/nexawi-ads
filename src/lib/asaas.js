@@ -1,3 +1,5 @@
+import { fetchWithTimeout, getExternalRequestTimeoutMs } from './fetch-timeout'
+
 const ASAAS_STATUS_TO_NEXAWI = {
   RECEIVED: 'Pago',
   CONFIRMED: 'Pago',
@@ -114,7 +116,7 @@ export async function asaasRequest(path, { method = 'GET', body, searchParams } 
     })
   }
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method,
     headers: {
       'Content-Type': 'application/json',
@@ -122,7 +124,7 @@ export async function asaasRequest(path, { method = 'GET', body, searchParams } 
     },
     body: body ? JSON.stringify(body) : undefined,
     cache: 'no-store',
-  })
+  }, getExternalRequestTimeoutMs())
 
   const text = await response.text()
   let data = null

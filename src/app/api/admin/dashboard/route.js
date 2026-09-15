@@ -28,6 +28,7 @@ import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { requireAdmin } from '@/lib/admin-api-auth'
 import { countOnlineHotspotClients } from '@/lib/routeros-rest'
+import { getControlRequestHeaders } from '@/lib/control-auth'
 
 export const runtime = 'nodejs'
 
@@ -467,6 +468,7 @@ async function buscarPessoasOnlineReais({ hotspotId = '' } = {}) {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
+          ...getControlRequestHeaders(),
         },
       })
 

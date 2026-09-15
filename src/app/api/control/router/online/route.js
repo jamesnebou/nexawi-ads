@@ -14,6 +14,7 @@
 import { NextResponse } from 'next/server'
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { countOnlineHotspotClients } from '@/lib/routeros-rest'
+import { isTrustedControlRequest } from '@/lib/control-auth'
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
 const CONTROL_API_BASE_URL = process.env.CONTROL_API_BASE_URL || ''
@@ -21,6 +22,10 @@ const CONTROL_API_BASE_URL = process.env.CONTROL_API_BASE_URL || ''
 export const runtime = 'nodejs'
 
 export async function GET(request) {
+  if (!isTrustedControlRequest(request)) {
+    return NextResponse.json({ ok: false, error: 'Nao autorizado' }, { status: 401 })
+  }
+
   try {
     if (CONTROL_API_MODE === 'proxy') {
       return proxyControlRequest(request, '/api/control/router/online', 'GET')

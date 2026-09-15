@@ -34,6 +34,12 @@ const RADIUS_ALLOWED_CLIENTS = String(process.env.RADIUS_ALLOWED_CLIENTS || '')
   .filter(Boolean)
 const RADIUS_MAX_PACKET_BYTES = Number(process.env.RADIUS_MAX_PACKET_BYTES || 4096)
 const RADIUS_RATE_LIMIT_PER_MINUTE = Number(process.env.RADIUS_RATE_LIMIT_PER_MINUTE || 120)
+const RADIUS_SESSION_TIMEOUT_SECONDS = Number(
+  process.env.RADIUS_SESSION_TIMEOUT_SECONDS || 1200
+)
+const RADIUS_IDLE_TIMEOUT_SECONDS = Number(
+  process.env.RADIUS_IDLE_TIMEOUT_SECONDS || 300
+)
 const radiusRateBuckets = new Map()
 
 if (!RADIUS_SECRET) {
@@ -44,10 +50,32 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
   throw new Error('SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não definidos no .env')
 }
 
+if (RADIUS_ALLOWED_CLIENTS.length === 0) {
+  throw new Error(
+    'RADIUS_ALLOWED_CLIENTS deve listar os IPs dos NAS/MikroTik autorizados'
+  )
+}
+
+if (
+  !Number.isInteger(RADIUS_SESSION_TIMEOUT_SECONDS) ||
+  RADIUS_SESSION_TIMEOUT_SECONDS < 60 ||
+  RADIUS_SESSION_TIMEOUT_SECONDS > 86_400
+) {
+  throw new Error('RADIUS_SESSION_TIMEOUT_SECONDS deve estar entre 60 e 86400')
+}
+
+if (
+  !Number.isInteger(RADIUS_IDLE_TIMEOUT_SECONDS) ||
+  RADIUS_IDLE_TIMEOUT_SECONDS < 30 ||
+  RADIUS_IDLE_TIMEOUT_SECONDS > 3_600
+) {
+  throw new Error('RADIUS_IDLE_TIMEOUT_SECONDS deve estar entre 30 e 3600')
+}
+
 console.log(`RADIUS rodando com secret configurado (len=${RADIUS_SECRET.length})`)
 console.log(
   'RADIUS allowed clients:',
-  RADIUS_ALLOWED_CLIENTS.length ? RADIUS_ALLOWED_CLIENTS.join(', ') : 'qualquer origem UDP'
+  RADIUS_ALLOWED_CLIENTS.join(', ')
 )
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
@@ -72,7 +100,6 @@ function sendRadiusResponse(packet, code, rinfo, extraAttributes = []) {
 }
 
 function isAllowedRadiusClient(address = '') {
-  if (RADIUS_ALLOWED_CLIENTS.length === 0) return true
   return RADIUS_ALLOWED_CLIENTS.includes(address)
 }
 
@@ -177,7 +204,7 @@ server.on('message', async (msg, rinfo) => {
 
     const leadMac = normalizeMac(lead.mac_address || '')
 
-    if (leadMac && incomingMac && leadMac !== incomingMac) {
+    if (!leadMac || !incomingMac || leadMac !== incomingMac) {
       console.log(`Access-Reject: MAC divergente. Esperado ${leadMac}, recebido ${incomingMac}`)
       sendRadiusResponse(packet, 'Access-Reject', rinfo, [
         ['Reply-Message', 'Dispositivo não autorizado'],
@@ -203,8 +230,8 @@ server.on('message', async (msg, rinfo) => {
 
     sendRadiusResponse(packet, 'Access-Accept', rinfo, [
       ['Reply-Message', 'Acesso liberado'],
-      ['Session-Timeout', 1200],
-      ['Idle-Timeout', 300],
+      ['Session-Timeout', RADIUS_SESSION_TIMEOUT_SECONDS],
+      ['Idle-Timeout', RADIUS_IDLE_TIMEOUT_SECONDS],
     ])
   } catch (error) {
     console.error('Erro inesperado no RADIUS:', error)

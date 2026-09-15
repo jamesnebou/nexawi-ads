@@ -5,7 +5,12 @@
   updateAsaasCustomer,
 } from '@/lib/asaas'
 import { supabaseAdmin } from '@/lib/supabase-admin'
-import { createEfiPixCharge, getEfiPixCharge, isEfiPixPaidStatus } from '@/lib/efi-pix'
+import {
+  createEfiPixCharge,
+  getEfiPixCharge,
+  getEfiPixConfig,
+  isEfiPixPaidStatus,
+} from '@/lib/efi-pix'
 
 export function cleanPhone(value = '') {
   return String(value || '').replace(/\D/g, '')
@@ -30,10 +35,6 @@ function getWifiPixGateway() {
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10)
-}
-
-function addMinutes(date, minutes) {
-  return new Date(date.getTime() + Number(minutes || 0) * 60 * 1000)
 }
 
 export function wifiPixExternalReference(vendaId) {
@@ -303,7 +304,6 @@ export async function markWifiPixPaymentStatus(payment = {}) {
   if (paid && !['autorizado', 'pago'].includes(venda.status)) {
     update.status = 'pago'
     update.pago_em = now.toISOString()
-    update.expira_em = addMinutes(now, venda.duracao_minutos).toISOString()
   } else if (cancelled) {
     update.status = 'cancelado'
   }
@@ -344,7 +344,12 @@ async function persistEfiVendaFields(vendaId, update = {}) {
   return data
 }
 
-export async function markWifiPixEfiPaymentStatus({ txid = '', endToEndId = '', payload = {} } = {}) {
+export async function markWifiPixEfiPaymentStatus({
+  txid = '',
+  endToEndId = '',
+  payload = {},
+  verifiedCharge = null,
+} = {}) {
   const cleanTxid = String(txid || '').trim()
   const cleanEndToEndId = String(endToEndId || '').trim()
 
@@ -380,11 +385,63 @@ export async function markWifiPixEfiPaymentStatus({ txid = '', endToEndId = '', 
 
   if (!venda?.id) return { matched: false, reason: 'wifi_pix_venda_not_found', txid: cleanTxid, endToEndId: cleanEndToEndId }
 
+  const duplicatePaidEvent =
+    Boolean(cleanEndToEndId) &&
+    String(venda.efi_end_to_end_id || '').trim() === cleanEndToEndId &&
+    ['pago', 'autorizado'].includes(venda.status)
+
+  if (duplicatePaidEvent) {
+    return {
+      matched: true,
+      venda,
+      paid: true,
+      duplicate: true,
+      txid: cleanTxid || venda.efi_txid || venda.asaas_payment_id || null,
+      endToEndId: cleanEndToEndId,
+    }
+  }
+
+  const charge = verifiedCharge || await getEfiPixCharge(cleanTxid)
+  const paid = isEfiPixPaidStatus(charge?.status)
+  const expectedAmount = Number(venda.valor || 0)
+  const chargeAmount = Number(String(charge?.valor?.original || 0).replace(',', '.'))
+  const configuredPixKey = getEfiPixConfig().pixKey
+  const chargePixKey = String(charge?.chave || '').trim()
+  const chargePixItems = Array.isArray(charge?.pix) ? charge.pix : []
+
+  if (!paid) {
+    return {
+      matched: true,
+      venda,
+      paid: false,
+      txid: cleanTxid,
+      endToEndId: cleanEndToEndId,
+      charge,
+    }
+  }
+
+  if (!Number.isFinite(chargeAmount) || Math.abs(chargeAmount - expectedAmount) > 0.009) {
+    throw new Error('Valor confirmado pela Efi diverge da venda Wi-Fi no Pix.')
+  }
+
+  if (configuredPixKey && chargePixKey && configuredPixKey !== chargePixKey) {
+    throw new Error('Chave Pix confirmada pela Efi diverge da configuracao da NexaWi.')
+  }
+
+  if (
+    cleanEndToEndId &&
+    chargePixItems.length > 0 &&
+    !chargePixItems.some((item) => String(item?.endToEndId || '').trim() === cleanEndToEndId)
+  ) {
+    throw new Error('Identificador endToEndId nao pertence a cobranca consultada na Efi.')
+  }
+
   const now = new Date()
   const efiPayload = {
     ...(venda.asaas_payload || {}),
     provider: 'efi',
     webhook: payload || {},
+    charge,
     paidAt: now.toISOString(),
   }
   const update = {
@@ -392,7 +449,6 @@ export async function markWifiPixEfiPaymentStatus({ txid = '', endToEndId = '', 
     asaas_payload: efiPayload,
     status: ['autorizado', 'pago'].includes(venda.status) ? venda.status : 'pago',
     pago_em: venda.pago_em || now.toISOString(),
-    expira_em: venda.expira_em || addMinutes(now, venda.duracao_minutos).toISOString(),
     updated_at: now.toISOString(),
   }
 
@@ -449,6 +505,7 @@ export async function refreshWifiPixEfiPaymentStatus(venda = {}) {
   const result = await markWifiPixEfiPaymentStatus({
     txid,
     payload: { charge },
+    verifiedCharge: charge,
   })
 
   return { venda: result.venda || venda, refreshed: true, paid: Boolean(result.paid), charge }

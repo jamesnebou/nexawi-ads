@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { normalizeQrTargetUrl } from "@/lib/qr-security";
 
 function hashIp(ip: string) {
-  const salt = process.env.QR_HASH_SALT || "nexawi";
+  const salt = String(process.env.QR_HASH_SALT || "").trim();
+  if (!salt) return crypto.randomBytes(32).toString("hex");
   return crypto.createHash("sha256").update(`${ip}:${salt}`).digest("hex");
 }
 
@@ -43,9 +45,12 @@ export async function GET(
     return NextResponse.redirect(new URL(`/q/${slug}/wifi`, request.url));
   }
 
-  if (!qrCode.target_url) {
+  const targetUrl =
+    qrCode.type === "link" ? normalizeQrTargetUrl(qrCode.target_url) : null;
+
+  if (!targetUrl) {
     return NextResponse.redirect(new URL("/qr/inativo", request.url));
   }
 
-  return NextResponse.redirect(new URL(qrCode.target_url, request.url));
+  return NextResponse.redirect(new URL(targetUrl, request.url));
 }

@@ -2,6 +2,7 @@ import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { checkRateLimit } from '@/lib/rate-limit'
+import { isTrustedControlRequest } from '@/lib/control-auth'
 import {
   ensureBypassBinding,
   ensureClientBandwidthQueue,
@@ -10,10 +11,13 @@ import {
 } from '@/lib/routeros-rest'
 import {
   resolveHotspotBySlug,
+  resolveRouterConfigForHotspot,
   resolveLeadForAuthorization,
   getLatestSession,
+  getSessionBySource,
   createPendingSession,
   markSessionAuthorized,
+  updateSessionRouterBinding,
   markSessionExpired,
   markSessionError,
   logRouterAction,
@@ -81,6 +85,17 @@ function resolveAuthorizationProfile(reason = '') {
     }
   }
 
+  if (reason === 'wifi_pix_paid') {
+    return {
+      sessionSecondsOverride: null,
+      uploadLimit: null,
+      downloadLimit: null,
+      skipLead: false,
+      skipAdValidation: true,
+      routerCommentPrefix: 'wifi_pix_paid',
+    }
+  }
+
   return {
     sessionSecondsOverride: null,
     uploadLimit: null,
@@ -89,6 +104,74 @@ function resolveAuthorizationProfile(reason = '') {
     skipAdValidation: false,
     routerCommentPrefix: 'auth_session',
   }
+}
+
+async function validateWifiPixAuthorizationSource({
+  sourceEntityId,
+  hotspotId,
+  clientMac,
+  authorizationReason,
+}) {
+  if (!['wifi_pix_payment_window', 'wifi_pix_paid'].includes(authorizationReason)) {
+    return null
+  }
+
+  const vendaId = clean(sourceEntityId)
+
+  if (!vendaId) {
+    throw new Error('Venda de origem obrigatória para autorizar Wi-Fi no Pix.')
+  }
+
+  const { data: venda, error } = await supabaseAdmin
+    .from('wifi_pix_vendas')
+    .select(`
+      id,
+      hotspot_id,
+      mac_address,
+      status,
+      duracao_minutos,
+      velocidade_download,
+      velocidade_upload,
+      expira_em,
+      created_at
+    `)
+    .eq('id', vendaId)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!venda) throw new Error('Venda de origem não encontrada.')
+  if (venda.hotspot_id !== hotspotId) throw new Error('Venda não pertence a este hotspot.')
+
+  const vendaMac = normalizeMac(venda.mac_address || '')
+
+  if (!vendaMac || vendaMac !== clientMac) {
+    throw new Error('Venda não pertence a este dispositivo.')
+  }
+
+  if (authorizationReason === 'wifi_pix_payment_window') {
+    const createdAt = new Date(venda.created_at).getTime()
+    const maxAgeMs = 30 * 60 * 1000
+
+    if (venda.status !== 'pendente') {
+      throw new Error('A janela de pagamento só pode ser aberta para venda pendente.')
+    }
+
+    if (!Number.isFinite(createdAt) || Date.now() - createdAt > maxAgeMs) {
+      throw new Error('A janela desta cobrança expirou. Gere um novo pagamento.')
+    }
+  }
+
+  if (authorizationReason === 'wifi_pix_paid') {
+    if (!['pago', 'autorizado'].includes(venda.status)) {
+      throw new Error('Pagamento ainda não confirmado.')
+    }
+
+    if (venda.expira_em && new Date(venda.expira_em).getTime() <= Date.now()) {
+      throw new Error('O acesso desta venda já expirou.')
+    }
+  }
+
+  return venda
 }
 
 function privateClientIp(value = '') {
@@ -166,20 +249,38 @@ export async function POST(request) {
     return NextResponse.json({ ok: false, error: 'Muitas tentativas de liberacao. Aguarde um instante.' }, { status: 429 })
   }
 
-  if (CONTROL_API_MODE === 'proxy') {
-  return proxyControlRequest(request, '/api/control/session/authorize', 'POST')
-}
+  let body
 
   try {
-    const body = await request.json()
+    body = await request.clone().json()
+  } catch {
+    return NextResponse.json({ ok: false, error: 'Payload JSON invalido' }, { status: 400 })
+  }
+
+  const requestedAuthorizationReason = clean(
+    body.authorizationReason || body.authorization_reason
+  )
+
+  if (
+    ['wifi_pix_payment_window', 'wifi_pix_paid'].includes(requestedAuthorizationReason) &&
+    !isTrustedControlRequest(request)
+  ) {
+    return NextResponse.json({ ok: false, error: 'Nao autorizado' }, { status: 401 })
+  }
+
+  if (CONTROL_API_MODE === 'proxy') {
+    return proxyControlRequest(request, '/api/control/session/authorize', 'POST')
+  }
+
+  try {
     const hotspotSlug = String(body.hotspotSlug || '').trim()
     const leadId = String(body.leadId || '').trim()
     const clientMac = normalizeMac(body.clientMac || '')
     const clientIp = String(body.clientIp || '').trim()
     const adSessionId = clean(body.adSessionId || body.ad_session_id)
-    const authorizationReason = clean(body.authorizationReason || body.authorization_reason)
+    const authorizationReason = requestedAuthorizationReason
     const authorizationProfile = resolveAuthorizationProfile(authorizationReason)
-    const sessionSecondsOverride = authorizationProfile.sessionSecondsOverride
+    const sourceEntityId = clean(body.sourceEntityId || body.source_entity_id)
 
     if (!hotspotSlug) {
       return NextResponse.json({ ok: false, error: 'hotspotSlug é obrigatório' }, { status: 400 })
@@ -199,6 +300,54 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Hotspot não encontrado' }, { status: 404 })
     }
 
+    const routerConfig = await resolveRouterConfigForHotspot(hotspot)
+
+    const hostBeforeAuthorization = await findHotspotHostByMac({
+      macAddress: clientMac,
+      server: routerConfig.hotspotServer,
+      routerConfig,
+    })
+    const expectedClientIp = privateClientIp(clientIp)
+
+    if (!hostBeforeAuthorization?.address) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'Dispositivo nao encontrado no hotspot. Reconecte ao Wi-Fi e tente novamente.',
+        },
+        { status: 409 }
+      )
+    }
+
+    const wifiPixVenda = await validateWifiPixAuthorizationSource({
+      sourceEntityId,
+      hotspotId: hotspot.id,
+      clientMac,
+      authorizationReason,
+    })
+    const paidRemainingSeconds = wifiPixVenda?.expira_em
+      ? Math.max(0, Math.ceil((new Date(wifiPixVenda.expira_em).getTime() - Date.now()) / 1000))
+      : Number(wifiPixVenda?.duracao_minutos || 0) * 60
+    const sessionSecondsOverride = authorizationReason === 'wifi_pix_paid'
+      ? paidRemainingSeconds
+      : authorizationProfile.sessionSecondsOverride
+    const uploadLimit = authorizationReason === 'wifi_pix_paid'
+      ? cleanBandwidthLimit(wifiPixVenda?.velocidade_upload)
+      : authorizationProfile.uploadLimit
+    const downloadLimit = authorizationReason === 'wifi_pix_paid'
+      ? cleanBandwidthLimit(wifiPixVenda?.velocidade_download)
+      : authorizationProfile.downloadLimit
+
+    if (expectedClientIp && hostBeforeAuthorization.address !== expectedClientIp) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'IP e MAC nao correspondem ao mesmo dispositivo no hotspot.',
+        },
+        { status: 409 }
+      )
+    }
+
     const lead = authorizationProfile.skipLead
       ? null
       : await resolveLeadForAuthorization({
@@ -212,10 +361,34 @@ export async function POST(request) {
       return NextResponse.json({ ok: false, error: 'Lead nao encontrado para este hotspot' }, { status: 404 })
     }
 
-    const latestSession = await getLatestSession({
-      hotspotId: hotspot.id,
-      clientMac,
-    })
+    const sourceSession = sourceEntityId
+      ? await getSessionBySource({
+          hotspotId: hotspot.id,
+          clientMac,
+          authorizationReason,
+          sourceEntityId,
+        })
+      : null
+    const latestSession = sourceEntityId
+      ? sourceSession
+      : await getLatestSession({
+          hotspotId: hotspot.id,
+          clientMac,
+        })
+
+    if (
+      authorizationReason === 'wifi_pix_payment_window' &&
+      sourceSession &&
+      !['pending', 'authorized'].includes(sourceSession.session_state)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: 'A janela temporária desta cobrança já foi utilizada. Gere um novo pagamento.',
+        },
+        { status: 409 }
+      )
+    }
 
     if (latestSession) {
       const status = computeStatusFromSession(latestSession)
@@ -234,88 +407,80 @@ export async function POST(request) {
           })
         }
 
-  try {
-    await logRouterAction({
-      authSessionId: latestSession.id,
-      action: 'reauthorize_bypass',
-      status: 'success',
-      requestPayload: {
-        hotspotSlug,
-        leadId: lead?.id || null,
-        clientMac,
-        clientIp,
-        reason: 'session_already_authorized_reensure_routeros',
-        authorizationReason: authorizationReason || null,
-      },
-    })
+        try {
+          await logRouterAction({
+            authSessionId: latestSession.id,
+            action: 'reauthorize_bypass',
+            status: 'success',
+            requestPayload: {
+              hotspotSlug,
+              leadId: lead?.id || null,
+              clientMac,
+              clientIp,
+              reason: 'session_already_authorized_reensure_routeros',
+              authorizationReason: authorizationReason || null,
+            },
+          })
 
+          const bindingAddress =
+            hostBeforeAuthorization?.address || privateClientIp(clientIp)
 
-    const hostBeforeAuthorization = await findHotspotHostByMac({
-  macAddress: clientMac,
-})
+          const binding = await ensureBypassBinding({
+            macAddress: clientMac,
+            address: bindingAddress,
+            comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
+            server: routerConfig.hotspotServer,
+            routerConfig,
+          })
 
-    const bindingAddress = hostBeforeAuthorization?.address || privateClientIp(clientIp)
+          const bandwidthQueue = await ensureClientBandwidthQueue({
+            macAddress: clientMac,
+            targetAddress: hostBeforeAuthorization?.address || '',
+            comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
+            uploadLimit,
+            downloadLimit,
+            routerConfig,
+          })
 
-    const binding = await ensureBypassBinding({
-      macAddress: clientMac,
-      address: bindingAddress,
-      comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
-    })
+          const refreshedSession = await updateSessionRouterBinding(
+            latestSession.id,
+            binding?.['.id'] || null
+          )
 
+          await logRouterAction({
+            authSessionId: latestSession.id,
+            action: 'reauthorize_bypass_result',
+            status: 'success',
+            responsePayload: binding,
+          })
 
-    const bandwidthQueue = await ensureClientBandwidthQueue({
-  macAddress: clientMac,
-  targetAddress: hostBeforeAuthorization?.address || '',
-  comment: `${authorizationProfile.routerCommentPrefix}:${latestSession.id}`,
-  uploadLimit: authorizationProfile.uploadLimit,
-  downloadLimit: authorizationProfile.downloadLimit,
-})
+          return NextResponse.json({
+            ok: true,
+            alreadyAuthorized: true,
+            reauthorized: true,
+            session: refreshedSession,
+            binding,
+            bandwidthQueue,
+            hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
+            status,
+          })
+        } catch (routerError) {
+          await logRouterAction({
+            authSessionId: latestSession.id,
+            action: 'reauthorize_bypass_result',
+            status: 'error',
+            errorMessage: routerError.message || 'Falha ao reautorizar no RouterOS',
+          })
 
-    const authorizedSession = await markSessionAuthorized(
-      latestSession.id,
-      binding?.['.id'] || null,
-      { sessionSecondsOverride }
-    )
-
-    await logRouterAction({
-      authSessionId: latestSession.id,
-      action: 'reauthorize_bypass_result',
-      status: 'success',
-      responsePayload: binding,
-    })
-
-    return NextResponse.json({
-  ok: true,
-  alreadyAuthorized: true,
-  reauthorized: true,
-  session: authorizedSession,
-  binding,
-  bandwidthQueue,
-  hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
-  status,
-})
-  } catch (routerError) {
-    await markSessionError(
-      latestSession.id,
-      routerError.message || 'Falha ao reautorizar no RouterOS'
-    )
-
-    await logRouterAction({
-      authSessionId: latestSession.id,
-      action: 'reauthorize_bypass_result',
-      status: 'error',
-      errorMessage: routerError.message || 'Falha ao reautorizar no RouterOS',
-    })
-
-    return NextResponse.json(
-      {
-        ok: false,
-        error: routerError.message || 'Falha ao reautorizar no MikroTik',
-      },
-      { status: 500 }
-    )
-  }
-}
+          return NextResponse.json(
+            {
+              ok: false,
+              error: routerError.message || 'Falha ao reautorizar no MikroTik',
+            },
+            { status: 502 }
+          )
+        }
+      }
 
       if (status.state === 'cooldown') {
         return NextResponse.json(
@@ -330,6 +495,19 @@ export async function POST(request) {
 
       if (status.state === 'authorized_expired' || status.state === 'cooldown_expired') {
         await markSessionExpired(latestSession.id)
+
+        if (
+          authorizationReason === 'wifi_pix_payment_window' &&
+          sourceSession?.id === latestSession.id
+        ) {
+          return NextResponse.json(
+            {
+              ok: false,
+              error: 'A janela temporária desta cobrança já expirou e não pode ser renovada.',
+            },
+            { status: 409 }
+          )
+        }
       }
     }
 
@@ -345,12 +523,15 @@ export async function POST(request) {
       }
     }
 
-    const pendingSession = await createPendingSession({
+    const pendingSession = sourceSession || await createPendingSession({
       hotspotId: hotspot.id,
       hotspotSlug,
       leadId: lead?.id || null,
       clientMac,
       clientIp,
+      authorizationReason: authorizationReason || null,
+      sourceEntityId: sourceEntityId || null,
+      routerId: routerConfig.routerId,
     })
 
     try {
@@ -367,26 +548,24 @@ export async function POST(request) {
         },
       })
 
-
-      const hostBeforeAuthorization = await findHotspotHostByMac({
-  macAddress: clientMac,
-})
-
       const bindingAddress = hostBeforeAuthorization?.address || privateClientIp(clientIp)
 
       const binding = await ensureBypassBinding({
         macAddress: clientMac,
         address: bindingAddress,
         comment: `${authorizationProfile.routerCommentPrefix}:${pendingSession.id}`,
+        server: routerConfig.hotspotServer,
+        routerConfig,
       })
 
       const bandwidthQueue = await ensureClientBandwidthQueue({
-  macAddress: clientMac,
-  targetAddress: hostBeforeAuthorization?.address || '',
-  comment: `${authorizationProfile.routerCommentPrefix}:${pendingSession.id}`,
-  uploadLimit: authorizationProfile.uploadLimit,
-  downloadLimit: authorizationProfile.downloadLimit,
-})
+        macAddress: clientMac,
+        targetAddress: hostBeforeAuthorization?.address || '',
+        comment: `${authorizationProfile.routerCommentPrefix}:${pendingSession.id}`,
+        uploadLimit,
+        downloadLimit,
+        routerConfig,
+      })
 
       const authorizedSession = await markSessionAuthorized(
         pendingSession.id,
@@ -402,12 +581,12 @@ export async function POST(request) {
       })
 
       return NextResponse.json({
-  ok: true,
-  session: authorizedSession,
-  binding,
-  bandwidthQueue,
-  hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
-})
+        ok: true,
+        session: authorizedSession,
+        binding,
+        bandwidthQueue,
+        hostCleanup: { skipped: true, reason: 'host_preserved_after_bypass' },
+      })
     } catch (routerError) {
       await markSessionError(pendingSession.id, routerError.message || 'Falha no RouterOS')
 

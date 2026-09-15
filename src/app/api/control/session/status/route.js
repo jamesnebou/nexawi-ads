@@ -1,6 +1,7 @@
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
 import { normalizeMac } from '@/lib/routeros-rest'
+import { checkRateLimit } from '@/lib/rate-limit'
 import {
   resolveHotspotBySlug,
   getLatestSession,
@@ -9,10 +10,24 @@ import {
 } from '@/lib/session-control'
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
+const RATE_LIMIT = {
+  keyPrefix: 'control:session:status',
+  limit: 60,
+  windowMs: 60_000,
+}
 
 export const runtime = 'nodejs'
 
 export async function POST(request) {
+  const rate = checkRateLimit(request, RATE_LIMIT)
+
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { ok: false, error: 'Muitas consultas de sessao. Aguarde um instante.' },
+      { status: 429 }
+    )
+  }
+
   if (CONTROL_API_MODE === 'proxy') {
     return proxyControlRequest(request, '/api/control/session/status', 'POST')
   }
@@ -62,7 +77,6 @@ export async function POST(request) {
 
     return NextResponse.json({
       ok: true,
-      session: latestSession,
       status,
     })
   } catch (error) {

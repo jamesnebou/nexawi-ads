@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server'
 import { countOnlineHotspotClients } from '@/lib/routeros-rest'
+import { getControlRequestHeaders } from '@/lib/control-auth'
 
 const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
 const CONTROL_API_BASE_URL = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
@@ -26,6 +27,7 @@ async function buscarOnlineViaControlApi() {
       cache: 'no-store',
       headers: {
         'Content-Type': 'application/json',
+        ...getControlRequestHeaders(),
       },
     })
 

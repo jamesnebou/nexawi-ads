@@ -21,7 +21,7 @@ function secureCompare(a = '', b = '') {
 
 function isAuthorized(request) {
   const configuredToken = process.env.EFI_WEBHOOK_TOKEN || ''
-  if (!configuredToken) return true
+  if (!configuredToken) return false
 
   const received =
     request.headers.get('x-efi-webhook-token') ||
@@ -130,7 +130,10 @@ export async function handleEfiWebhook(request) {
         endToEndId: pix.endToEndId,
         payload: pix,
       })
-      await auditEfiPixEvent(request, result, body)
+
+      if (!result.duplicate) {
+        await auditEfiPixEvent(request, result, body)
+      }
 
       if (!result.matched) {
         const txid = result.txid || pix.txid || ''
@@ -153,6 +156,7 @@ export async function handleEfiWebhook(request) {
       results.push({
         matched: Boolean(result.matched),
         paid: Boolean(result.paid),
+        duplicate: Boolean(result.duplicate),
         txid: result.txid || pix.txid || null,
         vendaId: result.venda?.id || null,
       })

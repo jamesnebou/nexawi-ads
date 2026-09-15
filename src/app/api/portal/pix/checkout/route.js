@@ -3,6 +3,8 @@ import { supabaseAdmin } from '@/lib/supabase-admin'
 import { createWifiPixCheckout } from '@/lib/wifi-pix'
 import { checkRateLimit } from '@/lib/rate-limit'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { getControlRequestHeaders } from '@/lib/control-auth'
+import { fetchWithTimeout, getControlRequestTimeoutMs } from '@/lib/fetch-timeout'
 
 export const runtime = 'nodejs'
 
@@ -36,10 +38,11 @@ async function grantTemporaryPaymentWindow(request, {
 
   try {
     const origin = new URL(request.url).origin
-    const response = await fetch(`${origin}/api/control/session/authorize`, {
+    const response = await fetchWithTimeout(`${origin}/api/control/session/authorize`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...getControlRequestHeaders(),
       },
       cache: 'no-store',
       body: JSON.stringify({
@@ -49,8 +52,9 @@ async function grantTemporaryPaymentWindow(request, {
         clientIp: clean(ipAddress),
         adSessionId: null,
         authorizationReason: 'wifi_pix_payment_window',
+        sourceEntityId: vendaId,
       }),
-    })
+    }, getControlRequestTimeoutMs())
 
     const data = await response.json().catch(() => ({}))
 

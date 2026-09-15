@@ -30,6 +30,14 @@ function getRouterConfig(routerConfig = {}) {
   return { baseUrl, username, password }
 }
 
+function getRouterRequestTimeoutMs() {
+  const value = Number(process.env.ROUTEROS_REQUEST_TIMEOUT_MS || 8_000)
+
+  if (!Number.isFinite(value)) return 8_000
+
+  return Math.max(1_000, Math.min(30_000, Math.floor(value)))
+}
+
 async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) {
   const { baseUrl, username, password } = getRouterConfig(routerConfig)
 
@@ -44,6 +52,7 @@ async function routerosFetch(path, { method = 'GET', body, routerConfig } = {}) 
       },
       body: body ? JSON.stringify(body) : undefined,
       cache: 'no-store',
+      signal: AbortSignal.timeout(getRouterRequestTimeoutMs()),
     })
   } catch (error) {
     throw new Error(`RouterOS REST ${method} ${path} sem conexao: ${baseUrl}: ${error.message || 'fetch failed'}`)
@@ -288,8 +297,16 @@ function applySpeedTestBytes(url = '', bytes = 1000000000) {
     const parsedUrl = new URL(cleanUrl)
     if (parsedUrl.searchParams.has('bytes')) {
       parsedUrl.searchParams.set('bytes', String(bytes))
-      return parsedUrl.toString()
     }
+
+    if (
+      parsedUrl.pathname === '/api/speedtest/download' &&
+      process.env.NEXAWI_SPEEDTEST_TOKEN
+    ) {
+      parsedUrl.searchParams.set('token', process.env.NEXAWI_SPEEDTEST_TOKEN)
+    }
+
+    return parsedUrl.toString()
   } catch {
     return cleanUrl
   }
@@ -318,7 +335,7 @@ function buildSpeedTestUrls(downloadUrl = '', bytes = 1000000000) {
       : 'https://www.nexawi.com.br'
 
   return [
-    `${appUrl}/api/speedtest/download?bytes=${size}`,
+    applySpeedTestBytes(`${appUrl}/api/speedtest/download?bytes=${size}`, size),
     `http://speedtest.tele2.net/${size >= 1000000000 ? '1GB' : '100MB'}.zip`,
     `http://ipv4.download.thinkbroadband.com/${size >= 1000000000 ? '1GB' : '100MB'}.zip`,
     `https://speed.cloudflare.com/__down?bytes=${size}`,

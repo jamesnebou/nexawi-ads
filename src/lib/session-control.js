@@ -34,7 +34,7 @@ async function getPortalRuntimeConfig() {
 export async function resolveHotspotBySlug(slug) {
   let result = await supabaseAdmin
     .from('hotspots')
-    .select('id, nome, slug')
+    .select('id, nome, slug, router_id')
     .eq('slug', slug)
     .maybeSingle()
 
@@ -42,13 +42,39 @@ export async function resolveHotspotBySlug(slug) {
 
   result = await supabaseAdmin
     .from('hotspots')
-    .select('id, nome, slug')
+    .select('id, nome, slug, router_id')
     .eq('nome', slug)
     .maybeSingle()
 
   if (result.data) return result.data
 
   return null
+}
+
+export async function resolveRouterConfigForHotspot(hotspot) {
+  if (!hotspot?.router_id) {
+    throw new Error('Hotspot sem MikroTik vinculado.')
+  }
+
+  const { data: router, error } = await supabaseAdmin
+    .from('network_routers')
+    .select('id, base_url, username, password, hotspot_server, status')
+    .eq('id', hotspot.router_id)
+    .maybeSingle()
+
+  if (error) throw error
+  if (!router) throw new Error('MikroTik vinculado ao hotspot não foi encontrado.')
+  if (router.status && router.status !== 'Ativo') {
+    throw new Error('MikroTik vinculado ao hotspot está inativo.')
+  }
+
+  return {
+    routerId: router.id,
+    baseUrl: router.base_url,
+    username: router.username,
+    password: router.password,
+    hotspotServer: router.hotspot_server || 'hotspot1',
+  }
 }
 
 export async function resolveLeadForAuthorization({ leadId, hotspotId, clientMac, clientIp }) {
@@ -101,7 +127,39 @@ export async function getLatestSession({ hotspotId, clientMac }) {
   return data || null
 }
 
-export async function createPendingSession({ hotspotId, hotspotSlug, leadId, clientMac, clientIp }) {
+export async function getSessionBySource({
+  hotspotId,
+  clientMac,
+  authorizationReason,
+  sourceEntityId,
+}) {
+  if (!authorizationReason || !sourceEntityId) return null
+
+  const { data, error } = await supabaseAdmin
+    .from('auth_sessions')
+    .select('*')
+    .eq('hotspot_id', hotspotId)
+    .eq('client_mac', normalizeMac(clientMac))
+    .eq('authorization_reason', authorizationReason)
+    .eq('source_entity_id', sourceEntityId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data || null
+}
+
+export async function createPendingSession({
+  hotspotId,
+  hotspotSlug,
+  leadId,
+  clientMac,
+  clientIp,
+  authorizationReason = null,
+  sourceEntityId = null,
+  routerId = null,
+}) {
   const { data, error } = await supabaseAdmin
     .from('auth_sessions')
     .insert({
@@ -111,9 +169,27 @@ export async function createPendingSession({ hotspotId, hotspotSlug, leadId, cli
       client_mac: normalizeMac(clientMac),
       client_ip: clientIp || null,
       session_state: 'pending',
+      authorization_reason: authorizationReason || null,
+      source_entity_id: sourceEntityId || null,
+      router_id: routerId || null,
     })
     .select('*')
     .single()
+
+  if (
+    error?.code === '23505' &&
+    authorizationReason &&
+    sourceEntityId
+  ) {
+    const existingSession = await getSessionBySource({
+      hotspotId,
+      clientMac,
+      authorizationReason,
+      sourceEntityId,
+    })
+
+    if (existingSession) return existingSession
+  }
 
   if (error) throw error
   return data
@@ -123,7 +199,7 @@ export async function markSessionAuthorized(sessionId, routerBindingId = null, o
   const runtimeConfig = await getPortalRuntimeConfig()
   const overrideSeconds = Number(options.sessionSecondsOverride)
   const sessionSeconds =
-    Number.isFinite(overrideSeconds) && overrideSeconds >= 60 && overrideSeconds <= 24 * 60 * 60
+    Number.isFinite(overrideSeconds) && overrideSeconds >= 1 && overrideSeconds <= 24 * 60 * 60
       ? Math.floor(overrideSeconds)
       : runtimeConfig.sessionSeconds
   const now = new Date()
@@ -137,6 +213,31 @@ export async function markSessionAuthorized(sessionId, routerBindingId = null, o
       expires_at: expiresAt,
       cooldown_until: null,
       revoked_at: null,
+      router_binding_id: routerBindingId,
+      error_message: null,
+    })
+    .eq('id', sessionId)
+    .neq('session_state', 'authorized')
+    .select('*')
+    .maybeSingle()
+
+  if (error) throw error
+  if (data) return data
+
+  const { data: existingSession, error: existingError } = await supabaseAdmin
+    .from('auth_sessions')
+    .select('*')
+    .eq('id', sessionId)
+    .single()
+
+  if (existingError) throw existingError
+  return existingSession
+}
+
+export async function updateSessionRouterBinding(sessionId, routerBindingId = null) {
+  const { data, error } = await supabaseAdmin
+    .from('auth_sessions')
+    .update({
       router_binding_id: routerBindingId,
       error_message: null,
     })
@@ -191,11 +292,12 @@ export async function markSessionError(sessionId, message) {
       error_message: message,
     })
     .eq('id', sessionId)
+    .neq('session_state', 'authorized')
     .select('*')
-    .single()
+    .maybeSingle()
 
   if (error) throw error
-  return data
+  return data || null
 }
 
 export async function logRouterAction({

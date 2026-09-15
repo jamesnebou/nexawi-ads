@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { fetchWithTimeout, getControlRequestTimeoutMs } from './fetch-timeout'
 
 export async function proxyControlRequest(request, targetPath, method = 'POST') {
   const baseUrl = (process.env.CONTROL_API_BASE_URL || '').replace(/\/$/, '')
@@ -26,12 +27,12 @@ export async function proxyControlRequest(request, targetPath, method = 'POST') 
   if (authorization) headers.Authorization = authorization
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method,
       headers,
       body,
       cache: 'no-store',
-    })
+    }, getControlRequestTimeoutMs())
 
     const text = await response.text()
 

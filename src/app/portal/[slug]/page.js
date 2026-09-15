@@ -44,50 +44,14 @@ const ETAPAS = {
 }
 
 function normalizeMac(value = '') {
-  return String(value || '')
+  const normalized = String(value || '')
     .trim()
     .toUpperCase()
     .replace(/-/g, ':')
-}
 
-function isMacLike(value = '') {
-  return /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(normalizeMac(value))
-}
-
-function gerarMacLocalDeNavegador() {
-  const bytes = new Uint8Array(6)
-
-  if (typeof window !== 'undefined' && window.crypto?.getRandomValues) {
-    window.crypto.getRandomValues(bytes)
-  } else {
-    for (let i = 0; i < bytes.length; i += 1) {
-      bytes[i] = Math.floor(Math.random() * 256)
-    }
-  }
-
-  bytes[0] = 0x02
-
-  return Array.from(bytes)
-    .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
-    .join(':')
-}
-
-function getMacLocalDeNavegador(slug = '') {
-  if (typeof window === 'undefined') return ''
-
-  const key = `nexawi_portal_client_mac:${String(slug || 'default').trim().toLowerCase()}`
-
-  try {
-    const existente = normalizeMac(window.localStorage.getItem(key) || '')
-
-    if (isMacLike(existente)) return existente
-
-    const criado = gerarMacLocalDeNavegador()
-    window.localStorage.setItem(key, criado)
-    return criado
-  } catch {
-    return gerarMacLocalDeNavegador()
-  }
+  return /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/.test(normalized)
+    ? normalized
+    : ''
 }
 
 
@@ -256,6 +220,7 @@ export default function Portal() {
   const [erroDetalhe, setErroDetalhe] = useState('')
   const [salvandoTelefoneRapido, setSalvandoTelefoneRapido] = useState(false)
   const [videoAnuncioPronto, setVideoAnuncioPronto] = useState(false)
+  const [videoAnuncioFalhou, setVideoAnuncioFalhou] = useState(false)
   const [erroVideoAnuncio, setErroVideoAnuncio] = useState('')
   const [wifiPixPlanos, setWifiPixPlanos] = useState([])
   const [wifiPixPlanoId, setWifiPixPlanoId] = useState('')
@@ -309,7 +274,7 @@ export default function Portal() {
       customMac ||
         macAddress ||
         macParam ||
-        (isLocalhost ? DEV_CLIENT_MAC : getMacLocalDeNavegador(slug))
+        (isLocalhost ? DEV_CLIENT_MAC : '')
     )
   }
 
@@ -627,7 +592,16 @@ export default function Portal() {
   async function iniciarVideoAnuncioComAudio() {
     const video = videoAnuncioRef.current
 
-    if (!video) return
+    if (videoAnuncioFalhou) {
+      setVideoAnuncioPronto(true)
+      return
+    }
+
+    if (!video) {
+      setVideoAnuncioFalhou(true)
+      setErroVideoAnuncio('O vídeo não pôde ser carregado. O anúncio continuará no modo de contingência.')
+      return
+    }
 
     try {
       setErroVideoAnuncio('')
@@ -887,26 +861,20 @@ leadIdRef.current = data.leadId
     const resolvedMac = getClientMac()
     const resolvedIp = getClientIp()
 
+    if (!resolvedMac) {
+      falhar(
+        'Identificação do dispositivo indisponível',
+        'O hotspot não informou o MAC do aparelho. Desative e ative o Wi-Fi para abrir o portal novamente.'
+      )
+      return
+    }
+
     setMacAddress(resolvedMac)
 
     if (ipParam || isLocalhost) {
       setIpAddress(resolvedIp)
     } else {
       setIpAddress('')
-
-      const controller = new AbortController()
-      const timer = setTimeout(() => controller.abort(), 1500)
-
-      fetch('https://api.ipify.org?format=json', {
-        cache: 'no-store',
-        signal: controller.signal,
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          if (isMounted) setIpAddress(data.ip || '')
-        })
-        .catch(() => {})
-        .finally(() => clearTimeout(timer))
     }
 
     const hotspotData = await carregarHotspotEAnuncios()
@@ -981,6 +949,7 @@ leadIdRef.current = data.leadId
 
     setContador(anuncioAtual.duracao_segundos || 15)
     setErroVideoAnuncio('')
+    setVideoAnuncioFalhou(false)
     setVideoAnuncioPronto(anuncioAtual.tipo_media !== 'video' || !anuncioAtual.media_url)
   }, [etapa, anuncioAtual])
 
@@ -1710,7 +1679,24 @@ leadIdRef.current = data.leadId
                   playsInline
                   loop
                   preload="auto"
+                  onError={() => {
+                    setVideoAnuncioFalhou(true)
+                    setErroVideoAnuncio(
+                      'O vídeo não pôde ser reproduzido neste aparelho. Toque para continuar com o anúncio.'
+                    )
+                  }}
                 />
+
+                {videoAnuncioFalhou ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#080808] px-8 text-center">
+                    <p className="text-2xl font-bold text-white">
+                      {anuncioAtual.titulo || 'Oferta especial'}
+                    </p>
+                    <p className="mt-3 max-w-sm text-sm leading-relaxed text-gray-300">
+                      {anuncioAtual.descricao || 'Confira esta oferta antes de liberar seu acesso ao Wi-Fi.'}
+                    </p>
+                  </div>
+                ) : null}
 
                 {!videoAnuncioPronto && (
                   <button

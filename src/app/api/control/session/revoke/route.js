@@ -1,8 +1,10 @@
 import { proxyControlRequest } from '@/lib/control-proxy'
 import { NextResponse } from 'next/server'
-import { removeBypassBindings, normalizeMac } from '@/lib/routeros-rest'
+import { cleanupClientAccess, normalizeMac } from '@/lib/routeros-rest'
+import { isTrustedControlRequest } from '@/lib/control-auth'
 import {
   resolveHotspotBySlug,
+  resolveRouterConfigForHotspot,
   getLatestSession,
   markSessionCooldown,
   logRouterAction,
@@ -13,9 +15,13 @@ const CONTROL_API_MODE = process.env.CONTROL_API_MODE || 'direct'
 export const runtime = 'nodejs'
 
 export async function POST(request) {
-if (CONTROL_API_MODE === 'proxy') {
-  return proxyControlRequest(request, '/api/control/session/revoke', 'POST')
-}
+  if (!isTrustedControlRequest(request)) {
+    return NextResponse.json({ ok: false, error: 'Nao autorizado' }, { status: 401 })
+  }
+
+  if (CONTROL_API_MODE === 'proxy') {
+    return proxyControlRequest(request, '/api/control/session/revoke', 'POST')
+  }
 
   try {
     const body = await request.json()
@@ -47,7 +53,12 @@ if (CONTROL_API_MODE === 'proxy') {
       })
     }
 
-    const result = await removeBypassBindings({ macAddress: clientMac })
+    const routerConfig = await resolveRouterConfigForHotspot(hotspot)
+    const result = await cleanupClientAccess({
+      macAddress: clientMac,
+      server: routerConfig.hotspotServer,
+      routerConfig,
+    })
     const cooledDownSession = await markSessionCooldown(latestSession.id)
 
     await logRouterAction({

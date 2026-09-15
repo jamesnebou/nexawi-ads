@@ -1,9 +1,22 @@
+import { timingSafeEqual } from 'node:crypto'
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const DEFAULT_BYTES = 1000000000
+const DEFAULT_BYTES = 100000000
 const MIN_BYTES = 1000000
-const MAX_BYTES = 2000000000
+const MAX_BYTES = 1000000000
+
+function isAuthorized(request) {
+  const expected = String(process.env.NEXAWI_SPEEDTEST_TOKEN || '').trim()
+  const received = String(new URL(request.url).searchParams.get('token') || '').trim()
+  const left = Buffer.from(received, 'utf8')
+  const right = Buffer.from(expected, 'utf8')
+
+  if (!left.length || left.length !== right.length) return false
+
+  return timingSafeEqual(left, right)
+}
 
 function clampBytes(value) {
   const bytes = Number(value || 0)
@@ -12,6 +25,10 @@ function clampBytes(value) {
 }
 
 export async function GET(request) {
+  if (!isAuthorized(request)) {
+    return Response.json({ ok: false, error: 'Nao autorizado' }, { status: 401 })
+  }
+
   const { searchParams } = new URL(request.url)
   const totalBytes = clampBytes(searchParams.get('bytes'))
   const chunkSize = 64 * 1024

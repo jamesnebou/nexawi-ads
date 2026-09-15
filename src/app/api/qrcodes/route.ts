@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { checkRateLimit } from "@/lib/rate-limit";
+import {
+  hasValidQrAdminKey,
+  normalizeQrTargetUrl,
+} from "@/lib/qr-security";
 
-function checkAdmin(request: NextRequest) {
-  const adminKey = request.headers.get("x-admin-key");
-  return adminKey && adminKey === process.env.QR_ADMIN_KEY;
+export const runtime = "nodejs";
+
+const RATE_LIMIT = {
+  keyPrefix: "admin:qrcodes",
+  limit: 120,
+  windowMs: 60_000,
+};
+
+const ALLOWED_TYPES = new Set(["link", "wifi"]);
+const ALLOWED_WIFI_SECURITY = new Set(["nopass", "WPA"]);
+
+function isRateLimited(request: NextRequest) {
+  return !checkRateLimit(request, RATE_LIMIT).allowed;
 }
 
 function slugify(value: string) {
@@ -17,7 +32,11 @@ function slugify(value: string) {
 }
 
 export async function GET(request: NextRequest) {
-  if (!checkAdmin(request)) {
+  if (isRateLimited(request)) {
+    return NextResponse.json({ error: "Muitas requisicoes." }, { status: 429 });
+  }
+
+  if (!hasValidQrAdminKey(request.headers)) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
@@ -43,7 +62,11 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!checkAdmin(request)) {
+    if (isRateLimited(request)) {
+      return NextResponse.json({ error: "Muitas requisicoes." }, { status: 429 });
+    }
+
+    if (!hasValidQrAdminKey(request.headers)) {
       return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
     }
 
@@ -57,10 +80,19 @@ export async function POST(request: NextRequest) {
     const wifiSecurity = String(body.wifi_security || "nopass").trim();
     const wifiPassword = String(body.wifi_password || "").trim();
     const wifiHidden = Boolean(body.wifi_hidden);
+    const normalizedTargetUrl =
+      type === "wifi" ? null : normalizeQrTargetUrl(targetUrl);
 
     if (!name) {
       return NextResponse.json(
         { error: "Nome é obrigatório." },
+        { status: 400 }
+      );
+    }
+
+    if (!ALLOWED_TYPES.has(type)) {
+      return NextResponse.json(
+        { error: "Tipo de QR Code invalido." },
         { status: 400 }
       );
     }
@@ -72,7 +104,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (type !== "wifi" && !targetUrl) {
+    if (type === "wifi" && !ALLOWED_WIFI_SECURITY.has(wifiSecurity)) {
+      return NextResponse.json(
+        { error: "Seguranca Wi-Fi invalida." },
+        { status: 400 }
+      );
+    }
+
+    if (type === "wifi" && wifiSecurity === "WPA" && !wifiPassword) {
+      return NextResponse.json(
+        { error: "Senha Wi-Fi obrigatoria para WPA." },
+        { status: 400 }
+      );
+    }
+
+    if (type !== "wifi" && !normalizedTargetUrl) {
       return NextResponse.json(
         { error: "Destino é obrigatório." },
         { status: 400 }
@@ -101,7 +147,7 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         type,
-        target_url: type === "wifi" ? null : targetUrl,
+        target_url: normalizedTargetUrl,
         wifi_ssid: type === "wifi" ? wifiSsid : null,
         wifi_security: type === "wifi" ? wifiSecurity : null,
         wifi_password:

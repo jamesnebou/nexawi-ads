@@ -1,3 +1,5 @@
+import { fetchWithTimeout, getExternalRequestTimeoutMs } from './fetch-timeout'
+
 function clean(value = '', maxLength = 1000) {
   return String(value || '').trim().slice(0, maxLength)
 }
@@ -81,11 +83,11 @@ async function sendMetaConversion({ request, body, metadata, clickId }) {
   const testCode = env('META_CONVERSIONS_TEST_EVENT_CODE')
   if (testCode) payload.test_event_code = testCode
 
-  const response = await fetch(`https://graph.facebook.com/${version}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, {
+  const response = await fetchWithTimeout(`https://graph.facebook.com/${version}/${pixelId}/events?access_token=${encodeURIComponent(accessToken)}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  })
+  }, getExternalRequestTimeoutMs(8_000))
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')
@@ -134,11 +136,11 @@ async function sendGoogleAdsConversion({ body, metadata, clickId }) {
     partialFailure: true,
   }
 
-  const response = await fetch(`https://googleads.googleapis.com/${version}/customers/${customerId}:uploadClickConversions`, {
+  const response = await fetchWithTimeout(`https://googleads.googleapis.com/${version}/customers/${customerId}:uploadClickConversions`, {
     method: 'POST',
     headers,
     body: JSON.stringify(payload),
-  })
+  }, getExternalRequestTimeoutMs(8_000))
 
   if (!response.ok) {
     const text = await response.text().catch(() => '')

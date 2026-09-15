@@ -114,29 +114,6 @@ async function clearLeadAd(leadId) {
     .eq('id', leadId)
 }
 
-function escolherProximoAnuncioGlobal(anuncios = [], historico = []) {
-  const vistosPorAnuncio = new Map()
-
-  for (const item of historico || []) {
-    const anuncioId = item?.anuncio_id
-    if (!anuncioId || vistosPorAnuncio.has(anuncioId)) continue
-
-    vistosPorAnuncio.set(anuncioId, item.seen_at || item.created_at || '')
-  }
-
-  const nuncaVisto = anuncios.find((ad) => !vistosPorAnuncio.has(ad.id))
-  if (nuncaVisto) return nuncaVisto
-
-  return [...anuncios].sort((a, b) => {
-    const aSeen = new Date(vistosPorAnuncio.get(a.id) || 0).getTime()
-    const bSeen = new Date(vistosPorAnuncio.get(b.id) || 0).getTime()
-
-    if (aSeen !== bSeen) return aSeen - bSeen
-
-    return String(a.created_at || '').localeCompare(String(b.created_at || ''))
-  })[0]
-}
-
 export async function POST(request) {
   const rate = checkRateLimit(request, RATE_LIMIT)
 
@@ -172,57 +149,29 @@ export async function POST(request) {
     const key = userKey({ hotspotId, macAddress, telefone })
     const adIds = anuncios.map((ad) => ad.id)
 
-    const { data: historicoGlobal, error: historicoError } = await supabaseAdmin
-      .from('portal_ad_rotations')
-      .select('anuncio_id, seen_at, created_at')
-      .eq('hotspot_id', hotspotId)
-      .in('anuncio_id', adIds)
-      .order('seen_at', { ascending: false })
-      .limit(Math.max(adIds.length * 3, 20))
+    const { data: sessionRows, error: claimError } = await supabaseAdmin
+      .rpc('claim_next_portal_ad', {
+        p_hotspot_id: hotspotId,
+        p_user_key: key,
+        p_lead_id: leadId,
+        p_ad_ids: adIds,
+      })
 
-    if (historicoError) throw historicoError
+    if (claimError) throw claimError
 
-    const nextAd = escolherProximoAnuncioGlobal(anuncios, historicoGlobal || [])
+    const claimedSession = sessionRows?.[0]
+    const nextAd = anuncios.find((ad) => ad.id === claimedSession?.anuncio_id)
 
-    const { data: ciclosUsuario, error: ciclosUsuarioError } = await supabaseAdmin
-      .from('portal_ad_rotations')
-      .select('cycle, anuncio_id')
-      .eq('user_key', key)
-      .eq('hotspot_id', hotspotId)
-      .order('cycle', { ascending: false })
-      .limit(adIds.length + 1)
+    if (!claimedSession || !nextAd) {
+      await clearLeadAd(leadId)
 
-    if (ciclosUsuarioError) throw ciclosUsuarioError
-
-    let cycle = ciclosUsuario?.[0]?.cycle || 1
-    const vistosNoCicloAtual = new Set(
-      (ciclosUsuario || [])
-        .filter((item) => item.cycle === cycle)
-        .map((item) => item.anuncio_id)
-    )
-
-    if (vistosNoCicloAtual.has(nextAd.id)) {
-      cycle += 1
+      return NextResponse.json({
+        ok: true,
+        anuncio: null,
+        adSessionId: null,
+        cycle: 0,
+      })
     }
-
-    const durationSeconds = Math.max(5, Math.floor(Number(nextAd.duracao_segundos || 15)))
-    const eligibleAt = new Date(Date.now() + durationSeconds * 1000).toISOString()
-
-    const { data: sessionRows, error: insertError } = await supabaseAdmin
-      .from('portal_ad_rotations')
-      .insert([{
-        user_key: key,
-        hotspot_id: hotspotId,
-        lead_id: leadId,
-        anuncio_id: nextAd.id,
-        duration_seconds: durationSeconds,
-        eligible_at: eligibleAt,
-        cycle,
-      }])
-      .select('id, eligible_at, duration_seconds')
-      .limit(1)
-
-    if (insertError) throw insertError
 
     await supabaseAdmin
       .from('leads')
@@ -232,10 +181,10 @@ export async function POST(request) {
     return NextResponse.json({
       ok: true,
       anuncio: publicAd(nextAd),
-      adSessionId: sessionRows?.[0]?.id || null,
-      eligibleAt: sessionRows?.[0]?.eligible_at || eligibleAt,
-      durationSeconds,
-      cycle,
+      adSessionId: claimedSession.id,
+      eligibleAt: claimedSession.eligible_at,
+      durationSeconds: Number(claimedSession.duration_seconds || 15),
+      cycle: Number(claimedSession.cycle || 1),
     })
   } catch (error) {
     return NextResponse.json(

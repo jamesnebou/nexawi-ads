@@ -12,6 +12,7 @@
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { countOnlineHotspotClients } from '@/lib/routeros-rest'
+import { getControlRequestHeaders } from '@/lib/control-auth'
 
 export const runtime = 'nodejs'
 
@@ -41,6 +42,7 @@ async function buscarOnlineReal() {
         cache: 'no-store',
         headers: {
           'Content-Type': 'application/json',
+          ...getControlRequestHeaders(),
         },
       })
 

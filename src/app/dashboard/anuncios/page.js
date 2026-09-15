@@ -331,6 +331,10 @@ export default function Anuncios() {
   async function enviarMidiaPorUploadAssinado(file) {
     if (!file) return null
 
+    if (file.type.startsWith('video/') && file.type !== 'video/mp4') {
+      throw new Error('Envie o vídeo em MP4 com codec H.264 e áudio AAC para funcionar em iPhone e Android.')
+    }
+
     const uploadInfo = await adminApiFetch('/api/admin/anuncios/upload-url', {
   method: 'POST',
   body: {
@@ -1179,12 +1183,12 @@ export default function Anuncios() {
                         <span className="font-bold text-[#6be12f]">Clique para enviar</span> ou arraste o arquivo
                       </p>
                       <p className="text-xs text-gray-600 font-medium">
-                        PNG, JPG ou MP4 (Recomendado: 1080x1920px)
+                        PNG, JPG ou MP4 H.264/AAC (Recomendado: 1080x1920px)
                       </p>
                     </div>
                     <input
                       type="file"
-                      accept="image/*,video/*"
+                      accept="image/jpeg,image/png,image/webp,image/gif,video/mp4"
                       onChange={(e) => setSelectedFile(e.target.files[0])}
                       className="hidden"
                     />

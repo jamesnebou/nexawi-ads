@@ -3,6 +3,8 @@ import { checkRateLimit } from '@/lib/rate-limit'
 import { supabaseAdmin } from '@/lib/supabase-admin'
 import { cleanPhone, normalizeMacAddress } from '@/lib/wifi-pix'
 import { logAdminAction } from '@/lib/admin-audit-log'
+import { getControlRequestHeaders } from '@/lib/control-auth'
+import { fetchWithTimeout, getControlRequestTimeoutMs } from '@/lib/fetch-timeout'
 
 export const runtime = 'nodejs'
 
@@ -114,14 +116,15 @@ async function getOrCreateWifiPixLead({ venda, macAddress, ipAddress }) {
 
 async function callSessionAuthorize(request, payload) {
   const origin = new URL(request.url).origin
-  const response = await fetch(`${origin}/api/control/session/authorize`, {
+  const response = await fetchWithTimeout(`${origin}/api/control/session/authorize`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      ...getControlRequestHeaders(),
     },
     cache: 'no-store',
     body: JSON.stringify(payload),
-  })
+  }, getControlRequestTimeoutMs())
 
   const data = await response.json().catch(() => ({}))
 
@@ -134,8 +137,6 @@ async function callSessionAuthorize(request, payload) {
 
 export async function POST(request) {
   const rate = checkRateLimit(request, RATE_LIMIT)
-  let vendaIdForError = ''
-  let shouldMarkAuthorizationError = false
 
   if (!rate.allowed) {
     return NextResponse.json(
@@ -147,7 +148,6 @@ export async function POST(request) {
   try {
     const body = await request.json()
     const vendaId = clean(body.vendaId || body.venda_id)
-    vendaIdForError = vendaId
     const hotspotSlug = clean(body.hotspotSlug || body.hotspot_slug)
     const macAddress = normalizeMacAddress(body.macAddress || body.mac_address)
     const ipAddress = clean(body.ipAddress || body.ip_address)
@@ -188,7 +188,7 @@ export async function POST(request) {
         metadata: { hotspotSlug, macAddress, ipAddress },
       })
 
-      throw new Error('O tempo deste acesso j? expirou.')
+      throw new Error('O tempo deste acesso já expirou.')
     }
 
     if (!['pago', 'autorizado'].includes(venda.status)) {
@@ -212,18 +212,32 @@ export async function POST(request) {
       ipAddress,
     })
 
-    shouldMarkAuthorizationError = true
-    const authorization = await callSessionAuthorize(request, {
-      hotspotSlug,
-      leadId,
-      clientMac: macAddress,
-      clientIp: ipAddress,
-      adSessionId: null,
-      authorizationReason: 'wifi_pix_paid',
-    })
+    let authorization
+
+    try {
+      authorization = await callSessionAuthorize(request, {
+        hotspotSlug,
+        leadId,
+        clientMac: macAddress,
+        clientIp: ipAddress,
+        adSessionId: null,
+        authorizationReason: 'wifi_pix_paid',
+        sourceEntityId: venda.id,
+      })
+    } catch (authorizationError) {
+      await supabaseAdmin
+        .from('wifi_pix_vendas')
+        .update({
+          erro_autorizacao: authorizationError.message || 'Erro ao liberar acesso.',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', venda.id)
+
+      throw authorizationError
+    }
 
     const now = new Date().toISOString()
-    const expiraEm = venda.expira_em ||
+    const expiraEm = authorization?.session?.expires_at || venda.expira_em ||
       new Date(Date.now() + Number(venda.duracao_minutos || 0) * 60 * 1000).toISOString()
     const queueName = authorization?.bandwidthQueue?.queue?.name || authorization?.bandwidthQueue?.name || null
 
@@ -242,24 +256,66 @@ export async function POST(request) {
 
     if (updateError) throw updateError
 
-    await supabaseAdmin
+    const accessPayload = {
+      venda_id: venda.id,
+      hotspot_id: venda.hotspot_id,
+      router_id: authorization?.session?.router_id || null,
+      mac_address: macAddress,
+      ip_address: ipAddress || null,
+      router_binding_id: authorization?.binding?.['.id'] || null,
+      router_queue_name: queueName,
+      autorizado_em: now,
+      expira_em: expiraEm,
+      status: 'ativo',
+      metadata: {
+        leadId,
+        sessionId: authorization?.session?.id || null,
+        alreadyAuthorized: Boolean(authorization?.alreadyAuthorized),
+      },
+    }
+
+    const { data: existingAccess, error: existingAccessError } = await supabaseAdmin
       .from('wifi_pix_acessos')
-      .insert([{
-        venda_id: venda.id,
-        hotspot_id: venda.hotspot_id,
-        mac_address: macAddress,
-        ip_address: ipAddress || null,
-        router_binding_id: authorization?.binding?.['.id'] || null,
-        router_queue_name: queueName,
-        autorizado_em: now,
-        expira_em: expiraEm,
-        status: 'ativo',
-        metadata: {
-          leadId,
-          sessionId: authorization?.session?.id || null,
-          alreadyAuthorized: Boolean(authorization?.alreadyAuthorized),
-        },
-      }])
+      .select('id')
+      .eq('venda_id', venda.id)
+      .eq('status', 'ativo')
+      .maybeSingle()
+
+    if (existingAccessError) throw existingAccessError
+
+    if (existingAccess?.id) {
+      const { error: accessUpdateError } = await supabaseAdmin
+        .from('wifi_pix_acessos')
+        .update(accessPayload)
+        .eq('id', existingAccess.id)
+
+      if (accessUpdateError) throw accessUpdateError
+    } else {
+      const { error: accessInsertError } = await supabaseAdmin
+        .from('wifi_pix_acessos')
+        .insert([accessPayload])
+
+      if (accessInsertError?.code === '23505') {
+        const { data: racedAccess, error: racedAccessError } = await supabaseAdmin
+          .from('wifi_pix_acessos')
+          .select('id')
+          .eq('venda_id', venda.id)
+          .eq('status', 'ativo')
+          .maybeSingle()
+
+        if (racedAccessError) throw racedAccessError
+        if (!racedAccess?.id) throw accessInsertError
+
+        const { error: racedUpdateError } = await supabaseAdmin
+          .from('wifi_pix_acessos')
+          .update(accessPayload)
+          .eq('id', racedAccess.id)
+
+        if (racedUpdateError) throw racedUpdateError
+      } else if (accessInsertError) {
+        throw accessInsertError
+      }
+    }
 
     await logAdminAction({
       request,
@@ -288,17 +344,6 @@ export async function POST(request) {
       },
     })
   } catch (error) {
-    if (vendaIdForError && shouldMarkAuthorizationError) {
-      await supabaseAdmin
-        .from('wifi_pix_vendas')
-        .update({
-          status: 'erro',
-          erro_autorizacao: error.message || 'Erro ao liberar acesso.',
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', vendaIdForError)
-    }
-
     return NextResponse.json(
       { ok: false, error: error.message || 'Erro ao liberar acesso.' },
       { status: 400 }

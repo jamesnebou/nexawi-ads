@@ -26,8 +26,6 @@ const MIME_TYPES_PERMITIDOS = [
   'image/webp',
   'image/gif',
   'video/mp4',
-  'video/webm',
-  'video/quicktime',
 ]
 
 const EXTENSOES_PERMITIDAS = [
@@ -37,8 +35,6 @@ const EXTENSOES_PERMITIDAS = [
   'webp',
   'gif',
   'mp4',
-  'webm',
-  'mov',
 ]
 
 // 30 MB por segurança. Depois podemos ajustar.
@@ -66,15 +62,27 @@ function permissaoNegada() {
 
 function validarArquivo({ filename, contentType, sizeBytes }) {
   const ext = limparExtensao(filename)
+  const expectedMimeByExtension = {
+    jpg: ['image/jpeg', 'image/jpg'],
+    jpeg: ['image/jpeg', 'image/jpg'],
+    png: ['image/png'],
+    webp: ['image/webp'],
+    gif: ['image/gif'],
+    mp4: ['video/mp4'],
+  }
 
   if (!filename) return 'Nome do arquivo é obrigatório'
 
   if (!MIME_TYPES_PERMITIDOS.includes(contentType)) {
-    return 'Tipo de arquivo não permitido. Envie imagem ou vídeo em formato aceito.'
+    return 'Tipo de arquivo não permitido. Para vídeo, envie MP4 com codec H.264 e áudio AAC.'
   }
 
   if (!EXTENSOES_PERMITIDAS.includes(ext)) {
     return 'Extensão de arquivo não permitida.'
+  }
+
+  if (!expectedMimeByExtension[ext]?.includes(contentType)) {
+    return 'A extensão do arquivo não corresponde ao tipo de mídia informado.'
   }
 
   if (sizeBytes && Number(sizeBytes) > MAX_FILE_SIZE_BYTES) {
