@@ -52,6 +52,7 @@ type QRItem = {
   hotspot_id?: string | null
   qr_url?: string
   nfc_url?: string
+  public_stats_url?: string
   qr_scans?: number
   nfc_scans?: number
   asset?: {
@@ -98,6 +99,16 @@ function cleanPhone(value: string) {
   return value.replace(/\D/g, '')
 }
 
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+    .slice(0, 80)
+}
+
 function formatDate(value: string | null) {
   if (!value) return 'Nenhum acesso ainda'
 
@@ -132,6 +143,7 @@ export default function DashboardQrGeneratorPage() {
 
   const [dynamicName, setDynamicName] = useState('')
   const [dynamicSlug, setDynamicSlug] = useState('')
+  const [dynamicSlugTouched, setDynamicSlugTouched] = useState(false)
   const [dynamicTarget, setDynamicTarget] = useState('')
   const [dynamicType, setDynamicType] = useState('link')
   const [customerName, setCustomerName] = useState('')
@@ -142,6 +154,7 @@ export default function DashboardQrGeneratorPage() {
   const [dynamicWifiPassword, setDynamicWifiPassword] = useState('')
   const [dynamicWifiHidden, setDynamicWifiHidden] = useState(false)
   const [dynamicResult, setDynamicResult] = useState('')
+  const [publicStatsResult, setPublicStatsResult] = useState('')
   const [loadingDynamic, setLoadingDynamic] = useState(false)
   const [loadingList, setLoadingList] = useState(false)
   const [provisioningId, setProvisioningId] = useState('')
@@ -224,6 +237,7 @@ export default function DashboardQrGeneratorPage() {
     setQrPayload(payload)
     setQrDataUrl(dataUrl)
     setDynamicResult('')
+    setPublicStatsResult('')
   }
 
   async function loadQRCodes() {
@@ -279,6 +293,7 @@ export default function DashboardQrGeneratorPage() {
       setQrPayload(dynamicUrl)
       setQrDataUrl(dataUrl)
       setMode('dynamic')
+      setPublicStatsResult(data.public_stats_url || '')
       await loadQRCodes()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Erro ao criar QR dinâmico.')
@@ -306,6 +321,25 @@ export default function DashboardQrGeneratorPage() {
     const newTarget = window.prompt('Novo destino:', item.target_url || '')
     if (!newTarget || newTarget === item.target_url) return
     await updateQRCode(item, { target_url: newTarget })
+  }
+
+  async function editIdentity(item: QRItem) {
+    const newName = window.prompt('Nome público do QR Code:', item.name)
+    if (newName === null) return
+
+    const cleanName = newName.trim()
+    if (!cleanName) {
+      setMessage('O nome não pode ficar vazio.')
+      return
+    }
+
+    const newSlug = window.prompt('Endereço público no subdomínio go:', item.slug || slugify(cleanName))
+    if (newSlug === null) return
+
+    await updateQRCode(item, {
+      name: cleanName,
+      slug: slugify(newSlug || cleanName),
+    })
   }
 
   async function toggleStatus(item: QRItem) {
@@ -526,9 +560,29 @@ export default function DashboardQrGeneratorPage() {
 
                 <div className="rounded-3xl border border-white/[0.06] bg-[#0a0a0a] p-4 sm:p-5">
                   <div className="grid gap-4 lg:grid-cols-2">
-                    <Field label="Nome do QR" value={dynamicName} onChange={setDynamicName} placeholder="QR Rio Branco" />
-                    <Field label="Slug" value={dynamicSlug} onChange={setDynamicSlug} placeholder="rio-branco" />
+                    <Field
+                      label="Nome do QR"
+                      value={dynamicName}
+                      onChange={(value) => {
+                        setDynamicName(value)
+                        if (!dynamicSlugTouched) setDynamicSlug(slugify(value))
+                      }}
+                      placeholder="Loja Rio Branco"
+                    />
+                    <Field
+                      label="Slug público"
+                      value={dynamicSlug}
+                      onChange={(value) => {
+                        setDynamicSlug(slugify(value))
+                        setDynamicSlugTouched(Boolean(value))
+                      }}
+                      placeholder="loja-rio-branco"
+                    />
                   </div>
+
+                  <p className="mt-3 break-all rounded-2xl border border-[#6be12f]/10 bg-[#6be12f]/[0.03] px-4 py-3 text-xs text-neutral-500">
+                    Painel público: <strong className="text-[#8cf059]">https://go.nexawi.com.br/{dynamicSlug || 'sua-loja'}</strong>
+                  </p>
 
                   <div className="mt-4 grid gap-4 lg:grid-cols-[260px_1fr]">
                     <label className="block">
@@ -613,6 +667,12 @@ export default function DashboardQrGeneratorPage() {
                 {dynamicResult ? (
                   <a href={dynamicResult} target="_blank" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#ff7a00]/30 bg-[#ff7a00]/10 px-4 py-3 text-sm font-black text-[#ffb15c]">
                     Abrir QR dinâmico <ExternalLink size={16} />
+                  </a>
+                ) : null}
+
+                {publicStatsResult ? (
+                  <a href={publicStatsResult} target="_blank" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#6be12f]/30 bg-[#6be12f]/10 px-4 py-3 text-sm font-black text-[#8cf059]">
+                    Abrir painel público <BarChart3 size={16} />
                   </a>
                 ) : null}
 
@@ -712,6 +772,14 @@ export default function DashboardQrGeneratorPage() {
                           <a href={item.qr_url || item.dynamic_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             <ExternalLink size={13} /> Abrir
                           </a>
+                          {item.public_stats_url ? (
+                            <a href={item.public_stats_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-[#6be12f]/20 px-3 py-2 text-xs font-black text-[#8cf059]">
+                              <BarChart3 size={13} /> Painel público
+                            </a>
+                          ) : null}
+                          <button type="button" onClick={() => editIdentity(item)} className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
+                            Editar nome/slug
+                          </button>
                           <button type="button" onClick={() => changeTarget(item)} className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             Editar destino
                           </button>

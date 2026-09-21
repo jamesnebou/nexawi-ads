@@ -13,6 +13,19 @@ const DESTINATION_TYPES = new Set([
 const STATUSES = new Set(['active', 'inactive'])
 const NFC_STATUSES = new Set(['unprogrammed', 'programmed', 'verified', 'locked'])
 const RATE_LIMIT = { keyPrefix: 'admin:qrcodes:v2', limit: 120, windowMs: 60_000 }
+const RESERVED_PUBLIC_SLUGS = new Set([
+  'admin', 'api', 'cliente', 'dashboard', 'go', 'login', 'logout', 'q', 'qr', 'r',
+])
+
+function slugify(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)+/g, '')
+    .slice(0, 80)
+}
 
 function adminActor(auth) {
   return {
@@ -68,6 +81,17 @@ export async function PATCH(request, context) {
         return NextResponse.json({ ok: false, error: 'Nome não pode ficar vazio.' }, { status: 400 })
       }
       updates.name = name
+    }
+
+    if (body.slug !== undefined) {
+      const slug = slugify(body.slug)
+      if (!slug) {
+        return NextResponse.json({ ok: false, error: 'O endereço público não pode ficar vazio.' }, { status: 400 })
+      }
+      if (RESERVED_PUBLIC_SLUGS.has(slug)) {
+        return NextResponse.json({ ok: false, error: 'Este endereço público é reservado. Escolha outro nome.' }, { status: 400 })
+      }
+      updates.slug = slug
     }
 
     if (body.status !== undefined) {
@@ -241,6 +265,9 @@ export async function PATCH(request, context) {
     return NextResponse.json({ ok: true, qr_code: updated, asset })
   } catch (error) {
     console.error('Erro ao atualizar QR Code multiempresa:', error)
+    if (error?.code === '23505') {
+      return NextResponse.json({ ok: false, error: 'Este endereço público já está em uso.' }, { status: 409 })
+    }
     return NextResponse.json({ ok: false, error: 'Não foi possível atualizar o QR Code.' }, { status: 500 })
   }
 }

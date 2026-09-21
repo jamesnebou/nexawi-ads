@@ -21,6 +21,9 @@ const DESTINATION_TYPES = new Set([
 const WIFI_SECURITY = new Set(['nopass', 'WPA'])
 const RATE_LIMIT = { keyPrefix: 'admin:qrcodes:v2', limit: 120, windowMs: 60_000 }
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const RESERVED_PUBLIC_SLUGS = new Set([
+  'admin', 'api', 'cliente', 'dashboard', 'go', 'login', 'logout', 'q', 'qr', 'r',
+])
 
 function cleanUuid(value) {
   const text = String(value || '').trim()
@@ -43,6 +46,10 @@ function siteUrl() {
 
 function qrPublicBaseUrl() {
   return String(process.env.QR_PUBLIC_BASE_URL || siteUrl()).replace(/\/$/, '')
+}
+
+function publicStatsUrl(slug) {
+  return `${qrPublicBaseUrl()}/${slug}`
 }
 
 function parseLimit(value, fallback = 100) {
@@ -184,6 +191,7 @@ export async function GET(request) {
           dynamic_url: dynamicUrl,
           qr_url: asset ? `${qrPublicBaseUrl()}/r/${item.public_token}/qr` : dynamicUrl,
           nfc_url: asset ? `${qrPublicBaseUrl()}/r/${item.public_token}/nfc` : null,
+          public_stats_url: publicStatsUrl(item.slug),
         }
       }),
       empresas: empresasResult.data || [],
@@ -255,6 +263,9 @@ export async function POST(request) {
       'id, empresa_id, nome'
     )
     const slug = slugify(body.slug || name) || randomUUID().slice(0, 8)
+    if (RESERVED_PUBLIC_SLUGS.has(slug)) {
+      return NextResponse.json({ ok: false, error: 'Este endereço público é reservado. Escolha outro nome.' }, { status: 400 })
+    }
     const requestedSerialNumber = String(body.serial_number || '')
       .trim()
       .toUpperCase()
@@ -330,6 +341,7 @@ export async function POST(request) {
       dynamic_url: `${siteUrl()}/q/${qrCode.slug}`,
       qr_url: `${qrPublicBaseUrl()}/r/${qrCode.public_token}/qr`,
       nfc_url: `${qrPublicBaseUrl()}/r/${qrCode.public_token}/nfc`,
+      public_stats_url: publicStatsUrl(qrCode.slug),
     }, { status: 201 })
   } catch (error) {
     console.error('Erro ao criar ativo QR/NFC:', error)

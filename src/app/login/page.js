@@ -37,6 +37,23 @@ const poppins = Poppins({
 
 const SESSION_CHECK_TIMEOUT_MS = 8000
 
+function getAdminRedirectPath() {
+  if (typeof window === 'undefined') return '/dashboard'
+
+  const params = new URLSearchParams(window.location.search)
+  const redirectPath = String(params.get('redirect') || '').trim()
+
+  if (
+    redirectPath.startsWith('/dashboard') &&
+    !redirectPath.includes('://') &&
+    !redirectPath.startsWith('//')
+  ) {
+    return redirectPath
+  }
+
+  return '/dashboard'
+}
+
 function withTimeout(promise, timeoutMs, message) {
   let timeoutId
 
@@ -109,7 +126,7 @@ export default function Login() {
         const { data } = await withTimeout(supabase.auth.getSession(), SESSION_CHECK_TIMEOUT_MS, 'Tempo excedido ao validar sessão.')
 
         if (data?.session?.access_token) {
-          router.replace('/dashboard')
+          router.replace(getAdminRedirectPath())
           return
         }
 
@@ -149,7 +166,7 @@ export default function Login() {
       }
 
       router.refresh()
-      router.replace('/dashboard')
+      router.replace(getAdminRedirectPath())
     } catch (error) {
       console.error('Erro ao fazer login:', error)
       setErro('Erro inesperado ao fazer login. Tente novamente.')
