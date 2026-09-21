@@ -20,6 +20,7 @@ import {
   Phone,
   QrCode,
   RefreshCw,
+  Search,
   ShieldCheck,
   Sparkles,
   Type,
@@ -167,6 +168,7 @@ export default function DashboardQrGeneratorPage() {
   const [empresaId, setEmpresaId] = useState('')
   const [clienteId, setClienteId] = useState('')
   const [hotspotId, setHotspotId] = useState('')
+  const [assetCodeFilter, setAssetCodeFilter] = useState('')
 
   const payload = useMemo(() => {
     if (staticType === 'link') return link.trim()
@@ -243,12 +245,16 @@ export default function DashboardQrGeneratorPage() {
     setPublicStatsResult('')
   }
 
-  async function loadQRCodes() {
+  async function loadQRCodes(codeFilter = assetCodeFilter) {
     setLoadingList(true)
     setMessage('')
 
     try {
-      const data = await adminApiFetch('/api/admin/qrcodes')
+      const params = new URLSearchParams()
+      const normalizedCode = codeFilter.trim().toUpperCase()
+      if (normalizedCode) params.set('asset_code', normalizedCode)
+      const queryString = params.toString()
+      const data = await adminApiFetch('/api/admin/qrcodes' + (queryString ? `?${queryString}` : ''))
 
       setItems(data.items || [])
       setEmpresas(data.empresas || [])
@@ -260,6 +266,11 @@ export default function DashboardQrGeneratorPage() {
     } finally {
       setLoadingList(false)
     }
+  }
+
+  function clearAssetCodeFilter() {
+    setAssetCodeFilter('')
+    void loadQRCodes('')
   }
 
   async function createDynamicQR() {
@@ -298,7 +309,8 @@ export default function DashboardQrGeneratorPage() {
       setQrAssetCode(data.asset?.serial_number || '')
       setMode('dynamic')
       setPublicStatsResult(data.public_stats_url || '')
-      await loadQRCodes()
+      setAssetCodeFilter('')
+      await loadQRCodes('')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Erro ao criar QR dinâmico.')
     } finally {
@@ -786,10 +798,39 @@ export default function DashboardQrGeneratorPage() {
               <p className="mt-1 text-sm text-gray-500">Acompanhe acessos, edite destinos e desative QR Codes sem perder histórico.</p>
             </div>
 
-            <button type="button" onClick={loadQRCodes} disabled={loadingList} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-5 py-3 text-sm font-black text-white disabled:opacity-70">
-              {loadingList ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
-              Carregar painel
-            </button>
+            <form
+              onSubmit={(event) => {
+                event.preventDefault()
+                void loadQRCodes()
+              }}
+              className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto"
+            >
+              <label className="relative min-w-0 sm:w-64">
+                <span className="sr-only">Buscar pelo código NexaWi</span>
+                <Search size={16} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-gray-600" />
+                <input
+                  value={assetCodeFilter}
+                  onChange={(event) => setAssetCodeFilter(event.target.value.toUpperCase())}
+                  maxLength={64}
+                  placeholder="Código: NX458234B3"
+                  className="w-full rounded-2xl border border-white/[0.08] bg-black py-3 pl-11 pr-4 text-sm font-bold uppercase text-white outline-none placeholder:normal-case placeholder:text-gray-700 focus:border-[#ff9d2e]/50"
+                />
+              </label>
+              <button type="submit" disabled={loadingList} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#ff9d2e] px-5 py-3 text-sm font-black text-black disabled:opacity-70">
+                {loadingList ? <Loader2 size={17} className="animate-spin" /> : <Search size={17} />}
+                Buscar
+              </button>
+              {assetCodeFilter ? (
+                <button type="button" onClick={clearAssetCodeFilter} disabled={loadingList} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] px-4 py-3 text-sm font-black text-gray-300 disabled:opacity-70">
+                  <XCircle size={17} /> Limpar
+                </button>
+              ) : (
+                <button type="button" onClick={() => loadQRCodes()} disabled={loadingList} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-black text-white disabled:opacity-70">
+                  {loadingList ? <Loader2 size={17} className="animate-spin" /> : <RefreshCw size={17} />}
+                  Atualizar
+                </button>
+              )}
+            </form>
           </div>
 
           <div className="mb-5 grid gap-3 md:grid-cols-4">
@@ -893,7 +934,11 @@ export default function DashboardQrGeneratorPage() {
             <div className="rounded-3xl border border-dashed border-white/[0.08] bg-black/20 px-6 py-12 text-center">
               <QrCode className="mx-auto text-gray-700" size={44} />
               <p className="mt-4 text-lg font-black text-white">Nenhum QR dinâmico carregado</p>
-              <p className="mt-2 text-sm text-gray-500">Clique em carregar painel para ver o histórico da empresa autorizada.</p>
+              <p className="mt-2 text-sm text-gray-500">
+                {assetCodeFilter.trim()
+                  ? `Nenhum QR encontrado para o código ${assetCodeFilter.trim().toUpperCase()}.`
+                  : 'Atualize o painel para ver o histórico da empresa autorizada.'}
+              </p>
             </div>
           )}
         </section>

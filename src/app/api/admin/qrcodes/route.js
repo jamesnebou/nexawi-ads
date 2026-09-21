@@ -118,6 +118,25 @@ export async function GET(request) {
     const limit = parseLimit(url.searchParams.get('limit'))
     const offset = Math.max(Number.parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0)
     const search = String(url.searchParams.get('search') || '').trim().slice(0, 100)
+    const assetCode = String(url.searchParams.get('asset_code') || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9-]/g, '')
+      .slice(0, 64)
+
+    let matchingQrCodeIds = null
+    if (assetCode) {
+      let assetFilterQuery = supabaseAdmin
+        .from('qr_assets')
+        .select('qr_code_id')
+        .ilike('serial_number', `${assetCode}%`)
+        .limit(200)
+      assetFilterQuery = auth.applyEmpresaScope(assetFilterQuery)
+
+      const { data: matchingAssets, error: matchingAssetsError } = await assetFilterQuery
+      if (matchingAssetsError) throw matchingAssetsError
+      matchingQrCodeIds = [...new Set((matchingAssets || []).map((asset) => asset.qr_code_id).filter(Boolean))]
+    }
 
     let query = supabaseAdmin
       .from('qr_code_stats')
@@ -135,6 +154,11 @@ export async function GET(request) {
     if (search) {
       const safeSearch = search.replace(/[%(),]/g, ' ')
       query = query.or(`name.ilike.%${safeSearch}%,slug.ilike.%${safeSearch}%,customer_name.ilike.%${safeSearch}%`)
+    }
+    if (matchingQrCodeIds) {
+      query = matchingQrCodeIds.length > 0
+        ? query.in('id', matchingQrCodeIds)
+        : query.eq('id', '00000000-0000-0000-0000-000000000000')
     }
 
     let empresasQuery = supabaseAdmin
