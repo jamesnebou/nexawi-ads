@@ -141,7 +141,7 @@ const menu = [
     label: 'QR Codes',
     path: '/dashboard/geradores/qr',
     icon: QrCode,
-    module: 'configuracoes',
+    module: 'qrcodes',
   },
 
   {

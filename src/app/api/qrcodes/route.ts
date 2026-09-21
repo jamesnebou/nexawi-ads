@@ -42,7 +42,12 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await supabaseAdmin
     .from("qr_code_stats")
-    .select("*")
+    .select(`
+      id, name, slug, type, target_url, status, customer_name,
+      location_name, campaign_name, created_at, updated_at,
+      total_scans, scans_today, scans_7d, scans_30d, last_scan_at
+    `)
+    .is("empresa_id", null)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -147,6 +152,7 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         type,
+        destination_type: type,
         target_url: normalizedTargetUrl,
         wifi_ssid: type === "wifi" ? wifiSsid : null,
         wifi_security: type === "wifi" ? wifiSecurity : null,

@@ -24,6 +24,7 @@ const MODULOS = [
   'suporte',
   'auditoria',
   'configuracoes',
+  'qrcodes',
   'usuarios_admin',
   'dashboard_anunciante',
 ]
@@ -44,6 +45,7 @@ const PERMISSOES_POR_CARGO = {
     suporte: { view: true, reply: true, update: true, close: true, assign: true, export: true },
     auditoria: { view: true, export: true },
     configuracoes: { view: true, update: true },
+    qrcodes: { view: true, create: true, update: true, delete: true, export: true, provision: true },
     usuarios_admin: { view: true, create: true, update: true, delete: true },
     dashboard_anunciante: { view: true, export: true },
   },
@@ -61,6 +63,7 @@ const PERMISSOES_POR_CARGO = {
     suporte: { view: true, reply: true, update: true, close: true, assign: true, export: true },
     auditoria: { view: true, export: false },
     configuracoes: { view: true, update: false },
+    qrcodes: { view: true, create: true, update: true, delete: false, export: true, provision: true },
     usuarios_admin: { view: false, create: false, update: false, delete: false },
     dashboard_anunciante: { view: true, export: true },
   },
@@ -78,6 +81,7 @@ const PERMISSOES_POR_CARGO = {
     suporte: { view: true, reply: true, update: true, close: true, assign: false, export: false },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
+    qrcodes: { view: true, create: true, update: true, delete: false, export: false, provision: true },
     usuarios_admin: { view: false, create: false, update: false, delete: false },
     dashboard_anunciante: { view: true, export: false },
   },
@@ -95,6 +99,7 @@ const PERMISSOES_POR_CARGO = {
     suporte: { view: true, reply: true, update: true, close: false, assign: false, export: false },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
+    qrcodes: { view: false, create: false, update: false, delete: false, export: false, provision: false },
     usuarios_admin: { view: false, create: false, update: false, delete: false },
     dashboard_anunciante: { view: false, export: false },
   },
@@ -112,6 +117,7 @@ const PERMISSOES_POR_CARGO = {
     suporte: { view: true, reply: false, update: false, close: false, assign: false, export: false },
     auditoria: { view: false, export: false },
     configuracoes: { view: false, update: false },
+    qrcodes: { view: true, create: false, update: false, delete: false, export: false, provision: false },
     usuarios_admin: { view: false, create: false, update: false, delete: false },
     dashboard_anunciante: { view: true, export: false },
   },
@@ -127,6 +133,7 @@ const PERMISSOES_EMPRESA_POR_PAPEL = {
     financeiro: { view: true, export: true },
     suporte: { view: true, reply: true, update: true, close: false },
     empresas: { view: true, update: true, manage_users: true },
+    qrcodes: { view: true, create: true, update: true, delete: false, export: true, provision: true },
   },
   admin: {
     dashboard_anunciante: { view: true, export: true },
@@ -137,6 +144,7 @@ const PERMISSOES_EMPRESA_POR_PAPEL = {
     financeiro: { view: false, export: false },
     suporte: { view: true, reply: true, update: true },
     empresas: { view: true, update: false, manage_users: false },
+    qrcodes: { view: true, create: true, update: true, delete: false, export: true, provision: true },
   },
   marketing: {
     dashboard_anunciante: { view: true, export: true },
@@ -147,6 +155,7 @@ const PERMISSOES_EMPRESA_POR_PAPEL = {
     financeiro: { view: false, export: false },
     suporte: { view: true, reply: true, update: false },
     empresas: { view: true, update: false, manage_users: false },
+    qrcodes: { view: true, create: true, update: true, delete: false, export: true, provision: true },
   },
   financeiro: {
     dashboard_anunciante: { view: true, export: true },
@@ -157,6 +166,7 @@ const PERMISSOES_EMPRESA_POR_PAPEL = {
     financeiro: { view: true, export: true },
     suporte: { view: true, reply: true, update: false },
     empresas: { view: true, update: false, manage_users: false },
+    qrcodes: { view: false, create: false, update: false, delete: false, export: false, provision: false },
   },
   viewer: {
     dashboard_anunciante: { view: true, export: false },
@@ -167,6 +177,7 @@ const PERMISSOES_EMPRESA_POR_PAPEL = {
     financeiro: { view: false, export: false },
     suporte: { view: true, reply: false, update: false },
     empresas: { view: true, update: false, manage_users: false },
+    qrcodes: { view: true, create: false, update: false, delete: false, export: false, provision: false },
   },
 }
 

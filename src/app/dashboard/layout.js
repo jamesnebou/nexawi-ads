@@ -158,9 +158,9 @@ const rotasProtegidas = [
   },
   {
     path: '/dashboard/geradores/qr',
-    module: 'configuracoes',
+    module: 'qrcodes',
     action: 'view',
-    label: 'Gerador de QR Codes',
+    label: 'QR Codes e NFC',
   },
 
   {

@@ -1360,14 +1360,14 @@ useEffect(() => {
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold mb-6 leading-tight">
                 O outdoor que ninguém consegue ignorar...
               </h2>
-              <p className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed mb-8">
-                A NexaWi transforma Wi-Fi em pontos estratégicos de publicidade.
+              <div className="text-gray-400 text-base sm:text-lg md:text-xl leading-relaxed mb-8">
+                <p>A NexaWi transforma Wi-Fi em pontos estratégicos de publicidade.</p>
                 <p>A sua marca aparece <b>na tela dele</b></p>
                 <p>Sem disputa.</p>
                 <p>Sem distração.</p>
-                 <p>Sem algoritmo.</p>
-                 <p><b>Só você… e a atenção dele.</b></p>
-                 </p>
+                <p>Sem algoritmo.</p>
+                <p><b>Só você… e a atenção dele.</b></p>
+              </div>
               <ul className="space-y-4 text-gray-300 text-sm sm:text-base md:text-lg">
                
                 <li className="flex items-center gap-3">

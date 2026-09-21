@@ -97,10 +97,15 @@ export async function PATCH(
     );
   }
 
+  if (updates.type) {
+    updates.destination_type = updates.type;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("qr_codes")
     .update(updates)
     .eq("id", id)
+    .is("empresa_id", null)
     .select("*")
     .single();
 

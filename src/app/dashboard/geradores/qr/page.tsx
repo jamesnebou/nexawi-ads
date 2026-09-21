@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from 'react'
 import { Poppins } from 'next/font/google'
+import Image from 'next/image'
 import QRCode from 'qrcode'
+import { adminApiFetch } from '@/lib/admin-api-client'
 import {
   ArrowRight,
   BarChart3,
@@ -11,11 +13,9 @@ import {
   Download,
   ExternalLink,
   Eye,
-  FileText,
   Globe2,
   Loader2,
   Mail,
-  MapPin,
   MessageCircle,
   Phone,
   QrCode,
@@ -46,7 +46,25 @@ type QRItem = {
   customer_name?: string | null
   location_name?: string | null
   campaign_name?: string | null
+  destination_type?: string | null
+  empresa_id?: string | null
+  cliente_id?: string | null
+  hotspot_id?: string | null
+  qr_url?: string
+  nfc_url?: string
+  qr_scans?: number
+  nfc_scans?: number
+  asset?: {
+    id: string
+    serial_number: string
+    status: string
+    nfc_status: string
+  } | null
 }
+
+type EmpresaOption = { id: string; nome_empresa: string; status: string }
+type ClienteOption = { id: string; empresa_id: string; nome: string; nome_empresa?: string | null; status: string }
+type HotspotOption = { id: string; empresa_id: string; nome: string; cidade?: string | null; status: string }
 
 const poppins = Poppins({
   subsets: ['latin'],
@@ -68,6 +86,7 @@ const staticTypes = [
 const dynamicTypes = [
   { value: 'link', label: 'Link' },
   { value: 'wifi', label: 'Wi-Fi dinâmico' },
+  { value: 'google_review', label: 'Avaliação Google' },
   { value: 'whatsapp', label: 'WhatsApp' },
   { value: 'instagram', label: 'Instagram' },
   { value: 'maps', label: 'Google Maps' },
@@ -111,7 +130,6 @@ export default function DashboardQrGeneratorPage() {
   const [bodyMessage, setBodyMessage] = useState('')
   const [pixPayload, setPixPayload] = useState('')
 
-  const [adminKey, setAdminKey] = useState('')
   const [dynamicName, setDynamicName] = useState('')
   const [dynamicSlug, setDynamicSlug] = useState('')
   const [dynamicTarget, setDynamicTarget] = useState('')
@@ -126,7 +144,14 @@ export default function DashboardQrGeneratorPage() {
   const [dynamicResult, setDynamicResult] = useState('')
   const [loadingDynamic, setLoadingDynamic] = useState(false)
   const [loadingList, setLoadingList] = useState(false)
+  const [provisioningId, setProvisioningId] = useState('')
   const [items, setItems] = useState<QRItem[]>([])
+  const [empresas, setEmpresas] = useState<EmpresaOption[]>([])
+  const [clientes, setClientes] = useState<ClienteOption[]>([])
+  const [hotspots, setHotspots] = useState<HotspotOption[]>([])
+  const [empresaId, setEmpresaId] = useState('')
+  const [clienteId, setClienteId] = useState('')
+  const [hotspotId, setHotspotId] = useState('')
 
   const payload = useMemo(() => {
     if (staticType === 'link') return link.trim()
@@ -166,6 +191,15 @@ export default function DashboardQrGeneratorPage() {
     return { total, today, active, last }
   }, [items])
 
+  const clientesDaEmpresa = useMemo(
+    () => clientes.filter((item) => !empresaId || item.empresa_id === empresaId),
+    [clientes, empresaId]
+  )
+  const hotspotsDaEmpresa = useMemo(
+    () => hotspots.filter((item) => !empresaId || item.empresa_id === empresaId),
+    [hotspots, empresaId]
+  )
+
   async function generateQRCode(content: string) {
     return QRCode.toDataURL(content, {
       errorCorrectionLevel: 'H',
@@ -193,26 +227,17 @@ export default function DashboardQrGeneratorPage() {
   }
 
   async function loadQRCodes() {
-    if (!adminKey.trim()) {
-      setMessage('Informe a QR_ADMIN_KEY para carregar os QR Codes dinâmicos.')
-      return
-    }
-
     setLoadingList(true)
     setMessage('')
 
     try {
-      const response = await fetch('/api/qrcodes', {
-        headers: { 'x-admin-key': adminKey.trim() },
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao carregar QR Codes.')
-      }
+      const data = await adminApiFetch('/api/admin/qrcodes')
 
       setItems(data.items || [])
+      setEmpresas(data.empresas || [])
+      setClientes(data.clientes || [])
+      setHotspots(data.hotspots || [])
+      setEmpresaId((current) => current || data.scope?.activeEmpresaId || data.empresas?.[0]?.id || '')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Erro ao carregar QR Codes.')
     } finally {
@@ -221,27 +246,19 @@ export default function DashboardQrGeneratorPage() {
   }
 
   async function createDynamicQR() {
-    if (!adminKey.trim()) {
-      setMessage('Informe a QR_ADMIN_KEY antes de criar um QR dinâmico.')
-      return
-    }
-
     setLoadingDynamic(true)
     setMessage('')
     setDynamicResult('')
 
     try {
-      const response = await fetch('/api/qrcodes', {
+      const data = await adminApiFetch('/api/admin/qrcodes', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
         body: JSON.stringify({
           name: dynamicName,
           slug: dynamicSlug,
-          type: dynamicType,
+          destination_type: dynamicType,
           target_url: dynamicType === 'wifi' ? null : dynamicTarget,
+          google_review_url: dynamicType === 'google_review' ? dynamicTarget : null,
           wifi_ssid: dynamicType === 'wifi' ? dynamicWifiSsid : null,
           wifi_security: dynamicType === 'wifi' ? dynamicWifiSecurity : null,
           wifi_password: dynamicType === 'wifi' ? dynamicWifiPassword : null,
@@ -249,16 +266,13 @@ export default function DashboardQrGeneratorPage() {
           customer_name: customerName || null,
           location_name: locationName || null,
           campaign_name: campaignName || null,
+          empresa_id: empresaId || null,
+          cliente_id: clienteId || null,
+          hotspot_id: hotspotId || null,
         }),
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao criar QR dinâmico.')
-      }
-
-      const dynamicUrl = data.dynamic_url
+      const dynamicUrl = data.qr_url || data.dynamic_url
       const dataUrl = await generateQRCode(dynamicUrl)
 
       setDynamicResult(dynamicUrl)
@@ -274,28 +288,13 @@ export default function DashboardQrGeneratorPage() {
   }
 
   async function updateQRCode(item: QRItem, updates: Record<string, string>) {
-    if (!adminKey.trim()) {
-      setMessage('Informe a QR_ADMIN_KEY antes de editar.')
-      return
-    }
-
     setMessage('')
 
     try {
-      const response = await fetch('/api/qrcodes/' + item.id, {
+      await adminApiFetch('/api/admin/qrcodes/' + item.id, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-admin-key': adminKey.trim(),
-        },
         body: JSON.stringify(updates),
       })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao atualizar QR Code.')
-      }
 
       await loadQRCodes()
     } catch (error) {
@@ -313,6 +312,46 @@ export default function DashboardQrGeneratorPage() {
     await updateQRCode(item, {
       status: item.status === 'active' ? 'inactive' : 'active',
     })
+  }
+
+  async function provisionNfc(item: QRItem) {
+    const nfcUrl = item.nfc_url
+    if (!nfcUrl) {
+      setMessage('Este ativo ainda não possui URL NFC.')
+      return
+    }
+
+    type NdefWriter = {
+      write: (message: { records: Array<{ recordType: 'url'; data: string }> }) => Promise<void>
+    }
+    type NdefReaderConstructor = new () => NdefWriter
+
+    const NdefReader = (window as Window & { NDEFReader?: NdefReaderConstructor }).NDEFReader
+    if (!NdefReader) {
+      await copyText(nfcUrl, `nfc-${item.id}`)
+      setMessage('A gravação Web NFC exige Chrome no Android. A URL NFC foi copiada para programar a tag em um app compatível no iPhone ou Android.')
+      return
+    }
+
+    setProvisioningId(item.id)
+    setMessage('Aproxime a tag NFC do celular e mantenha-a parada até a confirmação.')
+
+    try {
+      const writer = new NdefReader()
+      await writer.write({
+        records: [{ recordType: 'url', data: nfcUrl }],
+      })
+      await adminApiFetch('/api/admin/qrcodes/' + item.id, {
+        method: 'PATCH',
+        body: JSON.stringify({ nfc_status: 'programmed' }),
+      })
+      setMessage('Tag NFC gravada com a URL dinâmica exclusiva da NexaWi.')
+      await loadQRCodes()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível gravar a tag NFC.')
+    } finally {
+      setProvisioningId('')
+    }
   }
 
   function downloadPNG() {
@@ -441,8 +480,39 @@ export default function DashboardQrGeneratorPage() {
                 </div>
 
                 <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
-                  <PanelCard title="Acesso administrativo" description="Use a QR_ADMIN_KEY para criar, listar e editar QR Codes dinâmicos.">
-                    <Field label="Chave Admin" value={adminKey} onChange={setAdminKey} placeholder="QR_ADMIN_KEY" type="password" />
+                  <PanelCard title="Empresa e ativo físico" description="Cada placa fica vinculada ao tenant correto e recebe URLs separadas para QR e NFC.">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">Empresa</span>
+                        <select
+                          value={empresaId}
+                          onChange={(event) => {
+                            setEmpresaId(event.target.value)
+                            setClienteId('')
+                            setHotspotId('')
+                          }}
+                          className="w-full rounded-2xl border border-white/[0.08] bg-black px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/60"
+                        >
+                          <option value="">Selecione</option>
+                          {empresas.map((item) => <option key={item.id} value={item.id}>{item.nome_empresa}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">Cliente</span>
+                        <select value={clienteId} onChange={(event) => setClienteId(event.target.value)} className="w-full rounded-2xl border border-white/[0.08] bg-black px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/60">
+                          <option value="">Opcional</option>
+                          {clientesDaEmpresa.map((item) => <option key={item.id} value={item.id}>{item.nome_empresa || item.nome}</option>)}
+                        </select>
+                      </label>
+                      <label className="block">
+                        <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-gray-600">Hotspot/local</span>
+                        <select value={hotspotId} onChange={(event) => setHotspotId(event.target.value)} className="w-full rounded-2xl border border-white/[0.08] bg-black px-4 py-3 text-sm font-bold text-white outline-none focus:border-[#6be12f]/60">
+                          <option value="">Opcional</option>
+                          {hotspotsDaEmpresa.map((item) => <option key={item.id} value={item.id}>{item.nome}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                    {!empresas.length ? <p className="mt-3 text-xs text-yellow-300">Carregue o painel para selecionar a empresa.</p> : null}
                   </PanelCard>
 
                   <PanelCard title="Identificação comercial" description="Ajuda a organizar campanhas, clientes e locais no painel.">
@@ -525,9 +595,9 @@ export default function DashboardQrGeneratorPage() {
             {qrDataUrl ? (
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-white p-5 shadow-[0_0_45px_rgba(107,225,47,0.08)]">
-                  <img src={qrDataUrl} alt="QR Code NexaWi" className="w-full rounded-2xl" />
+                  <Image src={qrDataUrl} alt="QR Code NexaWi" width={1000} height={1000} unoptimized className="h-auto w-full rounded-2xl" />
                   <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-black/10 bg-white shadow-xl">
-                    <img src="/simbolo-verde.png" alt="NexaWi" className="max-h-9 max-w-12 object-contain" />
+                    <Image src="/simbolo-verde.png" alt="NexaWi" width={48} height={36} className="max-h-9 max-w-12 object-contain" />
                   </div>
                 </div>
 
@@ -604,18 +674,27 @@ export default function DashboardQrGeneratorPage() {
                     <tr key={item.id} className="border-b border-white/[0.04] align-top last:border-b-0">
                       <td className="px-4 py-4">
                         <p className="font-black text-white">{item.name}</p>
-                        <p className="mt-1 text-xs text-gray-600">{item.type} · /q/{item.slug}</p>
+                        <p className="mt-1 text-xs text-gray-600">{item.destination_type || item.type} · /q/{item.slug}</p>
                         <div className="mt-2 flex flex-wrap gap-1.5 text-[10px] font-bold text-gray-500">
                           {item.customer_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.customer_name}</span> : null}
                           {item.location_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.location_name}</span> : null}
                           {item.campaign_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.campaign_name}</span> : null}
+                          {item.asset?.serial_number ? <span className="rounded-full bg-[#ff9d2e]/10 px-2 py-1 text-[#ff9d2e]">{item.asset.serial_number}</span> : null}
+                          {item.asset?.nfc_status ? <span className="rounded-full bg-[#6be12f]/10 px-2 py-1 text-[#6be12f]">NFC: {item.asset.nfc_status}</span> : null}
                         </div>
                       </td>
                       <td className="max-w-[280px] px-4 py-4">
                         <p className="truncate text-xs text-gray-500">{item.target_url || item.dynamic_url}</p>
-                        <button type="button" onClick={() => copyText(item.dynamic_url, item.id)} className="mt-2 inline-flex items-center gap-1 text-xs font-black text-[#6be12f]">
-                          <Copy size={12} /> {copied === item.id ? 'Copiado' : 'Copiar link'}
-                        </button>
+                        <div className="mt-2 flex flex-wrap gap-3">
+                          <button type="button" onClick={() => copyText(item.qr_url || item.dynamic_url, `qr-${item.id}`)} className="inline-flex items-center gap-1 text-xs font-black text-[#6be12f]">
+                            <Copy size={12} /> {copied === `qr-${item.id}` ? 'Copiado' : `QR (${Number(item.qr_scans || 0)})`}
+                          </button>
+                          {item.nfc_url ? (
+                            <button type="button" onClick={() => copyText(item.nfc_url || '', `nfc-${item.id}`)} className="inline-flex items-center gap-1 text-xs font-black text-[#ff9d2e]">
+                              <Copy size={12} /> {copied === `nfc-${item.id}` ? 'Copiado' : `NFC (${Number(item.nfc_scans || 0)})`}
+                            </button>
+                          ) : null}
+                        </div>
                       </td>
                       <td className="px-4 py-4">
                         <span className={'inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase ' + (item.status === 'active' ? 'bg-[#6be12f]/15 text-[#6be12f]' : 'bg-red-500/15 text-red-300')}>
@@ -629,11 +708,15 @@ export default function DashboardQrGeneratorPage() {
                       <td className="whitespace-nowrap px-4 py-4 text-xs text-gray-500">{formatDate(item.last_scan_at)}</td>
                       <td className="px-4 py-4">
                         <div className="flex flex-wrap justify-end gap-2">
-                          <a href={item.dynamic_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
+                          <a href={item.qr_url || item.dynamic_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             <ExternalLink size={13} /> Abrir
                           </a>
                           <button type="button" onClick={() => changeTarget(item)} className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             Editar destino
+                          </button>
+                          <button type="button" onClick={() => provisionNfc(item)} disabled={provisioningId === item.id} className="inline-flex items-center gap-1 rounded-xl border border-[#ff9d2e]/25 px-3 py-2 text-xs font-black text-[#ff9d2e] disabled:opacity-60">
+                            {provisioningId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Wifi size={13} />}
+                            Programar NFC
                           </button>
                           <button type="button" onClick={() => toggleStatus(item)} className={'inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-black ' + (item.status === 'active' ? 'border-red-500/20 text-red-300' : 'border-[#6be12f]/20 text-[#6be12f]')}>
                             {item.status === 'active' ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
@@ -650,7 +733,7 @@ export default function DashboardQrGeneratorPage() {
             <div className="rounded-3xl border border-dashed border-white/[0.08] bg-black/20 px-6 py-12 text-center">
               <QrCode className="mx-auto text-gray-700" size={44} />
               <p className="mt-4 text-lg font-black text-white">Nenhum QR dinâmico carregado</p>
-              <p className="mt-2 text-sm text-gray-500">Informe a chave admin e clique em carregar painel para ver o histórico.</p>
+              <p className="mt-2 text-sm text-gray-500">Clique em carregar painel para ver o histórico da empresa autorizada.</p>
             </div>
           )}
         </section>
