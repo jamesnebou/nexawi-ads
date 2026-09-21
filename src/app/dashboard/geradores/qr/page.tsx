@@ -681,6 +681,7 @@ export default function DashboardQrGeneratorPage() {
                           {item.campaign_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.campaign_name}</span> : null}
                           {item.asset?.serial_number ? <span className="rounded-full bg-[#ff9d2e]/10 px-2 py-1 text-[#ff9d2e]">{item.asset.serial_number}</span> : null}
                           {item.asset?.nfc_status ? <span className="rounded-full bg-[#6be12f]/10 px-2 py-1 text-[#6be12f]">NFC: {item.asset.nfc_status}</span> : null}
+                          {!item.asset ? <span className="rounded-full bg-white/[0.04] px-2 py-1">QR legado</span> : null}
                         </div>
                       </td>
                       <td className="max-w-[280px] px-4 py-4">
@@ -714,10 +715,12 @@ export default function DashboardQrGeneratorPage() {
                           <button type="button" onClick={() => changeTarget(item)} className="rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             Editar destino
                           </button>
-                          <button type="button" onClick={() => provisionNfc(item)} disabled={provisioningId === item.id} className="inline-flex items-center gap-1 rounded-xl border border-[#ff9d2e]/25 px-3 py-2 text-xs font-black text-[#ff9d2e] disabled:opacity-60">
-                            {provisioningId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Wifi size={13} />}
-                            Programar NFC
-                          </button>
+                          {item.asset && item.nfc_url ? (
+                            <button type="button" onClick={() => provisionNfc(item)} disabled={provisioningId === item.id} className="inline-flex items-center gap-1 rounded-xl border border-[#ff9d2e]/25 px-3 py-2 text-xs font-black text-[#ff9d2e] disabled:opacity-60">
+                              {provisioningId === item.id ? <Loader2 size={13} className="animate-spin" /> : <Wifi size={13} />}
+                              Programar NFC
+                            </button>
+                          ) : null}
                           <button type="button" onClick={() => toggleStatus(item)} className={'inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-xs font-black ' + (item.status === 'active' ? 'border-red-500/20 text-red-300' : 'border-[#6be12f]/20 text-[#6be12f]')}>
                             {item.status === 'active' ? <XCircle size={13} /> : <CheckCircle2 size={13} />}
                             {item.status === 'active' ? 'Desativar' : 'Ativar'}

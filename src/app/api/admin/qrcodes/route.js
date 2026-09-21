@@ -174,13 +174,18 @@ export async function GET(request) {
 
     return NextResponse.json({
       ok: true,
-      items: (itemsResult.data || []).map((item) => ({
-        ...item,
-        asset: assetsByQrCode.get(item.id) || null,
-        dynamic_url: `${siteUrl()}/q/${item.slug}`,
-        qr_url: `${qrPublicBaseUrl()}/r/${item.public_token}/qr`,
-        nfc_url: `${qrPublicBaseUrl()}/r/${item.public_token}/nfc`,
-      })),
+      items: (itemsResult.data || []).map((item) => {
+        const asset = assetsByQrCode.get(item.id) || null
+        const dynamicUrl = `${siteUrl()}/q/${item.slug}`
+
+        return {
+          ...item,
+          asset,
+          dynamic_url: dynamicUrl,
+          qr_url: asset ? `${qrPublicBaseUrl()}/r/${item.public_token}/qr` : dynamicUrl,
+          nfc_url: asset ? `${qrPublicBaseUrl()}/r/${item.public_token}/nfc` : null,
+        }
+      }),
       empresas: empresasResult.data || [],
       clientes: clientesResult.data || [],
       hotspots: hotspotsResult.data || [],
