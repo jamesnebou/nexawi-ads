@@ -12,7 +12,7 @@ import {
   SmartphoneNfc,
   Store,
 } from 'lucide-react'
-import { supabaseAdmin } from '@/lib/supabase-admin'
+import { supabaseAdmin } from '@/lib/supabaseAdmin'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -37,6 +37,7 @@ type PublicQrStats = {
   scans_30d: number
   qr_scans: number
   nfc_scans: number
+  legacy_scans: number
   last_scan_at: string | null
 }
 
@@ -53,6 +54,7 @@ const getPublicQrStats = cache(async (slugValue: string): Promise<PublicQrStats 
     .select(`
       id, name, slug, status, customer_name, location_name, campaign_name,
       total_scans, scans_today, scans_7d, scans_30d, qr_scans, nfc_scans,
+      legacy_scans,
       last_scan_at
     `)
     .eq('slug', slug)
@@ -162,7 +164,7 @@ export default async function PublicQrStatsPage({ params }: { params: Promise<{ 
           <article className="rounded-3xl border border-[#6be12f]/10 bg-[#6be12f]/[0.03] p-6">
             <QrCode size={22} className="text-[#8cf059]" />
             <p className="mt-5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-neutral-600">Leituras pelo QR</p>
-            <p className="mt-2 text-3xl font-black">{formatNumber(stats.qr_scans)}</p>
+            <p className="mt-2 text-3xl font-black">{formatNumber(Number(stats.qr_scans || 0) + Number(stats.legacy_scans || 0))}</p>
           </article>
 
           <article className="rounded-3xl border border-[#ff9d2e]/10 bg-[#ff9d2e]/[0.03] p-6">
