@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Poppins } from 'next/font/google'
 import Image from 'next/image'
 import QRCode from 'qrcode'
@@ -127,8 +127,10 @@ export default function DashboardQrGeneratorPage() {
   const [staticType, setStaticType] = useState<StaticType>('link')
   const [qrDataUrl, setQrDataUrl] = useState('')
   const [qrPayload, setQrPayload] = useState('')
+  const [qrAssetCode, setQrAssetCode] = useState('')
   const [copied, setCopied] = useState('')
   const [message, setMessage] = useState('')
+  const previewRef = useRef<HTMLElement>(null)
 
   const [link, setLink] = useState('https://www.nexawi.com.br')
   const [text, setText] = useState('')
@@ -236,6 +238,7 @@ export default function DashboardQrGeneratorPage() {
     const dataUrl = await generateQRCode(payload)
     setQrPayload(payload)
     setQrDataUrl(dataUrl)
+    setQrAssetCode('')
     setDynamicResult('')
     setPublicStatsResult('')
   }
@@ -292,6 +295,7 @@ export default function DashboardQrGeneratorPage() {
       setDynamicResult(dynamicUrl)
       setQrPayload(dynamicUrl)
       setQrDataUrl(dataUrl)
+      setQrAssetCode(data.asset?.serial_number || '')
       setMode('dynamic')
       setPublicStatsResult(data.public_stats_url || '')
       await loadQRCodes()
@@ -348,6 +352,31 @@ export default function DashboardQrGeneratorPage() {
     })
   }
 
+  async function previewQRCode(item: QRItem) {
+    const qrUrl = item.qr_url || item.dynamic_url
+    if (!qrUrl) {
+      setMessage('Este registro ainda não possui uma URL de QR Code.')
+      return
+    }
+
+    try {
+      setMessage('')
+      const dataUrl = await generateQRCode(qrUrl)
+      setQrPayload(qrUrl)
+      setQrDataUrl(dataUrl)
+      setQrAssetCode(item.asset?.serial_number || '')
+      setDynamicResult(qrUrl)
+      setPublicStatsResult(item.public_stats_url || '')
+      setMode('dynamic')
+
+      window.requestAnimationFrame(() => {
+        previewRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      })
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível gerar a prévia para reimpressão.')
+    }
+  }
+
   async function provisionNfc(item: QRItem) {
     const nfcUrl = item.nfc_url
     if (!nfcUrl) {
@@ -388,13 +417,62 @@ export default function DashboardQrGeneratorPage() {
     }
   }
 
-  function downloadPNG() {
+  function loadCanvasImage(source: string) {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const image = new window.Image()
+      image.onload = () => resolve(image)
+      image.onerror = () => reject(new Error('Não foi possível preparar a imagem para download.'))
+      image.src = source
+    })
+  }
+
+  async function downloadPNG() {
     if (!qrDataUrl) return
 
-    const linkElement = document.createElement('a')
-    linkElement.href = qrDataUrl
-    linkElement.download = 'nexawi-qrcode.png'
-    linkElement.click()
+    try {
+      let downloadUrl = qrDataUrl
+
+      if (qrAssetCode) {
+        const qrImage = await loadCanvasImage(qrDataUrl)
+        const canvas = document.createElement('canvas')
+        const footerHeight = 190
+        canvas.width = qrImage.naturalWidth
+        canvas.height = qrImage.naturalHeight + footerHeight
+
+        const context = canvas.getContext('2d')
+        if (!context) throw new Error('Seu navegador não conseguiu preparar o arquivo de impressão.')
+
+        context.fillStyle = '#ffffff'
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        context.drawImage(qrImage, 0, 0, qrImage.naturalWidth, qrImage.naturalHeight)
+
+        context.strokeStyle = '#e5e7eb'
+        context.lineWidth = 2
+        context.beginPath()
+        context.moveTo(70, qrImage.naturalHeight + 18)
+        context.lineTo(canvas.width - 70, qrImage.naturalHeight + 18)
+        context.stroke()
+
+        context.textAlign = 'center'
+        context.textBaseline = 'middle'
+        context.fillStyle = '#6b7280'
+        context.font = '700 25px Arial, sans-serif'
+        context.fillText('CÓDIGO NEXAWI', canvas.width / 2, qrImage.naturalHeight + 65)
+        context.fillStyle = '#050505'
+        context.font = '800 58px Arial, sans-serif'
+        context.fillText(qrAssetCode, canvas.width / 2, qrImage.naturalHeight + 128)
+
+        downloadUrl = canvas.toDataURL('image/png')
+      }
+
+      const safeCode = qrAssetCode.toLowerCase().replace(/[^a-z0-9-]+/g, '')
+      const linkElement = document.createElement('a')
+      linkElement.href = downloadUrl
+      linkElement.download = safeCode ? `nexawi-qr-${safeCode}.png` : 'nexawi-qrcode.png'
+      linkElement.click()
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Não foi possível baixar o QR Code.')
+    }
   }
 
   async function copyText(value: string, label: string) {
@@ -639,7 +717,7 @@ export default function DashboardQrGeneratorPage() {
             )}
           </div>
 
-          <aside className="rounded-3xl border border-white/[0.06] bg-white/[0.025] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.25)] backdrop-blur-xl sm:p-5">
+          <aside ref={previewRef} className="scroll-mt-6 rounded-3xl border border-white/[0.06] bg-white/[0.025] p-4 shadow-[0_24px_90px_rgba(0,0,0,0.25)] backdrop-blur-xl sm:p-5">
             <div className="mb-5">
               <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#6be12f]">Preview profissional</p>
               <h2 className="mt-1 text-2xl font-black">Resultado</h2>
@@ -648,16 +726,24 @@ export default function DashboardQrGeneratorPage() {
 
             {qrDataUrl ? (
               <div className="space-y-4">
-                <div className="relative overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-white p-5 shadow-[0_0_45px_rgba(107,225,47,0.08)]">
-                  <Image src={qrDataUrl} alt="QR Code NexaWi" width={1000} height={1000} unoptimized className="h-auto w-full rounded-2xl" />
-                  <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-black/10 bg-white shadow-xl">
-                    <Image src="/simbolo-verde.png" alt="NexaWi" width={48} height={36} className="max-h-9 max-w-12 object-contain" />
+                <div className="overflow-hidden rounded-3xl border border-[#6be12f]/20 bg-white p-5 shadow-[0_0_45px_rgba(107,225,47,0.08)]">
+                  <div className="relative">
+                    <Image src={qrDataUrl} alt="QR Code NexaWi" width={1000} height={1000} unoptimized className="h-auto w-full rounded-2xl" />
+                    <div className="pointer-events-none absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl border border-black/10 bg-white shadow-xl">
+                      <Image src="/simbolo-verde.png" alt="NexaWi" width={48} height={36} className="max-h-9 max-w-12 object-contain" />
+                    </div>
                   </div>
+                  {qrAssetCode ? (
+                    <div className="mt-4 border-t border-gray-200 pt-4 text-center">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Código NexaWi</p>
+                      <p className="mt-1 font-mono text-2xl font-black tracking-[0.12em] text-black">{qrAssetCode}</p>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
                   <button type="button" onClick={downloadPNG} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black">
-                    <Download size={17} /> Baixar PNG
+                    <Download size={17} /> {qrAssetCode ? 'Baixar QR + código' : 'Baixar PNG'}
                   </button>
                   <button type="button" onClick={() => copyText(qrPayload, 'payload')} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm font-black text-white">
                     <Copy size={17} /> {copied === 'payload' ? 'Copiado' : 'Copiar conteúdo'}
@@ -739,7 +825,7 @@ export default function DashboardQrGeneratorPage() {
                           {item.customer_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.customer_name}</span> : null}
                           {item.location_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.location_name}</span> : null}
                           {item.campaign_name ? <span className="rounded-full bg-white/[0.04] px-2 py-1">{item.campaign_name}</span> : null}
-                          {item.asset?.serial_number ? <span className="rounded-full bg-[#ff9d2e]/10 px-2 py-1 text-[#ff9d2e]">{item.asset.serial_number}</span> : null}
+                          {item.asset?.serial_number ? <span className="rounded-full bg-[#ff9d2e]/10 px-2 py-1 text-[#ff9d2e]">Código: {item.asset.serial_number}</span> : null}
                           {item.asset?.nfc_status ? <span className="rounded-full bg-[#6be12f]/10 px-2 py-1 text-[#6be12f]">NFC: {item.asset.nfc_status}</span> : null}
                           {!item.asset ? <span className="rounded-full bg-white/[0.04] px-2 py-1">QR legado</span> : null}
                         </div>
@@ -772,6 +858,9 @@ export default function DashboardQrGeneratorPage() {
                           <a href={item.qr_url || item.dynamic_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-white/[0.08] px-3 py-2 text-xs font-black text-gray-300">
                             <ExternalLink size={13} /> Abrir
                           </a>
+                          <button type="button" onClick={() => previewQRCode(item)} className="inline-flex items-center gap-1 rounded-xl border border-[#ff9d2e]/25 px-3 py-2 text-xs font-black text-[#ff9d2e]">
+                            <QrCode size={13} /> Ver/Reimprimir
+                          </button>
                           {item.public_stats_url ? (
                             <a href={item.public_stats_url} target="_blank" className="inline-flex items-center gap-1 rounded-xl border border-[#6be12f]/20 px-3 py-2 text-xs font-black text-[#8cf059]">
                               <BarChart3 size={13} /> Painel público

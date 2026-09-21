@@ -270,7 +270,7 @@ export async function POST(request) {
       .trim()
       .toUpperCase()
       .slice(0, 64)
-    const serialNumber = requestedSerialNumber || `NX-${randomUUID().slice(0, 8).toUpperCase()}`
+    const serialNumber = requestedSerialNumber || `NX${randomUUID().replaceAll('-', '').slice(0, 8).toUpperCase()}`
 
     const { data: created, error: createError } = await supabaseAdmin
       .rpc('create_qr_asset', {
