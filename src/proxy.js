@@ -22,6 +22,7 @@ const ALLOWED_ORIGINS = new Set([
 const GO_HOSTS = new Set(['go.nexawi.com.br', 'www.go.nexawi.com.br'])
 const GO_RESERVED_SEGMENTS = new Set([
   'admin', 'api', 'cliente', 'dashboard', 'go', 'login', 'logout', 'q', 'qr', 'r',
+  'servicos', 'serviços',
 ])
 
 function requestHost(request) {
@@ -34,6 +35,12 @@ function requestHost(request) {
 export function proxy(request) {
   const { pathname } = request.nextUrl
   const isGoHost = GO_HOSTS.has(requestHost(request))
+
+  if (pathname === '/serviços' || pathname === '/servi%C3%A7os') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/servicos'
+    return NextResponse.redirect(url)
+  }
 
   // ============================================================
   // 1. Plataforma QR no subdomínio go.nexawi.com.br
