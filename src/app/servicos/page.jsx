@@ -1,6 +1,8 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { Poppins } from 'next/font/google'
+import ServicosMotion from './servicos-motion'
+import './servicos.css'
 import {
   ArrowRight,
   BarChart3,
@@ -53,10 +55,10 @@ function whatsappUrl(message) {
 }
 
 const navItems = [
+  { label: 'Sites e LPs', href: '#sites' },
   { label: 'Plaquinhas', href: '#plaquinhas' },
   { label: 'Tráfego pago', href: '#trafego' },
   { label: 'Design', href: '#design' },
-  { label: 'Sites e LPs', href: '#sites' },
 ]
 
 const plaquePlans = [
@@ -219,76 +221,69 @@ const faqItems = [
 
 export default function ServicosPage() {
   return (
-    <main className={`${poppins.className} min-h-screen overflow-hidden bg-[#050706] text-white selection:bg-[#69e52f]/30`}>
+    <main className={`${poppins.className} services-page min-h-screen overflow-hidden bg-[#050706] text-white selection:bg-[#69e52f]/30`}>
+      <ServicosMotion />
       <Header />
 
-      <section className="relative isolate min-h-[760px] border-b border-white/10 pt-28 lg:pt-36">
-        <div className="absolute inset-0 -z-20">
-          <Image
-            src="/servicos/hero-plaquinha-qr-nfc.png"
-            alt="Plaquinha inteligente com QR Code e NFC em um balcão comercial"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover object-[67%_center]"
-          />
-        </div>
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,#050706_0%,rgba(5,7,6,0.98)_33%,rgba(5,7,6,0.72)_58%,rgba(5,7,6,0.18)_100%)]" />
-        <div className="absolute inset-0 -z-10 bg-[linear-gradient(0deg,#050706_0%,transparent_38%)]" />
+      <section className="services-hero relative isolate overflow-hidden border-b border-white/10 pt-32 sm:pt-36 lg:pt-40">
+        <div className="services-hero-grid absolute inset-0 -z-20" aria-hidden="true" />
+        <div className="services-hero-glow absolute -right-40 top-8 -z-10 h-[700px] w-[700px] rounded-full bg-[#69e52f]/[0.12] blur-[130px]" aria-hidden="true" />
 
-        <div className="mx-auto grid max-w-7xl px-5 pb-20 sm:px-8 lg:grid-cols-[1.05fr_0.95fr] lg:px-10 lg:pb-28">
-          <div className="max-w-3xl">
+        <div className="mx-auto grid max-w-7xl items-center gap-14 px-5 pb-24 sm:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-8 lg:px-10 lg:pb-32">
+          <div className="max-w-3xl services-enter">
             <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-[#69e52f]/25 bg-[#69e52f]/10 px-4 py-2 text-xs font-extrabold uppercase tracking-[0.2em] text-[#8cf45e] backdrop-blur-md">
               <Sparkles size={15} />
-              Da presença ao resultado
+              Presença digital que impressiona
             </div>
 
-            <h1 className="text-4xl font-extrabold leading-[0.98] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-              Sua empresa pronta para ser
-              <span className="block bg-gradient-to-r from-[#8cf45e] to-[#43b91e] bg-clip-text text-transparent">
-                encontrada, lembrada e escolhida.
+            <h1 className="text-[clamp(2.8rem,5.2vw,5.3rem)] font-extrabold leading-[1.03] tracking-[-0.06em]">
+              Sites que impressionam.
+              <span className="services-gradient-text block">
+                Páginas que convertem.
               </span>
             </h1>
 
-            <p className="mt-7 max-w-2xl text-base leading-8 text-neutral-300 sm:text-xl">
-              Plaquinhas inteligentes, tráfego pago, design e páginas profissionais trabalhando juntos para colocar mais clientes no caminho do seu negócio.
+            <p className="mt-7 max-w-2xl text-base leading-8 text-neutral-300 sm:text-lg">
+              Criamos landing pages e sites com direção visual, clareza e foco em conversão. E conectamos tudo a design, tráfego pago e soluções inteligentes para o seu negócio crescer.
             </p>
 
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
-                href={whatsappUrl('Olá! Quero entender qual solução da NexaWi faz mais sentido para minha empresa.')}
+                href={whatsappUrl('Olá! Vi a página de serviços e quero uma landing page ou site para minha empresa.')}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group inline-flex items-center justify-center gap-2 rounded-2xl bg-[#69e52f] px-6 py-4 text-sm font-extrabold text-black shadow-[0_15px_45px_rgba(105,229,47,0.2)] transition hover:-translate-y-0.5 hover:bg-[#8cf45e]"
+                className="services-primary-cta group inline-flex items-center justify-center gap-2 rounded-2xl bg-[#69e52f] px-6 py-4 text-sm font-extrabold text-black shadow-[0_15px_45px_rgba(105,229,47,0.2)] transition hover:-translate-y-0.5 hover:bg-[#8cf45e]"
               >
-                Quero uma proposta
+                Quero um site assim
                 <ArrowRight size={18} className="transition group-hover:translate-x-1" />
               </a>
               <a
-                href="#plaquinhas"
+                href="#sites"
                 className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/25 px-6 py-4 text-sm font-bold text-white backdrop-blur-md transition hover:border-white/30 hover:bg-white/10"
               >
-                Ver todos os serviços
+                Ver soluções e valores
                 <ChevronRight size={18} />
               </a>
             </div>
 
             <div className="mt-10 flex flex-wrap gap-x-7 gap-y-3 text-sm text-neutral-300">
-              <TrustItem>Atendimento consultivo</TrustItem>
-              <TrustItem>Soluções para negócio local</TrustItem>
-              <TrustItem>Implantação acompanhada</TrustItem>
+              <TrustItem>Design responsivo</TrustItem>
+              <TrustItem>Experiência rápida</TrustItem>
+              <TrustItem>Estratégia de conversão</TrustItem>
             </div>
           </div>
+          <SitePreview />
         </div>
+        <div className="services-hero-bottom absolute inset-x-0 bottom-0 h-28 -z-10" aria-hidden="true" />
       </section>
 
       <section className="border-b border-white/10 bg-[#080b09]">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-px bg-white/10 sm:grid-cols-4">
           {[
+            ['Sites e LPs', 'Que convertem'],
             ['QR + NFC', 'Acesso rápido'],
             ['Mídia paga', 'Com estratégia'],
             ['Design', 'Com consistência'],
-            ['Sites', 'Que convertem'],
           ].map(([title, text]) => (
             <div key={title} className="bg-[#080b09] px-5 py-7 text-center">
               <p className="text-lg font-extrabold text-white">{title}</p>
@@ -297,6 +292,24 @@ export default function ServicosPage() {
           ))}
         </div>
       </section>
+
+      <ServiceSection
+        id="sites"
+        eyebrow="Estrutura para conversão"
+        title="Landing pages e sites que explicam, convencem e facilitam o próximo passo."
+        description="Criamos páginas rápidas, responsivas e pensadas para o celular. Sua oferta fica clara e o visitante encontra o caminho para pedir orçamento, comprar ou falar no WhatsApp."
+        image="/servicos/sites-landing-pages.png"
+        imageAlt="Site profissional exibido em computador, tablet e celular"
+        icon={Globe2}
+        highlights={[
+          { icon: Code2, title: 'Responsivo', text: 'Experiência consistente no celular e no computador.' },
+          { icon: Rocket, title: 'Rápido', text: 'Estrutura otimizada para carregar sem enrolação.' },
+          { icon: MousePointerClick, title: 'Com CTA', text: 'Cada bloco conduz o visitante para uma ação.' },
+          { icon: Globe2, title: 'Pronto para divulgar', text: 'Publicação e configuração orientadas pela equipe.' },
+        ]}
+        plans={sitePlans}
+        note="Domínio, hospedagem e licenças de terceiros são informados separadamente quando necessários."
+      />
 
       <ServiceSection
         id="plaquinhas"
@@ -353,28 +366,9 @@ export default function ServicosPage() {
         note="Prazos e quantidade de revisões seguem o escopo contratado para manter a entrega previsível."
       />
 
-      <ServiceSection
-        id="sites"
-        eyebrow="Estrutura para conversão"
-        title="Landing pages e sites que explicam, convencem e facilitam o próximo passo."
-        description="Criamos páginas rápidas, responsivas e pensadas para o celular. Sua oferta fica clara e o visitante encontra o caminho para pedir orçamento, comprar ou falar no WhatsApp."
-        image="/servicos/sites-landing-pages.png"
-        imageAlt="Site profissional exibido em computador, tablet e celular"
-        icon={Globe2}
-        reverse
-        highlights={[
-          { icon: Code2, title: 'Responsivo', text: 'Experiência consistente no celular e no computador.' },
-          { icon: Rocket, title: 'Rápido', text: 'Estrutura otimizada para carregar sem enrolação.' },
-          { icon: MousePointerClick, title: 'Com CTA', text: 'Cada bloco conduz o visitante para uma ação.' },
-          { icon: Globe2, title: 'Pronto para divulgar', text: 'Publicação e configuração orientadas pela equipe.' },
-        ]}
-        plans={sitePlans}
-        note="Domínio, hospedagem e licenças de terceiros são informados separadamente quando necessários."
-      />
-
       <section className="relative border-y border-white/10 bg-[#080b09] py-20 sm:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_10%,rgba(105,229,47,0.10),transparent_35%)]" />
-        <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <div className="relative mx-auto max-w-7xl px-5 sm:px-8 lg:px-10" data-reveal>
           <SectionHeading
             eyebrow="Combinações inteligentes"
             title="Você não precisa contratar tudo. Precisa começar pelo que destrava o próximo resultado."
@@ -428,7 +422,7 @@ export default function ServicosPage() {
       </section>
 
       <section className="py-20 sm:py-28">
-        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10" data-reveal>
           <div className="grid gap-14 lg:grid-cols-[0.8fr_1.2fr] lg:items-start">
             <SectionHeading
               eyebrow="Como funciona"
@@ -455,7 +449,7 @@ export default function ServicosPage() {
       </section>
 
       <section className="border-t border-white/10 bg-[#080b09] py-20 sm:py-28">
-        <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:px-10">
+        <div className="mx-auto grid max-w-7xl gap-12 px-5 sm:px-8 lg:grid-cols-[0.72fr_1.28fr] lg:px-10" data-reveal>
           <SectionHeading
             eyebrow="Perguntas frequentes"
             title="Tudo claro antes de contratar."
@@ -480,7 +474,7 @@ export default function ServicosPage() {
 
       <section className="relative overflow-hidden border-t border-white/10 px-5 py-20 sm:px-8 sm:py-28">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(105,229,47,0.16),transparent_45%)]" />
-        <div className="relative mx-auto max-w-5xl rounded-[2.5rem] border border-[#69e52f]/25 bg-[linear-gradient(135deg,rgba(105,229,47,0.11),rgba(255,255,255,0.025))] px-6 py-12 text-center shadow-[0_30px_100px_rgba(0,0,0,0.35)] sm:px-12 sm:py-16">
+        <div className="relative mx-auto max-w-5xl rounded-[2.5rem] border border-[#69e52f]/25 bg-[linear-gradient(135deg,rgba(105,229,47,0.11),rgba(255,255,255,0.025))] px-6 py-12 text-center shadow-[0_30px_100px_rgba(0,0,0,0.35)] sm:px-12 sm:py-16" data-reveal>
           <p className="text-xs font-extrabold uppercase tracking-[0.22em] text-[#8cf45e]">Vamos começar?</p>
           <h2 className="mx-auto mt-5 max-w-4xl text-3xl font-extrabold leading-tight tracking-[-0.035em] sm:text-5xl">
             Conte onde sua empresa está hoje. A gente mostra o próximo passo.
@@ -545,6 +539,56 @@ function Header() {
   )
 }
 
+function SitePreview() {
+  return (
+    <figure className="services-preview relative mx-auto w-full max-w-[680px] lg:ml-auto" aria-label="Demonstração conceitual de uma landing page criada para apresentar uma marca">
+      <div className="services-preview-halo absolute -inset-7 rounded-[3rem] bg-[#69e52f]/10 blur-3xl" aria-hidden="true" />
+      <div className="services-preview-frame relative overflow-hidden rounded-[1.75rem] border border-white/20 bg-[#101512] shadow-[0_40px_120px_rgba(0,0,0,0.58)]">
+        <div className="flex h-12 items-center gap-2 border-b border-white/10 bg-[#111713] px-5">
+          <span className="h-2.5 w-2.5 rounded-full bg-[#fa6b67]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#eec66b]" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#78d98a]" />
+          <span className="ml-4 truncate rounded-md border border-white/10 bg-white/[0.04] px-4 py-1 text-[10px] tracking-wide text-neutral-500 sm:ml-12 sm:px-12">
+            suaempresa.com.br
+          </span>
+        </div>
+        <div className="services-preview-canvas relative min-h-[400px] overflow-hidden px-7 py-8 sm:min-h-[500px] sm:px-10 sm:py-10">
+          <div className="services-preview-ambient absolute -right-20 -top-28 h-80 w-80 rounded-full bg-[#edbc8b]/20 blur-[80px]" aria-hidden="true" />
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <span className="text-[11px] font-extrabold uppercase tracking-[0.3em] text-[#f1d5ae]">Sua marca</span>
+            <span className="rounded-full border border-white/20 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-300">Explorar</span>
+          </div>
+          <div className="relative z-10 mt-16 max-w-[400px] sm:mt-24">
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.28em] text-[#e6bc89]">O próximo capítulo começa aqui</p>
+            <p className="text-[clamp(2rem,4vw,3.55rem)] font-semibold leading-[1.08] tracking-[-0.055em] text-[#fff7eb]">
+              Sua história merece ser vista.
+            </p>
+            <p className="mt-5 max-w-xs text-xs leading-6 text-[#d0c7bd] sm:text-sm">
+              Uma presença digital que traduz o valor da sua empresa em uma experiência memorável.
+            </p>
+            <span className="mt-7 inline-flex items-center gap-3 rounded-full bg-[#edbc8b] px-5 py-3 text-[11px] font-extrabold text-[#201b17]">
+              Conheça a experiência <ArrowRight size={14} />
+            </span>
+          </div>
+          <div className="services-preview-art absolute -bottom-20 -right-16 h-80 w-80 rounded-full border-[38px] border-[#dcaa77]/60 shadow-[inset_0_0_60px_rgba(0,0,0,0.4),0_0_90px_rgba(224,155,105,0.16)] sm:-bottom-16 sm:-right-10 sm:h-[380px] sm:w-[380px]" aria-hidden="true">
+            <div className="absolute inset-9 rounded-full border border-[#f3d0a9]/40" />
+          </div>
+        </div>
+      </div>
+      <div className="services-float services-float-one absolute -left-4 bottom-10 hidden items-center gap-3 rounded-2xl border border-white/15 bg-[#132017]/95 px-4 py-3 shadow-[0_20px_45px_rgba(0,0,0,0.38)] backdrop-blur-xl sm:flex">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#69e52f]/15 text-[#8cf45e]"><Smartphone size={19} /></div>
+        <div><p className="text-xs font-bold">Pensado para mobile</p><p className="text-[10px] text-neutral-400">Em qualquer tela</p></div>
+      </div>
+      <div className="services-float services-float-two absolute -right-3 -top-6 hidden items-center gap-2 rounded-full border border-[#69e52f]/30 bg-[#132017]/95 px-4 py-2 text-xs font-bold text-[#a7f485] shadow-xl backdrop-blur-xl sm:flex">
+        <Sparkles size={14} /> Design sob medida
+      </div>
+      <figcaption className="mt-5 text-center text-[11px] uppercase tracking-[0.2em] text-neutral-500">
+        Demonstração visual de conceito
+      </figcaption>
+    </figure>
+  )
+}
+
 function ServiceSection({
   id,
   eyebrow,
@@ -562,7 +606,7 @@ function ServiceSection({
     <section id={id} className="scroll-mt-20 border-b border-white/10 py-20 sm:py-28">
       <div className="mx-auto max-w-7xl px-5 sm:px-8 lg:px-10">
         <div className={`grid items-center gap-12 lg:grid-cols-2 lg:gap-16 ${reverse ? 'lg:[&>*:first-child]:order-2' : ''}`}>
-          <div>
+          <div data-reveal>
             <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-[#69e52f]/20 bg-[#69e52f]/10 text-[#8cf45e]">
               <ServiceIcon size={26} />
             </div>
@@ -572,7 +616,7 @@ function ServiceSection({
               {highlights.map((item) => {
                 const Icon = item.icon
                 return (
-                  <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.025] p-5">
+                  <div key={item.title} className="services-feature rounded-2xl border border-white/10 bg-white/[0.025] p-5">
                     <Icon size={19} className="text-[#69e52f]" />
                     <h3 className="mt-4 font-extrabold">{item.title}</h3>
                     <p className="mt-2 text-xs leading-5 text-neutral-500">{item.text}</p>
@@ -582,13 +626,13 @@ function ServiceSection({
             </div>
           </div>
 
-          <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] shadow-[0_25px_90px_rgba(0,0,0,0.35)]">
-            <Image src={image} alt={imageAlt} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover" />
+          <div data-reveal className="services-image-frame relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.03] shadow-[0_25px_90px_rgba(0,0,0,0.35)]">
+            <Image src={image} alt={imageAlt} fill sizes="(max-width: 1024px) 100vw, 50vw" className="object-cover transition-transform duration-700 ease-out" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-transparent" />
           </div>
         </div>
 
-        <div className="mt-14 grid gap-5 lg:grid-cols-3">
+        <div className="mt-14 grid gap-5 lg:grid-cols-3" data-reveal>
           {plans.map((plan) => (
             <PlanCard key={plan.name} plan={plan} />
           ))}
@@ -605,7 +649,7 @@ function ServiceSection({
 function PlanCard({ plan }) {
   return (
     <article
-      className={`relative flex h-full flex-col rounded-[2rem] border p-6 sm:p-7 ${
+      className={`services-plan relative flex h-full flex-col rounded-[2rem] border p-6 sm:p-7 ${
         plan.featured
           ? 'border-[#69e52f]/45 bg-[#69e52f]/[0.07] shadow-[0_20px_70px_rgba(105,229,47,0.08)]'
           : 'border-white/10 bg-white/[0.025]'
