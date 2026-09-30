@@ -21,7 +21,7 @@ const ALLOWED_ORIGINS = new Set([
 
 const GO_HOSTS = new Set(['go.nexawi.com.br', 'www.go.nexawi.com.br'])
 const GO_RESERVED_SEGMENTS = new Set([
-  'admin', 'api', 'cliente', 'dashboard', 'go', 'login', 'logout', 'q', 'qr', 'r',
+  'admin', 'api', 'cliente', 'dashboard', 'go', 'l', 'login', 'logout', 'q', 'qr', 'r',
   'servicos', 'serviços',
 ])
 

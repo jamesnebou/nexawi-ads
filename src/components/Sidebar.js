@@ -33,6 +33,7 @@ import {
   FileText,
   ClipboardCheck,
   QrCode,
+  Link2,
   WandSparkles,
 } from 'lucide-react'
 
@@ -141,6 +142,12 @@ const menu = [
     label: 'QR Codes',
     path: '/dashboard/geradores/qr',
     icon: QrCode,
+    module: 'qrcodes',
+  },
+  {
+    label: 'Encurtador de links',
+    path: '/dashboard/geradores/links',
+    icon: Link2,
     module: 'qrcodes',
   },
 

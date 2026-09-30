@@ -162,6 +162,12 @@ const rotasProtegidas = [
     action: 'view',
     label: 'QR Codes e NFC',
   },
+  {
+    path: '/dashboard/geradores/links',
+    module: 'qrcodes',
+    action: 'view',
+    label: 'Encurtador de links',
+  },
 
   {
     path: '/dashboard/planos',
